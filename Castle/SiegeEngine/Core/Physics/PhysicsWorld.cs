@@ -5,7 +5,6 @@ using SiegeEngine.Core.Events;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Physics
 {
     public class PhysicsWorld
@@ -16,11 +15,9 @@ namespace SiegeEngine.Core.Physics
         private float _accumulator;
         private Vector3 _gravity = new Vector3(0f, 0f, -9.81f);
         private readonly List<ContactManifold> _manifolds = new List<ContactManifold>();
-
         private readonly List<Vector3> _triA = new List<Vector3>(64);
         private readonly List<Vector3> _triB = new List<Vector3>(64);
         private readonly List<Vector3> _triC = new List<Vector3>(64);
-
         public bool UseFixedTimestep { get; set; } = true;
         public float FixedTimestep { get; set; } = 1f / 60f;
         public Vector3 Gravity
@@ -29,14 +26,12 @@ namespace SiegeEngine.Core.Physics
             set => _gravity = value;
         }
         public EventBus EventBus { get; set; }
-
         public void SetHeightProvider(IHeightProvider provider)
         {
             _heightProvider = provider;
             _heightfieldShape = provider != null ? new HeightfieldShape(provider) : null;
         }
         public IHeightProvider HeightProvider => _heightProvider;
-
         public void RegisterBody(PhysicsComponent body)
         {
             if (body == null) return;
@@ -52,9 +47,7 @@ namespace SiegeEngine.Core.Physics
         {
             _bodies.Clear();
         }
-
         public void SnapToGround(PhysicsComponent body) { }
-
         public void Step(float deltaTime)
         {
             if (deltaTime <= 0f) return;
@@ -76,7 +69,6 @@ namespace SiegeEngine.Core.Physics
                 DetectAndResolveContacts(deltaTime);
             }
         }
-
         private void Integrate(float dt)
         {
             for (int i = 0; i < _bodies.Count; i++)
@@ -92,8 +84,16 @@ namespace SiegeEngine.Core.Physics
                 }
                 else if (body.BodyType == BodyType.Kinematic)
                 {
-                    // Kinematics still receive gravity; contact resolution pushes them back out of statics.
-                    body.Velocity += _gravity * dt;
+                    // Previous-frame IsGrounded decides gravity. Contact phase will refresh the flag.
+                    if (body.IsGrounded)
+                    {
+                        // Keep horizontal velocity; kill residual downward so we do not re-penetrate.
+                        body.Velocity = new Vector3(body.Velocity.X, body.Velocity.Y, MathF.Max(0f, body.Velocity.Z));
+                    }
+                    else
+                    {
+                        body.Velocity += _gravity * dt;
+                    }
                     body.Position = new Vector3(
                         body.Position.X,
                         body.Position.Y,
@@ -101,11 +101,16 @@ namespace SiegeEngine.Core.Physics
                 }
             }
         }
-
         private void DetectAndResolveContacts(float dt)
         {
+            // Clear grounded flags so only contacts generated this step can re-set them.
+            for (int i = 0; i < _bodies.Count; i++)
+            {
+                var body = _bodies[i];
+                if (body != null && body.BodyType == BodyType.Kinematic)
+                    body.IsGrounded = false;
+            }
             _manifolds.Clear();
-
             for (int i = 0; i < _bodies.Count; i++)
             {
                 var a = _bodies[i];
@@ -123,7 +128,6 @@ namespace SiegeEngine.Core.Physics
                         _manifolds.Add(manifold);
                 }
             }
-
             if (_heightfieldShape != null)
             {
                 for (int i = 0; i < _bodies.Count; i++)
@@ -141,11 +145,9 @@ namespace SiegeEngine.Core.Physics
                         _manifolds.Add(manifold);
                 }
             }
-
             for (int m = 0; m < _manifolds.Count; m++)
                 ResolveManifold(_manifolds[m], dt);
         }
-
         private ContactManifold GenerateManifold(PhysicsComponent a, PhysicsComponent b)
         {
             if (a.BodyType == BodyType.Static && b.BodyType != BodyType.Static)
@@ -183,7 +185,6 @@ namespace SiegeEngine.Core.Physics
             }
             return manifold.PointCount > 0 ? manifold : null;
         }
-
         private void CapsuleVsCapsule(CapsuleShape a, PhysicsComponent bodyA,
             CapsuleShape b, PhysicsComponent bodyB, ContactManifold manifold)
         {
@@ -203,17 +204,19 @@ namespace SiegeEngine.Core.Physics
                 });
             }
         }
-
         private void CapsuleVsObb(CapsuleShape cap, PhysicsComponent capBody,
             ObbShape obb, PhysicsComponent obbBody, ContactManifold manifold)
         {
             float radius = cap.Radius;
             float height = cap.Height;
             Vector3 feet = capBody.Position;
+            // Five axial samples for more reliable deep-penetration and edge contacts.
             Vector3[] samples =
             {
                 feet + new Vector3(0, 0, radius),
+                feet + new Vector3(0, 0, height * 0.25f),
                 feet + new Vector3(0, 0, height * 0.5f),
+                feet + new Vector3(0, 0, height * 0.75f),
                 feet + new Vector3(0, 0, height - radius)
             };
             for (int s = 0; s < samples.Length; s++)
@@ -233,7 +236,6 @@ namespace SiegeEngine.Core.Physics
                 }
             }
         }
-
         private void CapsuleVsTriangleMesh(CapsuleShape cap, PhysicsComponent capBody,
             TriangleMeshShape mesh, PhysicsComponent meshBody, ContactManifold manifold)
         {
@@ -242,25 +244,24 @@ namespace SiegeEngine.Core.Physics
             Vector3 feet = capBody.Position;
             Vector3 queryMin = feet - new Vector3(radius, radius, 0f);
             Vector3 queryMax = feet + new Vector3(radius, radius, height);
-
             mesh.GetAabb(meshBody.Position, meshBody.Rotation, out Vector3 aabbMin, out Vector3 aabbMax);
             if (queryMax.X < aabbMin.X || queryMin.X > aabbMax.X ||
                 queryMax.Y < aabbMin.Y || queryMin.Y > aabbMax.Y ||
                 queryMax.Z < aabbMin.Z || queryMin.Z > aabbMax.Z)
                 return;
-
             _triA.Clear();
             _triB.Clear();
             _triC.Clear();
             mesh.QueryWorldTriangles(meshBody.Position, meshBody.Rotation, queryMin, queryMax, _triA, _triB, _triC);
-
+            // Five axial samples for more reliable deep-penetration and edge contacts.
             Vector3[] samples =
             {
                 feet + new Vector3(0, 0, radius),
+                feet + new Vector3(0, 0, height * 0.25f),
                 feet + new Vector3(0, 0, height * 0.5f),
+                feet + new Vector3(0, 0, height * 0.75f),
                 feet + new Vector3(0, 0, height - radius)
             };
-
             for (int t = 0; t < _triA.Count; t++)
             {
                 Vector3 a = _triA[t];
@@ -285,7 +286,6 @@ namespace SiegeEngine.Core.Physics
                 }
             }
         }
-
         private void CapsuleVsHeightfield(CapsuleShape cap, PhysicsComponent body,
             HeightfieldShape field, ContactManifold manifold)
         {
@@ -302,9 +302,12 @@ namespace SiegeEngine.Core.Physics
                     Normal = n,
                     Penetration = penetration
                 });
+                // Supporting contact within slope limit → grounded.
+                float slopeDeg = MathF.Acos(Math.Clamp(n.Z, -1f, 1f)) * (180f / MathF.PI);
+                if (slopeDeg <= body.SlopeLimitDegrees)
+                    body.IsGrounded = true;
             }
         }
-
         private void ObbVsHeightfield(ObbShape obb, PhysicsComponent body,
             HeightfieldShape field, ContactManifold manifold)
         {
@@ -336,11 +339,13 @@ namespace SiegeEngine.Core.Physics
                         Normal = n,
                         Penetration = penetration
                     });
+                    float slopeDeg = MathF.Acos(Math.Clamp(n.Z, -1f, 1f)) * (180f / MathF.PI);
+                    if (slopeDeg <= body.SlopeLimitDegrees)
+                        body.IsGrounded = true;
                     if (manifold.PointCount >= 4) return;
                 }
             }
         }
-
         private void ObbVsObb(ObbShape a, PhysicsComponent bodyA,
             ObbShape b, PhysicsComponent bodyB, ContactManifold manifold)
         {
@@ -363,7 +368,6 @@ namespace SiegeEngine.Core.Physics
                 });
             }
         }
-
         private void ObbVsMeshAabb(ObbShape obb, PhysicsComponent obbBody,
             TriangleMeshShape mesh, PhysicsComponent meshBody, ContactManifold manifold)
         {
@@ -387,12 +391,10 @@ namespace SiegeEngine.Core.Physics
                 });
             }
         }
-
         private void ResolveManifold(ContactManifold m, float dt)
         {
             var a = m.BodyA;
             var b = m.BodyB;
-
             // Statics = infinite mass. Dynamics use real mass.
             // ALL kinematics receive invMass = 1 so they can be pushed out of static geometry
             // while still integrating gravity. This replaces the old discrete ground clamp.
@@ -415,7 +417,6 @@ namespace SiegeEngine.Core.Physics
             // Heightfield (BodyB == null) stays infinite mass.
             float totalInv = invMassA + invMassB;
             if (totalInv < 1e-8f) return;
-
             for (int i = 0; i < m.PointCount; i++)
             {
                 var p = m.Points[i];
@@ -423,10 +424,18 @@ namespace SiegeEngine.Core.Physics
                 const float percent = 0.8f;
                 const float slop = 0.01f;
                 float correctionMag = MathF.Max(p.Penetration - slop, 0f) * percent;
-                Vector3 correction = n * (correctionMag / totalInv);
-                if (invMassA > 0f) a.Position += correction * invMassA;
-                if (invMassB > 0f && b != null) b.Position -= correction * invMassB;
-
+                // Heightfield + kinematic: vertical-only position correction.
+                // Prevents the tilted normal from injecting lateral displacement that fights PlayerMovement.
+                if (b == null && a != null && a.BodyType == BodyType.Kinematic)
+                {
+                    a.Position = new Vector3(a.Position.X, a.Position.Y, a.Position.Z + correctionMag);
+                }
+                else
+                {
+                    Vector3 correction = n * (correctionMag / totalInv);
+                    if (invMassA > 0f) a.Position += correction * invMassA;
+                    if (invMassB > 0f && b != null) b.Position -= correction * invMassB;
+                }
                 Vector3 velA = a != null ? a.Velocity : Vector3.Zero;
                 Vector3 velB = b != null ? b.Velocity : Vector3.Zero;
                 Vector3 relVel = velA - velB;
@@ -437,23 +446,34 @@ namespace SiegeEngine.Core.Physics
                 Vector3 impulse = n * j;
                 if (invMassA > 0f) a.Velocity += impulse * invMassA;
                 if (invMassB > 0f && b != null) b.Velocity -= impulse * invMassB;
-
                 relVel = (a != null ? a.Velocity : Vector3.Zero) - (b != null ? b.Velocity : Vector3.Zero);
                 Vector3 tangent = relVel - n * Vector3.Dot(relVel, n);
                 float tLen = tangent.Length();
                 if (tLen > 1e-6f)
                 {
                     tangent /= tLen;
-                    float jt = -Vector3.Dot(relVel, tangent) / totalInv;
-                    float mu = MathF.Sqrt((a?.Friction ?? 0.5f) * (b?.Friction ?? 0.5f));
-                    jt = Math.Clamp(jt, -j * mu, j * mu);
-                    Vector3 frictionImpulse = tangent * jt;
-                    if (invMassA > 0f) a.Velocity += frictionImpulse * invMassA;
-                    if (invMassB > 0f && b != null) b.Velocity -= frictionImpulse * invMassB;
+                    // Heightfield receives stronger friction + static stick to stop slope creep.
+                    float mu;
+                    if (b == null)
+                        mu = MathF.Max(1.2f, (a?.Friction ?? 0.5f) * 2f);
+                    else
+                        mu = MathF.Sqrt((a?.Friction ?? 0.5f) * (b?.Friction ?? 0.5f));
+                    if (tLen < 0.15f && b == null && a != null)
+                    {
+                        // Static friction: completely cancel residual tangential velocity.
+                        a.Velocity -= tangent * Vector3.Dot(a.Velocity, tangent);
+                    }
+                    else
+                    {
+                        float jt = -Vector3.Dot(relVel, tangent) / totalInv;
+                        jt = Math.Clamp(jt, -j * mu, j * mu);
+                        Vector3 frictionImpulse = tangent * jt;
+                        if (invMassA > 0f) a.Velocity += frictionImpulse * invMassA;
+                        if (invMassB > 0f && b != null) b.Velocity -= frictionImpulse * invMassB;
+                    }
                 }
             }
         }
-
         private static Vector3 ClosestPointOnObb(Vector3 point, Vector3 position, Quaternion rotation, ObbShape obb)
         {
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
@@ -463,14 +483,12 @@ namespace SiegeEngine.Core.Physics
             local = Vector3.Clamp(local, -obb.HalfExtents, obb.HalfExtents);
             return Vector3.Transform(local, rot) + worldCentre;
         }
-
         private static Vector3 ClosestPointOnAabb(Vector3 point, Vector3 centre, Vector3 halfExtents)
         {
             Vector3 local = point - centre;
             local = Vector3.Clamp(local, -halfExtents, halfExtents);
             return centre + local;
         }
-
         private static Vector3 ClosestPointOnTriangle(Vector3 p, Vector3 a, Vector3 b, Vector3 c)
         {
             Vector3 ab = b - a;
@@ -479,38 +497,32 @@ namespace SiegeEngine.Core.Physics
             float d1 = Vector3.Dot(ab, ap);
             float d2 = Vector3.Dot(ac, ap);
             if (d1 <= 0f && d2 <= 0f) return a;
-
             Vector3 bp = p - b;
             float d3 = Vector3.Dot(ab, bp);
             float d4 = Vector3.Dot(ac, bp);
             if (d3 >= 0f && d4 <= d3) return b;
-
             float vc = d1 * d4 - d3 * d2;
             if (vc <= 0f && d1 >= 0f && d3 <= 0f)
             {
                 float v = d1 / (d1 - d3);
                 return a + ab * v;
             }
-
             Vector3 cp = p - c;
             float d5 = Vector3.Dot(ab, cp);
             float d6 = Vector3.Dot(ac, cp);
             if (d6 >= 0f && d5 <= d6) return c;
-
             float vb = d5 * d2 - d1 * d6;
             if (vb <= 0f && d2 >= 0f && d6 <= 0f)
             {
                 float w = d2 / (d2 - d6);
                 return a + ac * w;
             }
-
             float va = d3 * d6 - d5 * d4;
             if (va <= 0f && (d4 - d3) >= 0f && (d5 - d6) >= 0f)
             {
                 float w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
                 return b + (c - b) * w;
             }
-
             float denom = 1f / (va + vb + vc);
             float v2 = vb * denom;
             float w2 = vc * denom;

@@ -5,7 +5,6 @@ using System.Numerics;
 using System.Text.Json;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Physics;
-
 namespace SiegeEngine.Core.Definitions
 {
     public class PhysicsComponent : IComponent, IComponentData
@@ -13,7 +12,6 @@ namespace SiegeEngine.Core.Definitions
         private float _mass = 1.0f;
         private float _health = 100f;
         private readonly TransformComponent _transform;
-
         public PhysicsComponent()
         {
             _transform = new TransformComponent();
@@ -34,33 +32,30 @@ namespace SiegeEngine.Core.Definitions
             SleepThreshold = 0.05f;
             SleepTimer = 0f;
             CollisionEnabled = true;
+            IsGrounded = false;
+            SlopeLimitDegrees = 50f;
+            StepHeight = 0.35f;
         }
-
         public Vector3 Position
         {
             get => _transform.Position;
             set => _transform.Position = value;
         }
-
         public Quaternion Rotation
         {
             get => _transform.Rotation;
             set => _transform.Rotation = value;
         }
-
         public Vector3 Scale
         {
             get => _transform.Scale;
             set => _transform.Scale = value;
         }
-
         public Vector3 WorldPosition => _transform.WorldPosition;
         public Quaternion WorldRotation => _transform.WorldRotation;
         public Vector3 WorldScale => _transform.WorldScale;
         public Matrix4x4 LocalToWorld => _transform.LocalToWorld;
-
         public Vector3 Velocity { get; set; } = Vector3.Zero;
-
         public bool IsVisible { get; set; }
         public float Mass
         {
@@ -89,10 +84,8 @@ namespace SiegeEngine.Core.Definitions
                 }
             }
         }
-
         public Vector3 LocalBoundsMinCm { get; set; } = new Vector3(float.MaxValue);
         public Vector3 LocalBoundsMaxCm { get; set; } = new Vector3(float.MinValue);
-
         public BodyType BodyType { get; set; } = BodyType.Static;
         public Vector3 AngularVelocity { get; set; } = Vector3.Zero;
         public float LinearDamping { get; set; } = 0.05f;
@@ -104,9 +97,20 @@ namespace SiegeEngine.Core.Definitions
         public float SleepThreshold { get; set; } = 0.05f;
         public float SleepTimer { get; set; } = 0f;
         public bool CollisionEnabled { get; set; } = true;
-
+        /// <summary>
+        /// True when a supporting contact (heightfield or static) with normal within SlopeLimitDegrees was present last physics step.
+        /// Used by kinematic Integrate to suppress gravity and residual downward velocity.
+        /// </summary>
+        public bool IsGrounded { get; set; } = false;
+        /// <summary>
+        /// Maximum surface angle (degrees from vertical) that still counts as ground for IsGrounded and character response.
+        /// </summary>
+        public float SlopeLimitDegrees { get; set; } = 50f;
+        /// <summary>
+        /// Maximum vertical step the kinematic capsule can climb without explicit step-up logic (Phase-1 foundation).
+        /// </summary>
+        public float StepHeight { get; set; } = 0.35f;
         public ColliderShape Shape { get; private set; }
-
         /// <summary>
         /// Clears the cached collider so the next RebuildShape / physics step
         /// rebuilds from the current Size / LocalBounds / BodyType.
@@ -115,7 +119,6 @@ namespace SiegeEngine.Core.Definitions
         {
             Shape = null;
         }
-
         public void RebuildShape(FBXModel model = null)
         {
             switch (BodyType)
@@ -154,19 +157,16 @@ namespace SiegeEngine.Core.Definitions
                     }
             }
         }
-
         private bool HasValidLocalBounds()
         {
             return LocalBoundsMinCm.X <= LocalBoundsMaxCm.X
                 && LocalBoundsMinCm.Y <= LocalBoundsMaxCm.Y
                 && LocalBoundsMinCm.Z <= LocalBoundsMaxCm.Z;
         }
-
         private void BuildObbFromActualBounds()
         {
             Vector3 half;
             Vector3 centerOffset = Vector3.Zero;
-
             if (HasValidLocalBounds())
             {
                 // LocalBounds are centimetres. Convert to metres.
@@ -179,10 +179,8 @@ namespace SiegeEngine.Core.Definitions
             {
                 half = Size * 0.5f;
             }
-
             Shape = new ObbShape(half, centerOffset);
         }
-
         public void Break()
         {
             if (IsBreakable && _health <= 0)
@@ -190,13 +188,11 @@ namespace SiegeEngine.Core.Definitions
                 IsBroken = true;
             }
         }
-
         public bool RayIntersects(Vector3 rayOrigin, Vector3 rayDir, out float distance, out Vector3 hitPoint)
         {
             distance = 0f;
             hitPoint = Vector3.Zero;
             if (rayDir.LengthSquared() < 1e-8f) return false;
-
             if (Shape != null)
             {
                 if (Shape.Raycast(Position, Rotation, rayOrigin, rayDir, float.MaxValue, out distance, out _))
@@ -206,18 +202,14 @@ namespace SiegeEngine.Core.Definitions
                 }
                 return false;
             }
-
             Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
             Matrix4x4 rotMat = Matrix4x4.CreateFromQuaternion(Rotation);
             Matrix4x4 transMat = Matrix4x4.CreateTranslation(Position);
             Matrix4x4 modelMat = scaleMat * rotMat * transMat;
-
             if (!Matrix4x4.Invert(modelMat, out Matrix4x4 worldToLocal)) return false;
-
             Vector3 localOrigin = Vector3.Transform(rayOrigin, worldToLocal);
             Vector3 localDir = Vector3.TransformNormal(rayDir, worldToLocal);
             localDir = Vector3.Normalize(localDir);
-
             Vector3 boxMin;
             Vector3 boxMax;
             if (HasValidLocalBounds())
@@ -231,7 +223,6 @@ namespace SiegeEngine.Core.Definitions
                 boxMin = -localHalfExtents;
                 boxMax = localHalfExtents;
             }
-
             float tmin = 0.0f;
             float tmax = float.MaxValue;
             for (int i = 0; i < 3; i++)
@@ -252,12 +243,10 @@ namespace SiegeEngine.Core.Definitions
                     if (tmin > tmax) return false;
                 }
             }
-
             distance = tmin * 0.01f;
             hitPoint = rayOrigin + rayDir * distance;
             return true;
         }
-
         public object ToSerializableData()
         {
             return new PhysicsComponentData
@@ -282,14 +271,15 @@ namespace SiegeEngine.Core.Definitions
                 IsSleeping = IsSleeping,
                 IslandId = IslandId,
                 SleepThreshold = SleepThreshold,
-                CollisionEnabled = CollisionEnabled
+                CollisionEnabled = CollisionEnabled,
+                IsGrounded = IsGrounded,
+                SlopeLimitDegrees = SlopeLimitDegrees,
+                StepHeight = StepHeight
             };
         }
-
         public void FromSerializableData(object data)
         {
             if (data == null) return;
-
             if (data is PhysicsComponentData p)
             {
                 ApplyData(
@@ -298,16 +288,15 @@ namespace SiegeEngine.Core.Definitions
                     p.LocalBoundsMinCm, p.LocalBoundsMaxCm, p.Velocity,
                     p.BodyType, p.AngularVelocity,
                     p.LinearDamping, p.AngularDamping, p.Friction, p.Restitution,
-                    p.IsSleeping, p.IslandId, p.SleepThreshold, p.CollisionEnabled);
+                    p.IsSleeping, p.IslandId, p.SleepThreshold, p.CollisionEnabled,
+                    p.IsGrounded, p.SlopeLimitDegrees, p.StepHeight);
                 return;
             }
-
             if (data is JsonElement je && je.ValueKind == JsonValueKind.Object)
             {
                 ApplyFromJsonElement(je);
                 return;
             }
-
             if (data is string jsonStr)
             {
                 using var doc = JsonDocument.Parse(jsonStr);
@@ -315,7 +304,6 @@ namespace SiegeEngine.Core.Definitions
                     ApplyFromJsonElement(doc.RootElement);
             }
         }
-
         private void ApplyFromJsonElement(JsonElement je)
         {
             Vector3 position = ReadVector3(je, "Position", Position);
@@ -339,23 +327,26 @@ namespace SiegeEngine.Core.Definitions
             int islandId = ReadInt(je, "IslandId", IslandId);
             float sleepThreshold = ReadFloat(je, "SleepThreshold", SleepThreshold);
             bool collisionEnabled = ReadBool(je, "CollisionEnabled", CollisionEnabled);
-
+            bool isGrounded = ReadBool(je, "IsGrounded", IsGrounded);
+            float slopeLimitDegrees = ReadFloat(je, "SlopeLimitDegrees", SlopeLimitDegrees);
+            float stepHeight = ReadFloat(je, "StepHeight", StepHeight);
             ApplyData(
                 position, rotation, scale, size,
                 mass, health, isBreakable, isBroken,
                 localMin, localMax, velocity,
                 bodyType, angularVelocity,
                 linearDamping, angularDamping, friction, restitution,
-                isSleeping, islandId, sleepThreshold, collisionEnabled);
+                isSleeping, islandId, sleepThreshold, collisionEnabled,
+                isGrounded, slopeLimitDegrees, stepHeight);
         }
-
         private void ApplyData(
             Vector3 position, Quaternion rotation, Vector3 scale, Vector3 size,
             float mass, float health, bool isBreakable, bool isBroken,
             Vector3 localMin, Vector3 localMax, Vector3 velocity,
             int bodyType, Vector3 angularVelocity,
             float linearDamping, float angularDamping, float friction, float restitution,
-            bool isSleeping, int islandId, float sleepThreshold, bool collisionEnabled)
+            bool isSleeping, int islandId, float sleepThreshold, bool collisionEnabled,
+            bool isGrounded, float slopeLimitDegrees, float stepHeight)
         {
             Position = position;
             Rotation = rotation;
@@ -378,9 +369,11 @@ namespace SiegeEngine.Core.Definitions
             IslandId = islandId;
             SleepThreshold = sleepThreshold;
             CollisionEnabled = collisionEnabled;
+            IsGrounded = isGrounded;
+            SlopeLimitDegrees = slopeLimitDegrees;
+            StepHeight = stepHeight;
             Shape = null;
         }
-
         private static Vector3 ReadVector3(JsonElement parent, string name, Vector3 fallback)
         {
             if (!parent.TryGetProperty(name, out JsonElement el) || el.ValueKind != JsonValueKind.Object)
@@ -390,7 +383,6 @@ namespace SiegeEngine.Core.Definitions
             float z = el.TryGetProperty("Z", out var ze) && ze.TryGetSingle(out float zv) ? zv : fallback.Z;
             return new Vector3(x, y, z);
         }
-
         private static Quaternion ReadQuaternion(JsonElement parent, string name, Quaternion fallback)
         {
             if (!parent.TryGetProperty(name, out JsonElement el) || el.ValueKind != JsonValueKind.Object)
@@ -401,7 +393,6 @@ namespace SiegeEngine.Core.Definitions
             float w = el.TryGetProperty("W", out var we) && we.TryGetSingle(out float wv) ? wv : fallback.W;
             return new Quaternion(x, y, z, w);
         }
-
         private static float ReadFloat(JsonElement parent, string name, float fallback)
         {
             if (!parent.TryGetProperty(name, out JsonElement el)) return fallback;
@@ -409,7 +400,6 @@ namespace SiegeEngine.Core.Definitions
             if (el.TryGetDouble(out double d)) return (float)d;
             return fallback;
         }
-
         private static int ReadInt(JsonElement parent, string name, int fallback)
         {
             if (!parent.TryGetProperty(name, out JsonElement el)) return fallback;
@@ -417,7 +407,6 @@ namespace SiegeEngine.Core.Definitions
             if (el.TryGetDouble(out double d)) return (int)d;
             return fallback;
         }
-
         private static bool ReadBool(JsonElement parent, string name, bool fallback)
         {
             if (!parent.TryGetProperty(name, out JsonElement el)) return fallback;
@@ -428,7 +417,6 @@ namespace SiegeEngine.Core.Definitions
                 _ => fallback
             };
         }
-
         private class PhysicsComponentData
         {
             public Vector3 Position { get; set; }
@@ -452,6 +440,9 @@ namespace SiegeEngine.Core.Definitions
             public int IslandId { get; set; }
             public float SleepThreshold { get; set; }
             public bool CollisionEnabled { get; set; }
+            public bool IsGrounded { get; set; }
+            public float SlopeLimitDegrees { get; set; }
+            public float StepHeight { get; set; }
         }
     }
 }
