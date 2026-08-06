@@ -2742,8 +2742,9 @@ Folder: SiegeEngine
       - void Step(float deltaTime)
         - Calls: DetectAndResolveContacts, Integrate
       - void Integrate(float dt)
+        - Calls: Console.WriteLine
       - void DetectAndResolveContacts(float dt)
-        - Calls: CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ResolveManifold, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
+        - Calls: CapsuleVsHeightfield, Console.WriteLine, GenerateManifold, ObbVsHeightfield, ResolveManifold, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
       - ContactManifold GenerateManifold( PhysicsComponent b, PhysicsComponent a)
         - Calls: CapsuleVsCapsule, CapsuleVsObb, CapsuleVsTriangleMesh, ObbVsMeshAabb, ObbVsObb
       - void CapsuleVsCapsule(
@@ -2964,8 +2965,6 @@ Folder: SiegeEngine
         - Calls: _flyCamera.RefreshViewMatrix, _flyCamera.Update
       - void EnsureHeightProvider()
         - Calls: HeightmapAdapter, _server.SetHeightProvider
-      - void LoadContentFromContext(SceneContext ctx)
-        - Calls: BuildTexturedMesh, Console.WriteLine, EnsureHeightProvider, ForceVisibleOverheadCamera, Level, LoadExactSavedTerrain, LoadLevelData, ModelManager, ModelManager.EnsurePacksLoaded, Player, ResolveSkyboxPaths, SkyboxRenderer, TerrainTextureParser.LoadColorTexture, _flyCamera.Update, _modelManager.AttachBlendStack, _modelManager.AttachResolvedBlendStack, _modelManager.TryGetAnimationPack, _modelManager.TryGetModel, _modelManager.TryLoadPackByKey, _player.Camera.SetPerspective, _player.InitializeCamera, _player.Physics.RebuildShape, _player.SetModel, _server.AddEntity, _server.GetEntityById, _skyboxRenderer.Initialize, _skyboxRenderer.LoadSkybox, animPack.CreateBlendStack, existingPhys.RebuildShape, m.GetBoundingSize, phys.RebuildShape
       - void ResolveSkyboxPaths( string projectPath, SkyboxData skybox)
       - void LoadExactSavedTerrain( string levelName, string projectPath)
         - Calls: BuildTexturedMesh, Console.WriteLine, CustomTerrainParser.Load, TerrainTextureParser.LoadColorTexture

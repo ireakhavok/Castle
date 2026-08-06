@@ -19,13 +19,6 @@ namespace SiegeEngine.Core.Physics
         private readonly List<Vector3> _triB = new List<Vector3>(64);
         private readonly List<Vector3> _triC = new List<Vector3>(64);
 
-        /// <summary>
-        /// Temporary diagnostic. Set true to freeze physics the moment a kinematic body is
-        /// grounded on a slope steeper than 5°. Console will contain the last step state.
-        /// </summary>
-        public static bool PauseOnSlope { get; set; } = false;
-        private bool _paused;
-
         public bool UseFixedTimestep { get; set; } = true;
         public float FixedTimestep { get; set; } = 1f / 60f;
         public Vector3 Gravity
@@ -58,7 +51,7 @@ namespace SiegeEngine.Core.Physics
         public void SnapToGround(PhysicsComponent body) { }
         public void Step(float deltaTime)
         {
-            if (deltaTime <= 0f || _paused) return;
+            if (deltaTime <= 0f) return;
             if (UseFixedTimestep)
             {
                 _accumulator += deltaTime;
@@ -69,7 +62,6 @@ namespace SiegeEngine.Core.Physics
                     Integrate(FixedTimestep);
                     DetectAndResolveContacts(FixedTimestep);
                     _accumulator -= FixedTimestep;
-                    if (_paused) break;
                 }
             }
             else
@@ -174,19 +166,11 @@ namespace SiegeEngine.Core.Physics
             for (int m = 0; m < _manifolds.Count; m++)
                 ResolveManifold(_manifolds[m], dt);
 
-            // Post-resolve diagnostic + optional slope pause.
             for (int i = 0; i < _bodies.Count; i++)
             {
                 var body = _bodies[i];
                 if (body == null || body.BodyType != BodyType.Kinematic) continue;
                 Console.WriteLine($"[PhysDiag] AfterResolve Pos={body.Position} Vel={body.Velocity} Grounded={body.IsGrounded}");
-                if (PauseOnSlope && body.IsGrounded)
-                {
-                    // Approximate slope from residual downward velocity suppression; freeze for inspection.
-                    Console.WriteLine("[PhysDiag] PauseOnSlope triggered – physics frozen. Inspect console / debugger.");
-                    _paused = true;
-                    UseFixedTimestep = false;
-                }
             }
         }
         private ContactManifold GenerateManifold(PhysicsComponent a, PhysicsComponent b)
@@ -459,9 +443,22 @@ namespace SiegeEngine.Core.Physics
                 const float percent = 0.8f;
                 const float slop = 0.01f;
                 float correctionMag = MathF.Max(p.Penetration - slop, 0f) * percent;
-                Vector3 correction = n * (correctionMag / totalInv);
-                if (invMassA > 0f) a.Position += correction * invMassA;
-                if (invMassB > 0f && b != null) b.Position -= correction * invMassB;
+
+                // Heightfield + kinematic: vertical-only position correction.
+                // The tilted normal is still used for velocity projection and friction,
+                // but its lateral component is never applied to Position. This is the
+                // standard kinematic-character response for a supporting heightfield and
+                // eliminates the slope-only height stutter without a discrete clamp.
+                if (b == null && a != null && a.BodyType == BodyType.Kinematic)
+                {
+                    a.Position = new Vector3(a.Position.X, a.Position.Y, a.Position.Z + correctionMag);
+                }
+                else
+                {
+                    Vector3 correction = n * (correctionMag / totalInv);
+                    if (invMassA > 0f) a.Position += correction * invMassA;
+                    if (invMassB > 0f && b != null) b.Position -= correction * invMassB;
+                }
 
                 Vector3 velA = a != null ? a.Velocity : Vector3.Zero;
                 Vector3 velB = b != null ? b.Velocity : Vector3.Zero;
