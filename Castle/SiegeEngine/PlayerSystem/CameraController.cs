@@ -137,6 +137,11 @@ namespace SiegeEngine.PlayerSystem
                 UpdateCamera();
             }
         }
+        public void RefreshFromPhysics()
+        {
+            if (_player != null)
+                UpdateCamera();
+        }
         private void ChangePerspective()
         {
             _perspective = _perspective switch
@@ -152,9 +157,10 @@ namespace SiegeEngine.PlayerSystem
         {
             if (_player != null) // Player mode only
             {
-                Vector3 fptarget = _player.Physics.Position + new Vector3(0, 0, _playerHeight);
-                Vector3 tptarget = _player.Physics.Position + new Vector3(0, 0, _playerHeight / 2);
-                Vector3 otstarget = _player.Physics.Position + new Vector3(0, 0, _playerHeight);
+                Vector3 bodyPos = _player.Physics.RenderPosition;
+                Vector3 fptarget = bodyPos + new Vector3(0, 0, _playerHeight);
+                Vector3 tptarget = bodyPos + new Vector3(0, 0, _playerHeight / 2);
+                Vector3 otstarget = bodyPos + new Vector3(0, 0, _playerHeight);
                 float yawRad = _yaw * (float)(Math.PI / 180);
                 float pitchRad = _pitch * (float)(Math.PI / 180);
                 if (_perspective == Perspective.FirstPerson)

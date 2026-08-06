@@ -17,7 +17,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Scenes
 {
     public unsafe class RuntimeGameplayScene : GameScene
@@ -40,7 +39,6 @@ namespace SiegeEngine.Scenes
         private SkyboxData _skyboxData;
         private TerrainRenderer _terrainRenderer;
         private bool _usePlayerCamera = false;
-
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -79,14 +77,12 @@ namespace SiegeEngine.Scenes
                 LoadContentFromContext(ctx);
             }
         }
-
         public void LoadLevelData(string levelName, string projectPath)
         {
             LoadSceneData(new SceneData { Name = levelName ?? "Main" });
             _eventBus.Publish(new SceneActivatedEvent(levelName));
             _player?.InitializeCamera(_controlContext, _window);
         }
-
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
@@ -111,7 +107,6 @@ namespace SiegeEngine.Scenes
             BuildTexturedMesh();
             EnsureHeightProvider();
         }
-
         private void ForceVisibleOverheadCamera()
         {
             float centerX = _terrainWidth * 0.5f;
@@ -122,13 +117,11 @@ namespace SiegeEngine.Scenes
             _flyCamera.Update(0f, 0f, true);
             _flyCamera.RefreshViewMatrix();
         }
-
         private void EnsureHeightProvider()
         {
             if (_heightmap == null || _server == null) return;
             _server.SetHeightProvider(new HeightmapAdapter(_heightmap, 1.0f, 1.0f));
         }
-
         protected override void LoadContentFromContext(SceneContext ctx)
         {
             if (_contentLoaded) return;
@@ -349,7 +342,6 @@ namespace SiegeEngine.Scenes
                     _usePlayerCamera = true;
                 }
             }
-
             // Final single-instance guarantee: the entity that PhysicsWorld steps and ModelRenderer
             // draws MUST hold the exact same PhysicsComponent instance that PlayerMovement writes.
             // AddComponent overwrites by Type, so this replaces any earlier FromData instance.
@@ -374,14 +366,12 @@ namespace SiegeEngine.Scenes
                 }
                 _player.InitializeCamera(_controlContext, _window);
             }
-
             if (!_usePlayerCamera)
             {
                 ForceVisibleOverheadCamera();
                 _flyCamera.Update(0f, 0f, true);
             }
         }
-
         private void ResolveSkyboxPaths(SkyboxData skybox, string projectPath)
         {
             if (skybox == null || string.IsNullOrEmpty(projectPath)) return;
@@ -401,7 +391,6 @@ namespace SiegeEngine.Scenes
                 }
             }
         }
-
         private void LoadExactSavedTerrain(string projectPath, string levelName)
         {
             string terrainPath = !string.IsNullOrEmpty(projectPath)
@@ -436,7 +425,6 @@ namespace SiegeEngine.Scenes
             _hasColorTexture = _terrainTextureId != 0;
             BuildTexturedMesh();
         }
-
         protected override void SetupPureRuntimeWorld()
         {
             var terrainEntity = new Entity { Id = 1000, Type = "Terrain" };
@@ -444,7 +432,6 @@ namespace SiegeEngine.Scenes
             terrainEntity.AddComponent(new PhysicsComponent { Position = Vector3.Zero, BodyType = BodyType.Static });
             _server.AddEntity(terrainEntity);
         }
-
         protected virtual void BuildTexturedMesh()
         {
             if (_heightmap == null)
@@ -491,7 +478,6 @@ namespace SiegeEngine.Scenes
             }
             _terrainBuffer.UpdateCustomWithUV(vertices, indices);
         }
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             Matrix4x4 view = _usePlayerCamera && _player?.Camera != null
@@ -499,7 +485,6 @@ namespace SiegeEngine.Scenes
                 : _flyCamera.ViewMatrix;
             RenderGameplayContent(entities, view, Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f));
         }
-
         public override void Update(float deltaTime)
         {
             // Movement first, then physics — contact corrections must be the last write to Position.
@@ -515,9 +500,9 @@ namespace SiegeEngine.Scenes
             {
                 _flyCamera.Update(deltaTime, 0f, true);
             }
-
             base.Update(deltaTime);
-
+            if (_usePlayerCamera && _player?.Camera != null)
+                _player.Camera.RefreshFromPhysics();
             if (_firstFrame)
             {
                 _firstFrame = false;
@@ -525,7 +510,6 @@ namespace SiegeEngine.Scenes
                     ForceVisibleOverheadCamera();
             }
         }
-
         protected override void RenderGameplayContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
@@ -548,7 +532,6 @@ namespace SiegeEngine.Scenes
             }
             PanelManager.Current?.Render();
         }
-
         public override void Dispose()
         {
             _skyboxRenderer?.Dispose();

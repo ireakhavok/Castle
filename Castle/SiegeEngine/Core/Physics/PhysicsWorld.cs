@@ -18,7 +18,6 @@ namespace SiegeEngine.Core.Physics
         private readonly List<Vector3> _triA = new List<Vector3>(64);
         private readonly List<Vector3> _triB = new List<Vector3>(64);
         private readonly List<Vector3> _triC = new List<Vector3>(64);
-
         public bool UseFixedTimestep { get; set; } = true;
         public float FixedTimestep { get; set; } = 1f / 60f;
         public Vector3 Gravity
@@ -69,6 +68,13 @@ namespace SiegeEngine.Core.Physics
                 Integrate(deltaTime);
                 DetectAndResolveContacts(deltaTime);
             }
+            float residual = UseFixedTimestep ? _accumulator : 0f;
+            for (int i = 0; i < _bodies.Count; i++)
+            {
+                var body = _bodies[i];
+                if (body == null || body.IsSleeping) continue;
+                body.RenderPosition = body.Position + body.Velocity * residual;
+            }
         }
         private void Integrate(float dt)
         {
@@ -98,7 +104,6 @@ namespace SiegeEngine.Core.Physics
                         body.Position.X,
                         body.Position.Y,
                         body.Position.Z + body.Velocity.Z * dt);
-
                     Console.WriteLine($"[PhysDiag] Integrate kinematic Pos={body.Position} Vel={body.Velocity} Grounded={body.IsGrounded}");
                 }
             }
@@ -165,7 +170,6 @@ namespace SiegeEngine.Core.Physics
             }
             for (int m = 0; m < _manifolds.Count; m++)
                 ResolveManifold(_manifolds[m], dt);
-
             for (int i = 0; i < _bodies.Count; i++)
             {
                 var body = _bodies[i];
@@ -339,9 +343,9 @@ namespace SiegeEngine.Core.Physics
             Vector3[] corners =
             {
                 bottom,
-                centre + Vector3.Transform(new Vector3( obb.HalfExtents.X,  obb.HalfExtents.Y, -obb.HalfExtents.Z), rot),
+                centre + Vector3.Transform(new Vector3( obb.HalfExtents.X, obb.HalfExtents.Y, -obb.HalfExtents.Z), rot),
                 centre + Vector3.Transform(new Vector3( obb.HalfExtents.X, -obb.HalfExtents.Y, -obb.HalfExtents.Z), rot),
-                centre + Vector3.Transform(new Vector3(-obb.HalfExtents.X,  obb.HalfExtents.Y, -obb.HalfExtents.Z), rot),
+                centre + Vector3.Transform(new Vector3(-obb.HalfExtents.X, obb.HalfExtents.Y, -obb.HalfExtents.Z), rot),
                 centre + Vector3.Transform(new Vector3(-obb.HalfExtents.X, -obb.HalfExtents.Y, -obb.HalfExtents.Z), rot)
             };
             for (int i = 0; i < corners.Length; i++)
@@ -443,7 +447,6 @@ namespace SiegeEngine.Core.Physics
                 const float percent = 0.8f;
                 const float slop = 0.01f;
                 float correctionMag = MathF.Max(p.Penetration - slop, 0f) * percent;
-
                 // Heightfield + kinematic: vertical-only position correction.
                 // The tilted normal is still used for velocity projection and friction,
                 // but its lateral component is never applied to Position. This is the
@@ -459,7 +462,6 @@ namespace SiegeEngine.Core.Physics
                     if (invMassA > 0f) a.Position += correction * invMassA;
                     if (invMassB > 0f && b != null) b.Position -= correction * invMassB;
                 }
-
                 Vector3 velA = a != null ? a.Velocity : Vector3.Zero;
                 Vector3 velB = b != null ? b.Velocity : Vector3.Zero;
                 Vector3 relVel = velA - velB;

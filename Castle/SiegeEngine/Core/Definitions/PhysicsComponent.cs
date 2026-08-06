@@ -35,6 +35,7 @@ namespace SiegeEngine.Core.Definitions
             IsGrounded = false;
             SlopeLimitDegrees = 50f;
             StepHeight = 0.35f;
+            RenderPosition = Position;
         }
         public Vector3 Position
         {
@@ -110,6 +111,11 @@ namespace SiegeEngine.Core.Definitions
         /// Maximum vertical step the kinematic capsule can climb without explicit step-up logic (Phase-1 foundation).
         /// </summary>
         public float StepHeight { get; set; } = 0.35f;
+        /// <summary>
+        /// Visual-only sample that accounts for fixed-timestep residual time.
+        /// Authoritative Position remains discrete; RenderPosition is written by PhysicsWorld after Step.
+        /// </summary>
+        public Vector3 RenderPosition { get; set; }
         public ColliderShape Shape { get; private set; }
         /// <summary>
         /// Clears the cached collider so the next RebuildShape / physics step
@@ -373,6 +379,7 @@ namespace SiegeEngine.Core.Definitions
             SlopeLimitDegrees = slopeLimitDegrees;
             StepHeight = stepHeight;
             Shape = null;
+            RenderPosition = position;
         }
         private static Vector3 ReadVector3(JsonElement parent, string name, Vector3 fallback)
         {
