@@ -73,7 +73,19 @@ namespace SiegeEngine.Core.Physics
             {
                 var body = _bodies[i];
                 if (body == null || body.IsSleeping) continue;
-                body.RenderPosition = body.Position + body.Velocity * residual;
+
+                // Default to exact authoritative position.
+                body.RenderPosition = body.Position;
+
+                // Only extrapolate residual for Dynamic bodies and the kinematic player capsule.
+                // Ordinary kinematic scenery (OBB walls / props) must stay exactly on
+                // authoritative Position; otherwise tiny residual velocities left by the
+                // sequential impulse create a visible double-image.
+                if (body.BodyType == BodyType.Dynamic ||
+                    (body.BodyType == BodyType.Kinematic && body.Shape is CapsuleShape))
+                {
+                    body.RenderPosition += body.Velocity * residual;
+                }
             }
         }
         private void Integrate(float dt)
