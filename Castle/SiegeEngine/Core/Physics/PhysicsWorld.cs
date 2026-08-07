@@ -25,6 +25,7 @@ namespace SiegeEngine.Core.Physics
             get => _gravity;
             set => _gravity = value;
         }
+        public int SolverIterations { get; set; } = 10;
         public EventBus EventBus { get; set; }
         public void SetHeightProvider(IHeightProvider provider)
         {
@@ -60,6 +61,7 @@ namespace SiegeEngine.Core.Physics
                 {
                     Integrate(FixedTimestep);
                     DetectAndResolveContacts(FixedTimestep);
+                    UpdateSleeping(FixedTimestep);
                     _accumulator -= FixedTimestep;
                 }
             }
@@ -67,25 +69,13 @@ namespace SiegeEngine.Core.Physics
             {
                 Integrate(deltaTime);
                 DetectAndResolveContacts(deltaTime);
+                UpdateSleeping(deltaTime);
             }
-            float residual = UseFixedTimestep ? _accumulator : 0f;
             for (int i = 0; i < _bodies.Count; i++)
             {
                 var body = _bodies[i];
-                if (body == null || body.IsSleeping) continue;
-
-                // Default to exact authoritative position.
+                if (body == null) continue;
                 body.RenderPosition = body.Position;
-
-                // Only extrapolate residual for Dynamic bodies and the kinematic player capsule.
-                // Ordinary kinematic scenery (OBB walls / props) must stay exactly on
-                // authoritative Position; otherwise tiny residual velocities left by the
-                // sequential impulse create a visible double-image.
-                if (body.BodyType == BodyType.Dynamic ||
-                    (body.BodyType == BodyType.Kinematic && body.Shape is CapsuleShape))
-                {
-                    body.RenderPosition += body.Velocity * residual;
-                }
             }
         }
         private void Integrate(float dt)
@@ -93,36 +83,54 @@ namespace SiegeEngine.Core.Physics
             for (int i = 0; i < _bodies.Count; i++)
             {
                 var body = _bodies[i];
-                if (body == null || body.IsSleeping) continue;
-                if (body.BodyType == BodyType.Dynamic)
+                if (body == null || body.IsSleeping || body.BodyType == BodyType.Static)
+                    continue;
+                bool isCharacterCapsule = body.BodyType == BodyType.Kinematic && body.Shape is CapsuleShape;
+                // Linear damping
+                body.Velocity *= MathF.Max(0f, 1f - body.LinearDamping * dt);
+                if (isCharacterCapsule)
                 {
-                    body.Velocity *= MathF.Max(0f, 1f - body.LinearDamping * dt);
-                    body.AngularVelocity *= MathF.Max(0f, 1f - body.AngularDamping * dt);
-                    body.Velocity += _gravity * dt;
-                    body.Position += body.Velocity * dt;
+                    body.AngularVelocity = Vector3.Zero;
                 }
-                else if (body.BodyType == BodyType.Kinematic)
+                else
                 {
-                    // Previous-frame IsGrounded decides gravity. Contact phase will refresh the flag.
-                    if (body.IsGrounded)
+                    body.AngularVelocity *= MathF.Max(0f, 1f - body.AngularDamping * dt);
+                }
+                // Gravity
+                if (body.InvMass > 0f)
+                {
+                    if (isCharacterCapsule)
                     {
-                        body.Velocity = new Vector3(body.Velocity.X, body.Velocity.Y, MathF.Max(0f, body.Velocity.Z));
+                        if (body.IsGrounded)
+                        {
+                            // Exact kinematic projection: kill residual velocity into the support direction.
+                            float vn = Vector3.Dot(body.Velocity, Vector3.UnitZ);
+                            if (vn < 0f)
+                                body.Velocity -= Vector3.UnitZ * vn;
+                        }
+                        else
+                        {
+                            body.Velocity += _gravity * dt;
+                        }
                     }
                     else
                     {
                         body.Velocity += _gravity * dt;
                     }
-                    body.Position = new Vector3(
-                        body.Position.X,
-                        body.Position.Y,
-                        body.Position.Z + body.Velocity.Z * dt);
-                    Console.WriteLine($"[PhysDiag] Integrate kinematic Pos={body.Position} Vel={body.Velocity} Grounded={body.IsGrounded}");
+                }
+                // Linear integration
+                body.Position += body.Velocity * dt;
+                // Angular integration (character capsule skipped)
+                if (!isCharacterCapsule && body.AngularVelocity.LengthSquared() > 1e-12f)
+                {
+                    Quaternion omegaQ = new Quaternion(body.AngularVelocity.X, body.AngularVelocity.Y, body.AngularVelocity.Z, 0f);
+                    Quaternion dq = Quaternion.Multiply(omegaQ, body.Rotation) * 0.5f;
+                    body.Rotation = Quaternion.Normalize(body.Rotation + dq * dt);
                 }
             }
         }
         private void DetectAndResolveContacts(float dt)
         {
-            // Clear grounded flags so only contacts generated this step can re-set them.
             for (int i = 0; i < _bodies.Count; i++)
             {
                 var body = _bodies[i];
@@ -138,7 +146,14 @@ namespace SiegeEngine.Core.Physics
                 for (int j = i + 1; j < _bodies.Count; j++)
                 {
                     var b = _bodies[j];
-                    if (b == null || !b.CollisionEnabled || b.IsSleeping) continue;
+                    if (b == null || !b.CollisionEnabled) continue;
+                    // Wake sleeping body if contacted by an active body
+                    if (b.IsSleeping)
+                    {
+                        if (a.BodyType == BodyType.Static) continue;
+                        b.IsSleeping = false;
+                        b.SleepTimer = 0f;
+                    }
                     if (b.Shape == null) b.RebuildShape();
                     if (a.BodyType == BodyType.Static && b.BodyType == BodyType.Static)
                         continue;
@@ -161,32 +176,148 @@ namespace SiegeEngine.Core.Physics
                     else if (body.Shape is ObbShape obb)
                         ObbVsHeightfield(obb, body, _heightfieldShape, manifold);
                     if (manifold.PointCount > 0)
-                    {
                         _manifolds.Add(manifold);
-                        if (body.BodyType == BodyType.Kinematic)
-                        {
-                            float deepest = 0f;
-                            Vector3 n = Vector3.UnitZ;
-                            for (int p = 0; p < manifold.PointCount; p++)
-                            {
-                                if (manifold.Points[p].Penetration > deepest)
-                                {
-                                    deepest = manifold.Points[p].Penetration;
-                                    n = manifold.Points[p].Normal;
-                                }
-                            }
-                            Console.WriteLine($"[PhysDiag] Heightfield contact points={manifold.PointCount} deepest={deepest:F4} n={n} Grounded={body.IsGrounded}");
-                        }
+                }
+            }
+            // Velocity-level sequential impulse only (no position correction)
+            for (int iter = 0; iter < SolverIterations; iter++)
+            {
+                for (int m = 0; m < _manifolds.Count; m++)
+                    ResolveVelocity(_manifolds[m]);
+            }
+            // Hard geometric projection (no velocity change, no soft bias)
+            ProjectPositions();
+        }
+        private void ResolveVelocity(ContactManifold m)
+        {
+            var a = m.BodyA;
+            var b = m.BodyB;
+            float invMassA = a != null ? a.InvMass : 0f;
+            float invMassB = b != null ? b.InvMass : 0f;
+            float totalInvMass = invMassA + invMassB;
+            if (totalInvMass < 1e-8f && (a == null || a.InvInertiaLocal == Vector3.Zero) && (b == null || b.InvInertiaLocal == Vector3.Zero))
+                return;
+            for (int i = 0; i < m.PointCount; i++)
+            {
+                var p = m.Points[i];
+                Vector3 n = p.Normal;
+                Vector3 comA = a != null ? a.WorldCentreOfMass : Vector3.Zero;
+                Vector3 comB = b != null ? b.WorldCentreOfMass : Vector3.Zero;
+                Vector3 rA = p.Position - comA;
+                Vector3 rB = p.Position - comB;
+                Vector3 velA = a != null ? a.Velocity + Vector3.Cross(a.AngularVelocity, rA) : Vector3.Zero;
+                Vector3 velB = b != null ? b.Velocity + Vector3.Cross(b.AngularVelocity, rB) : Vector3.Zero;
+                Vector3 relVel = velA - velB;
+                float velAlongNormal = Vector3.Dot(relVel, n);
+                if (velAlongNormal > 0f) continue;
+                float angularEffA = 0f;
+                float angularEffB = 0f;
+                if (a != null && a.InvInertiaLocal != Vector3.Zero)
+                {
+                    Vector3 rn = Vector3.Cross(rA, n);
+                    Vector3 iRn = a.ApplyInvInertiaWorld(rn);
+                    angularEffA = Vector3.Dot(rn, iRn);
+                }
+                if (b != null && b.InvInertiaLocal != Vector3.Zero)
+                {
+                    Vector3 rn = Vector3.Cross(rB, n);
+                    Vector3 iRn = b.ApplyInvInertiaWorld(rn);
+                    angularEffB = Vector3.Dot(rn, iRn);
+                }
+                float invMassEff = totalInvMass + angularEffA + angularEffB;
+                if (invMassEff < 1e-8f) continue;
+                float e = MathF.Min(a?.Restitution ?? 0f, b?.Restitution ?? 0f);
+                float j = -(1f + e) * velAlongNormal / invMassEff;
+                Vector3 impulse = n * j;
+                if (a != null && invMassA > 0f)
+                {
+                    a.Velocity += impulse * invMassA;
+                    a.AngularVelocity += a.ApplyInvInertiaWorld(Vector3.Cross(rA, impulse));
+                }
+                if (b != null && invMassB > 0f)
+                {
+                    b.Velocity -= impulse * invMassB;
+                    b.AngularVelocity -= b.ApplyInvInertiaWorld(Vector3.Cross(rB, impulse));
+                }
+                // Friction
+                relVel = (a != null ? a.Velocity + Vector3.Cross(a.AngularVelocity, rA) : Vector3.Zero)
+                       - (b != null ? b.Velocity + Vector3.Cross(b.AngularVelocity, rB) : Vector3.Zero);
+                Vector3 tangent = relVel - n * Vector3.Dot(relVel, n);
+                float tLen = tangent.Length();
+                if (tLen > 1e-6f)
+                {
+                    tangent /= tLen;
+                    float mu = b == null
+                        ? MathF.Max(1.2f, (a?.Friction ?? 0.5f) * 2f)
+                        : MathF.Sqrt((a?.Friction ?? 0.5f) * (b?.Friction ?? 0.5f));
+                    float jt = -Vector3.Dot(relVel, tangent) / invMassEff;
+                    jt = Math.Clamp(jt, -j * mu, j * mu);
+                    Vector3 frictionImpulse = tangent * jt;
+                    if (a != null && invMassA > 0f)
+                    {
+                        a.Velocity += frictionImpulse * invMassA;
+                        a.AngularVelocity += a.ApplyInvInertiaWorld(Vector3.Cross(rA, frictionImpulse));
+                    }
+                    if (b != null && invMassB > 0f)
+                    {
+                        b.Velocity -= frictionImpulse * invMassB;
+                        b.AngularVelocity -= b.ApplyInvInertiaWorld(Vector3.Cross(rB, frictionImpulse));
                     }
                 }
             }
+        }
+        private void ProjectPositions()
+        {
+            const float numericSlop = 0.001f;
             for (int m = 0; m < _manifolds.Count; m++)
-                ResolveManifold(_manifolds[m], dt);
+            {
+                var manifold = _manifolds[m];
+                var a = manifold.BodyA;
+                var b = manifold.BodyB;
+                float invMassA = a != null ? a.InvMass : 0f;
+                float invMassB = b != null ? b.InvMass : 0f;
+                float totalInv = invMassA + invMassB;
+                if (totalInv < 1e-8f) continue;
+                for (int i = 0; i < manifold.PointCount; i++)
+                {
+                    var p = manifold.Points[i];
+                    float depth = p.Penetration - numericSlop;
+                    if (depth <= 0f) continue;
+                    Vector3 corr = p.Normal * (depth / totalInv);
+                    if (invMassA > 0f && a != null)
+                        a.Position += corr * invMassA;
+                    if (invMassB > 0f && b != null)
+                        b.Position -= corr * invMassB;
+                }
+            }
+        }
+        private void UpdateSleeping(float dt)
+        {
             for (int i = 0; i < _bodies.Count; i++)
             {
                 var body = _bodies[i];
-                if (body == null || body.BodyType != BodyType.Kinematic) continue;
-                Console.WriteLine($"[PhysDiag] AfterResolve Pos={body.Position} Vel={body.Velocity} Grounded={body.IsGrounded}");
+                if (body == null || body.BodyType != BodyType.Dynamic || body.IsSleeping)
+                    continue;
+                float ke = 0.5f * body.Mass * body.Velocity.LengthSquared();
+                if (body.InvInertiaLocal != Vector3.Zero)
+                {
+                    // Approximate rotational KE using the diagonal
+                    Vector3 w = body.AngularVelocity;
+                    ke += 0.5f * (w.X * w.X / MathF.Max(body.InvInertiaLocal.X, 1e-8f)
+                                + w.Y * w.Y / MathF.Max(body.InvInertiaLocal.Y, 1e-8f)
+                                + w.Z * w.Z / MathF.Max(body.InvInertiaLocal.Z, 1e-8f));
+                }
+                float threshold = body.SleepThreshold;
+                if (ke < threshold * threshold)
+                {
+                    body.SleepTimer += dt;
+                    if (body.SleepTimer > 0.5f)
+                        body.IsSleeping = true;
+                }
+                else
+                {
+                    body.SleepTimer = 0f;
+                }
             }
         }
         private ContactManifold GenerateManifold(PhysicsComponent a, PhysicsComponent b)
@@ -282,8 +413,8 @@ namespace SiegeEngine.Core.Physics
             float radius = cap.Radius;
             float height = cap.Height;
             Vector3 feet = capBody.Position;
-            Vector3 queryMin = feet - new Vector3(radius, radius, 0f);
-            Vector3 queryMax = feet + new Vector3(radius, radius, height);
+            Vector3 queryMin = feet - new Vector3(radius * 1.5f, radius * 1.5f, 0f);
+            Vector3 queryMax = feet + new Vector3(radius * 1.5f, radius * 1.5f, height);
             mesh.GetAabb(meshBody.Position, meshBody.Rotation, out Vector3 aabbMin, out Vector3 aabbMax);
             if (queryMax.X < aabbMin.X || queryMin.X > aabbMax.X ||
                 queryMax.Y < aabbMin.Y || queryMin.Y > aabbMax.Y ||
@@ -296,9 +427,10 @@ namespace SiegeEngine.Core.Physics
             Vector3[] samples =
             {
                 feet + new Vector3(0, 0, radius),
-                feet + new Vector3(0, 0, height * 0.25f),
-                feet + new Vector3(0, 0, height * 0.5f),
-                feet + new Vector3(0, 0, height * 0.75f),
+                feet + new Vector3(0, 0, height * 0.2f),
+                feet + new Vector3(0, 0, height * 0.4f),
+                feet + new Vector3(0, 0, height * 0.6f),
+                feet + new Vector3(0, 0, height * 0.8f),
                 feet + new Vector3(0, 0, height - radius)
             };
             for (int t = 0; t < _triA.Count; t++)
@@ -350,15 +482,19 @@ namespace SiegeEngine.Core.Physics
         {
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(body.Rotation);
             Vector3 centre = body.Position + Vector3.Transform(obb.CenterOffset, rot);
-            Vector3 localDown = Vector3.Transform(new Vector3(0, 0, -obb.HalfExtents.Z), rot);
-            Vector3 bottom = centre + localDown;
+            Vector3 hx = Vector3.Transform(new Vector3(obb.HalfExtents.X, 0f, 0f), rot);
+            Vector3 hy = Vector3.Transform(new Vector3(0f, obb.HalfExtents.Y, 0f), rot);
+            Vector3 hz = Vector3.Transform(new Vector3(0f, 0f, obb.HalfExtents.Z), rot);
             Vector3[] corners =
             {
-                bottom,
-                centre + Vector3.Transform(new Vector3( obb.HalfExtents.X, obb.HalfExtents.Y, -obb.HalfExtents.Z), rot),
-                centre + Vector3.Transform(new Vector3( obb.HalfExtents.X, -obb.HalfExtents.Y, -obb.HalfExtents.Z), rot),
-                centre + Vector3.Transform(new Vector3(-obb.HalfExtents.X, obb.HalfExtents.Y, -obb.HalfExtents.Z), rot),
-                centre + Vector3.Transform(new Vector3(-obb.HalfExtents.X, -obb.HalfExtents.Y, -obb.HalfExtents.Z), rot)
+                centre + hx + hy + hz,
+                centre + hx + hy - hz,
+                centre + hx - hy + hz,
+                centre + hx - hy - hz,
+                centre - hx + hy + hz,
+                centre - hx + hy - hz,
+                centre - hx - hy + hz,
+                centre - hx - hy - hz
             };
             for (int i = 0; i < corners.Length; i++)
             {
@@ -424,91 +560,6 @@ namespace SiegeEngine.Core.Physics
                     Normal = n,
                     Penetration = radius - dist
                 });
-            }
-        }
-        private void ResolveManifold(ContactManifold m, float dt)
-        {
-            var a = m.BodyA;
-            var b = m.BodyB;
-            // Statics = infinite mass. Dynamics use real mass.
-            // ALL kinematics receive invMass = 1 so they can be pushed out of static geometry
-            // while still integrating gravity. This replaces the old discrete ground clamp.
-            float invMassA = 0f;
-            float invMassB = 0f;
-            if (a != null)
-            {
-                if (a.BodyType == BodyType.Dynamic)
-                    invMassA = 1f / MathF.Max(0.001f, a.Mass);
-                else if (a.BodyType == BodyType.Kinematic)
-                    invMassA = 1f;
-            }
-            if (b != null)
-            {
-                if (b.BodyType == BodyType.Dynamic)
-                    invMassB = 1f / MathF.Max(0.001f, b.Mass);
-                else if (b.BodyType == BodyType.Kinematic)
-                    invMassB = 1f;
-            }
-            // Heightfield (BodyB == null) stays infinite mass.
-            float totalInv = invMassA + invMassB;
-            if (totalInv < 1e-8f) return;
-            for (int i = 0; i < m.PointCount; i++)
-            {
-                var p = m.Points[i];
-                Vector3 n = p.Normal;
-                const float percent = 0.8f;
-                const float slop = 0.01f;
-                float correctionMag = MathF.Max(p.Penetration - slop, 0f) * percent;
-                // Heightfield + kinematic: vertical-only position correction.
-                // The tilted normal is still used for velocity projection and friction,
-                // but its lateral component is never applied to Position. This is the
-                // standard kinematic-character response for a supporting heightfield and
-                // eliminates the slope-only height stutter without a discrete clamp.
-                if (b == null && a != null && a.BodyType == BodyType.Kinematic)
-                {
-                    a.Position = new Vector3(a.Position.X, a.Position.Y, a.Position.Z + correctionMag);
-                }
-                else
-                {
-                    Vector3 correction = n * (correctionMag / totalInv);
-                    if (invMassA > 0f) a.Position += correction * invMassA;
-                    if (invMassB > 0f && b != null) b.Position -= correction * invMassB;
-                }
-                Vector3 velA = a != null ? a.Velocity : Vector3.Zero;
-                Vector3 velB = b != null ? b.Velocity : Vector3.Zero;
-                Vector3 relVel = velA - velB;
-                float velAlongNormal = Vector3.Dot(relVel, n);
-                if (velAlongNormal > 0f) continue;
-                float e = MathF.Min(a?.Restitution ?? 0f, b?.Restitution ?? 0f);
-                float j = -(1f + e) * velAlongNormal / totalInv;
-                Vector3 impulse = n * j;
-                if (invMassA > 0f) a.Velocity += impulse * invMassA;
-                if (invMassB > 0f && b != null) b.Velocity -= impulse * invMassB;
-                relVel = (a != null ? a.Velocity : Vector3.Zero) - (b != null ? b.Velocity : Vector3.Zero);
-                Vector3 tangent = relVel - n * Vector3.Dot(relVel, n);
-                float tLen = tangent.Length();
-                if (tLen > 1e-6f)
-                {
-                    tangent /= tLen;
-                    float mu;
-                    if (b == null)
-                        mu = MathF.Max(1.2f, (a?.Friction ?? 0.5f) * 2f);
-                    else
-                        mu = MathF.Sqrt((a?.Friction ?? 0.5f) * (b?.Friction ?? 0.5f));
-                    if (tLen < 0.15f && b == null && a != null)
-                    {
-                        // Static friction stick on heightfield to stop residual slope creep.
-                        a.Velocity -= tangent * Vector3.Dot(a.Velocity, tangent);
-                    }
-                    else
-                    {
-                        float jt = -Vector3.Dot(relVel, tangent) / totalInv;
-                        jt = Math.Clamp(jt, -j * mu, j * mu);
-                        Vector3 frictionImpulse = tangent * jt;
-                        if (invMassA > 0f) a.Velocity += frictionImpulse * invMassA;
-                        if (invMassB > 0f && b != null) b.Velocity -= frictionImpulse * invMassB;
-                    }
-                }
             }
         }
         private static Vector3 ClosestPointOnObb(Vector3 point, Vector3 position, Quaternion rotation, ObbShape obb)

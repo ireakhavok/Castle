@@ -35,6 +35,9 @@ namespace SiegeEngine.Core.Definitions
             IsGrounded = false;
             SlopeLimitDegrees = 50f;
             StepHeight = 0.35f;
+            LocalCentreOfMass = Vector3.Zero;
+            InvMass = 0f;
+            InvInertiaLocal = Vector3.Zero;
             RenderPosition = Position;
         }
         public Vector3 Position
@@ -66,6 +69,7 @@ namespace SiegeEngine.Core.Definitions
                 if (value <= 0)
                     throw new ArgumentException("Mass must be greater than zero.", nameof(value));
                 _mass = value;
+                RecomputeMassProperties();
             }
         }
         public bool IsBreakable { get; set; }
@@ -116,6 +120,18 @@ namespace SiegeEngine.Core.Definitions
         /// Authoritative Position remains discrete; RenderPosition is written by PhysicsWorld after Step.
         /// </summary>
         public Vector3 RenderPosition { get; set; }
+        /// <summary>
+        /// Local-space centre of mass relative to Position (metres).
+        /// </summary>
+        public Vector3 LocalCentreOfMass { get; set; } = Vector3.Zero;
+        /// <summary>
+        /// Inverse mass. Zero for Static (and pure kinematic scenery that should not respond to forces).
+        /// </summary>
+        public float InvMass { get; private set; }
+        /// <summary>
+        /// Diagonal inverse inertia tensor in local space (principal axes).
+        /// </summary>
+        public Vector3 InvInertiaLocal { get; private set; } = Vector3.Zero;
         public ColliderShape Shape { get; private set; }
         /// <summary>
         /// Clears the cached collider so the next RebuildShape / physics step
@@ -162,6 +178,7 @@ namespace SiegeEngine.Core.Definitions
                         break;
                     }
             }
+            RecomputeMassProperties();
         }
         private bool HasValidLocalBounds()
         {
@@ -186,6 +203,94 @@ namespace SiegeEngine.Core.Definitions
                 half = Size * 0.5f;
             }
             Shape = new ObbShape(half, centerOffset);
+        }
+        /// <summary>
+        /// Recomputes InvMass, LocalCentreOfMass and InvInertiaLocal from current BodyType, Mass and Shape.
+        /// Safe to call after any change to those fields.
+        /// </summary>
+        public void RecomputeMassProperties()
+        {
+            if (BodyType == BodyType.Static)
+            {
+                InvMass = 0f;
+                InvInertiaLocal = Vector3.Zero;
+                LocalCentreOfMass = Vector3.Zero;
+                return;
+            }
+            InvMass = 1f / MathF.Max(0.001f, _mass);
+            if (Shape is CapsuleShape cap)
+            {
+                // CoM at geometric centre of the vertical capsule (feet remain at Position).
+                LocalCentreOfMass = new Vector3(0f, 0f, cap.Height * 0.5f);
+                // Phase-1 character controller: no torque response for the vertical capsule.
+                // Props that use Capsule later can be given inertia in a future pass.
+                if (BodyType == BodyType.Kinematic)
+                {
+                    InvInertiaLocal = Vector3.Zero;
+                }
+                else
+                {
+                    // Dynamic capsule – treat as bounding box for inertia.
+                    float hx = cap.Radius * 2f;
+                    float hy = cap.Radius * 2f;
+                    float hz = cap.Height;
+                    InvInertiaLocal = ComputeBoxInvInertia(_mass, hx, hy, hz);
+                }
+            }
+            else if (Shape is ObbShape obb)
+            {
+                LocalCentreOfMass = obb.CenterOffset;
+                float hx = obb.HalfExtents.X * 2f;
+                float hy = obb.HalfExtents.Y * 2f;
+                float hz = obb.HalfExtents.Z * 2f;
+                InvInertiaLocal = ComputeBoxInvInertia(_mass, hx, hy, hz);
+            }
+            else
+            {
+                // TriangleMesh or unknown – treat as static-like for inertia.
+                LocalCentreOfMass = Vector3.Zero;
+                InvInertiaLocal = Vector3.Zero;
+            }
+        }
+        private static Vector3 ComputeBoxInvInertia(float mass, float hx, float hy, float hz)
+        {
+            // Ixx = (1/12) m (hy² + hz²), etc.
+            float ixx = mass * (hy * hy + hz * hz) / 12f;
+            float iyy = mass * (hx * hx + hz * hz) / 12f;
+            float izz = mass * (hx * hx + hy * hy) / 12f;
+            return new Vector3(
+                ixx > 1e-8f ? 1f / ixx : 0f,
+                iyy > 1e-8f ? 1f / iyy : 0f,
+                izz > 1e-8f ? 1f / izz : 0f);
+        }
+        /// <summary>
+        /// World-space centre of mass.
+        /// </summary>
+        public Vector3 WorldCentreOfMass
+        {
+            get
+            {
+                if (LocalCentreOfMass == Vector3.Zero)
+                    return Position;
+                return Position + Vector3.Transform(LocalCentreOfMass, Rotation);
+            }
+        }
+        /// <summary>
+        /// Applies the local diagonal inverse inertia to a world-space torque vector.
+        /// </summary>
+        public Vector3 ApplyInvInertiaWorld(Vector3 worldTorque)
+        {
+            if (InvInertiaLocal == Vector3.Zero)
+                return Vector3.Zero;
+            // Rotate into local, scale, rotate back.
+            Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(Rotation);
+            Matrix4x4.Invert(rot, out Matrix4x4 invRot);
+            Vector3 local = Vector3.TransformNormal(worldTorque, invRot);
+            local = new Vector3(
+                local.X * InvInertiaLocal.X,
+                local.Y * InvInertiaLocal.Y,
+                local.Z * InvInertiaLocal.Z);
+            return Vector3.TransformNormal(local, rot);
         }
         public void Break()
         {
@@ -280,7 +385,10 @@ namespace SiegeEngine.Core.Definitions
                 CollisionEnabled = CollisionEnabled,
                 IsGrounded = IsGrounded,
                 SlopeLimitDegrees = SlopeLimitDegrees,
-                StepHeight = StepHeight
+                StepHeight = StepHeight,
+                LocalCentreOfMass = LocalCentreOfMass,
+                InvMass = InvMass,
+                InvInertiaLocal = InvInertiaLocal
             };
         }
         public void FromSerializableData(object data)
@@ -295,7 +403,8 @@ namespace SiegeEngine.Core.Definitions
                     p.BodyType, p.AngularVelocity,
                     p.LinearDamping, p.AngularDamping, p.Friction, p.Restitution,
                     p.IsSleeping, p.IslandId, p.SleepThreshold, p.CollisionEnabled,
-                    p.IsGrounded, p.SlopeLimitDegrees, p.StepHeight);
+                    p.IsGrounded, p.SlopeLimitDegrees, p.StepHeight,
+                    p.LocalCentreOfMass, p.InvMass, p.InvInertiaLocal);
                 return;
             }
             if (data is JsonElement je && je.ValueKind == JsonValueKind.Object)
@@ -336,6 +445,9 @@ namespace SiegeEngine.Core.Definitions
             bool isGrounded = ReadBool(je, "IsGrounded", IsGrounded);
             float slopeLimitDegrees = ReadFloat(je, "SlopeLimitDegrees", SlopeLimitDegrees);
             float stepHeight = ReadFloat(je, "StepHeight", StepHeight);
+            Vector3 localCentreOfMass = ReadVector3(je, "LocalCentreOfMass", LocalCentreOfMass);
+            float invMass = ReadFloat(je, "InvMass", InvMass);
+            Vector3 invInertiaLocal = ReadVector3(je, "InvInertiaLocal", InvInertiaLocal);
             ApplyData(
                 position, rotation, scale, size,
                 mass, health, isBreakable, isBroken,
@@ -343,7 +455,8 @@ namespace SiegeEngine.Core.Definitions
                 bodyType, angularVelocity,
                 linearDamping, angularDamping, friction, restitution,
                 isSleeping, islandId, sleepThreshold, collisionEnabled,
-                isGrounded, slopeLimitDegrees, stepHeight);
+                isGrounded, slopeLimitDegrees, stepHeight,
+                localCentreOfMass, invMass, invInertiaLocal);
         }
         private void ApplyData(
             Vector3 position, Quaternion rotation, Vector3 scale, Vector3 size,
@@ -352,13 +465,14 @@ namespace SiegeEngine.Core.Definitions
             int bodyType, Vector3 angularVelocity,
             float linearDamping, float angularDamping, float friction, float restitution,
             bool isSleeping, int islandId, float sleepThreshold, bool collisionEnabled,
-            bool isGrounded, float slopeLimitDegrees, float stepHeight)
+            bool isGrounded, float slopeLimitDegrees, float stepHeight,
+            Vector3 localCentreOfMass, float invMass, Vector3 invInertiaLocal)
         {
             Position = position;
             Rotation = rotation;
             Scale = scale;
             Size = size;
-            if (mass > 0f) Mass = mass;
+            if (mass > 0f) _mass = mass;
             if (health >= 0f) Health = health;
             IsBreakable = isBreakable;
             if (isBroken) Health = 0f;
@@ -378,8 +492,15 @@ namespace SiegeEngine.Core.Definitions
             IsGrounded = isGrounded;
             SlopeLimitDegrees = slopeLimitDegrees;
             StepHeight = stepHeight;
+            LocalCentreOfMass = localCentreOfMass;
+            // Recompute after shape is known; values from payload are used as seed if shape not yet rebuilt.
+            InvMass = invMass;
+            InvInertiaLocal = invInertiaLocal;
             Shape = null;
             RenderPosition = position;
+            // Ensure consistent mass properties once shape is rebuilt later.
+            if (Shape != null)
+                RecomputeMassProperties();
         }
         private static Vector3 ReadVector3(JsonElement parent, string name, Vector3 fallback)
         {
@@ -450,6 +571,9 @@ namespace SiegeEngine.Core.Definitions
             public bool IsGrounded { get; set; }
             public float SlopeLimitDegrees { get; set; }
             public float StepHeight { get; set; }
+            public Vector3 LocalCentreOfMass { get; set; }
+            public float InvMass { get; set; }
+            public Vector3 InvInertiaLocal { get; set; }
         }
     }
 }

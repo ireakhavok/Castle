@@ -65,11 +65,9 @@ namespace SiegeEngine.PlayerSystem
             if (_activeKeys.Contains(Key.A)) x -= 1f;
             if (_activeKeys.Contains(Key.D)) x += 1f;
             _movementInput = new Vector2(x, y);
-            Console.WriteLine($"PlayerMovement: Local Key {key}, Action {action}, ActiveKeys=[{string.Join(",", _activeKeys)}], MovementInput={_movementInput}, LastKey={_lastPressedKey}");
         }
         private void OnNetworkKeyInput(KeyInputEvent e)
         {
-            Console.WriteLine($"PlayerMovement: Networked Key {e.Key}, Action {e.Action}, SteamID={e.SteamId}");
             if (e.Action == InputAction.Press || e.Action == InputAction.Repeat)
             {
                 _activeKeys.Add(e.Key);
@@ -97,7 +95,6 @@ namespace SiegeEngine.PlayerSystem
             if (_activeKeys.Contains(Key.A)) x -= 1f;
             if (_activeKeys.Contains(Key.D)) x += 1f;
             _movementInput = new Vector2(x, y);
-            Console.WriteLine($"PlayerMovement: Networked Key {e.Key}, Action {e.Action}, ActiveKeys=[{string.Join(",", _activeKeys)}], MovementInput={_movementInput}, LastKey={_lastPressedKey}");
         }
         public virtual void Update(Player player, float deltaTime, Action<int, Vector2, Quaternion> sendMovementRequest, CameraController camera)
         {
@@ -106,8 +103,7 @@ namespace SiegeEngine.PlayerSystem
             Vector3 forward = new Vector3((float)Math.Sin(yawRad), (float)Math.Cos(yawRad), 0);
             forward = Vector3.Normalize(forward);
             Vector3 right = Vector3.Normalize(Vector3.Cross(forward, Vector3.UnitZ));
-
-            // Horizontal ownership only — Physics owns Velocity.Z / Position.Z
+            // Horizontal ownership only — Physics owns Position and Velocity.Z
             Vector2 desiredVelocityXY = Vector2.Zero;
             if (_movementInput != Vector2.Zero)
             {
@@ -115,10 +111,8 @@ namespace SiegeEngine.PlayerSystem
                 Vector3 moveDirection = forward * normalizedMovement.Y + right * normalizedMovement.X;
                 desiredVelocityXY = new Vector2(moveDirection.X, moveDirection.Y) * _maxSpeed;
             }
-
             Vector3 currentVel = player.Physics.Velocity;
             Vector2 currentVelXY = new Vector2(currentVel.X, currentVel.Y);
-
             if (desiredVelocityXY.LengthSquared() > 0.001f)
             {
                 Vector2 delta = desiredVelocityXY - currentVelXY;
@@ -140,20 +134,9 @@ namespace SiegeEngine.PlayerSystem
                     currentVelXY = Vector2.Zero;
                 }
             }
-
-            // Preserve Velocity.Z exactly — Physics owns vertical motion
+            // Preserve Velocity.Z exactly — Physics owns vertical motion and all Position
             player.Physics.Velocity = new Vector3(currentVelXY.X, currentVelXY.Y, currentVel.Z);
-
-            // Advance only X/Y; leave Position.Z exactly as Physics left it
-            Vector3 newPosition = new Vector3(
-                Math.Clamp(player.Physics.Position.X + currentVelXY.X * deltaTime, 0, _gridWidth),
-                Math.Clamp(player.Physics.Position.Y + currentVelXY.Y * deltaTime, 0, _gridHeight),
-                player.Physics.Position.Z);
-            player.Physics.Position = newPosition;
-
-            // Rotation rules by perspective:
-            // ThirdPerson  → model faces velocity when moving (classic TP).
-            // OverTheShoulder / FirstPerson → model always faces camera yaw so strafing is pure lateral and the pack’s side clips are used.
+            // Rotation rules by perspective (facing only – no Position write)
             Quaternion newRotation = player.Physics.Rotation;
             if (camera.CurrentPerspective == Perspective.ThirdPerson)
             {
@@ -162,26 +145,20 @@ namespace SiegeEngine.PlayerSystem
                     float moveYawRad = MathF.Atan2(currentVelXY.X, currentVelXY.Y);
                     newRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -moveYawRad);
                 }
-                // stationary: leave rotation as-is
             }
             else
             {
-                // OTS / FP: lock facing to camera
                 newRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -yawRad);
             }
             player.Physics.Rotation = newRotation;
-
             // Only enqueue / log when there is actual movement or active input
             if (currentVelXY.LengthSquared() > 0.001f || _movementInput != Vector2.Zero)
             {
-                Vector2 requestedPos = new Vector2(newPosition.X, newPosition.Y);
+                Vector2 requestedPos = new Vector2(player.Physics.Position.X, player.Physics.Position.Y);
                 _predictionSystem.EnqueueMovementRequest(player.EntityId, requestedPos, newRotation, player.SteamId);
                 sendMovementRequest(player.EntityId, requestedPos, newRotation);
-                Console.WriteLine($"PlayerMovement: Requested movement to: X={newPosition.X}, Y={newPosition.Y}, Velocity={player.Physics.Velocity}, Rotation={newRotation}");
             }
-
-            // Blend drive: model-local for ThirdPerson (model faces velocity → pure forward),
-            // camera-local for OverTheShoulder / FirstPerson (pack was authored for strafing).
+            // Blend drive
             if (player.BlendComponent != null && player.BlendComponent.Pack != null)
             {
                 Vector2 localInputForBlend;
@@ -191,15 +168,12 @@ namespace SiegeEngine.PlayerSystem
                 }
                 else if (camera.CurrentPerspective == Perspective.ThirdPerson)
                 {
-                    // Model is already rotated to face velocity → always forward in model space
                     localInputForBlend = new Vector2(0f, 1f);
                 }
                 else
                 {
-                    // OTS / FP: camera-relative input matches the pack’s strafe layout
                     localInputForBlend = _movementInput;
                 }
-
                 var stack = player.BlendComponent.Pack.CreateBlendStack();
                 player.BlendComponent.CurrentBlendParams = stack.MapPlayerInputToBlendCoord(localInputForBlend);
             }
