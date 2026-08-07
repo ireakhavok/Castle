@@ -1120,6 +1120,8 @@ Folder: SiegeEngine
       - void SetPerspective(Perspective perspective)
       - void Update( bool isGameActive,  float scrollDelta, float deltaTime)
         - Calls: ChangePerspective, Console.WriteLine, UpdateCamera, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetWindowAttrib, _controlContext.SetInputMode
+      - void RefreshFromPhysics()
+        - Calls: UpdateCamera
       - void ChangePerspective()
         - Calls: Console.WriteLine
       - void UpdateCamera()
@@ -2975,7 +2977,7 @@ Folder: SiegeEngine
       - void Render(IReadOnlyList<Entity> entities)
         - Calls: RenderGameplayContent
       - void Update(float deltaTime)
-        - Calls: ForceVisibleOverheadCamera
+        - Calls: ForceVisibleOverheadCamera, _player.Camera.RefreshFromPhysics
       - void RenderGameplayContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
         - Calls: Render, _modelRenderer.RenderEntityFully, _renderContext.Clear, _server.GetEntities, _skyboxRenderer.RenderSkybox, _terrainRenderer.RenderTerrain
       - void Dispose()
