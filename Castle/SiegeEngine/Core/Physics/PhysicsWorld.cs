@@ -5,6 +5,7 @@ using SiegeEngine.Core.Events;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.Core.Physics
 {
     public class PhysicsWorld
@@ -18,6 +19,8 @@ namespace SiegeEngine.Core.Physics
         private readonly List<Vector3> _triA = new List<Vector3>(64);
         private readonly List<Vector3> _triB = new List<Vector3>(64);
         private readonly List<Vector3> _triC = new List<Vector3>(64);
+        private IHeightProvider _lastLoggedProvider;
+
         public bool UseFixedTimestep { get; set; } = true;
         public float FixedTimestep { get; set; } = 1f / 60f;
         public Vector3 Gravity
@@ -27,28 +30,42 @@ namespace SiegeEngine.Core.Physics
         }
         public int SolverIterations { get; set; } = 10;
         public EventBus EventBus { get; set; }
+
         public void SetHeightProvider(IHeightProvider provider)
         {
             _heightProvider = provider;
             _heightfieldShape = provider != null ? new HeightfieldShape(provider) : null;
+            // Log only when the provider instance changes — was spamming every frame
+            if (!ReferenceEquals(provider, _lastLoggedProvider))
+            {
+                _lastLoggedProvider = provider;
+                if (provider != null)
+                    Console.WriteLine($"[PhysicsWorld] SetHeightProvider → size={provider.Width}x{provider.Height} scale=({provider.WorldScaleX},{provider.WorldScaleZ})");
+            }
         }
+
         public IHeightProvider HeightProvider => _heightProvider;
+
         public void RegisterBody(PhysicsComponent body)
         {
             if (body == null) return;
             if (!_bodies.Contains(body))
                 _bodies.Add(body);
         }
+
         public void UnregisterBody(PhysicsComponent body)
         {
             if (body == null) return;
             _bodies.Remove(body);
         }
+
         public void ClearBodies()
         {
             _bodies.Clear();
         }
+
         public void SnapToGround(PhysicsComponent body) { }
+
         public void Step(float deltaTime)
         {
             if (deltaTime <= 0f) return;
@@ -78,6 +95,26 @@ namespace SiegeEngine.Core.Physics
                 body.RenderPosition = body.Position;
             }
         }
+
+        /// <summary>
+        /// Quaternion.Normalize of a near-zero quaternion yields NaN.
+        /// default(Quaternion) is (0,0,0,0) — never safe to normalize.
+        /// </summary>
+        private static Quaternion SafeNormalize(Quaternion q)
+        {
+            if (float.IsNaN(q.X) || float.IsNaN(q.Y) || float.IsNaN(q.Z) || float.IsNaN(q.W) ||
+                q.LengthSquared() < 1e-6f)
+            {
+                return Quaternion.Identity;
+            }
+            return Quaternion.Normalize(q);
+        }
+
+        private static Quaternion SafeRotation(Quaternion q)
+        {
+            return SafeNormalize(q);
+        }
+
         private void Integrate(float dt)
         {
             for (int i = 0; i < _bodies.Count; i++)
@@ -85,8 +122,11 @@ namespace SiegeEngine.Core.Physics
                 var body = _bodies[i];
                 if (body == null || body.IsSleeping || body.BodyType == BodyType.Static)
                     continue;
+
+                // Keep rotation valid every step so OBB corners never become NaN
+                body.Rotation = SafeRotation(body.Rotation);
+
                 bool isCharacterCapsule = body.BodyType == BodyType.Kinematic && body.Shape is CapsuleShape;
-                // Linear damping
                 body.Velocity *= MathF.Max(0f, 1f - body.LinearDamping * dt);
                 if (isCharacterCapsule)
                 {
@@ -96,14 +136,13 @@ namespace SiegeEngine.Core.Physics
                 {
                     body.AngularVelocity *= MathF.Max(0f, 1f - body.AngularDamping * dt);
                 }
-                // Gravity
+
                 if (body.InvMass > 0f)
                 {
                     if (isCharacterCapsule)
                     {
                         if (body.IsGrounded)
                         {
-                            // Exact kinematic projection: kill residual velocity into the support direction.
                             float vn = Vector3.Dot(body.Velocity, Vector3.UnitZ);
                             if (vn < 0f)
                                 body.Velocity -= Vector3.UnitZ * vn;
@@ -118,17 +157,24 @@ namespace SiegeEngine.Core.Physics
                         body.Velocity += _gravity * dt;
                     }
                 }
-                // Linear integration
+
                 body.Position += body.Velocity * dt;
-                // Angular integration (character capsule skipped)
+
                 if (!isCharacterCapsule && body.AngularVelocity.LengthSquared() > 1e-12f)
                 {
                     Quaternion omegaQ = new Quaternion(body.AngularVelocity.X, body.AngularVelocity.Y, body.AngularVelocity.Z, 0f);
-                    Quaternion dq = Quaternion.Multiply(omegaQ, body.Rotation) * 0.5f;
-                    body.Rotation = Quaternion.Normalize(body.Rotation + dq * dt);
+                    Quaternion dq = Quaternion.Multiply(omegaQ, body.Rotation);
+                    // scale by 0.5 * dt component-wise (System.Numerics has no Quaternion*float)
+                    dq = new Quaternion(dq.X * 0.5f * dt, dq.Y * 0.5f * dt, dq.Z * 0.5f * dt, dq.W * 0.5f * dt);
+                    body.Rotation = SafeNormalize(new Quaternion(
+                        body.Rotation.X + dq.X,
+                        body.Rotation.Y + dq.Y,
+                        body.Rotation.Z + dq.Z,
+                        body.Rotation.W + dq.W));
                 }
             }
         }
+
         private void DetectAndResolveContacts(float dt)
         {
             for (int i = 0; i < _bodies.Count; i++)
@@ -147,7 +193,6 @@ namespace SiegeEngine.Core.Physics
                 {
                     var b = _bodies[j];
                     if (b == null || !b.CollisionEnabled) continue;
-                    // Wake sleeping body if contacted by an active body
                     if (b.IsSleeping)
                     {
                         if (a.BodyType == BodyType.Static) continue;
@@ -170,6 +215,8 @@ namespace SiegeEngine.Core.Physics
                     if (body == null || !body.CollisionEnabled || body.IsSleeping) continue;
                     if (body.BodyType == BodyType.Static) continue;
                     if (body.Shape == null) body.RebuildShape();
+                    // Ensure rotation is valid before any OBB corner math
+                    body.Rotation = SafeRotation(body.Rotation);
                     var manifold = new ContactManifold { BodyA = body, BodyB = null };
                     if (body.Shape is CapsuleShape cap)
                         CapsuleVsHeightfield(cap, body, _heightfieldShape, manifold);
@@ -179,15 +226,15 @@ namespace SiegeEngine.Core.Physics
                         _manifolds.Add(manifold);
                 }
             }
-            // Velocity-level sequential impulse only (no position correction)
+
             for (int iter = 0; iter < SolverIterations; iter++)
             {
                 for (int m = 0; m < _manifolds.Count; m++)
                     ResolveVelocity(_manifolds[m]);
             }
-            // Hard geometric projection (no velocity change, no soft bias)
             ProjectPositions();
         }
+
         private void ResolveVelocity(ContactManifold m)
         {
             var a = m.BodyA;
@@ -239,7 +286,6 @@ namespace SiegeEngine.Core.Physics
                     b.Velocity -= impulse * invMassB;
                     b.AngularVelocity -= b.ApplyInvInertiaWorld(Vector3.Cross(rB, impulse));
                 }
-                // Friction
                 relVel = (a != null ? a.Velocity + Vector3.Cross(a.AngularVelocity, rA) : Vector3.Zero)
                        - (b != null ? b.Velocity + Vector3.Cross(b.AngularVelocity, rB) : Vector3.Zero);
                 Vector3 tangent = relVel - n * Vector3.Dot(relVel, n);
@@ -266,6 +312,7 @@ namespace SiegeEngine.Core.Physics
                 }
             }
         }
+
         private void ProjectPositions()
         {
             const float numericSlop = 0.001f;
@@ -291,6 +338,7 @@ namespace SiegeEngine.Core.Physics
                 }
             }
         }
+
         private void UpdateSleeping(float dt)
         {
             for (int i = 0; i < _bodies.Count; i++)
@@ -301,7 +349,6 @@ namespace SiegeEngine.Core.Physics
                 float ke = 0.5f * body.Mass * body.Velocity.LengthSquared();
                 if (body.InvInertiaLocal != Vector3.Zero)
                 {
-                    // Approximate rotational KE using the diagonal
                     Vector3 w = body.AngularVelocity;
                     ke += 0.5f * (w.X * w.X / MathF.Max(body.InvInertiaLocal.X, 1e-8f)
                                 + w.Y * w.Y / MathF.Max(body.InvInertiaLocal.Y, 1e-8f)
@@ -320,6 +367,7 @@ namespace SiegeEngine.Core.Physics
                 }
             }
         }
+
         private ContactManifold GenerateManifold(PhysicsComponent a, PhysicsComponent b)
         {
             if (a.BodyType == BodyType.Static && b.BodyType != BodyType.Static)
@@ -357,6 +405,7 @@ namespace SiegeEngine.Core.Physics
             }
             return manifold.PointCount > 0 ? manifold : null;
         }
+
         private void CapsuleVsCapsule(CapsuleShape a, PhysicsComponent bodyA,
             CapsuleShape b, PhysicsComponent bodyB, ContactManifold manifold)
         {
@@ -376,6 +425,7 @@ namespace SiegeEngine.Core.Physics
                 });
             }
         }
+
         private void CapsuleVsObb(CapsuleShape cap, PhysicsComponent capBody,
             ObbShape obb, PhysicsComponent obbBody, ContactManifold manifold)
         {
@@ -392,7 +442,7 @@ namespace SiegeEngine.Core.Physics
             };
             for (int s = 0; s < samples.Length; s++)
             {
-                Vector3 closest = ClosestPointOnObb(samples[s], obbBody.Position, obbBody.Rotation, obb);
+                Vector3 closest = ClosestPointOnObb(samples[s], obbBody.Position, SafeRotation(obbBody.Rotation), obb);
                 Vector3 delta = samples[s] - closest;
                 float dist = delta.Length();
                 if (dist < radius && dist > 1e-6f)
@@ -407,6 +457,7 @@ namespace SiegeEngine.Core.Physics
                 }
             }
         }
+
         private void CapsuleVsTriangleMesh(CapsuleShape cap, PhysicsComponent capBody,
             TriangleMeshShape mesh, PhysicsComponent meshBody, ContactManifold manifold)
         {
@@ -415,7 +466,7 @@ namespace SiegeEngine.Core.Physics
             Vector3 feet = capBody.Position;
             Vector3 queryMin = feet - new Vector3(radius * 1.5f, radius * 1.5f, 0f);
             Vector3 queryMax = feet + new Vector3(radius * 1.5f, radius * 1.5f, height);
-            mesh.GetAabb(meshBody.Position, meshBody.Rotation, out Vector3 aabbMin, out Vector3 aabbMax);
+            mesh.GetAabb(meshBody.Position, SafeRotation(meshBody.Rotation), out Vector3 aabbMin, out Vector3 aabbMax);
             if (queryMax.X < aabbMin.X || queryMin.X > aabbMax.X ||
                 queryMax.Y < aabbMin.Y || queryMin.Y > aabbMax.Y ||
                 queryMax.Z < aabbMin.Z || queryMin.Z > aabbMax.Z)
@@ -423,7 +474,7 @@ namespace SiegeEngine.Core.Physics
             _triA.Clear();
             _triB.Clear();
             _triC.Clear();
-            mesh.QueryWorldTriangles(meshBody.Position, meshBody.Rotation, queryMin, queryMax, _triA, _triB, _triC);
+            mesh.QueryWorldTriangles(meshBody.Position, SafeRotation(meshBody.Rotation), queryMin, queryMax, _triA, _triB, _triC);
             Vector3[] samples =
             {
                 feet + new Vector3(0, 0, radius),
@@ -457,6 +508,7 @@ namespace SiegeEngine.Core.Physics
                 }
             }
         }
+
         private void CapsuleVsHeightfield(CapsuleShape cap, PhysicsComponent body,
             HeightfieldShape field, ContactManifold manifold)
         {
@@ -477,10 +529,12 @@ namespace SiegeEngine.Core.Physics
                     body.IsGrounded = true;
             }
         }
+
         private void ObbVsHeightfield(ObbShape obb, PhysicsComponent body,
             HeightfieldShape field, ContactManifold manifold)
         {
-            Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(body.Rotation);
+            Quaternion rotQ = SafeRotation(body.Rotation);
+            Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotQ);
             Vector3 centre = body.Position + Vector3.Transform(obb.CenterOffset, rot);
             Vector3 hx = Vector3.Transform(new Vector3(obb.HalfExtents.X, 0f, 0f), rot);
             Vector3 hy = Vector3.Transform(new Vector3(0f, obb.HalfExtents.Y, 0f), rot);
@@ -499,6 +553,9 @@ namespace SiegeEngine.Core.Physics
             for (int i = 0; i < corners.Length; i++)
             {
                 Vector3 p = corners[i];
+                // Skip NaN corners (should never happen after SafeRotation, but be strict)
+                if (float.IsNaN(p.X) || float.IsNaN(p.Y) || float.IsNaN(p.Z))
+                    continue;
                 float groundZ = field.SampleHeight(p.X, p.Y);
                 float penetration = groundZ - p.Z;
                 if (penetration > 0f)
@@ -517,11 +574,12 @@ namespace SiegeEngine.Core.Physics
                 }
             }
         }
+
         private void ObbVsObb(ObbShape a, PhysicsComponent bodyA,
             ObbShape b, PhysicsComponent bodyB, ContactManifold manifold)
         {
-            Matrix4x4 rotA = Matrix4x4.CreateFromQuaternion(bodyA.Rotation);
-            Matrix4x4 rotB = Matrix4x4.CreateFromQuaternion(bodyB.Rotation);
+            Matrix4x4 rotA = Matrix4x4.CreateFromQuaternion(SafeRotation(bodyA.Rotation));
+            Matrix4x4 rotB = Matrix4x4.CreateFromQuaternion(SafeRotation(bodyB.Rotation));
             Vector3 ca = bodyA.Position + Vector3.Transform(a.CenterOffset, rotA);
             Vector3 cb = bodyB.Position + Vector3.Transform(b.CenterOffset, rotB);
             Vector3 delta = ca - cb;
@@ -539,13 +597,14 @@ namespace SiegeEngine.Core.Physics
                 });
             }
         }
+
         private void ObbVsMeshAabb(ObbShape obb, PhysicsComponent obbBody,
             TriangleMeshShape mesh, PhysicsComponent meshBody, ContactManifold manifold)
         {
-            mesh.GetAabb(meshBody.Position, meshBody.Rotation, out Vector3 aabbMin, out Vector3 aabbMax);
+            mesh.GetAabb(meshBody.Position, SafeRotation(meshBody.Rotation), out Vector3 aabbMin, out Vector3 aabbMax);
             Vector3 half = (aabbMax - aabbMin) * 0.5f;
             Vector3 centre = (aabbMin + aabbMax) * 0.5f;
-            Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(obbBody.Rotation);
+            Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(SafeRotation(obbBody.Rotation));
             Vector3 obbCentre = obbBody.Position + Vector3.Transform(obb.CenterOffset, rot);
             Vector3 closest = ClosestPointOnAabb(obbCentre, centre, half);
             Vector3 delta = obbCentre - closest;
@@ -562,6 +621,7 @@ namespace SiegeEngine.Core.Physics
                 });
             }
         }
+
         private static Vector3 ClosestPointOnObb(Vector3 point, Vector3 position, Quaternion rotation, ObbShape obb)
         {
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
@@ -571,12 +631,14 @@ namespace SiegeEngine.Core.Physics
             local = Vector3.Clamp(local, -obb.HalfExtents, obb.HalfExtents);
             return Vector3.Transform(local, rot) + worldCentre;
         }
+
         private static Vector3 ClosestPointOnAabb(Vector3 point, Vector3 centre, Vector3 halfExtents)
         {
             Vector3 local = point - centre;
             local = Vector3.Clamp(local, -halfExtents, halfExtents);
             return centre + local;
         }
+
         private static Vector3 ClosestPointOnTriangle(Vector3 p, Vector3 a, Vector3 b, Vector3 c)
         {
             Vector3 ab = b - a;

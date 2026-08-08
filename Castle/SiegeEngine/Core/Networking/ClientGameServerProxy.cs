@@ -39,21 +39,17 @@ namespace SiegeEngine.Core.Networking
         {
             if (entity == null) return;
 
-            // FIXED: fully idempotent — if ID already exists, update the existing entity in place
-            // This prevents the sync path from ever adding a duplicate
             var existing = _entities.Find(e => e.Id == entity.Id && entity.Id > 0);
             if (existing != null)
             {
-                // Update in-place (keeps references and prevents double-add)
                 existing.Type = entity.Type;
 
                 var existingPhysics = existing.GetComponent<PhysicsComponent>();
                 var newPhysics = entity.GetComponent<PhysicsComponent>();
                 if (existingPhysics != null && newPhysics != null)
                 {
-                    // Full Phase-1 field transfer so BodyType and all designer settings survive
                     existingPhysics.Position = newPhysics.Position;
-                    existingPhysics.Rotation = newPhysics.Rotation;
+                    existingPhysics.Rotation = Entity.SanitizeRotation(newPhysics.Rotation);
                     existingPhysics.Scale = newPhysics.Scale;
                     existingPhysics.Size = newPhysics.Size;
                     existingPhysics.LocalBoundsMinCm = newPhysics.LocalBoundsMinCm;
@@ -73,6 +69,10 @@ namespace SiegeEngine.Core.Networking
                     existingPhysics.Health = newPhysics.Health;
                     existingPhysics.IsBreakable = newPhysics.IsBreakable;
                     existingPhysics.IsVisible = newPhysics.IsVisible;
+
+                    existingPhysics.InvalidateShape();
+                    var model = (existing.GetComponent<ModelComponent>() ?? entity.GetComponent<ModelComponent>())?.Model;
+                    existingPhysics.RebuildShape(model);
                 }
 
                 var existingModel = existing.GetComponent<ModelComponent>();
@@ -83,7 +83,6 @@ namespace SiegeEngine.Core.Networking
                     existingModel.Model = newModel.Model;
                 }
 
-                // Preserve BlendedAnimationComponent if the incoming entity carries one
                 var existingBlend = existing.GetComponent<BlendedAnimationComponent>();
                 var newBlend = entity.GetComponent<BlendedAnimationComponent>();
                 if (existingBlend == null && newBlend != null)
@@ -95,7 +94,6 @@ namespace SiegeEngine.Core.Networking
                 return;
             }
 
-            // New entity path
             bool isDuplicate = _entities.Any(e => e.Id == entity.Id && entity.Id > 0);
             if (entity.Id <= 0 || isDuplicate)
             {
@@ -105,6 +103,11 @@ namespace SiegeEngine.Core.Networking
             {
                 _nextEntityId = Math.Max(_nextEntityId, entity.Id + 1);
             }
+
+            var physics = entity.GetComponent<PhysicsComponent>();
+            if (physics != null)
+                physics.Rotation = Entity.SanitizeRotation(physics.Rotation);
+
             _entities.Add(entity);
             _eventBus.Publish(new EntityAddedEvent(entity), true);
         }
@@ -124,7 +127,6 @@ namespace SiegeEngine.Core.Networking
 
         public void ClearEntities()
         {
-            // FIXED: Authoritative clear for editor scene reloads — publish removal events so UI/Outliner stays in sync
             var idsToRemove = _entities.Select(e => e.Id).ToList();
             foreach (var id in idsToRemove)
             {

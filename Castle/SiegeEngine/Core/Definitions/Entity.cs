@@ -17,21 +17,12 @@ namespace SiegeEngine.Core.Definitions
         public int Id { get; set; }
         public string Type { get; set; } = "Default";
 
-        /// <summary>
-        /// Public accessor so the Properties panel recursive reflection can discover
-        /// BodyType and all other Phase-1 physics fields.
-        /// PhysicsComponent is the single authoritative spatial owner for any entity
-        /// that carries physics. Entity no longer owns a TransformComponent.
-        /// </summary>
         public PhysicsComponent Physics => GetComponent<PhysicsComponent>();
 
         public IReadOnlyDictionary<Type, IComponent> Components => _components;
 
         public Entity()
         {
-            // No auto-added TransformComponent. PhysicsComponent is the sole
-            // authoritative spatial owner when present. TransformComponent remains
-            // available as an optional IComponent for pure hierarchy objects.
         }
 
         public void AddComponent<T>(T component) where T : IComponent
@@ -58,12 +49,11 @@ namespace SiegeEngine.Core.Definitions
                 Id = Id
             };
 
-            // PhysicsComponent is the definitive runtime/editor source of truth
             var physics = GetComponent<PhysicsComponent>();
             if (physics != null)
             {
                 data.Position = physics.Position;
-                data.Rotation = physics.Rotation;
+                data.Rotation = SanitizeRotation(physics.Rotation);
                 data.Scale = physics.Scale;
             }
             else
@@ -91,7 +81,6 @@ namespace SiegeEngine.Core.Definitions
                 }
             }
 
-            // Component round-tripping — ONLY the components this specific entity actually has
             data.Components = new List<EntityData.ComponentEntry>();
 
             foreach (var kvp in _components)
@@ -123,10 +112,9 @@ namespace SiegeEngine.Core.Definitions
                 Type = data.Type ?? "Default"
             };
 
-            // === PHYSICS COMPONENT IS THE SINGLE SOURCE OF TRUTH ON LOAD ===
             var physics = new PhysicsComponent();
             physics.Position = data.Position;
-            physics.Rotation = data.Rotation;
+            physics.Rotation = SanitizeRotation(data.Rotation);
             physics.Scale = data.Scale != default ? data.Scale : Vector3.One;
 
             entity.AddComponent(physics);
@@ -154,8 +142,6 @@ namespace SiegeEngine.Core.Definitions
                 }
             }
 
-            // Component round-tripping — ONLY recreate exactly the components that were saved for this entity
-            // No factory, no switch, no hard-coded list. Purely modular using reflection on the saved type name.
             if (data.Components != null)
             {
                 string physicsFullName = typeof(PhysicsComponent).FullName;
@@ -164,12 +150,12 @@ namespace SiegeEngine.Core.Definitions
                 {
                     if (string.IsNullOrEmpty(entry.Type)) continue;
 
-                    // PhysicsComponent is already the live source of truth. Apply its data
-                    // onto the existing instance (exact FullName match written by ToData).
                     if (entry.Type == physicsFullName)
                     {
                         if (entry.Data != null)
                             physics.FromSerializableData(entry.Data);
+                        // Re-sanitize after component data may have overwritten Rotation
+                        physics.Rotation = SanitizeRotation(physics.Rotation);
                         continue;
                     }
 
@@ -198,9 +184,22 @@ namespace SiegeEngine.Core.Definitions
             Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm}) Components={entity.Components.Count}");
             return entity;
         }
+
+        /// <summary>
+        /// default(Quaternion) is (0,0,0,0). Quaternion.Normalize of that yields NaN
+        /// and destroys all OBB corner tests against the heightfield.
+        /// </summary>
+        public static Quaternion SanitizeRotation(Quaternion q)
+        {
+            if (float.IsNaN(q.X) || float.IsNaN(q.Y) || float.IsNaN(q.Z) || float.IsNaN(q.W) ||
+                q.LengthSquared() < 1e-6f)
+            {
+                return Quaternion.Identity;
+            }
+            return Quaternion.Normalize(q);
+        }
     }
 
-    // Optional lightweight interface for any component that wants to persist
     public interface IComponentData
     {
         object ToSerializableData();

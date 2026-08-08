@@ -399,7 +399,7 @@ namespace ToolChest
                 }
             }
             if (bestDist > ArrowPickTolerance) return -1;
-            Console.WriteLine($"[TransformGizmoOverlay] *** HOVERED AXIS {best} (screen dist {bestDist:F3}) ***");
+            //Console.WriteLine($"[TransformGizmoOverlay] *** HOVERED AXIS {best} (screen dist {bestDist:F3}) ***");
             return best;
         }
 
@@ -446,7 +446,7 @@ namespace ToolChest
             }
 
             if (bestDist > RingPickTolerance) return -1;
-            Console.WriteLine($"[TransformGizmoOverlay] *** HOVERED RING {best} (screen dist {bestDist:F3}) ***");
+            //Console.WriteLine($"[TransformGizmoOverlay] *** HOVERED RING {best} (screen dist {bestDist:F3}) ***");
             return best;
         }
 
