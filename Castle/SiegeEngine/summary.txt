@@ -217,7 +217,7 @@ Folder: Core
       - void SetHeightProvider(IHeightProvider provider)
       - void SnapToGround(PhysicsComponent body)
       - void AddEntity(Entity entity)
-        - Calls: EntityAddedEvent, _entities.Add
+        - Calls: Entity.SanitizeRotation, EntityAddedEvent, _entities.Add, existingPhysics.InvalidateShape, existingPhysics.RebuildShape
       - void RemoveEntity(int id)
         - Calls: EntityRemovedEvent, _physicsWorld.UnregisterBody
       - void ClearEntities()
@@ -667,11 +667,15 @@ Folder: Core
 - File: FBXParser.cs
   - Class: FBXParser (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
+    - Fields:
+      - float MetresThreshold
     - Methods:
       - FBXFileForest Load(string path)
         - Calls: FBXParserBase.Log, NodeParser.ParseNodes
       - FBXModel BuildModelFromForest(FBXFileForest forest)
-        - Calls: .Value.ToString, FBXParserBase.Log, GatherConnections, GatherObjectsById, ParseBindPoses
+        - Calls: .Value.ToString, DecideUnitToMeters, FBXParserBase.Log, GatherConnections, GatherObjectsById, ParseBindPoses
+      - void DecideUnitToMeters(FBXModel model)
+        - Calls: FBXParserBase.Log
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
         - Calls: conns.Add
@@ -1523,6 +1527,7 @@ Folder: Core
       - List<Vector3> _triA
       - List<Vector3> _triB
       - List<Vector3> _triC
+      - IHeightProvider _lastLoggedProvider
       - IHeightProvider HeightProvider
     - Methods:
       - void SetHeightProvider(IHeightProvider provider)
@@ -1535,9 +1540,15 @@ Folder: Core
       - void SnapToGround(PhysicsComponent body)
       - void Step(float deltaTime)
         - Calls: DetectAndResolveContacts, Integrate, UpdateSleeping
+      - Quaternion SafeNormalize(Quaternion q)
+      - Quaternion SafeRotation(Quaternion q)
+        - Calls: SafeNormalize
+      - return SafeNormalize()
+        - Calls: SafeRotation
       - void Integrate(float dt)
+        - Calls: SafeNormalize, SafeRotation
       - void DetectAndResolveContacts(float dt)
-        - Calls: CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, ResolveVelocity, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
+        - Calls: CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, ResolveVelocity, SafeRotation, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
       - void ResolveVelocity(ContactManifold m)
         - Calls: a.ApplyInvInertiaWorld, b.ApplyInvInertiaWorld
       - void ProjectPositions()
@@ -1549,22 +1560,22 @@ Folder: Core
         - Calls: manifold.Add
       - void CapsuleVsObb(
             ObbShape obb,  ContactManifold manifold,  PhysicsComponent capBody,  PhysicsComponent obbBody, CapsuleShape cap)
-        - Calls: ClosestPointOnObb, manifold.Add
+        - Calls: ClosestPointOnObb, SafeRotation, manifold.Add
       - void CapsuleVsTriangleMesh(
             TriangleMeshShape mesh,  ContactManifold manifold,  PhysicsComponent capBody,  PhysicsComponent meshBody, CapsuleShape cap)
-        - Calls: ClosestPointOnTriangle, _triA.Clear, _triB.Clear, _triC.Clear, manifold.Add, mesh.GetAabb, mesh.QueryWorldTriangles
+        - Calls: ClosestPointOnTriangle, SafeRotation, _triA.Clear, _triB.Clear, _triC.Clear, manifold.Add, mesh.GetAabb, mesh.QueryWorldTriangles
       - void CapsuleVsHeightfield(
             HeightfieldShape field,  ContactManifold manifold,  PhysicsComponent body, CapsuleShape cap)
         - Calls: field.SampleHeight, field.SampleNormal, manifold.Add
       - void ObbVsHeightfield(
             HeightfieldShape field,  ContactManifold manifold,  PhysicsComponent body, ObbShape obb)
-        - Calls: field.SampleHeight, field.SampleNormal, manifold.Add
+        - Calls: SafeRotation, field.SampleHeight, field.SampleNormal, manifold.Add
       - void ObbVsObb(
             ObbShape b,  ContactManifold manifold,  PhysicsComponent bodyA,  PhysicsComponent bodyB, ObbShape a)
-        - Calls: manifold.Add
+        - Calls: SafeRotation, manifold.Add
       - void ObbVsMeshAabb(
             TriangleMeshShape mesh,  ContactManifold manifold,  PhysicsComponent meshBody,  PhysicsComponent obbBody, ObbShape obb)
-        - Calls: ClosestPointOnAabb, manifold.Add, mesh.GetAabb
+        - Calls: ClosestPointOnAabb, SafeRotation, manifold.Add, mesh.GetAabb
       - Vector3 ClosestPointOnObb( ObbShape obb,  Quaternion rotation,  Vector3 position, Vector3 point)
       - Vector3 ClosestPointOnAabb( Vector3 centre,  Vector3 halfExtents, Vector3 point)
       - Vector3 ClosestPointOnTriangle( Vector3 a,  Vector3 b,  Vector3 c, Vector3 p)
