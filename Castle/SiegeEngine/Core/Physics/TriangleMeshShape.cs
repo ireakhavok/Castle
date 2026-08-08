@@ -4,13 +4,11 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using SiegeEngine.Core.AssetParsing.Model;
-
 namespace SiegeEngine.Core.Physics
 {
     /// <summary>
     /// Static triangle mesh built from an FBXModel.
-    /// Vertices stored in metres. Includes a lightweight binary AABB tree so
-    /// narrow-phase only tests a small subset of triangles.
+    /// Vertices are converted to metres using model.UnitToMeters (1.0 for Blender metres, 0.01 for classic cm).
     /// </summary>
     public sealed class TriangleMeshShape : ColliderShape
     {
@@ -18,28 +16,26 @@ namespace SiegeEngine.Core.Physics
         private readonly List<int> _indices = new List<int>();
         private Vector3 _localMin;
         private Vector3 _localMax;
-
-        // AABB tree (binary, built once at construction).
         private struct Node
         {
             public Vector3 Min, Max;
-            public int Left;   // child index or -1
+            public int Left;
             public int Right;
-            public int TriStart; // first triangle index into the flat triangle list
+            public int TriStart;
             public int TriCount;
         }
         private Node[] _nodes;
-        private int[] _triOrder; // permutation of triangle indices for leaf packing
-
+        private int[] _triOrder;
         public TriangleMeshShape(FBXModel model)
         {
             if (model == null || model.Meshes == null) return;
+            float toMeters = model.UnitToMeters;
             foreach (var mesh in model.Meshes)
             {
                 if (mesh.Vertices == null || mesh.Indices == null) continue;
                 int baseIndex = _localVerticesM.Count;
                 foreach (var v in mesh.Vertices)
-                    _localVerticesM.Add(v.Position * 0.01f);
+                    _localVerticesM.Add(v.Position * toMeters);
                 foreach (uint idx in mesh.Indices)
                     _indices.Add(baseIndex + (int)idx);
             }
@@ -58,7 +54,6 @@ namespace SiegeEngine.Core.Physics
             }
             BuildAabbTree();
         }
-
         public override void GetAabb(in Vector3 position, in Quaternion rotation, out Vector3 min, out Vector3 max)
         {
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
@@ -80,7 +75,6 @@ namespace SiegeEngine.Core.Physics
                 max = Vector3.Max(max, w);
             }
         }
-
         public override bool Raycast(in Vector3 position, in Quaternion rotation,
             in Vector3 origin, in Vector3 direction, float maxDistance,
             out float distance, out Vector3 normal)
@@ -106,22 +100,12 @@ namespace SiegeEngine.Core.Physics
             }
             return hit;
         }
-
-        /// <summary>
-        /// Query the AABB tree for triangles that may overlap the world-space query box.
-        /// Results are written as world-space vertices into the supplied lists.
-        /// </summary>
         public void QueryWorldTriangles(in Vector3 position, in Quaternion rotation,
             in Vector3 queryMin, in Vector3 queryMax,
             List<Vector3> outA, List<Vector3> outB, List<Vector3> outC)
         {
-            if (_nodes == null || _nodes.Length == 0)
-            {
-                // Fallback for empty mesh
-                return;
-            }
+            if (_nodes == null || _nodes.Length == 0) return;
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
-            // Transform query box into local space (conservative AABB of the 8 corners).
             Matrix4x4.Invert(rot, out Matrix4x4 invRot);
             Vector3[] qCorners = new Vector3[8];
             qCorners[0] = new Vector3(queryMin.X, queryMin.Y, queryMin.Z);
@@ -142,11 +126,6 @@ namespace SiegeEngine.Core.Physics
             }
             QueryNode(0, localMin, localMax, position, rot, outA, outB, outC);
         }
-
-        /// <summary>
-        /// Legacy full dump kept for callers that still need every triangle.
-        /// Prefer QueryWorldTriangles for contact generation.
-        /// </summary>
         public void GetWorldTriangles(in Vector3 position, in Quaternion rotation,
             List<Vector3> outA, List<Vector3> outB, List<Vector3> outC)
         {
@@ -158,15 +137,12 @@ namespace SiegeEngine.Core.Physics
                 outC.Add(Vector3.Transform(_localVerticesM[_indices[i + 2]], rot) + position);
             }
         }
-
         private void BuildAabbTree()
         {
             int triCount = _indices.Count / 3;
             if (triCount == 0) return;
             _triOrder = new int[triCount];
             for (int i = 0; i < triCount; i++) _triOrder[i] = i;
-
-            // Compute per-triangle AABBs and centroids for splitting.
             var triMin = new Vector3[triCount];
             var triMax = new Vector3[triCount];
             var centroid = new Vector3[triCount];
@@ -179,17 +155,14 @@ namespace SiegeEngine.Core.Physics
                 triMax[t] = Vector3.Max(a, Vector3.Max(b, c));
                 centroid[t] = (a + b + c) * (1f / 3f);
             }
-
             var nodes = new List<Node>(triCount * 2);
             BuildRecursive(0, triCount, triMin, triMax, centroid, nodes);
             _nodes = nodes.ToArray();
         }
-
         private int BuildRecursive(int start, int count, Vector3[] triMin, Vector3[] triMax, Vector3[] centroid, List<Node> nodes)
         {
             int nodeIdx = nodes.Count;
-            nodes.Add(default); // placeholder
-
+            nodes.Add(default);
             Vector3 bMin = new Vector3(float.MaxValue);
             Vector3 bMax = new Vector3(float.MinValue);
             for (int i = 0; i < count; i++)
@@ -198,7 +171,6 @@ namespace SiegeEngine.Core.Physics
                 bMin = Vector3.Min(bMin, triMin[t]);
                 bMax = Vector3.Max(bMax, triMax[t]);
             }
-
             const int leafThreshold = 4;
             if (count <= leafThreshold)
             {
@@ -213,8 +185,6 @@ namespace SiegeEngine.Core.Physics
                 };
                 return nodeIdx;
             }
-
-            // Split on longest axis of the centroid AABB.
             Vector3 cMin = new Vector3(float.MaxValue);
             Vector3 cMax = new Vector3(float.MinValue);
             for (int i = 0; i < count; i++)
@@ -228,7 +198,6 @@ namespace SiegeEngine.Core.Physics
             if (extent.Y > extent.X) axis = 1;
             if (extent.Z > extent[axis]) axis = 2;
             float mid = (cMin[axis] + cMax[axis]) * 0.5f;
-
             int left = 0;
             for (int i = 0; i < count; i++)
             {
@@ -241,8 +210,7 @@ namespace SiegeEngine.Core.Physics
                     left++;
                 }
             }
-            if (left == 0 || left == count) left = count / 2; // force progress
-
+            if (left == 0 || left == count) left = count / 2;
             int leftChild = BuildRecursive(start, left, triMin, triMax, centroid, nodes);
             int rightChild = BuildRecursive(start + left, count - left, triMin, triMax, centroid, nodes);
             nodes[nodeIdx] = new Node
@@ -256,7 +224,6 @@ namespace SiegeEngine.Core.Physics
             };
             return nodeIdx;
         }
-
         private void QueryNode(int nodeIdx, Vector3 localMin, Vector3 localMax,
             Vector3 position, Matrix4x4 rot,
             List<Vector3> outA, List<Vector3> outB, List<Vector3> outC)
@@ -266,8 +233,7 @@ namespace SiegeEngine.Core.Physics
                 localMax.Y < n.Min.Y || localMin.Y > n.Max.Y ||
                 localMax.Z < n.Min.Z || localMin.Z > n.Max.Z)
                 return;
-
-            if (n.Left < 0) // leaf
+            if (n.Left < 0)
             {
                 for (int i = 0; i < n.TriCount; i++)
                 {
@@ -284,7 +250,6 @@ namespace SiegeEngine.Core.Physics
             QueryNode(n.Left, localMin, localMax, position, rot, outA, outB, outC);
             QueryNode(n.Right, localMin, localMax, position, rot, outA, outB, outC);
         }
-
         private static bool RayTriangle(Vector3 origin, Vector3 dir, Vector3 a, Vector3 b, Vector3 c,
             out float t, out Vector3 normal)
         {

@@ -17,7 +17,6 @@ namespace SiegeEngine.Core.AssetParsing
             var forest = new FBXFileForest();
             if (!File.Exists(path))
             {
-                //FBXParserBase.Log($"FBXParser: File not found at {path}");
                 return forest;
             }
             try
@@ -39,7 +38,7 @@ namespace SiegeEngine.Core.AssetParsing
                         FBXParserBase.Log($"FBXParser: Invalid FBX file format at {path}");
                         return forest;
                     }
-                    reader.ReadBytes(2); // Padding
+                    reader.ReadBytes(2);
                     uint version = reader.ReadUInt32();
                     FBXParserBase.Log($"FBXParser: FBX version {version}");
                     if (version < 7000)
@@ -136,9 +135,61 @@ namespace SiegeEngine.Core.AssetParsing
             FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, boneIndexById, rootIndices, settings.P4, settings.InvP4, forest);
             FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, rootIndices, settings.P4, settings.InvP4);
             ParseBindPoses(model, objectsNode, boneIndexById, settings.InternalAxisMapping, settings.InternalAxisSigns);
-            FBXParserBase.Log($"FBXParser: Built model with {model.Meshes.Count} meshes, {model.Skeleton.Bones.Count} bones, {model.Animations.Count} animations");
+
+            // Decide UnitToMeters from the actual geometry size (robust for both Blender and Unity/Unreal).
+            // Small extents (< ~15 units) → numbers are already metres → UnitToMeters = 1.
+            // Large extents (character ~180, props in hundreds) → classic centimetres → UnitToMeters = 0.01.
+            DecideUnitToMeters(model);
+
+            FBXParserBase.Log($"FBXParser: Built model with {model.Meshes.Count} meshes, {model.Skeleton.Bones.Count} bones, {model.Animations.Count} animations (UnitToMeters={model.UnitToMeters})");
             return model;
         }
+
+        /// <summary>
+        /// Inspects the raw vertex bounds and chooses the conversion to metres.
+        /// This replaces the brittle "isBlender + UnitScaleFactor==1" rule.
+        /// </summary>
+        private static void DecideUnitToMeters(FBXModel model)
+        {
+            if (model.Meshes == null || model.Meshes.Count == 0)
+            {
+                model.UnitToMeters = 0.01f;
+                return;
+            }
+            Vector3 min = new Vector3(float.MaxValue);
+            Vector3 max = new Vector3(float.MinValue);
+            bool any = false;
+            foreach (var mesh in model.Meshes)
+            {
+                if (mesh.Vertices == null) continue;
+                foreach (var v in mesh.Vertices)
+                {
+                    any = true;
+                    min = Vector3.Min(min, v.Position);
+                    max = Vector3.Max(max, v.Position);
+                }
+            }
+            if (!any)
+            {
+                model.UnitToMeters = 0.01f;
+                return;
+            }
+            float extent = Math.Max(max.X - min.X, Math.Max(max.Y - min.Y, max.Z - min.Z));
+            // Threshold: a human character modelled in cm is ~150-200 units tall.
+            // A unit sphere or small prop modelled in metres is usually < 5-10 units.
+            const float MetresThreshold = 15f;
+            if (extent < MetresThreshold)
+            {
+                model.UnitToMeters = 1.0f;
+                FBXParserBase.Log($"Unit detection: extent={extent:F2} < {MetresThreshold} → treating as metres (UnitToMeters=1)");
+            }
+            else
+            {
+                model.UnitToMeters = 0.01f;
+                FBXParserBase.Log($"Unit detection: extent={extent:F2} ≥ {MetresThreshold} → treating as centimetres (UnitToMeters=0.01)");
+            }
+        }
+
         public static Dictionary<long, BaseNode> GatherObjectsById(BaseNode objectsNode)
         {
             var objectsById = new Dictionary<long, BaseNode>();
@@ -172,7 +223,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return conns;
         }
-        // Additional helper methods will be added in subsequent steps
         private static void ParseBindPoses(FBXModel model, BaseNode objectsNode, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs)
         {
             var poseNode = objectsNode.children.Where(n => n.Name == "Pose").Where(q => (string)q.properties[2].Value == "BindPose").FirstOrDefault();
@@ -194,7 +244,6 @@ namespace SiegeEngine.Core.AssetParsing
                 globalBind = FBXCoordinateUtils.RemapMatrix(globalBind, sourceToTarget, signs);
                 Matrix4x4.Invert(globalBind, out var invBind);
                 model.Skeleton.Bones[idx].BindPose = invBind;
-                // Compute BindLocal for alignment
                 if (Matrix4x4.Invert(invBind, out Matrix4x4 global))
                 {
                     Bone bone = model.Skeleton.Bones[idx];
@@ -219,11 +268,7 @@ namespace SiegeEngine.Core.AssetParsing
         }
         public static void Export(FBXModel fbxModel, string outputPath)
         {
-            // Placeholder for FBX export logic
-            // Implement binary FBX writer here
-            // For now, log and return
             FBXParserBase.Log($"FBXParser: Exporting model to {outputPath} (implementation pending)");
-            // To implement: reverse the parsing logic to write binary FBX
         }
     }
 }
