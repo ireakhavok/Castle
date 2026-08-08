@@ -169,16 +169,22 @@ namespace SiegeEngine.Scenes
             foreach (var e in level.Entities)
             {
                 var mc = e.GetComponent<ModelComponent>();
+                var phys = e.GetComponent<PhysicsComponent>();
                 if (mc != null && _modelManager.TryGetModel(mc.Key, out var m))
                 {
                     mc.Model = m;
+                    if (phys != null)
+                    {
+                        phys.Size = m.GetBoundingSize();
+                        phys.LocalBoundsMinCm = m.LocalBoundsMinCm;
+                        phys.LocalBoundsMaxCm = m.LocalBoundsMaxCm;
+                        phys.RebuildShape(m);
+                    }
                 }
-                // Only force Kinematic on the player. Every other entity keeps whatever
-                // BodyType was serialized (default is now Static — mid-air placement is valid).
-                var phys = e.GetComponent<PhysicsComponent>();
                 if (phys != null && e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase))
                 {
                     phys.BodyType = BodyType.Kinematic;
+                    phys.RebuildShape(null);
                 }
                 _server.AddEntity(e);
                 Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Position from Level (exact match, no spoof)");
@@ -191,9 +197,12 @@ namespace SiegeEngine.Scenes
                 var existingPhys = existingPlayerEntity.GetComponent<PhysicsComponent>();
                 if (existingPhys != null)
                 {
-                    existingPhys.BodyType = BodyType.Kinematic;
+                    // Seed initial transform values onto the Player's own PhysicsComponent.
+                    // The shared-instance guarantee below will then make the entity use this exact object.
                     _player.Physics.Position = existingPhys.Position;
                     _player.Physics.Rotation = existingPhys.Rotation;
+                    _player.Physics.BodyType = BodyType.Kinematic;
+                    _player.Physics.RebuildShape(null);
                 }
             }
             var settings = ctx?.SceneData?.Settings;
@@ -283,6 +292,7 @@ namespace SiegeEngine.Scenes
                         playerEntity = new Entity { Id = _player.EntityId, Type = "Player" };
                         playerEntity.AddComponent(_player);
                         _player.Physics.BodyType = BodyType.Kinematic;
+                        _player.Physics.RebuildShape(null);
                         playerEntity.AddComponent(_player.Physics);
                         playerEntity.AddComponent(new ModelComponent { Key = avatarKey, Model = _player.Model });
                         _server.AddEntity(playerEntity);
@@ -292,6 +302,7 @@ namespace SiegeEngine.Scenes
                     {
                         playerEntity.AddComponent(_player);
                         _player.Physics.BodyType = BodyType.Kinematic;
+                        _player.Physics.RebuildShape(null);
                         playerEntity.AddComponent(_player.Physics);
                         var mc = playerEntity.GetComponent<ModelComponent>();
                         if (mc == null)
@@ -331,9 +342,28 @@ namespace SiegeEngine.Scenes
                     _usePlayerCamera = true;
                 }
             }
+            // Final single-instance guarantee: the entity that PhysicsWorld steps and ModelRenderer
+            // draws MUST hold the exact same PhysicsComponent instance that PlayerMovement writes.
+            // AddComponent overwrites by Type, so this replaces any earlier FromData instance.
             if (_player != null)
             {
                 _player.Physics.BodyType = BodyType.Kinematic;
+                _player.Physics.RebuildShape(null);
+                var playerEntity = _server.GetEntityById(_player.EntityId);
+                if (playerEntity != null)
+                {
+                    playerEntity.AddComponent(_player);
+                    playerEntity.AddComponent(_player.Physics);
+                    Console.WriteLine($"[RuntimeGameplayScene] Single PhysicsComponent instance enforced for player entity {_player.EntityId}");
+                }
+                else
+                {
+                    playerEntity = new Entity { Id = _player.EntityId, Type = "Player" };
+                    playerEntity.AddComponent(_player);
+                    playerEntity.AddComponent(_player.Physics);
+                    _server.AddEntity(playerEntity);
+                    Console.WriteLine($"[RuntimeGameplayScene] Player entity {_player.EntityId} created with shared PhysicsComponent");
+                }
                 _player.InitializeCamera(_controlContext, _window);
             }
             if (!_usePlayerCamera)
@@ -457,7 +487,7 @@ namespace SiegeEngine.Scenes
         }
         public override void Update(float deltaTime)
         {
-            base.Update(deltaTime);
+            // Movement first, then physics — contact corrections must be the last write to Position.
             if (_usePlayerCamera && _player?.Camera != null)
             {
                 _player.Camera.Update(deltaTime, 0f, true);
@@ -465,15 +495,14 @@ namespace SiegeEngine.Scenes
                 {
                     _playerMovement.Update(_player, deltaTime, (id, pos, rotation) => { }, _player.Camera);
                 }
-                if (_player?.Physics != null)
-                {
-                    _server.SnapToGround(_player.Physics);
-                }
             }
             else
             {
                 _flyCamera.Update(deltaTime, 0f, true);
             }
+            base.Update(deltaTime);
+            if (_usePlayerCamera && _player?.Camera != null)
+                _player.Camera.RefreshFromPhysics();
             if (_firstFrame)
             {
                 _firstFrame = false;

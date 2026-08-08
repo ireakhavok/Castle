@@ -295,6 +295,7 @@ namespace CastleBuilder
                     physics.Size = modelComp.Model.GetBoundingSize();
                     physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
                     physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
+                    physics.RebuildShape(modelComp.Model);
                 }
             }
             else if (ext == ".json")
@@ -477,6 +478,7 @@ namespace CastleBuilder
                                 physics.Size = modelComp.Model.GetBoundingSize();
                                 physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
                                 physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
+                                physics.RebuildShape(modelComp.Model);
                             }
                         }
                     }
@@ -484,7 +486,9 @@ namespace CastleBuilder
                     {
                         Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
                         Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.Position);
-                        Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
+                        // Per-model unit conversion: Blender (metres) uses 1.0, Unity/Unreal (cm) uses 0.01.
+                        float unitScale = fbxModel.UnitToMeters;
+                        Matrix4x4 scaleMat = Matrix4x4.CreateScale(unitScale * physics.Scale);
                         Matrix4x4 modelMatrix = scaleMat * rotation * translation;
                         _modelRenderer.RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix);
                     }

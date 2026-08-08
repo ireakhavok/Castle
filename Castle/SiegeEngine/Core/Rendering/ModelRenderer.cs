@@ -35,8 +35,9 @@ namespace SiegeEngine.Core.Rendering
             {
                 modelComp.Model = fbxModel;
                 Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
-                Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.Position);
-                Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
+                Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.RenderPosition);
+                float unitScale = fbxModel != null ? fbxModel.UnitToMeters : 0.01f;
+                Matrix4x4 scaleMat = Matrix4x4.CreateScale(unitScale * physics.Scale);
                 Matrix4x4 modelMatrix = scaleMat * rotation * translation;
                 // Pass live skinning matrices when AnimationSystem has produced them
                 Matrix4x4[] boneMatrices = modelComp.BoneMatrices;
@@ -61,8 +62,9 @@ namespace SiegeEngine.Core.Rendering
                 modelComp.Model = fbxModel;
             }
             Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
-            Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.Position);
-            Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
+            Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.RenderPosition);
+            float unitScale = fbxModel != null ? fbxModel.UnitToMeters : 0.01f;
+            Matrix4x4 scaleMat = Matrix4x4.CreateScale(unitScale * physics.Scale);
             Matrix4x4 modelMatrix = scaleMat * rotation * translation;
             _renderContext.Enable(_renderContext.Enums.CullFace);
             _renderContext.CullFace(_renderContext.Enums.Back);
@@ -103,9 +105,13 @@ namespace SiegeEngine.Core.Rendering
             {
                 shader.SetUniform("uHasBones", 0);
             }
+            // Own complete GL state so result is independent of prior TerrainRenderer / skybox / UI state.
+            // TerrainRenderer.RenderTerrain leaves CullFace enabled; without this disable the pure-client
+            // wall front-face is culled while the editor path remains visible.
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.DepthMask(true);
             _renderContext.Disable(_renderContext.Enums.Blend);
+            _renderContext.Disable(_renderContext.Enums.CullFace);
             _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
             foreach (var mmr in modelData.MeshRenders)
             {

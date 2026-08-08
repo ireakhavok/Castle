@@ -67,8 +67,9 @@ namespace SiegeEngine.Core.Definitions
             var entity = new Entity { Id = 0, Type = type };
             var physics = new PhysicsComponent();
             physics.Position = position;
-            physics.Rotation = rotation;
-            if (scale != default) physics.Scale = scale;
+            // default(Quaternion) is (0,0,0,0) which is NOT Identity and becomes NaN after Normalize
+            physics.Rotation = rotation == default ? Quaternion.Identity : Quaternion.Normalize(rotation);
+            physics.Scale = scale == default ? Vector3.One : scale;
             entity.AddComponent(physics);
 
             var modelComp = entity.GetComponent<ModelComponent>();

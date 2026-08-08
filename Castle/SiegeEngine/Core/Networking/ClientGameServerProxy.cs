@@ -39,12 +39,9 @@ namespace SiegeEngine.Core.Networking
         {
             if (entity == null) return;
 
-            // FIXED: fully idempotent — if ID already exists, update the existing entity in place
-            // This prevents the sync path from ever adding a duplicate
             var existing = _entities.Find(e => e.Id == entity.Id && entity.Id > 0);
             if (existing != null)
             {
-                // Update in-place (keeps references and prevents double-add)
                 existing.Type = entity.Type;
 
                 var existingPhysics = existing.GetComponent<PhysicsComponent>();
@@ -52,12 +49,30 @@ namespace SiegeEngine.Core.Networking
                 if (existingPhysics != null && newPhysics != null)
                 {
                     existingPhysics.Position = newPhysics.Position;
-                    existingPhysics.Rotation = newPhysics.Rotation;
+                    existingPhysics.Rotation = Entity.SanitizeRotation(newPhysics.Rotation);
                     existingPhysics.Scale = newPhysics.Scale;
                     existingPhysics.Size = newPhysics.Size;
                     existingPhysics.LocalBoundsMinCm = newPhysics.LocalBoundsMinCm;
                     existingPhysics.LocalBoundsMaxCm = newPhysics.LocalBoundsMaxCm;
                     existingPhysics.Velocity = newPhysics.Velocity;
+                    existingPhysics.BodyType = newPhysics.BodyType;
+                    existingPhysics.AngularVelocity = newPhysics.AngularVelocity;
+                    existingPhysics.LinearDamping = newPhysics.LinearDamping;
+                    existingPhysics.AngularDamping = newPhysics.AngularDamping;
+                    existingPhysics.Friction = newPhysics.Friction;
+                    existingPhysics.Restitution = newPhysics.Restitution;
+                    existingPhysics.IsSleeping = newPhysics.IsSleeping;
+                    existingPhysics.IslandId = newPhysics.IslandId;
+                    existingPhysics.SleepThreshold = newPhysics.SleepThreshold;
+                    existingPhysics.SleepTimer = newPhysics.SleepTimer;
+                    existingPhysics.Mass = newPhysics.Mass;
+                    existingPhysics.Health = newPhysics.Health;
+                    existingPhysics.IsBreakable = newPhysics.IsBreakable;
+                    existingPhysics.IsVisible = newPhysics.IsVisible;
+
+                    existingPhysics.InvalidateShape();
+                    var model = (existing.GetComponent<ModelComponent>() ?? entity.GetComponent<ModelComponent>())?.Model;
+                    existingPhysics.RebuildShape(model);
                 }
 
                 var existingModel = existing.GetComponent<ModelComponent>();
@@ -68,7 +83,6 @@ namespace SiegeEngine.Core.Networking
                     existingModel.Model = newModel.Model;
                 }
 
-                // Preserve BlendedAnimationComponent if the incoming entity carries one
                 var existingBlend = existing.GetComponent<BlendedAnimationComponent>();
                 var newBlend = entity.GetComponent<BlendedAnimationComponent>();
                 if (existingBlend == null && newBlend != null)
@@ -80,7 +94,6 @@ namespace SiegeEngine.Core.Networking
                 return;
             }
 
-            // New entity path
             bool isDuplicate = _entities.Any(e => e.Id == entity.Id && entity.Id > 0);
             if (entity.Id <= 0 || isDuplicate)
             {
@@ -90,6 +103,11 @@ namespace SiegeEngine.Core.Networking
             {
                 _nextEntityId = Math.Max(_nextEntityId, entity.Id + 1);
             }
+
+            var physics = entity.GetComponent<PhysicsComponent>();
+            if (physics != null)
+                physics.Rotation = Entity.SanitizeRotation(physics.Rotation);
+
             _entities.Add(entity);
             _eventBus.Publish(new EntityAddedEvent(entity), true);
         }
@@ -99,6 +117,9 @@ namespace SiegeEngine.Core.Networking
             var entity = _entities.Find(e => e.Id == id);
             if (entity != null)
             {
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (physics != null)
+                    _physicsWorld.UnregisterBody(physics);
                 _entities.Remove(entity);
                 _eventBus.Publish(new EntityRemovedEvent(id), true);
             }
@@ -106,12 +127,12 @@ namespace SiegeEngine.Core.Networking
 
         public void ClearEntities()
         {
-            // FIXED: Authoritative clear for editor scene reloads — publish removal events so UI/Outliner stays in sync
             var idsToRemove = _entities.Select(e => e.Id).ToList();
             foreach (var id in idsToRemove)
             {
                 _eventBus.Publish(new EntityRemovedEvent(id), true);
             }
+            _physicsWorld.ClearBodies();
             _entities.Clear();
         }
 

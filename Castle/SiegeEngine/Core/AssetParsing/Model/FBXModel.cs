@@ -7,7 +7,6 @@ using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
-
 namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class FBXModel
@@ -19,24 +18,27 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public bool HasRestPose { get; set; }
         public bool AutoCorrected { get; set; } = false;
 
-        // NEW: exact local-space AABB in FBX cm units (computed once from vertices)
-        // Used by PhysicsComponent.RayIntersects to eliminate centering assumption for walls/prefabs
+        /// <summary>
+        /// Conversion factor from the numbers stored in the vertex buffers to metres.
+        /// Default 0.01 = classic Unity/Unreal centimetre convention.
+        /// Set to 1.0 for Blender exports that already write metres (UnitScaleFactor == 1).
+        /// </summary>
+        public float UnitToMeters { get; set; } = 0.01f;
+
+        // Local-space AABB in METRES (already multiplied by UnitToMeters).
+        // Name retained for compatibility.
         public Vector3 LocalBoundsMinCm { get; set; } = new Vector3(float.MaxValue);
         public Vector3 LocalBoundsMaxCm { get; set; } = new Vector3(float.MinValue);
 
         /// <summary>
-        /// Computes the world-space bounding size in METERS from all vertex positions.
-        /// FBX files are exported in CENTIMETERS (standard convention). The 0.01f multiplier
-        /// exactly matches the render scale used in SceneEditorPanel.RenderInnerContent
-        /// (cm → m conversion). This guarantees the PhysicsComponent.Size AABB matches
-        /// the visual geometry for raycast selection.
+        /// Returns the axis-aligned bounding size in METRES.
+        /// Applies UnitToMeters once so every consumer receives consistent units.
         /// </summary>
         public Vector3 GetBoundingSize()
         {
             Vector3 min = new Vector3(float.MaxValue);
             Vector3 max = new Vector3(float.MinValue);
             bool hasVertices = false;
-
             foreach (var mesh in Meshes)
             {
                 foreach (var vertex in mesh.Vertices)
@@ -46,19 +48,16 @@ namespace SiegeEngine.Core.AssetParsing.Model
                     max = Vector3.Max(max, vertex.Position);
                 }
             }
-
             if (!hasVertices)
             {
                 LocalBoundsMinCm = Vector3.Zero;
                 LocalBoundsMaxCm = Vector3.Zero;
-                return new Vector3(1f); // safe fallback if model has no geometry
+                return new Vector3(1f);
             }
-
-            LocalBoundsMinCm = min;
-            LocalBoundsMaxCm = max;
-
-            Vector3 localSizeCm = max - min;
-            return localSizeCm * 0.01f; // convert cm → meters
+            // Convert to metres once
+            LocalBoundsMinCm = min * UnitToMeters;
+            LocalBoundsMaxCm = max * UnitToMeters;
+            return (max - min) * UnitToMeters;
         }
     }
 }
