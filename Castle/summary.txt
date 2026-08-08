@@ -2742,11 +2742,14 @@ Folder: SiegeEngine
         - Calls: _bodies.Clear
       - void SnapToGround(PhysicsComponent body)
       - void Step(float deltaTime)
-        - Calls: DetectAndResolveContacts, Integrate
+        - Calls: DetectAndResolveContacts, Integrate, UpdateSleeping
       - void Integrate(float dt)
-        - Calls: Console.WriteLine
       - void DetectAndResolveContacts(float dt)
-        - Calls: CapsuleVsHeightfield, Console.WriteLine, GenerateManifold, ObbVsHeightfield, ResolveManifold, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
+        - Calls: CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, ResolveVelocity, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
+      - void ResolveVelocity(ContactManifold m)
+        - Calls: a.ApplyInvInertiaWorld, b.ApplyInvInertiaWorld
+      - void ProjectPositions()
+      - void UpdateSleeping(float dt)
       - ContactManifold GenerateManifold( PhysicsComponent b, PhysicsComponent a)
         - Calls: CapsuleVsCapsule, CapsuleVsObb, CapsuleVsTriangleMesh, ObbVsMeshAabb, ObbVsObb
       - void CapsuleVsCapsule(
@@ -2770,7 +2773,6 @@ Folder: SiegeEngine
       - void ObbVsMeshAabb(
             TriangleMeshShape mesh,  ContactManifold manifold,  PhysicsComponent meshBody,  PhysicsComponent obbBody, ObbShape obb)
         - Calls: ClosestPointOnAabb, manifold.Add, mesh.GetAabb
-      - void ResolveManifold( float dt, ContactManifold m)
       - Vector3 ClosestPointOnObb( ObbShape obb,  Quaternion rotation,  Vector3 position, Vector3 point)
       - Vector3 ClosestPointOnAabb( Vector3 centre,  Vector3 halfExtents, Vector3 point)
       - Vector3 ClosestPointOnTriangle( Vector3 a,  Vector3 b,  Vector3 c, Vector3 p)
@@ -2835,11 +2837,11 @@ Folder: SiegeEngine
       - constructor PlayerMovement( ClientPredictionSystem predictionSystem,  EventBus eventBus = null, InputHandler inputHandler)
         - Calls: _inputHandler.SetKeyCallback
       - void OnKeyInput( InputAction action, Key key)
-        - Calls: Console.WriteLine, _activeKeys.Add, _activeKeys.Remove
+        - Calls: _activeKeys.Add, _activeKeys.Remove
       - void OnNetworkKeyInput(KeyInputEvent e)
-        - Calls: Console.WriteLine, _activeKeys.Add, _activeKeys.Remove
+        - Calls: _activeKeys.Add, _activeKeys.Remove
       - void Update( CameraController camera,  Quaternion> sendMovementRequest,  float deltaTime, Player player)
-        - Calls: Console.WriteLine, _predictionSystem.EnqueueMovementRequest, player.BlendComponent.Pack.CreateBlendStack, stack.MapPlayerInputToBlendCoord
+        - Calls: _predictionSystem.EnqueueMovementRequest, player.BlendComponent.Pack.CreateBlendStack, stack.MapPlayerInputToBlendCoord
       - void ResetFrame()
 - File: PointShader.cs
   - Class: PointShader (Namespace: SiegeEngine.Core.Rendering.Shaders)

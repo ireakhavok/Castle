@@ -1534,10 +1534,14 @@ Folder: Core
         - Calls: _bodies.Clear
       - void SnapToGround(PhysicsComponent body)
       - void Step(float deltaTime)
-        - Calls: DetectAndResolveContacts, Integrate
+        - Calls: DetectAndResolveContacts, Integrate, UpdateSleeping
       - void Integrate(float dt)
       - void DetectAndResolveContacts(float dt)
-        - Calls: CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ResolveManifold, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
+        - Calls: CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, ResolveVelocity, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
+      - void ResolveVelocity(ContactManifold m)
+        - Calls: a.ApplyInvInertiaWorld, b.ApplyInvInertiaWorld
+      - void ProjectPositions()
+      - void UpdateSleeping(float dt)
       - ContactManifold GenerateManifold( PhysicsComponent b, PhysicsComponent a)
         - Calls: CapsuleVsCapsule, CapsuleVsObb, CapsuleVsTriangleMesh, ObbVsMeshAabb, ObbVsObb
       - void CapsuleVsCapsule(
@@ -1561,7 +1565,6 @@ Folder: Core
       - void ObbVsMeshAabb(
             TriangleMeshShape mesh,  ContactManifold manifold,  PhysicsComponent meshBody,  PhysicsComponent obbBody, ObbShape obb)
         - Calls: ClosestPointOnAabb, manifold.Add, mesh.GetAabb
-      - void ResolveManifold( float dt, ContactManifold m)
       - Vector3 ClosestPointOnObb( ObbShape obb,  Quaternion rotation,  Vector3 position, Vector3 point)
       - Vector3 ClosestPointOnAabb( Vector3 centre,  Vector3 halfExtents, Vector3 point)
       - Vector3 ClosestPointOnTriangle( Vector3 a,  Vector3 b,  Vector3 c, Vector3 p)
