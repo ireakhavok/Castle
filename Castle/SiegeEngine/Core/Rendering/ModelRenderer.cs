@@ -36,7 +36,8 @@ namespace SiegeEngine.Core.Rendering
                 modelComp.Model = fbxModel;
                 Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
                 Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.RenderPosition);
-                Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
+                float unitScale = fbxModel != null ? fbxModel.UnitToMeters : 0.01f;
+                Matrix4x4 scaleMat = Matrix4x4.CreateScale(unitScale * physics.Scale);
                 Matrix4x4 modelMatrix = scaleMat * rotation * translation;
                 // Pass live skinning matrices when AnimationSystem has produced them
                 Matrix4x4[] boneMatrices = modelComp.BoneMatrices;
@@ -62,7 +63,8 @@ namespace SiegeEngine.Core.Rendering
             }
             Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
             Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.RenderPosition);
-            Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
+            float unitScale = fbxModel != null ? fbxModel.UnitToMeters : 0.01f;
+            Matrix4x4 scaleMat = Matrix4x4.CreateScale(unitScale * physics.Scale);
             Matrix4x4 modelMatrix = scaleMat * rotation * translation;
             _renderContext.Enable(_renderContext.Enums.CullFace);
             _renderContext.CullFace(_renderContext.Enums.Back);
