@@ -89,6 +89,8 @@ namespace SiegeEngine.Core.Definitions
                 }
             }
         }
+        // Local-space AABB in METRES (already converted by FBXModel.GetBoundingSize / UnitToMeters).
+        // Name retained for binary compatibility.
         public Vector3 LocalBoundsMinCm { get; set; } = new Vector3(float.MaxValue);
         public Vector3 LocalBoundsMaxCm { get; set; } = new Vector3(float.MinValue);
         public BodyType BodyType { get; set; } = BodyType.Static;
@@ -102,41 +104,14 @@ namespace SiegeEngine.Core.Definitions
         public float SleepThreshold { get; set; } = 0.05f;
         public float SleepTimer { get; set; } = 0f;
         public bool CollisionEnabled { get; set; } = true;
-        /// <summary>
-        /// True when a supporting contact (heightfield or static) with normal within SlopeLimitDegrees was present last physics step.
-        /// Used by kinematic Integrate to suppress gravity and residual downward velocity.
-        /// </summary>
         public bool IsGrounded { get; set; } = false;
-        /// <summary>
-        /// Maximum surface angle (degrees from vertical) that still counts as ground for IsGrounded and character response.
-        /// </summary>
         public float SlopeLimitDegrees { get; set; } = 50f;
-        /// <summary>
-        /// Maximum vertical step the kinematic capsule can climb without explicit step-up logic (Phase-1 foundation).
-        /// </summary>
         public float StepHeight { get; set; } = 0.35f;
-        /// <summary>
-        /// Visual-only sample that accounts for fixed-timestep residual time.
-        /// Authoritative Position remains discrete; RenderPosition is written by PhysicsWorld after Step.
-        /// </summary>
         public Vector3 RenderPosition { get; set; }
-        /// <summary>
-        /// Local-space centre of mass relative to Position (metres).
-        /// </summary>
         public Vector3 LocalCentreOfMass { get; set; } = Vector3.Zero;
-        /// <summary>
-        /// Inverse mass. Zero for Static (and pure kinematic scenery that should not respond to forces).
-        /// </summary>
         public float InvMass { get; private set; }
-        /// <summary>
-        /// Diagonal inverse inertia tensor in local space (principal axes).
-        /// </summary>
         public Vector3 InvInertiaLocal { get; private set; } = Vector3.Zero;
         public ColliderShape Shape { get; private set; }
-        /// <summary>
-        /// Clears the cached collider so the next RebuildShape / physics step
-        /// rebuilds from the current Size / LocalBounds / BodyType.
-        /// </summary>
         public void InvalidateShape()
         {
             Shape = null;
@@ -147,8 +122,6 @@ namespace SiegeEngine.Core.Definitions
             {
                 case BodyType.Kinematic:
                     {
-                        // Player path calls RebuildShape(null) with no authored bounds → fixed capsule.
-                        // Kinematic props (walls, platforms) have LocalBounds from the FBX → OBB of actual size.
                         if (model != null || HasValidLocalBounds())
                         {
                             BuildObbFromActualBounds();
@@ -184,7 +157,8 @@ namespace SiegeEngine.Core.Definitions
         {
             return LocalBoundsMinCm.X <= LocalBoundsMaxCm.X
                 && LocalBoundsMinCm.Y <= LocalBoundsMaxCm.Y
-                && LocalBoundsMinCm.Z <= LocalBoundsMaxCm.Z;
+                && LocalBoundsMinCm.Z <= LocalBoundsMaxCm.Z
+                && !float.IsInfinity(LocalBoundsMinCm.X) && !float.IsInfinity(LocalBoundsMaxCm.X);
         }
         private void BuildObbFromActualBounds()
         {
@@ -192,11 +166,10 @@ namespace SiegeEngine.Core.Definitions
             Vector3 centerOffset = Vector3.Zero;
             if (HasValidLocalBounds())
             {
-                // LocalBounds are centimetres. Convert to metres.
-                Vector3 sizeM = (LocalBoundsMaxCm - LocalBoundsMinCm) * 0.01f;
+                // LocalBounds are already in metres (UnitToMeters applied once in GetBoundingSize).
+                Vector3 sizeM = LocalBoundsMaxCm - LocalBoundsMinCm;
                 half = sizeM * 0.5f;
-                // Geometric centre of the authored AABB relative to the mesh origin (metres).
-                centerOffset = (LocalBoundsMinCm + LocalBoundsMaxCm) * 0.005f;
+                centerOffset = (LocalBoundsMinCm + LocalBoundsMaxCm) * 0.5f;
             }
             else
             {
@@ -204,10 +177,6 @@ namespace SiegeEngine.Core.Definitions
             }
             Shape = new ObbShape(half, centerOffset);
         }
-        /// <summary>
-        /// Recomputes InvMass, LocalCentreOfMass and InvInertiaLocal from current BodyType, Mass and Shape.
-        /// Safe to call after any change to those fields.
-        /// </summary>
         public void RecomputeMassProperties()
         {
             if (BodyType == BodyType.Static)
@@ -220,17 +189,13 @@ namespace SiegeEngine.Core.Definitions
             InvMass = 1f / MathF.Max(0.001f, _mass);
             if (Shape is CapsuleShape cap)
             {
-                // CoM at geometric centre of the vertical capsule (feet remain at Position).
                 LocalCentreOfMass = new Vector3(0f, 0f, cap.Height * 0.5f);
-                // Phase-1 character controller: no torque response for the vertical capsule.
-                // Props that use Capsule later can be given inertia in a future pass.
                 if (BodyType == BodyType.Kinematic)
                 {
                     InvInertiaLocal = Vector3.Zero;
                 }
                 else
                 {
-                    // Dynamic capsule – treat as bounding box for inertia.
                     float hx = cap.Radius * 2f;
                     float hy = cap.Radius * 2f;
                     float hz = cap.Height;
@@ -247,14 +212,12 @@ namespace SiegeEngine.Core.Definitions
             }
             else
             {
-                // TriangleMesh or unknown – treat as static-like for inertia.
                 LocalCentreOfMass = Vector3.Zero;
                 InvInertiaLocal = Vector3.Zero;
             }
         }
         private static Vector3 ComputeBoxInvInertia(float mass, float hx, float hy, float hz)
         {
-            // Ixx = (1/12) m (hy² + hz²), etc.
             float ixx = mass * (hy * hy + hz * hz) / 12f;
             float iyy = mass * (hx * hx + hz * hz) / 12f;
             float izz = mass * (hx * hx + hy * hy) / 12f;
@@ -263,9 +226,6 @@ namespace SiegeEngine.Core.Definitions
                 iyy > 1e-8f ? 1f / iyy : 0f,
                 izz > 1e-8f ? 1f / izz : 0f);
         }
-        /// <summary>
-        /// World-space centre of mass.
-        /// </summary>
         public Vector3 WorldCentreOfMass
         {
             get
@@ -275,14 +235,10 @@ namespace SiegeEngine.Core.Definitions
                 return Position + Vector3.Transform(LocalCentreOfMass, Rotation);
             }
         }
-        /// <summary>
-        /// Applies the local diagonal inverse inertia to a world-space torque vector.
-        /// </summary>
         public Vector3 ApplyInvInertiaWorld(Vector3 worldTorque)
         {
             if (InvInertiaLocal == Vector3.Zero)
                 return Vector3.Zero;
-            // Rotate into local, scale, rotate back.
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(Rotation);
             Matrix4x4.Invert(rot, out Matrix4x4 invRot);
             Vector3 local = Vector3.TransformNormal(worldTorque, invRot);
@@ -313,7 +269,8 @@ namespace SiegeEngine.Core.Definitions
                 }
                 return false;
             }
-            Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
+            // Fallback AABB path – LocalBounds / Size are already in metres.
+            Matrix4x4 scaleMat = Matrix4x4.CreateScale(Scale);
             Matrix4x4 rotMat = Matrix4x4.CreateFromQuaternion(Rotation);
             Matrix4x4 transMat = Matrix4x4.CreateTranslation(Position);
             Matrix4x4 modelMat = scaleMat * rotMat * transMat;
@@ -330,7 +287,7 @@ namespace SiegeEngine.Core.Definitions
             }
             else
             {
-                Vector3 localHalfExtents = Size * 50f;
+                Vector3 localHalfExtents = Size * 0.5f;
                 boxMin = -localHalfExtents;
                 boxMax = localHalfExtents;
             }
@@ -354,12 +311,15 @@ namespace SiegeEngine.Core.Definitions
                     if (tmin > tmax) return false;
                 }
             }
-            distance = tmin * 0.01f;
+            distance = tmin;
             hitPoint = rayOrigin + rayDir * distance;
             return true;
         }
         public object ToSerializableData()
         {
+            // Never emit float.MaxValue / float.MinValue – System.Text.Json rejects them.
+            Vector3 safeMin = HasValidLocalBounds() ? LocalBoundsMinCm : Vector3.Zero;
+            Vector3 safeMax = HasValidLocalBounds() ? LocalBoundsMaxCm : Vector3.Zero;
             return new PhysicsComponentData
             {
                 Position = Position,
@@ -370,8 +330,8 @@ namespace SiegeEngine.Core.Definitions
                 Health = Health,
                 IsBreakable = IsBreakable,
                 IsBroken = IsBroken,
-                LocalBoundsMinCm = LocalBoundsMinCm,
-                LocalBoundsMaxCm = LocalBoundsMaxCm,
+                LocalBoundsMinCm = safeMin,
+                LocalBoundsMaxCm = safeMax,
                 Velocity = Velocity,
                 BodyType = (int)BodyType,
                 AngularVelocity = AngularVelocity,
@@ -493,12 +453,10 @@ namespace SiegeEngine.Core.Definitions
             SlopeLimitDegrees = slopeLimitDegrees;
             StepHeight = stepHeight;
             LocalCentreOfMass = localCentreOfMass;
-            // Recompute after shape is known; values from payload are used as seed if shape not yet rebuilt.
             InvMass = invMass;
             InvInertiaLocal = invInertiaLocal;
             Shape = null;
             RenderPosition = position;
-            // Ensure consistent mass properties once shape is rebuilt later.
             if (Shape != null)
                 RecomputeMassProperties();
         }

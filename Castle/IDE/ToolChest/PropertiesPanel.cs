@@ -18,7 +18,6 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI.Elements;
 using SiegeEngine.Core.Physics;
-
 namespace ToolChest
 {
     public class PropertiesPanel : BasePanel, IDataAwarePanel
@@ -67,10 +66,8 @@ namespace ToolChest
                 return false;
             }
         }
-
         private object _currentTarget;
         private string _activeSceneSettingsName;
-
         public PropertiesPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -84,24 +81,20 @@ namespace ToolChest
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new PropertiesUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             LoadPropertiesUI();
         }
-
         public void FlushLiveSettings()
         {
             FlushSceneSettingsFromUI();
         }
-
         private void OnGenericEvent(GenericEvent e)
         {
             if (e.Hook == "OutlinerSelectionChanged")
@@ -125,7 +118,6 @@ namespace ToolChest
                 FlushSceneSettingsFromUI();
             }
         }
-
         private void OnEntitySelected(EntitySelectedEvent e)
         {
             if (e.SelectedEntityIds.Count > 0)
@@ -135,7 +127,6 @@ namespace ToolChest
             FlushSceneSettingsFromUI();
             RebuildPropertiesUI();
         }
-
         private void LoadPropertiesUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
@@ -146,7 +137,6 @@ namespace ToolChest
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         private void RebuildPropertiesUI()
         {
             FlushSceneSettingsFromUI();
@@ -162,7 +152,6 @@ namespace ToolChest
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         private void FlushSceneSettingsFromUI()
         {
             if (_uiOverlay == null || string.IsNullOrEmpty(_activeSceneSettingsName)) return;
@@ -198,13 +187,11 @@ namespace ToolChest
             ProjectSettings.Current.SetSceneSettings(_activeSceneSettingsName, settings);
             Console.WriteLine($"[PropertiesPanel] Flushed Scene Settings for '{_activeSceneSettingsName}': Avatar={settings.AvatarPackKey}, Animation={settings.AnimationPackKey}, Controller={settings.ControllerTypeName}, Camera={settings.CameraMode}, Spawns=[{string.Join(",", settings.PreferredSpawnPointIds ?? new List<int>())}]");
         }
-
         private string BuildPropertiesHtml(object obj)
         {
             if (obj == null) return "";
             var sb = new StringBuilder();
             var type = obj.GetType();
-
             sb.Append("<details open><summary>General</summary>");
             sb.Append($"<div class=\"property-row\" data-context=\"object-type\"><div class=\"property-name\">Type</div><input type=\"text\" value=\"{type.Name}\" readonly></div>");
             if (obj is Entity entity)
@@ -212,7 +199,6 @@ namespace ToolChest
                 sb.Append($"<div class=\"property-row\" data-context=\"entity-id\"><div class=\"property-name\">ID</div><input type=\"text\" value=\"{entity.Id}\" readonly></div>");
             }
             sb.Append("</details>");
-
             if (obj is Level level)
             {
                 string sceneName = level.Name ?? ProjectSettings.Current.CurrentSceneName ?? "Main";
@@ -233,8 +219,6 @@ namespace ToolChest
             {
                 _activeSceneSettingsName = null;
             }
-
-            // === Entity: explicit sections only. Never recurse Components / Transform. ===
             if (obj is Entity ent)
             {
                 var physics = ent.GetComponent<PhysicsComponent>();
@@ -244,7 +228,6 @@ namespace ToolChest
                     AppendEditableProperties(sb, physics, ent.Id);
                     sb.Append("</details>");
                 }
-
                 var modelComp = ent.GetComponent<ModelComponent>();
                 if (modelComp != null)
                 {
@@ -279,17 +262,13 @@ namespace ToolChest
                     }
                     sb.Append("</details>");
                 }
-
                 return sb.ToString();
             }
-
-            // Non-entity objects: generic reflection
             sb.Append("<details open><summary>Properties</summary>");
             BuildObjectHtml(sb, obj, -1);
             sb.Append("</details>");
             return sb.ToString();
         }
-
         private void BuildObjectHtml(StringBuilder sb, object obj, int entityId)
         {
             if (obj == null) return;
@@ -350,7 +329,6 @@ namespace ToolChest
                 }
             }
         }
-
         private void AppendEditableProperties(StringBuilder sb, object obj, int entityId)
         {
             if (obj == null) return;
@@ -392,32 +370,24 @@ namespace ToolChest
                 }
             }
         }
-
         private void ApplyComponentPropertyChange(HtmlElement elem)
         {
             if (elem == null) return;
-
             SelectElement select = elem as SelectElement;
             if (select == null && elem.Tag == "option")
                 select = elem.Parent as SelectElement;
             if (select == null) return;
-
             string entityIdStr = select.Attributes.GetValueOrDefault("data-entityid", "-1");
             if (!int.TryParse(entityIdStr, out int entityId) || entityId <= 0) return;
-
             string componentName = select.Attributes.GetValueOrDefault("data-component", "");
             string propertyName = select.Attributes.GetValueOrDefault("data-property", "");
             if (string.IsNullOrEmpty(componentName) || string.IsNullOrEmpty(propertyName)) return;
-
             string newValue = select.Value;
             if (string.IsNullOrEmpty(newValue)) return;
-
             var level = ProjectSettings.Current.CurrentLevel;
             if (level == null) return;
-
             var entity = level.Entities.FirstOrDefault(e => e.Id == entityId);
             if (entity == null) return;
-
             object target = null;
             if (componentName == "PhysicsComponent" || componentName == "Physics")
             {
@@ -435,10 +405,8 @@ namespace ToolChest
                 }
             }
             if (target == null) return;
-
             var prop = target.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
             if (prop == null || !prop.CanWrite) return;
-
             try
             {
                 object converted = ConvertPropertyValue(prop.PropertyType, newValue);
@@ -446,6 +414,18 @@ namespace ToolChest
                 {
                     prop.SetValue(target, converted);
                     Console.WriteLine($"[PropertiesPanel] Applied {componentName}.{propertyName} = {newValue} on entity {entityId}");
+
+                    // Critical: BodyType / Mass / Size changes require a full shape + mass rebuild
+                    // so InvMass becomes non-zero and the body can fall / collide correctly.
+                    if (target is PhysicsComponent physics)
+                    {
+                        physics.IsSleeping = false;
+                        physics.SleepTimer = 0f;
+                        physics.InvalidateShape();
+                        var modelComp = entity.GetComponent<ModelComponent>();
+                        physics.RebuildShape(modelComp?.Model);
+                        Console.WriteLine($"[PropertiesPanel] Rebuilt physics shape/mass for entity {entityId} (BodyType={physics.BodyType}, InvMass={physics.InvMass})");
+                    }
                 }
             }
             catch (Exception ex)
@@ -453,7 +433,6 @@ namespace ToolChest
                 Console.WriteLine($"[PropertiesPanel] Failed to set {componentName}.{propertyName}: {ex.Message}");
             }
         }
-
         private static object ConvertPropertyValue(Type targetType, string raw)
         {
             if (targetType == typeof(string)) return raw;
@@ -504,7 +483,6 @@ namespace ToolChest
             }
             return null;
         }
-
         public void HandleDataHook(string hook)
         {
             Console.WriteLine($"[PropertiesPanel] HandleDataHook: {hook}");
@@ -514,7 +492,6 @@ namespace ToolChest
                 RebuildPropertiesUI();
                 return;
             }
-            // Do not rebuild on SetComponentProperty — option apply path handles it.
             if (hook == "SetComponentProperty")
             {
                 return;
@@ -526,13 +503,10 @@ namespace ToolChest
                 return;
             }
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
             if (elem == null) return;
-            // Only commit when an option was chosen. Select open/close is left alone.
             if (elem.Tag != "option") return;
-
             var select = elem.Parent as SelectElement;
             if (select != null && select.Attributes.GetValueOrDefault("data-hook", "") == "SetComponentProperty")
             {
@@ -540,13 +514,11 @@ namespace ToolChest
                 RebuildPropertiesUI();
             }
         }
-
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new PropertiesPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Overlay });
         }
-
         public string DataKey => "PropertiesPanel";
         public JsonElement SavePanelState()
         {
