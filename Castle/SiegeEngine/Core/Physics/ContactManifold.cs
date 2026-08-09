@@ -10,6 +10,8 @@ namespace SiegeEngine.Core.Physics
         public Vector3 Position;
         public Vector3 Normal;      // points from bodyB toward bodyA
         public float Penetration;
+        public float Friction;
+        public float Restitution;
     }
 
     public class ContactManifold
