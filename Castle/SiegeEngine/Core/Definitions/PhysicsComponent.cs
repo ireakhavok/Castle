@@ -14,7 +14,6 @@ namespace SiegeEngine.Core.Definitions
         private float _health = 100f;
         private readonly TransformComponent _transform;
 
-        // Force / torque accumulators (cleared after each Integrate)
         private Vector3 _forceAccum;
         private Vector3 _torqueAccum;
 
@@ -31,7 +30,7 @@ namespace SiegeEngine.Core.Definitions
             AngularVelocity = Vector3.Zero;
             LinearDamping = 0.05f;
             AngularDamping = 0.05f;
-            Friction = 0.5f;
+            Friction = 1.8f;          // high sliding friction
             Restitution = 0.0f;
             IsSleeping = false;
             IslandId = -1;
@@ -100,9 +99,7 @@ namespace SiegeEngine.Core.Definitions
                     throw new ArgumentException("Health cannot be negative.", nameof(value));
                 _health = value;
                 if (_health <= 0 && IsBreakable)
-                {
                     IsBroken = true;
-                }
             }
         }
 
@@ -113,7 +110,7 @@ namespace SiegeEngine.Core.Definitions
         public Vector3 AngularVelocity { get; set; } = Vector3.Zero;
         public float LinearDamping { get; set; } = 0.05f;
         public float AngularDamping { get; set; } = 0.05f;
-        public float Friction { get; set; } = 0.5f;
+        public float Friction { get; set; } = 1.8f;
         public float Restitution { get; set; } = 0.0f;
         public bool IsSleeping { get; set; } = false;
         public int IslandId { get; set; } = -1;
@@ -128,10 +125,6 @@ namespace SiegeEngine.Core.Definitions
         public float InvMass { get; private set; }
         public Vector3 InvInertiaLocal { get; private set; } = Vector3.Zero;
         public ColliderShape Shape { get; private set; }
-
-        // ------------------------------------------------------------------
-        // Force / torque interface (F = ma foundation)
-        // ------------------------------------------------------------------
 
         public void ApplyForce(Vector3 force)
         {
@@ -159,30 +152,20 @@ namespace SiegeEngine.Core.Definitions
             _torqueAccum = Vector3.Zero;
         }
 
-        /// <summary>
-        /// Pure Newtonian integration. Velocity is never written from outside for Dynamic bodies.
-        /// Kinematic bodies simply advance position from the velocity that the controller already set.
-        /// Static bodies do nothing.
-        /// </summary>
         public void Integrate(float dt)
         {
             if (BodyType == BodyType.Static || IsSleeping) return;
 
             if (BodyType == BodyType.Kinematic)
             {
-                // Controller (PlayerMovement) already wrote Velocity and Rotation.
-                // We only advance position. Contact residual is handled by the World.
                 Position += Velocity * dt;
                 return;
             }
 
-            // Dynamic — pure F = ma
             if (InvMass > 0f)
             {
-                // Linear damping as a force opposing velocity
                 Vector3 dampingForce = -Velocity * (LinearDamping * Mass);
                 _forceAccum += dampingForce;
-
                 Vector3 acceleration = _forceAccum * InvMass;
                 Velocity += acceleration * dt;
                 Position += Velocity * dt;
@@ -192,10 +175,8 @@ namespace SiegeEngine.Core.Definitions
             {
                 Vector3 dampingTorque = -AngularVelocity * AngularDamping;
                 _torqueAccum += dampingTorque;
-
                 Vector3 angularAccel = ApplyInvInertiaWorld(_torqueAccum);
                 AngularVelocity += angularAccel * dt;
-
                 if (AngularVelocity.LengthSquared() > 1e-12f)
                 {
                     Quaternion omegaQ = new Quaternion(AngularVelocity.X, AngularVelocity.Y, AngularVelocity.Z, 0f);
@@ -217,35 +198,22 @@ namespace SiegeEngine.Core.Definitions
             switch (BodyType)
             {
                 case BodyType.Kinematic:
-                    {
-                        if (model != null || HasValidLocalBounds())
-                        {
-                            BuildObbFromActualBounds();
-                        }
-                        else
-                        {
-                            Shape = new CapsuleShape(0.4f, 1.8f);
-                        }
-                        break;
-                    }
+                    // Characters are always a vertical capsule. Mesh bounds must never
+                    // turn a kinematic controller into an Obb.
+                    Shape = new CapsuleShape(0.4f, 1.8f);
+                    break;
+
                 case BodyType.Dynamic:
-                    {
-                        BuildObbFromActualBounds();
-                        break;
-                    }
+                    BuildObbFromActualBounds();
+                    break;
+
                 case BodyType.Static:
                 default:
-                    {
-                        if (model != null && model.Meshes != null && model.Meshes.Count > 0)
-                        {
-                            Shape = new TriangleMeshShape(model);
-                        }
-                        else
-                        {
-                            BuildObbFromActualBounds();
-                        }
-                        break;
-                    }
+                    if (model != null && model.Meshes != null && model.Meshes.Count > 0)
+                        Shape = new TriangleMeshShape(model);
+                    else
+                        BuildObbFromActualBounds();
+                    break;
             }
             RecomputeMassProperties();
         }
@@ -291,9 +259,7 @@ namespace SiegeEngine.Core.Definitions
             {
                 LocalCentreOfMass = new Vector3(0f, 0f, cap.Height * 0.5f);
                 if (BodyType == BodyType.Kinematic)
-                {
                     InvInertiaLocal = Vector3.Zero;
-                }
                 else
                 {
                     float hx = cap.Radius * 2f;
@@ -304,7 +270,6 @@ namespace SiegeEngine.Core.Definitions
             }
             else if (Shape is ObbShape obb)
             {
-                // Geometric centre of the box relative to the body's Position
                 LocalCentreOfMass = obb.CenterOffset;
                 float hx = obb.HalfExtents.X * 2f;
                 float hy = obb.HalfExtents.Y * 2f;
@@ -356,9 +321,7 @@ namespace SiegeEngine.Core.Definitions
         public void Break()
         {
             if (IsBreakable && _health <= 0)
-            {
                 IsBroken = true;
-            }
         }
 
         public bool RayIntersects(Vector3 rayOrigin, Vector3 rayDir, out float distance, out Vector3 hitPoint)
