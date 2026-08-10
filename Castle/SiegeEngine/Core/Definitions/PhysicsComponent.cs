@@ -179,7 +179,10 @@ namespace SiegeEngine.Core.Definitions
             {
                 if (BodyType == BodyType.Dynamic)
                 {
-                    // Mesh defines the sphere. Vertices are already in metres inside TriangleMeshShape.
+                    // Mesh defines the sphere. Keep the original authored origin and
+                    // store the true centre of mass as CenterOffset so the renderer
+                    // (which already does Translate(-LocalCentreOfMass) * Rotate * Translate(WorldCoM))
+                    // and the physics integration stay consistent.
                     var tempMesh = new TriangleMeshShape(model);
                     Vector3 com = tempMesh.LocalCentreOfMass;
                     float radius = tempMesh.BoundingRadius;
@@ -222,26 +225,26 @@ namespace SiegeEngine.Core.Definitions
         }
         public void RecomputeMassProperties()
         {
-            if (BodyType == BodyType.Static)
+            // Static and Kinematic never participate in mass-weighted resolution against dynamics.
+            // Kinematic still receives one-sided correction against heightfield/static (handled in PhysicsWorld).
+            if (BodyType == BodyType.Static || BodyType == BodyType.Kinematic)
             {
                 InvMass = 0f;
                 InvInertiaLocal = Vector3.Zero;
-                LocalCentreOfMass = Vector3.Zero;
+                if (BodyType == BodyType.Static)
+                    LocalCentreOfMass = Vector3.Zero;
+                else if (Shape is CapsuleShape cap)
+                    LocalCentreOfMass = new Vector3(0f, 0f, cap.Height * 0.5f);
                 return;
             }
             InvMass = 1f / MathF.Max(0.001f, _mass);
-            if (Shape is CapsuleShape cap)
+            if (Shape is CapsuleShape capDyn)
             {
-                LocalCentreOfMass = new Vector3(0f, 0f, cap.Height * 0.5f);
-                if (BodyType == BodyType.Kinematic)
-                    InvInertiaLocal = Vector3.Zero;
-                else
-                {
-                    float hx = cap.Radius * 2f;
-                    float hy = cap.Radius * 2f;
-                    float hz = cap.Height;
-                    InvInertiaLocal = ComputeBoxInvInertia(_mass, hx, hy, hz);
-                }
+                LocalCentreOfMass = new Vector3(0f, 0f, capDyn.Height * 0.5f);
+                float hx = capDyn.Radius * 2f;
+                float hy = capDyn.Radius * 2f;
+                float hz = capDyn.Height;
+                InvInertiaLocal = ComputeBoxInvInertia(_mass, hx, hy, hz);
             }
             else if (Shape is SphereShape sphere)
             {

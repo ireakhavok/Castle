@@ -85,42 +85,47 @@ namespace SiegeEngine.Core.Physics
                 var body = _bodies[i];
                 if (body == null || body.IsSleeping || body.BodyType == BodyType.Static)
                     continue;
+
                 bool isCharacterCapsule = body.BodyType == BodyType.Kinematic && body.Shape is CapsuleShape;
+
                 body.Velocity *= MathF.Max(0f, 1f - body.LinearDamping * dt);
+
                 if (isCharacterCapsule)
                 {
                     body.AngularVelocity = Vector3.Zero;
-                }
-                else
-                {
-                    body.AngularVelocity *= MathF.Max(0f, 1f - body.AngularDamping * dt);
-                }
-                if (body.InvMass > 0f)
-                {
-                    if (isCharacterCapsule)
+                    if (body.IsGrounded)
                     {
-                        if (body.IsGrounded)
-                        {
-                            float vn = Vector3.Dot(body.Velocity, Vector3.UnitZ);
-                            if (vn < 0f)
-                                body.Velocity -= Vector3.UnitZ * vn;
-                        }
-                        else
-                        {
-                            body.Velocity += _gravity * dt;
-                        }
+                        float vn = Vector3.Dot(body.Velocity, Vector3.UnitZ);
+                        if (vn < 0f)
+                            body.Velocity -= Vector3.UnitZ * vn;
                     }
                     else
                     {
                         body.Velocity += _gravity * dt;
                     }
+                    // Character Position is the feet; integrate directly.
+                    body.Position += body.Velocity * dt;
                 }
-                body.Position += body.Velocity * dt;
-                if (!isCharacterCapsule && body.AngularVelocity.LengthSquared() > 1e-12f)
+                else
                 {
-                    Quaternion omegaQ = new Quaternion(body.AngularVelocity.X, body.AngularVelocity.Y, body.AngularVelocity.Z, 0f);
-                    Quaternion dq = Quaternion.Multiply(omegaQ, body.Rotation) * 0.5f;
-                    body.Rotation = Quaternion.Normalize(body.Rotation + dq * dt);
+                    if (body.InvMass > 0f)
+                        body.Velocity += _gravity * dt;
+
+                    // Proper rigid-body integration about the centre of mass.
+                    // Advance the CoM by linear velocity, apply angular update,
+                    // then back-solve Position so that WorldCentreOfMass is correct.
+                    Vector3 com = body.WorldCentreOfMass;
+                    com += body.Velocity * dt;
+
+                    if (body.AngularVelocity.LengthSquared() > 1e-12f)
+                    {
+                        Quaternion omegaQ = new Quaternion(body.AngularVelocity.X, body.AngularVelocity.Y, body.AngularVelocity.Z, 0f);
+                        Quaternion dq = Quaternion.Multiply(omegaQ, body.Rotation) * 0.5f;
+                        body.Rotation = Quaternion.Normalize(body.Rotation + dq * dt);
+                        body.AngularVelocity *= MathF.Max(0f, 1f - body.AngularDamping * dt);
+                    }
+
+                    body.Position = com - Vector3.Transform(body.LocalCentreOfMass, body.Rotation);
                 }
             }
         }
@@ -191,8 +196,16 @@ namespace SiegeEngine.Core.Physics
             float invMassA = a != null ? a.InvMass : 0f;
             float invMassB = b != null ? b.InvMass : 0f;
             float totalInvMass = invMassA + invMassB;
-            if (totalInvMass < 1e-8f && (a == null || a.InvInertiaLocal == Vector3.Zero) && (b == null || b.InvInertiaLocal == Vector3.Zero))
+
+            // One-sided response for kinematic vs heightfield / static
+            bool kinematicVsStatic = a != null && a.BodyType == BodyType.Kinematic
+                                  && (b == null || b.BodyType == BodyType.Static);
+
+            if (totalInvMass < 1e-8f && !kinematicVsStatic
+                && (a == null || a.InvInertiaLocal == Vector3.Zero)
+                && (b == null || b.InvInertiaLocal == Vector3.Zero))
                 return;
+
             for (int i = 0; i < m.PointCount; i++)
             {
                 var p = m.Points[i];
@@ -206,6 +219,14 @@ namespace SiegeEngine.Core.Physics
                 Vector3 relVel = velA - velB;
                 float velAlongNormal = Vector3.Dot(relVel, n);
                 if (velAlongNormal > 0f) continue;
+
+                if (kinematicVsStatic)
+                {
+                    // Cancel only the penetrating component on the kinematic body
+                    a.Velocity -= n * velAlongNormal;
+                    continue;
+                }
+
                 float angularEffA = 0f;
                 float angularEffB = 0f;
                 if (a != null && a.InvInertiaLocal != Vector3.Zero)
@@ -289,17 +310,31 @@ namespace SiegeEngine.Core.Physics
                 float invMassA = a != null ? a.InvMass : 0f;
                 float invMassB = b != null ? b.InvMass : 0f;
                 float totalInv = invMassA + invMassB;
-                if (totalInv < 1e-8f) continue;
+
+                bool kinematicVsStatic = a != null && a.BodyType == BodyType.Kinematic
+                                      && (b == null || b.BodyType == BodyType.Static);
+
+                if (totalInv < 1e-8f && !kinematicVsStatic) continue;
+
                 for (int i = 0; i < manifold.PointCount; i++)
                 {
                     var p = manifold.Points[i];
                     float depth = p.Penetration - numericSlop;
                     if (depth <= 0f) continue;
-                    Vector3 corr = p.Normal * (depth / totalInv);
-                    if (invMassA > 0f && a != null)
-                        a.Position += corr * invMassA;
-                    if (invMassB > 0f && b != null)
-                        b.Position -= corr * invMassB;
+
+                    if (kinematicVsStatic)
+                    {
+                        // Full one-sided correction onto the kinematic body
+                        a.Position += p.Normal * depth;
+                    }
+                    else
+                    {
+                        Vector3 corr = p.Normal * (depth / totalInv);
+                        if (invMassA > 0f && a != null)
+                            a.Position += corr * invMassA;
+                        if (invMassB > 0f && b != null)
+                            b.Position -= corr * invMassB;
+                    }
                 }
             }
         }
@@ -313,7 +348,12 @@ namespace SiegeEngine.Core.Physics
                 float invMassA = a != null ? a.InvMass : 0f;
                 float invMassB = b != null ? b.InvMass : 0f;
                 float totalInv = invMassA + invMassB;
-                if (totalInv < 1e-8f) continue;
+
+                bool kinematicVsStatic = a != null && a.BodyType == BodyType.Kinematic
+                                      && (b == null || b.BodyType == BodyType.Static);
+
+                if (totalInv < 1e-8f && !kinematicVsStatic) continue;
+
                 for (int i = 0; i < manifold.PointCount; i++)
                 {
                     var p = manifold.Points[i];
@@ -327,6 +367,13 @@ namespace SiegeEngine.Core.Physics
                     Vector3 relVel = velA - velB;
                     float vn = Vector3.Dot(relVel, n);
                     if (vn >= 0f) continue;
+
+                    if (kinematicVsStatic)
+                    {
+                        a.Velocity -= n * vn;
+                        continue;
+                    }
+
                     float shareA = invMassA / totalInv;
                     float shareB = invMassB / totalInv;
                     if (a != null && invMassA > 0f)
@@ -484,23 +531,47 @@ namespace SiegeEngine.Core.Physics
         {
             Vector3 sc = sphereBody.WorldCentreOfMass;
             Vector3 feet = capBody.Position;
-            Vector3 top = feet + new Vector3(0, 0, cap.Height);
-            Vector3 ab = top - feet;
-            float t = Math.Clamp(Vector3.Dot(sc - feet, ab) / ab.LengthSquared(), 0f, 1f);
-            Vector3 closest = feet + ab * t;
+            float r = cap.Radius;
+            float h = cap.Height;
+            // True cylindrical medial axis (excludes the hemispherical caps)
+            Vector3 axisStart = feet + new Vector3(0f, 0f, r);
+            Vector3 axisEnd = feet + new Vector3(0f, 0f, MathF.Max(r, h - r));
+            Vector3 ab = axisEnd - axisStart;
+            float abLenSq = ab.LengthSquared();
+            float t = abLenSq > 1e-12f
+                ? Math.Clamp(Vector3.Dot(sc - axisStart, ab) / abLenSq, 0f, 1f)
+                : 0.5f;
+            Vector3 closest = axisStart + ab * t;
             Vector3 delta = sc - closest;
             float dist = delta.Length();
-            float rSum = sphere.Radius + cap.Radius;
-            if (dist < rSum && dist > 1e-6f)
+            float rSum = sphere.Radius + r;
+            if (dist >= rSum) return;
+            Vector3 n;
+            if (dist > 1e-6f)
             {
-                Vector3 n = delta / dist;
-                manifold.Add(new ContactPoint
-                {
-                    Position = closest + n * cap.Radius,
-                    Normal = n,
-                    Penetration = rSum - dist
-                });
+                n = delta / dist; // from capsule axis toward sphere centre
             }
+            else
+            {
+                // Centres coincide – stable fallback
+                n = Vector3.UnitZ;
+                if (Vector3.Dot(n, ab) < 0f) n = -n;
+            }
+            float penetration = rSum - dist;
+            // Contact point lies on the capsule surface
+            Vector3 contactPos = closest + n * r;
+            // Guarantee Normal points from BodyB toward BodyA
+            if (sphereBody != manifold.BodyA)
+            {
+                n = -n;
+                contactPos = sc + n * sphere.Radius;
+            }
+            manifold.Add(new ContactPoint
+            {
+                Position = contactPos,
+                Normal = n,
+                Penetration = penetration
+            });
         }
         private void SphereVsTriangleMesh(SphereShape sphere, PhysicsComponent sphereBody,
             TriangleMeshShape mesh, PhysicsComponent meshBody, ContactManifold manifold)
@@ -591,7 +662,6 @@ namespace SiegeEngine.Core.Physics
             float radius = cap.Radius;
             float height = cap.Height;
             Vector3 feet = capBody.Position;
-            // Tight query box only around the capsule
             Vector3 queryMin = feet - new Vector3(radius, radius, 0.05f);
             Vector3 queryMax = feet + new Vector3(radius, radius, height + 0.05f);
             mesh.GetAabb(meshBody.Position, meshBody.Rotation, out Vector3 aabbMin, out Vector3 aabbMax);
@@ -603,13 +673,14 @@ namespace SiegeEngine.Core.Physics
             _triB.Clear();
             _triC.Clear();
             mesh.QueryWorldTriangles(meshBody.Position, meshBody.Rotation, queryMin, queryMax, _triA, _triB, _triC);
-            // Only three samples: feet, mid, head
             Vector3[] samples =
             {
                 feet + new Vector3(0, 0, radius),
                 feet + new Vector3(0, 0, height * 0.5f),
                 feet + new Vector3(0, 0, height - radius)
             };
+            // Collect candidates then keep only the deepest contacts.
+            var candidates = new List<ContactPoint>(32);
             for (int t = 0; t < _triA.Count; t++)
             {
                 Vector3 a = _triA[t];
@@ -623,7 +694,7 @@ namespace SiegeEngine.Core.Physics
                     if (dist < radius && dist > 1e-6f)
                     {
                         Vector3 n = delta / dist;
-                        manifold.Add(new ContactPoint
+                        candidates.Add(new ContactPoint
                         {
                             Position = closest,
                             Normal = n,
@@ -632,6 +703,11 @@ namespace SiegeEngine.Core.Physics
                     }
                 }
             }
+            if (candidates.Count == 0) return;
+            candidates.Sort((x, y) => y.Penetration.CompareTo(x.Penetration));
+            int keep = Math.Min(4, candidates.Count);
+            for (int i = 0; i < keep; i++)
+                manifold.Add(candidates[i]);
         }
         private void CapsuleVsHeightfield(CapsuleShape cap, PhysicsComponent body,
             HeightfieldShape field, ContactManifold manifold)
