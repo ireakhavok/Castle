@@ -96,7 +96,7 @@ namespace SiegeEngine.PlayerSystem
                 {
                     try
                     {
-                        Console.WriteLine($"InputHandler: Invoking mouse callback with ID: {id}");
+                        //Console.WriteLine($"InputHandler: Invoking mouse callback with ID: {id}");
                         callback?.Invoke(button, action);
                     }
                     catch (Exception ex)

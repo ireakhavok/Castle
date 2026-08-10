@@ -12,6 +12,8 @@ namespace SiegeEngine.Core.Definitions
         private float _mass = 1.0f;
         private float _health = 100f;
         private readonly TransformComponent _transform;
+        private Vector3 _forceAccum;
+        private Vector3 _torqueAccum;
         public PhysicsComponent()
         {
             _transform = new TransformComponent();
@@ -23,9 +25,9 @@ namespace SiegeEngine.Core.Definitions
             IsVisible = true;
             BodyType = BodyType.Static;
             AngularVelocity = Vector3.Zero;
-            LinearDamping = 0.05f;
-            AngularDamping = 0.05f;
-            Friction = 0.5f;
+            LinearDamping = 0.4f;
+            AngularDamping = 0.4f;
+            Friction = 1.8f;
             Restitution = 0.0f;
             IsSleeping = false;
             IslandId = -1;
@@ -39,6 +41,8 @@ namespace SiegeEngine.Core.Definitions
             InvMass = 0f;
             InvInertiaLocal = Vector3.Zero;
             RenderPosition = Position;
+            _forceAccum = Vector3.Zero;
+            _torqueAccum = Vector3.Zero;
         }
         public Vector3 Position
         {
@@ -84,20 +88,16 @@ namespace SiegeEngine.Core.Definitions
                     throw new ArgumentException("Health cannot be negative.", nameof(value));
                 _health = value;
                 if (_health <= 0 && IsBreakable)
-                {
                     IsBroken = true;
-                }
             }
         }
-        // Local-space AABB in METRES (already converted by FBXModel.GetBoundingSize / UnitToMeters).
-        // Name retained for binary compatibility.
         public Vector3 LocalBoundsMinCm { get; set; } = new Vector3(float.MaxValue);
         public Vector3 LocalBoundsMaxCm { get; set; } = new Vector3(float.MinValue);
         public BodyType BodyType { get; set; } = BodyType.Static;
         public Vector3 AngularVelocity { get; set; } = Vector3.Zero;
-        public float LinearDamping { get; set; } = 0.05f;
-        public float AngularDamping { get; set; } = 0.05f;
-        public float Friction { get; set; } = 0.5f;
+        public float LinearDamping { get; set; } = 0.4f;
+        public float AngularDamping { get; set; } = 0.4f;
+        public float Friction { get; set; } = 1.8f;
         public float Restitution { get; set; } = 0.0f;
         public bool IsSleeping { get; set; } = false;
         public int IslandId { get; set; } = -1;
@@ -112,44 +112,91 @@ namespace SiegeEngine.Core.Definitions
         public float InvMass { get; private set; }
         public Vector3 InvInertiaLocal { get; private set; } = Vector3.Zero;
         public ColliderShape Shape { get; private set; }
+        public void ApplyForce(Vector3 force)
+        {
+            if (BodyType != BodyType.Dynamic || IsSleeping) return;
+            _forceAccum += force;
+        }
+        public void ApplyForceAtPoint(Vector3 force, Vector3 worldPoint)
+        {
+            if (BodyType != BodyType.Dynamic || IsSleeping) return;
+            _forceAccum += force;
+            Vector3 r = worldPoint - WorldCentreOfMass;
+            _torqueAccum += Vector3.Cross(r, force);
+        }
+        public void ApplyTorque(Vector3 torque)
+        {
+            if (BodyType != BodyType.Dynamic || IsSleeping) return;
+            _torqueAccum += torque;
+        }
+        public void ClearForces()
+        {
+            _forceAccum = Vector3.Zero;
+            _torqueAccum = Vector3.Zero;
+        }
+        public void Integrate(float dt)
+        {
+            if (BodyType == BodyType.Static || IsSleeping) return;
+            if (BodyType == BodyType.Kinematic)
+            {
+                Position += Velocity * dt;
+                return;
+            }
+            if (InvMass > 0f)
+            {
+                Vector3 dampingForce = -Velocity * (LinearDamping * Mass);
+                _forceAccum += dampingForce;
+                Vector3 acceleration = _forceAccum * InvMass;
+                Velocity += acceleration * dt;
+                Position += Velocity * dt;
+            }
+            if (InvInertiaLocal != Vector3.Zero)
+            {
+                Vector3 dampingTorque = -AngularVelocity * AngularDamping;
+                _torqueAccum += dampingTorque;
+                Vector3 angularAccel = ApplyInvInertiaWorld(_torqueAccum);
+                AngularVelocity += angularAccel * dt;
+                if (AngularVelocity.LengthSquared() > 1e-12f)
+                {
+                    Quaternion omegaQ = new Quaternion(AngularVelocity.X, AngularVelocity.Y, AngularVelocity.Z, 0f);
+                    Quaternion dq = Quaternion.Multiply(omegaQ, Rotation) * 0.5f;
+                    Rotation = Quaternion.Normalize(Rotation + dq * dt);
+                }
+            }
+            ClearForces();
+        }
         public void InvalidateShape()
         {
             Shape = null;
         }
         public void RebuildShape(FBXModel model = null)
         {
-            switch (BodyType)
+            if (BodyType == BodyType.Kinematic)
             {
-                case BodyType.Kinematic:
-                    {
-                        if (model != null || HasValidLocalBounds())
-                        {
-                            BuildObbFromActualBounds();
-                        }
-                        else
-                        {
-                            Shape = new CapsuleShape(0.4f, 1.8f);
-                        }
-                        break;
-                    }
-                case BodyType.Dynamic:
-                    {
-                        BuildObbFromActualBounds();
-                        break;
-                    }
-                case BodyType.Static:
-                default:
-                    {
-                        if (model != null && model.Meshes != null && model.Meshes.Count > 0)
-                        {
-                            Shape = new TriangleMeshShape(model);
-                        }
-                        else
-                        {
-                            BuildObbFromActualBounds();
-                        }
-                        break;
-                    }
+                Shape = new CapsuleShape(0.4f, 1.8f);
+            }
+            else if (model != null && model.Meshes != null && model.Meshes.Count > 0)
+            {
+                if (BodyType == BodyType.Dynamic)
+                {
+                    // Mesh defines the sphere. Keep the original authored origin and
+                    // store the true centre of mass as CenterOffset so the renderer
+                    // (which already does Translate(-LocalCentreOfMass) * Rotate * Translate(WorldCoM))
+                    // and the physics integration stay consistent.
+                    var tempMesh = new TriangleMeshShape(model);
+                    Vector3 com = tempMesh.LocalCentreOfMass;
+                    float radius = tempMesh.BoundingRadius;
+                    if (radius < 0.001f) radius = 0.5f;
+                    Shape = new SphereShape(radius, com);
+                }
+                else
+                {
+                    Shape = new TriangleMeshShape(model);
+                }
+            }
+            else
+            {
+                BuildObbFromActualBounds();
             }
             RecomputeMassProperties();
         }
@@ -166,7 +213,6 @@ namespace SiegeEngine.Core.Definitions
             Vector3 centerOffset = Vector3.Zero;
             if (HasValidLocalBounds())
             {
-                // LocalBounds are already in metres (UnitToMeters applied once in GetBoundingSize).
                 Vector3 sizeM = LocalBoundsMaxCm - LocalBoundsMinCm;
                 half = sizeM * 0.5f;
                 centerOffset = (LocalBoundsMinCm + LocalBoundsMaxCm) * 0.5f;
@@ -179,28 +225,33 @@ namespace SiegeEngine.Core.Definitions
         }
         public void RecomputeMassProperties()
         {
-            if (BodyType == BodyType.Static)
+            // Static and Kinematic never participate in mass-weighted resolution against dynamics.
+            // Kinematic still receives one-sided correction against heightfield/static (handled in PhysicsWorld).
+            if (BodyType == BodyType.Static || BodyType == BodyType.Kinematic)
             {
                 InvMass = 0f;
                 InvInertiaLocal = Vector3.Zero;
-                LocalCentreOfMass = Vector3.Zero;
+                if (BodyType == BodyType.Static)
+                    LocalCentreOfMass = Vector3.Zero;
+                else if (Shape is CapsuleShape cap)
+                    LocalCentreOfMass = new Vector3(0f, 0f, cap.Height * 0.5f);
                 return;
             }
             InvMass = 1f / MathF.Max(0.001f, _mass);
-            if (Shape is CapsuleShape cap)
+            if (Shape is CapsuleShape capDyn)
             {
-                LocalCentreOfMass = new Vector3(0f, 0f, cap.Height * 0.5f);
-                if (BodyType == BodyType.Kinematic)
-                {
-                    InvInertiaLocal = Vector3.Zero;
-                }
-                else
-                {
-                    float hx = cap.Radius * 2f;
-                    float hy = cap.Radius * 2f;
-                    float hz = cap.Height;
-                    InvInertiaLocal = ComputeBoxInvInertia(_mass, hx, hy, hz);
-                }
+                LocalCentreOfMass = new Vector3(0f, 0f, capDyn.Height * 0.5f);
+                float hx = capDyn.Radius * 2f;
+                float hy = capDyn.Radius * 2f;
+                float hz = capDyn.Height;
+                InvInertiaLocal = ComputeBoxInvInertia(_mass, hx, hy, hz);
+            }
+            else if (Shape is SphereShape sphere)
+            {
+                LocalCentreOfMass = sphere.CenterOffset;
+                float i = 0.4f * _mass * sphere.Radius * sphere.Radius;
+                float inv = i > 1e-8f ? 1f / i : 0f;
+                InvInertiaLocal = new Vector3(inv, inv, inv);
             }
             else if (Shape is ObbShape obb)
             {
@@ -209,6 +260,19 @@ namespace SiegeEngine.Core.Definitions
                 float hy = obb.HalfExtents.Y * 2f;
                 float hz = obb.HalfExtents.Z * 2f;
                 InvInertiaLocal = ComputeBoxInvInertia(_mass, hx, hy, hz);
+            }
+            else if (Shape is TriangleMeshShape mesh)
+            {
+                LocalCentreOfMass = mesh.LocalCentreOfMass;
+                if (HasValidLocalBounds())
+                {
+                    Vector3 size = LocalBoundsMaxCm - LocalBoundsMinCm;
+                    InvInertiaLocal = ComputeBoxInvInertia(_mass, size.X, size.Y, size.Z);
+                }
+                else
+                {
+                    InvInertiaLocal = ComputeBoxInvInertia(_mass, Size.X, Size.Y, Size.Z);
+                }
             }
             else
             {
@@ -251,9 +315,7 @@ namespace SiegeEngine.Core.Definitions
         public void Break()
         {
             if (IsBreakable && _health <= 0)
-            {
                 IsBroken = true;
-            }
         }
         public bool RayIntersects(Vector3 rayOrigin, Vector3 rayDir, out float distance, out Vector3 hitPoint)
         {
@@ -269,7 +331,6 @@ namespace SiegeEngine.Core.Definitions
                 }
                 return false;
             }
-            // Fallback AABB path – LocalBounds / Size are already in metres.
             Matrix4x4 scaleMat = Matrix4x4.CreateScale(Scale);
             Matrix4x4 rotMat = Matrix4x4.CreateFromQuaternion(Rotation);
             Matrix4x4 transMat = Matrix4x4.CreateTranslation(Position);
@@ -317,7 +378,6 @@ namespace SiegeEngine.Core.Definitions
         }
         public object ToSerializableData()
         {
-            // Never emit float.MaxValue / float.MinValue – System.Text.Json rejects them.
             Vector3 safeMin = HasValidLocalBounds() ? LocalBoundsMinCm : Vector3.Zero;
             Vector3 safeMax = HasValidLocalBounds() ? LocalBoundsMaxCm : Vector3.Zero;
             return new PhysicsComponentData
@@ -457,6 +517,7 @@ namespace SiegeEngine.Core.Definitions
             InvInertiaLocal = invInertiaLocal;
             Shape = null;
             RenderPosition = position;
+            ClearForces();
             if (Shape != null)
                 RecomputeMassProperties();
         }

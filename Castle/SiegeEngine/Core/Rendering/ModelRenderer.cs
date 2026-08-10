@@ -7,6 +7,7 @@ using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Rendering.Shaders;
 using System;
 using System.Numerics;
+
 namespace SiegeEngine.Core.Rendering
 {
     public unsafe class ModelRenderer
@@ -14,32 +15,42 @@ namespace SiegeEngine.Core.Rendering
         private readonly IRenderContext _renderContext;
         private ShaderProgram _modelShader;
         private ShaderProgram _animationShader;
+
         public ModelRenderer(IRenderContext renderContext)
         {
             _renderContext = renderContext;
         }
+
         public void Initialize()
         {
             _modelShader = new ShaderProgram(_renderContext, ModelShader.VertexShaderSource, ModelShader.FragmentShaderSource);
             _animationShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
         }
+
         // === SINGLE CANONICAL PATH — all scenes and panels now call this ===
         public void RenderEntityFully(ModelComponent modelComp, PhysicsComponent physics, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos)
         {
             if (modelComp == null || physics == null) return;
+
             var modelManager = ModelManager.Instance ?? new ModelManager(_renderContext);
             string modelKey = modelComp.Key?.ToLower() ?? "man_mesh_pack";
             FBXModel fbxModel = null;
             ModelManager.ModelData modelData = null;
+
             if (modelManager.TryGetModel(modelKey, out fbxModel) && modelManager.TryGetModelData(modelKey, out modelData))
             {
                 modelComp.Model = fbxModel;
-                Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
-                Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.RenderPosition);
+
+                // Build model matrix so the visual mesh rotates around the physics CoM
+                // (not the FBX origin). This is the fix for the "spinning around a point
+                // outside the model" bug.
                 float unitScale = fbxModel != null ? fbxModel.UnitToMeters : 0.01f;
-                Matrix4x4 scaleMat = Matrix4x4.CreateScale(unitScale * physics.Scale);
-                Matrix4x4 modelMatrix = scaleMat * rotation * translation;
-                // Pass live skinning matrices when AnimationSystem has produced them
+                Matrix4x4 modelMatrix =
+                    Matrix4x4.CreateScale(unitScale * physics.Scale) *
+                    Matrix4x4.CreateTranslation(-physics.LocalCentreOfMass) *
+                    Matrix4x4.CreateFromQuaternion(physics.Rotation) *
+                    Matrix4x4.CreateTranslation(physics.WorldCentreOfMass);
+
                 Matrix4x4[] boneMatrices = modelComp.BoneMatrices;
                 Matrix3x3[] normalMatrices = modelComp.NormalBoneTransforms;
                 RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices);
@@ -50,37 +61,46 @@ namespace SiegeEngine.Core.Rendering
                 RenderModel(modelComp, physics, view, projection, viewPos, modelManager);
             }
         }
+
         public void RenderModel(ModelComponent modelComp, PhysicsComponent physics, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, ModelManager modelManager)
         {
             if (modelComp == null || physics == null) return;
             modelManager ??= ModelManager.Instance;
             string modelKey = modelComp.Key?.ToLower() ?? "man_mesh";
             if (!modelManager.TryGetModelData(modelKey, out var modelData)) return;
+
             FBXModel fbxModel = modelComp.Model;
             if (fbxModel == null && modelManager.TryGetModel(modelKey, out fbxModel))
             {
                 modelComp.Model = fbxModel;
             }
-            Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
-            Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.RenderPosition);
+
             float unitScale = fbxModel != null ? fbxModel.UnitToMeters : 0.01f;
-            Matrix4x4 scaleMat = Matrix4x4.CreateScale(unitScale * physics.Scale);
-            Matrix4x4 modelMatrix = scaleMat * rotation * translation;
+            Matrix4x4 modelMatrix =
+                Matrix4x4.CreateScale(unitScale * physics.Scale) *
+                Matrix4x4.CreateTranslation(-physics.LocalCentreOfMass) *
+                Matrix4x4.CreateFromQuaternion(physics.Rotation) *
+                Matrix4x4.CreateTranslation(physics.WorldCentreOfMass);
+
             _renderContext.Enable(_renderContext.Enums.CullFace);
             _renderContext.CullFace(_renderContext.Enums.Back);
             _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
+
             if (fbxModel != null && modelData != null)
             {
                 Matrix4x4[] boneMatrices = modelComp.BoneMatrices;
                 Matrix3x3[] normalMatrices = modelComp.NormalBoneTransforms;
                 RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices);
             }
+
             _renderContext.Disable(_renderContext.Enums.CullFace);
         }
+
         public void RenderModel(FBXModel fbxModel, ModelManager.ModelData modelData, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, Matrix4x4 modelMatrix = default, Matrix4x4[] boneMatrices = null, Matrix3x3[] normalMatrices = null)
         {
             if (modelData == null) return;
             if (modelMatrix == default) modelMatrix = Matrix4x4.Identity;
+
             bool hasBones = boneMatrices != null && boneMatrices.Length > 0 && fbxModel != null && fbxModel.HasSkin;
             ShaderProgram shader = hasBones ? _animationShader : _modelShader;
             shader.Use();
@@ -95,6 +115,7 @@ namespace SiegeEngine.Core.Rendering
             shader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
             shader.SetUniform("uLightIntensity", 1.0f);
             shader.SetUniform("uHasWorldAligned", 0);
+
             if (hasBones)
             {
                 shader.SetUniform("uHasBones", 1);
@@ -105,14 +126,14 @@ namespace SiegeEngine.Core.Rendering
             {
                 shader.SetUniform("uHasBones", 0);
             }
+
             // Own complete GL state so result is independent of prior TerrainRenderer / skybox / UI state.
-            // TerrainRenderer.RenderTerrain leaves CullFace enabled; without this disable the pure-client
-            // wall front-face is culled while the editor path remains visible.
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.DepthMask(true);
             _renderContext.Disable(_renderContext.Enums.Blend);
             _renderContext.Disable(_renderContext.Enums.CullFace);
             _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
+
             foreach (var mmr in modelData.MeshRenders)
             {
                 try
@@ -145,12 +166,15 @@ namespace SiegeEngine.Core.Rendering
                         shader.SetUniform("uAlbedoMap[0]", 0);
                     }
                 }
+
                 _renderContext.BindVertexArray(mmr.Vao);
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                 _renderContext.BindVertexArray(0);
             }
+
             _renderContext.Disable(_renderContext.Enums.DepthTest);
         }
+
         public void RenderSkeletonDebug(VertexBuffer skeletonBuffer, ShaderProgram pointShader, Matrix4x4 view, Matrix4x4 projection)
         {
             pointShader.Use();
@@ -161,6 +185,7 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.DrawElements(_renderContext.Enums.Lines, skeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             _renderContext.BindVertexArray(0);
         }
+
         public void RenderTerrain(VertexBuffer buffer, ShaderProgram shader, Matrix4x4 view, Matrix4x4 projection, bool hasTexture, uint textureId)
         {
             if (buffer == null) return;
@@ -190,10 +215,12 @@ namespace SiegeEngine.Core.Rendering
             uint idxCount = buffer.GetIndexCount();
             _renderContext.DrawElements(_renderContext.Enums.Triangles, idxCount, _renderContext.Enums.UnsignedInt, null);
         }
+
         public void RenderModelForEntity(ModelComponent modelComp, PhysicsComponent physics, Matrix4x4 view, Matrix4x4 projection)
         {
             RenderEntityFully(modelComp, physics, view, projection, physics.Position);
         }
+
         public void Dispose()
         {
             _modelShader?.Dispose();

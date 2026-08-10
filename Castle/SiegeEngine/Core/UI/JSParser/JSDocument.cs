@@ -125,11 +125,11 @@ namespace SiegeEngine.Core.UI.JSParser
 
         public void InvokeDocumentMouseup(Vector2 mousePos)
         {
-            Console.WriteLine($"[JSDocument] InvokeDocumentMouseup ENTER - has 'mouseup' key: {_eventListeners.ContainsKey("mouseup")}");
+            //Console.WriteLine($"[JSDocument] InvokeDocumentMouseup ENTER - has 'mouseup' key: {_eventListeners.ContainsKey("mouseup")}");
 
             if (!_eventListeners.TryGetValue("mouseup", out var listeners))
             {
-                Console.WriteLine("[JSDocument] InvokeDocumentMouseup - no 'mouseup' listeners at all");
+                //Console.WriteLine("[JSDocument] InvokeDocumentMouseup - no 'mouseup' listeners at all");
                 return;
             }
 

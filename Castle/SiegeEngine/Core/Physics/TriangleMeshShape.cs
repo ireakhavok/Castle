@@ -16,6 +16,8 @@ namespace SiegeEngine.Core.Physics
         private readonly List<int> _indices = new List<int>();
         private Vector3 _localMin;
         private Vector3 _localMax;
+        public Vector3 LocalCentreOfMass { get; private set; }
+        public float BoundingRadius { get; private set; }
         private struct Node
         {
             public Vector3 Min, Max;
@@ -43,15 +45,27 @@ namespace SiegeEngine.Core.Physics
             {
                 _localMin = Vector3.Zero;
                 _localMax = Vector3.Zero;
+                LocalCentreOfMass = Vector3.Zero;
+                BoundingRadius = 0f;
                 return;
             }
             _localMin = new Vector3(float.MaxValue);
             _localMax = new Vector3(float.MinValue);
+            Vector3 sum = Vector3.Zero;
             foreach (var p in _localVerticesM)
             {
                 _localMin = Vector3.Min(_localMin, p);
                 _localMax = Vector3.Max(_localMax, p);
+                sum += p;
             }
+            LocalCentreOfMass = sum / _localVerticesM.Count;
+            float maxR2 = 0f;
+            foreach (var p in _localVerticesM)
+            {
+                float d2 = (p - LocalCentreOfMass).LengthSquared();
+                if (d2 > maxR2) maxR2 = d2;
+            }
+            BoundingRadius = MathF.Sqrt(maxR2);
             BuildAabbTree();
         }
         public override void GetAabb(in Vector3 position, in Quaternion rotation, out Vector3 min, out Vector3 max)
