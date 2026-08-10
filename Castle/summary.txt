@@ -2734,11 +2734,11 @@ Folder: SiegeEngine
       - List<Vector3> _triA
       - List<Vector3> _triB
       - List<Vector3> _triC
-      - IHeightProvider _lastLoggedProvider
       - IHeightProvider HeightProvider
+      - float rollingMu
     - Methods:
       - void SetHeightProvider(IHeightProvider provider)
-        - Calls: Console.WriteLine, HeightfieldShape
+        - Calls: HeightfieldShape
       - void RegisterBody(PhysicsComponent body)
         - Calls: _bodies.Add
       - void UnregisterBody(PhysicsComponent body)
@@ -2748,42 +2748,51 @@ Folder: SiegeEngine
       - void SnapToGround(PhysicsComponent body)
       - void Step(float deltaTime)
         - Calls: DetectAndResolveContacts, Integrate, UpdateSleeping
-      - Quaternion SafeNormalize(Quaternion q)
-      - Quaternion SafeRotation(Quaternion q)
-        - Calls: SafeNormalize
-      - return SafeNormalize()
-        - Calls: SafeRotation
       - void Integrate(float dt)
-        - Calls: SafeNormalize, SafeRotation
       - void DetectAndResolveContacts(float dt)
-        - Calls: CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, ResolveVelocity, SafeRotation, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
+        - Calls: ApplyRestingDeadZone, CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, RepairNormalVelocities, ResolveVelocity, SphereVsHeightfield, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
       - void ResolveVelocity(ContactManifold m)
         - Calls: a.ApplyInvInertiaWorld, b.ApplyInvInertiaWorld
       - void ProjectPositions()
+      - void RepairNormalVelocities()
+        - Calls: a.ApplyInvInertiaWorld, b.ApplyInvInertiaWorld
+      - void ApplyRestingDeadZone()
       - void UpdateSleeping(float dt)
       - ContactManifold GenerateManifold( PhysicsComponent b, PhysicsComponent a)
-        - Calls: CapsuleVsCapsule, CapsuleVsObb, CapsuleVsTriangleMesh, ObbVsMeshAabb, ObbVsObb
+        - Calls: CapsuleVsCapsule, CapsuleVsObb, CapsuleVsTriangleMesh, ObbVsMeshAabb, ObbVsObb, SphereVsCapsule, SphereVsSphere, SphereVsTriangleMesh
+      - void SphereVsHeightfield(
+            HeightfieldShape field,  ContactManifold manifold,  PhysicsComponent body, SphereShape sphere)
+        - Calls: field.SampleHeight, field.SampleNormal, manifold.Add
+      - void SphereVsSphere(
+            SphereShape b,  ContactManifold manifold,  PhysicsComponent bodyA,  PhysicsComponent bodyB, SphereShape a)
+        - Calls: manifold.Add
+      - void SphereVsCapsule(
+            CapsuleShape cap,  ContactManifold manifold,  PhysicsComponent capBody,  PhysicsComponent sphereBody, SphereShape sphere)
+        - Calls: manifold.Add
+      - void SphereVsTriangleMesh(
+            TriangleMeshShape mesh,  ContactManifold manifold,  PhysicsComponent meshBody,  PhysicsComponent sphereBody, SphereShape sphere)
+        - Calls: ClosestPointOnTriangle, _triA.Clear, _triB.Clear, _triC.Clear, manifold.Add, mesh.GetAabb, mesh.QueryWorldTriangles
       - void CapsuleVsCapsule(
             CapsuleShape b,  ContactManifold manifold,  PhysicsComponent bodyA,  PhysicsComponent bodyB, CapsuleShape a)
         - Calls: manifold.Add
       - void CapsuleVsObb(
             ObbShape obb,  ContactManifold manifold,  PhysicsComponent capBody,  PhysicsComponent obbBody, CapsuleShape cap)
-        - Calls: ClosestPointOnObb, SafeRotation, manifold.Add
+        - Calls: ClosestPointOnObb, manifold.Add
       - void CapsuleVsTriangleMesh(
             TriangleMeshShape mesh,  ContactManifold manifold,  PhysicsComponent capBody,  PhysicsComponent meshBody, CapsuleShape cap)
-        - Calls: ClosestPointOnTriangle, SafeRotation, _triA.Clear, _triB.Clear, _triC.Clear, manifold.Add, mesh.GetAabb, mesh.QueryWorldTriangles
+        - Calls: ClosestPointOnTriangle, _triA.Clear, _triB.Clear, _triC.Clear, manifold.Add, mesh.GetAabb, mesh.QueryWorldTriangles
       - void CapsuleVsHeightfield(
             HeightfieldShape field,  ContactManifold manifold,  PhysicsComponent body, CapsuleShape cap)
         - Calls: field.SampleHeight, field.SampleNormal, manifold.Add
       - void ObbVsHeightfield(
             HeightfieldShape field,  ContactManifold manifold,  PhysicsComponent body, ObbShape obb)
-        - Calls: SafeRotation, field.SampleHeight, field.SampleNormal, manifold.Add
+        - Calls: field.SampleHeight, field.SampleNormal, manifold.Add
       - void ObbVsObb(
             ObbShape b,  ContactManifold manifold,  PhysicsComponent bodyA,  PhysicsComponent bodyB, ObbShape a)
-        - Calls: SafeRotation, manifold.Add
+        - Calls: manifold.Add
       - void ObbVsMeshAabb(
             TriangleMeshShape mesh,  ContactManifold manifold,  PhysicsComponent meshBody,  PhysicsComponent obbBody, ObbShape obb)
-        - Calls: ClosestPointOnAabb, SafeRotation, manifold.Add, mesh.GetAabb
+        - Calls: ClosestPointOnAabb, manifold.Add, mesh.GetAabb
       - Vector3 ClosestPointOnObb( ObbShape obb,  Quaternion rotation,  Vector3 position, Vector3 point)
       - Vector3 ClosestPointOnAabb( Vector3 centre,  Vector3 halfExtents, Vector3 point)
       - Vector3 ClosestPointOnTriangle( Vector3 a,  Vector3 b,  Vector3 c, Vector3 p)
@@ -3252,6 +3261,17 @@ Folder: SiegeEngine
       - constructor Spawner(IGameServer server)
       - Entity SpawnEntity( Vector3 position, string type)
         - Calls: Console.WriteLine, Player, _server.AddEntity, _server.GetEntities
+- File: SphereShape.cs
+  - Class: SphereShape (Namespace: SiegeEngine.Core.Physics)
+    - Inherits: ColliderShape
+    
+    - Dependencies: System, System.Numerics
+    - Methods:
+      - constructor SphereShape( Vector3 centerOffset = default, float radius)
+      - void GetAabb( in Quaternion,  out Vector3, in Vector3)
+      - bool Raycast(
+            in Vector3, 
+            out float,  float maxDistance,  in Quaternion,  in Vector3,  out Vector3, in Vector3)
 - File: SpriteComponent.cs
   - Class: SpriteComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
@@ -3954,6 +3974,7 @@ SiegeEngine.Core.Physics.IHeightProvider
 SiegeEngine.Core.Physics.Node
 SiegeEngine.Core.Physics.ObbShape
 SiegeEngine.Core.Physics.PhysicsWorld
+SiegeEngine.Core.Physics.SphereShape
 SiegeEngine.Core.Rendering.BackgroundRenderer
 SiegeEngine.Core.Rendering.CachedGlyphRun
 SiegeEngine.Core.Rendering.CharacterData

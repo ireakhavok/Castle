@@ -5,7 +5,6 @@ using System.Numerics;
 using System.Text.Json;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Physics;
-
 namespace SiegeEngine.Core.Definitions
 {
     public class PhysicsComponent : IComponent, IComponentData
@@ -13,10 +12,8 @@ namespace SiegeEngine.Core.Definitions
         private float _mass = 1.0f;
         private float _health = 100f;
         private readonly TransformComponent _transform;
-
         private Vector3 _forceAccum;
         private Vector3 _torqueAccum;
-
         public PhysicsComponent()
         {
             _transform = new TransformComponent();
@@ -28,9 +25,9 @@ namespace SiegeEngine.Core.Definitions
             IsVisible = true;
             BodyType = BodyType.Static;
             AngularVelocity = Vector3.Zero;
-            LinearDamping = 0.05f;
-            AngularDamping = 0.05f;
-            Friction = 1.8f;          // high sliding friction
+            LinearDamping = 0.4f;
+            AngularDamping = 0.4f;
+            Friction = 1.8f;
             Restitution = 0.0f;
             IsSleeping = false;
             IslandId = -1;
@@ -47,33 +44,27 @@ namespace SiegeEngine.Core.Definitions
             _forceAccum = Vector3.Zero;
             _torqueAccum = Vector3.Zero;
         }
-
         public Vector3 Position
         {
             get => _transform.Position;
             set => _transform.Position = value;
         }
-
         public Quaternion Rotation
         {
             get => _transform.Rotation;
             set => _transform.Rotation = value;
         }
-
         public Vector3 Scale
         {
             get => _transform.Scale;
             set => _transform.Scale = value;
         }
-
         public Vector3 WorldPosition => _transform.WorldPosition;
         public Quaternion WorldRotation => _transform.WorldRotation;
         public Vector3 WorldScale => _transform.WorldScale;
         public Matrix4x4 LocalToWorld => _transform.LocalToWorld;
-
         public Vector3 Velocity { get; set; } = Vector3.Zero;
         public bool IsVisible { get; set; }
-
         public float Mass
         {
             get => _mass;
@@ -85,11 +76,9 @@ namespace SiegeEngine.Core.Definitions
                 RecomputeMassProperties();
             }
         }
-
         public bool IsBreakable { get; set; }
         public bool IsBroken { get; private set; }
         public Vector3 Size { get; set; }
-
         public float Health
         {
             get => _health;
@@ -102,14 +91,12 @@ namespace SiegeEngine.Core.Definitions
                     IsBroken = true;
             }
         }
-
         public Vector3 LocalBoundsMinCm { get; set; } = new Vector3(float.MaxValue);
         public Vector3 LocalBoundsMaxCm { get; set; } = new Vector3(float.MinValue);
-
         public BodyType BodyType { get; set; } = BodyType.Static;
         public Vector3 AngularVelocity { get; set; } = Vector3.Zero;
-        public float LinearDamping { get; set; } = 0.05f;
-        public float AngularDamping { get; set; } = 0.05f;
+        public float LinearDamping { get; set; } = 0.4f;
+        public float AngularDamping { get; set; } = 0.4f;
         public float Friction { get; set; } = 1.8f;
         public float Restitution { get; set; } = 0.0f;
         public bool IsSleeping { get; set; } = false;
@@ -125,13 +112,11 @@ namespace SiegeEngine.Core.Definitions
         public float InvMass { get; private set; }
         public Vector3 InvInertiaLocal { get; private set; } = Vector3.Zero;
         public ColliderShape Shape { get; private set; }
-
         public void ApplyForce(Vector3 force)
         {
             if (BodyType != BodyType.Dynamic || IsSleeping) return;
             _forceAccum += force;
         }
-
         public void ApplyForceAtPoint(Vector3 force, Vector3 worldPoint)
         {
             if (BodyType != BodyType.Dynamic || IsSleeping) return;
@@ -139,29 +124,24 @@ namespace SiegeEngine.Core.Definitions
             Vector3 r = worldPoint - WorldCentreOfMass;
             _torqueAccum += Vector3.Cross(r, force);
         }
-
         public void ApplyTorque(Vector3 torque)
         {
             if (BodyType != BodyType.Dynamic || IsSleeping) return;
             _torqueAccum += torque;
         }
-
         public void ClearForces()
         {
             _forceAccum = Vector3.Zero;
             _torqueAccum = Vector3.Zero;
         }
-
         public void Integrate(float dt)
         {
             if (BodyType == BodyType.Static || IsSleeping) return;
-
             if (BodyType == BodyType.Kinematic)
             {
                 Position += Velocity * dt;
                 return;
             }
-
             if (InvMass > 0f)
             {
                 Vector3 dampingForce = -Velocity * (LinearDamping * Mass);
@@ -170,7 +150,6 @@ namespace SiegeEngine.Core.Definitions
                 Velocity += acceleration * dt;
                 Position += Velocity * dt;
             }
-
             if (InvInertiaLocal != Vector3.Zero)
             {
                 Vector3 dampingTorque = -AngularVelocity * AngularDamping;
@@ -184,40 +163,40 @@ namespace SiegeEngine.Core.Definitions
                     Rotation = Quaternion.Normalize(Rotation + dq * dt);
                 }
             }
-
             ClearForces();
         }
-
         public void InvalidateShape()
         {
             Shape = null;
         }
-
         public void RebuildShape(FBXModel model = null)
         {
-            switch (BodyType)
+            if (BodyType == BodyType.Kinematic)
             {
-                case BodyType.Kinematic:
-                    // Characters are always a vertical capsule. Mesh bounds must never
-                    // turn a kinematic controller into an Obb.
-                    Shape = new CapsuleShape(0.4f, 1.8f);
-                    break;
-
-                case BodyType.Dynamic:
-                    BuildObbFromActualBounds();
-                    break;
-
-                case BodyType.Static:
-                default:
-                    if (model != null && model.Meshes != null && model.Meshes.Count > 0)
-                        Shape = new TriangleMeshShape(model);
-                    else
-                        BuildObbFromActualBounds();
-                    break;
+                Shape = new CapsuleShape(0.4f, 1.8f);
+            }
+            else if (model != null && model.Meshes != null && model.Meshes.Count > 0)
+            {
+                if (BodyType == BodyType.Dynamic)
+                {
+                    // Mesh defines the sphere. Vertices are already in metres inside TriangleMeshShape.
+                    var tempMesh = new TriangleMeshShape(model);
+                    Vector3 com = tempMesh.LocalCentreOfMass;
+                    float radius = tempMesh.BoundingRadius;
+                    if (radius < 0.001f) radius = 0.5f;
+                    Shape = new SphereShape(radius, com);
+                }
+                else
+                {
+                    Shape = new TriangleMeshShape(model);
+                }
+            }
+            else
+            {
+                BuildObbFromActualBounds();
             }
             RecomputeMassProperties();
         }
-
         private bool HasValidLocalBounds()
         {
             return LocalBoundsMinCm.X <= LocalBoundsMaxCm.X
@@ -225,7 +204,6 @@ namespace SiegeEngine.Core.Definitions
                 && LocalBoundsMinCm.Z <= LocalBoundsMaxCm.Z
                 && !float.IsInfinity(LocalBoundsMinCm.X) && !float.IsInfinity(LocalBoundsMaxCm.X);
         }
-
         private void BuildObbFromActualBounds()
         {
             Vector3 half;
@@ -242,7 +220,6 @@ namespace SiegeEngine.Core.Definitions
             }
             Shape = new ObbShape(half, centerOffset);
         }
-
         public void RecomputeMassProperties()
         {
             if (BodyType == BodyType.Static)
@@ -252,9 +229,7 @@ namespace SiegeEngine.Core.Definitions
                 LocalCentreOfMass = Vector3.Zero;
                 return;
             }
-
             InvMass = 1f / MathF.Max(0.001f, _mass);
-
             if (Shape is CapsuleShape cap)
             {
                 LocalCentreOfMass = new Vector3(0f, 0f, cap.Height * 0.5f);
@@ -268,6 +243,13 @@ namespace SiegeEngine.Core.Definitions
                     InvInertiaLocal = ComputeBoxInvInertia(_mass, hx, hy, hz);
                 }
             }
+            else if (Shape is SphereShape sphere)
+            {
+                LocalCentreOfMass = sphere.CenterOffset;
+                float i = 0.4f * _mass * sphere.Radius * sphere.Radius;
+                float inv = i > 1e-8f ? 1f / i : 0f;
+                InvInertiaLocal = new Vector3(inv, inv, inv);
+            }
             else if (Shape is ObbShape obb)
             {
                 LocalCentreOfMass = obb.CenterOffset;
@@ -276,13 +258,25 @@ namespace SiegeEngine.Core.Definitions
                 float hz = obb.HalfExtents.Z * 2f;
                 InvInertiaLocal = ComputeBoxInvInertia(_mass, hx, hy, hz);
             }
+            else if (Shape is TriangleMeshShape mesh)
+            {
+                LocalCentreOfMass = mesh.LocalCentreOfMass;
+                if (HasValidLocalBounds())
+                {
+                    Vector3 size = LocalBoundsMaxCm - LocalBoundsMinCm;
+                    InvInertiaLocal = ComputeBoxInvInertia(_mass, size.X, size.Y, size.Z);
+                }
+                else
+                {
+                    InvInertiaLocal = ComputeBoxInvInertia(_mass, Size.X, Size.Y, Size.Z);
+                }
+            }
             else
             {
                 LocalCentreOfMass = Vector3.Zero;
                 InvInertiaLocal = Vector3.Zero;
             }
         }
-
         private static Vector3 ComputeBoxInvInertia(float mass, float hx, float hy, float hz)
         {
             float ixx = mass * (hy * hy + hz * hz) / 12f;
@@ -293,7 +287,6 @@ namespace SiegeEngine.Core.Definitions
                 iyy > 1e-8f ? 1f / iyy : 0f,
                 izz > 1e-8f ? 1f / izz : 0f);
         }
-
         public Vector3 WorldCentreOfMass
         {
             get
@@ -303,7 +296,6 @@ namespace SiegeEngine.Core.Definitions
                 return Position + Vector3.Transform(LocalCentreOfMass, Rotation);
             }
         }
-
         public Vector3 ApplyInvInertiaWorld(Vector3 worldTorque)
         {
             if (InvInertiaLocal == Vector3.Zero)
@@ -317,19 +309,16 @@ namespace SiegeEngine.Core.Definitions
                 local.Z * InvInertiaLocal.Z);
             return Vector3.TransformNormal(local, rot);
         }
-
         public void Break()
         {
             if (IsBreakable && _health <= 0)
                 IsBroken = true;
         }
-
         public bool RayIntersects(Vector3 rayOrigin, Vector3 rayDir, out float distance, out Vector3 hitPoint)
         {
             distance = 0f;
             hitPoint = Vector3.Zero;
             if (rayDir.LengthSquared() < 1e-8f) return false;
-
             if (Shape != null)
             {
                 if (Shape.Raycast(Position, Rotation, rayOrigin, rayDir, float.MaxValue, out distance, out _))
@@ -339,17 +328,14 @@ namespace SiegeEngine.Core.Definitions
                 }
                 return false;
             }
-
             Matrix4x4 scaleMat = Matrix4x4.CreateScale(Scale);
             Matrix4x4 rotMat = Matrix4x4.CreateFromQuaternion(Rotation);
             Matrix4x4 transMat = Matrix4x4.CreateTranslation(Position);
             Matrix4x4 modelMat = scaleMat * rotMat * transMat;
             if (!Matrix4x4.Invert(modelMat, out Matrix4x4 worldToLocal)) return false;
-
             Vector3 localOrigin = Vector3.Transform(rayOrigin, worldToLocal);
             Vector3 localDir = Vector3.TransformNormal(rayDir, worldToLocal);
             localDir = Vector3.Normalize(localDir);
-
             Vector3 boxMin;
             Vector3 boxMax;
             if (HasValidLocalBounds())
@@ -363,7 +349,6 @@ namespace SiegeEngine.Core.Definitions
                 boxMin = -localHalfExtents;
                 boxMax = localHalfExtents;
             }
-
             float tmin = 0.0f;
             float tmax = float.MaxValue;
             for (int i = 0; i < 3; i++)
@@ -388,7 +373,6 @@ namespace SiegeEngine.Core.Definitions
             hitPoint = rayOrigin + rayDir * distance;
             return true;
         }
-
         public object ToSerializableData()
         {
             Vector3 safeMin = HasValidLocalBounds() ? LocalBoundsMinCm : Vector3.Zero;
@@ -424,7 +408,6 @@ namespace SiegeEngine.Core.Definitions
                 InvInertiaLocal = InvInertiaLocal
             };
         }
-
         public void FromSerializableData(object data)
         {
             if (data == null) return;
@@ -453,7 +436,6 @@ namespace SiegeEngine.Core.Definitions
                     ApplyFromJsonElement(doc.RootElement);
             }
         }
-
         private void ApplyFromJsonElement(JsonElement je)
         {
             Vector3 position = ReadVector3(je, "Position", Position);
@@ -493,7 +475,6 @@ namespace SiegeEngine.Core.Definitions
                 isGrounded, slopeLimitDegrees, stepHeight,
                 localCentreOfMass, invMass, invInertiaLocal);
         }
-
         private void ApplyData(
             Vector3 position, Quaternion rotation, Vector3 scale, Vector3 size,
             float mass, float health, bool isBreakable, bool isBroken,
@@ -537,7 +518,6 @@ namespace SiegeEngine.Core.Definitions
             if (Shape != null)
                 RecomputeMassProperties();
         }
-
         private static Vector3 ReadVector3(JsonElement parent, string name, Vector3 fallback)
         {
             if (!parent.TryGetProperty(name, out JsonElement el) || el.ValueKind != JsonValueKind.Object)
@@ -547,7 +527,6 @@ namespace SiegeEngine.Core.Definitions
             float z = el.TryGetProperty("Z", out var ze) && ze.TryGetSingle(out float zv) ? zv : fallback.Z;
             return new Vector3(x, y, z);
         }
-
         private static Quaternion ReadQuaternion(JsonElement parent, string name, Quaternion fallback)
         {
             if (!parent.TryGetProperty(name, out JsonElement el) || el.ValueKind != JsonValueKind.Object)
@@ -558,7 +537,6 @@ namespace SiegeEngine.Core.Definitions
             float w = el.TryGetProperty("W", out var we) && we.TryGetSingle(out float wv) ? wv : fallback.W;
             return new Quaternion(x, y, z, w);
         }
-
         private static float ReadFloat(JsonElement parent, string name, float fallback)
         {
             if (!parent.TryGetProperty(name, out JsonElement el)) return fallback;
@@ -566,7 +544,6 @@ namespace SiegeEngine.Core.Definitions
             if (el.TryGetDouble(out double d)) return (float)d;
             return fallback;
         }
-
         private static int ReadInt(JsonElement parent, string name, int fallback)
         {
             if (!parent.TryGetProperty(name, out JsonElement el)) return fallback;
@@ -574,7 +551,6 @@ namespace SiegeEngine.Core.Definitions
             if (el.TryGetDouble(out double d)) return (int)d;
             return fallback;
         }
-
         private static bool ReadBool(JsonElement parent, string name, bool fallback)
         {
             if (!parent.TryGetProperty(name, out JsonElement el)) return fallback;
@@ -585,7 +561,6 @@ namespace SiegeEngine.Core.Definitions
                 _ => fallback
             };
         }
-
         private class PhysicsComponentData
         {
             public Vector3 Position { get; set; }

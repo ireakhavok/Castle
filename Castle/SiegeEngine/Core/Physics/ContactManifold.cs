@@ -18,12 +18,12 @@ namespace SiegeEngine.Core.Physics
     {
         public PhysicsComponent BodyA;
         public PhysicsComponent BodyB;
-        public ContactPoint[] Points = new ContactPoint[4];
+        public ContactPoint[] Points = new ContactPoint[8];
         public int PointCount;
 
         public void Add(in ContactPoint p)
         {
-            if (PointCount >= 4) return;
+            if (PointCount >= Points.Length) return;
             Points[PointCount++] = p;
         }
 
