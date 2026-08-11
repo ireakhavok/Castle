@@ -13,10 +13,14 @@ namespace SiegeEngine.Core.UI.JSParser
         private Dictionary<string, object> _globalScope = new Dictionary<string, object>();
         private Stack<Dictionary<string, object>> _scopeStack = new Stack<Dictionary<string, object>>();
         private Dictionary<string, FunctionDeclarationNode> _functions = new Dictionary<string, FunctionDeclarationNode>();
+
+        // Holds the current `this` value for method calls.  Lives outside the
+        // normal scope stack so that PushScope / PopScope never loses it.
+        private object _currentThis = null;
+
         public JSEvaluator()
         {
             _scopeStack.Push(_globalScope);
-            // DEFINITIVE: register Math (and common globals) so timeline JS (Math.max/min) and future scripts work
             RegisterGlobal("Math", new Dictionary<object, object>
             {
                 ["max"] = new Func<object[], object>(args => args.Length == 0 ? (object)double.NegativeInfinity : (object)args.Max(a => ToNumber(a))),
@@ -36,7 +40,6 @@ namespace SiegeEngine.Core.UI.JSParser
         {
             if (node == null)
             {
-                // Handle bare "return;" (no value) and any other null node gracefully
                 return null;
             }
             switch (node)
@@ -72,14 +75,12 @@ namespace SiegeEngine.Core.UI.JSParser
                 case FunctionDeclarationNode funcDecl:
                     if (funcDecl.Name != null)
                     {
-                        // Bind into current scope AND global so both local and recursive lookup work
                         CurrentScope()[funcDecl.Name] = funcDecl;
                         _functions[funcDecl.Name] = funcDecl;
                         _globalScope[funcDecl.Name] = funcDecl;
                     }
                     return funcDecl;
                 case ArrowExpressionNode arrow:
-                    // Capture the *exact same* Dictionary reference so mutations (let c) are live
                     return new JSArrowClosure(arrow.Params, arrow.Body, CurrentScope(), this);
                 case ReturnStatementNode ret:
                     return new ReturnValue(ret.Argument == null ? null : Evaluate(ret.Argument));
@@ -129,6 +130,7 @@ namespace SiegeEngine.Core.UI.JSParser
                             PushScope();
                             if (tryStmt.CatchParam != null)
                             {
+                                // Prefer the original thrown value (the Error dictionary)
                                 CurrentScope()[tryStmt.CatchParam] = jse.Value ?? new Dictionary<object, object> { ["message"] = jse.Message };
                             }
                             try
@@ -147,8 +149,6 @@ namespace SiegeEngine.Core.UI.JSParser
                     }
                     catch (Exception ex) when (!(ex is ReturnException))
                     {
-                        // FUTURE-PROOF: any C# exception (parser errors, reflection failures, etc.)
-                        // is turned into a JSException so the script's own try/catch can handle it
                         if (tryStmt.CatchBlock != null)
                         {
                             PushScope();
@@ -194,7 +194,6 @@ namespace SiegeEngine.Core.UI.JSParser
                     return ApplyUnaryOp(un.Operator, arg);
                 case AssignmentExpressionNode assign:
                     object assignRight = Evaluate(assign.Right);
-                    // Support compound assignment operators (+ =, -=, etc.) that the parser now emits
                     if (assign.Operator != null && assign.Operator != "=")
                     {
                         object current = Evaluate(assign.Left);
@@ -247,11 +246,11 @@ namespace SiegeEngine.Core.UI.JSParser
                     {
                         args.Add(Evaluate(a));
                     }
-                    // Temporarily install this for the duration of the call
-                    object previousThis = CurrentScope().GetValueOrDefault("this", null);
+                    // Install this for the duration of the call (independent of scope stack)
+                    object previousThis = _currentThis;
                     if (thisArg != null)
                     {
-                        CurrentScope()["this"] = thisArg;
+                        _currentThis = thisArg;
                     }
                     try
                     {
@@ -259,13 +258,7 @@ namespace SiegeEngine.Core.UI.JSParser
                     }
                     finally
                     {
-                        if (thisArg != null)
-                        {
-                            if (previousThis == null)
-                                CurrentScope().Remove("this");
-                            else
-                                CurrentScope()["this"] = previousThis;
-                        }
+                        _currentThis = previousThis;
                     }
                 case IdentifierNode id:
                     return GetVariable(id.Name);
@@ -304,29 +297,35 @@ namespace SiegeEngine.Core.UI.JSParser
                     object condTest = Evaluate(cond.Test);
                     return IsTruthy(condTest) ? Evaluate(cond.Consequent) : Evaluate(cond.Alternate);
                 case ThisExpressionNode _:
-                    return CurrentScope().GetValueOrDefault("this", null);
+                    // Look at the dedicated this slot first, then fall back to scope walk
+                    if (_currentThis != null)
+                        return _currentThis;
+                    foreach (var scope in _scopeStack)
+                    {
+                        if (scope.TryGetValue("this", out object t))
+                            return t;
+                    }
+                    return null;
                 case NewExpressionNode newExpr:
-                    // Proper support for "new Error(...)" and "new CustomEvent(...)"
                     object ctor = Evaluate(newExpr.Callee);
                     List<object> newArgs = new List<object>();
                     foreach (var a in newExpr.Arguments)
                     {
                         newArgs.Add(Evaluate(a));
                     }
-                    // Detect Error constructor by name
                     string ctorName = null;
                     if (newExpr.Callee is IdentifierNode idn) ctorName = idn.Name;
                     else if (ctor is string s) ctorName = s;
                     if (ctorName == "Error" || (ctor is FunctionDeclarationNode fd && fd.Name == "Error"))
                     {
                         string msg = newArgs.Count > 0 ? (newArgs[0]?.ToString() ?? "") : "";
+                        // Use string keys explicitly so GetMember can find them reliably
                         return new Dictionary<object, object>
                         {
                             ["message"] = msg,
                             ["name"] = "Error"
                         };
                     }
-                    // Fallback for other constructors
                     return new Dictionary<object, object>();
                 default:
                     throw new Exception("Unsupported node type: " + node.GetType());
@@ -367,7 +366,6 @@ namespace SiegeEngine.Core.UI.JSParser
                     return scope[name];
                 }
             }
-            // Also check the functions table as a last resort for recursive calls
             if (_functions.TryGetValue(name, out var func))
                 return func;
             throw new JSException($"Undefined variable: {name}");
@@ -377,8 +375,6 @@ namespace SiegeEngine.Core.UI.JSParser
             switch (target)
             {
                 case IdentifierNode id:
-                    // Walk the scope stack and mutate the *first* dictionary that already owns the name.
-                    // This is essential for live closures (the captured Dictionary is one of the scopes).
                     bool set = false;
                     foreach (var scope in _scopeStack)
                     {
@@ -415,12 +411,18 @@ namespace SiegeEngine.Core.UI.JSParser
         {
             if (objValue is Dictionary<object, object> dictObj)
             {
-                // Exact key match first (string keys from Error, plain objects, etc.)
+                // Exact key match first
                 if (dictObj.TryGetValue(propValue, out object val))
                     return val;
-                // Also try stringified form
+                // Also try string form (covers Error.message etc.)
                 if (propValue != null && dictObj.TryGetValue(propValue.ToString(), out val))
                     return val;
+                // Fallback for any object that might be living under a different key type
+                foreach (var kv in dictObj)
+                {
+                    if (kv.Key != null && kv.Key.ToString() == propValue?.ToString())
+                        return kv.Value;
+                }
                 return JSStandardLibrary.GetObjectMember(this, dictObj, propValue?.ToString());
             }
             if (objValue is List<object> listObj)
@@ -678,11 +680,7 @@ namespace SiegeEngine.Core.UI.JSParser
                     callArgs.Add(null);
                 if (callArgs.Count > closure.Params.Count)
                     callArgs = callArgs.Take(closure.Params.Count).ToList();
-                // Push a *new* scope but the Captured dictionary is still the live outer one
                 PushScope();
-                // Make every variable from the captured scope visible (and writable) through the
-                // normal GetVariable / SetValue walk. Because Captured is the *same* Dictionary
-                // instance that lives on the outer scope stack, mutations are shared.
                 foreach (var kv in closure.Captured)
                 {
                     if (!CurrentScope().ContainsKey(kv.Key))
@@ -715,8 +713,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 finally
                 {
-                    // Write any mutations that happened on the activation record back into the
-                    // live captured dictionary so the next invocation of the same closure sees them.
                     foreach (var key in closure.Captured.Keys.ToList())
                     {
                         if (CurrentScope().ContainsKey(key))
@@ -734,10 +730,14 @@ namespace SiegeEngine.Core.UI.JSParser
                 if (callArgs.Count > func.Params.Count)
                     callArgs = callArgs.Take(func.Params.Count).ToList();
                 PushScope();
-                // Bind the function name into the activation record so recursion works
                 if (func.Name != null)
                 {
                     CurrentScope()[func.Name] = func;
+                }
+                // Also make the current `this` visible inside the function body
+                if (_currentThis != null)
+                {
+                    CurrentScope()["this"] = _currentThis;
                 }
                 for (int i = 0; i < callArgs.Count; i++)
                 {
@@ -758,7 +758,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 return result is ReturnValue rv ? rv.Value : result;
             }
-            // === Universal Delegate path ===
             if (callee is Delegate del)
             {
                 var method = del.Method;
@@ -833,7 +832,6 @@ namespace SiegeEngine.Core.UI.JSParser
             {
                 return !(bool)ApplyBinaryOp("===", left, right);
             }
-            // Arithmetic operators coerce to number (JS semantics)
             if (op == "-" || op == "*" || op == "/" || op == "%")
             {
                 double dLeft = ToNumber(left);
@@ -850,7 +848,6 @@ namespace SiegeEngine.Core.UI.JSParser
                         return dLeft % dRight;
                 }
             }
-            // + keeps dynamic behaviour so string concatenation continues to work
             dynamic dLeftDyn = left ?? 0;
             dynamic dRightDyn = right ?? 0;
             switch (op)
@@ -926,7 +923,7 @@ namespace SiegeEngine.Core.UI.JSParser
             {
                 Params = paramsList;
                 Body = body;
-                Captured = captured; // same reference – live binding
+                Captured = captured;
                 Evaluator = evaluator;
             }
         }
