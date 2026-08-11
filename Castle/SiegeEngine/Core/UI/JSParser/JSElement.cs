@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.UI.Elements;
+﻿// File: SiegeEngine/Core/UI/JSParser/JSElement.cs
+using SiegeEngine.Core.UI;
+using SiegeEngine.Core.UI.Elements;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -23,6 +25,15 @@ namespace SiegeEngine.Core.UI.JSParser
         {
             get { return elem.Tag; }
         }
+        public string className
+        {
+            get { return elem.Attributes.GetValueOrDefault("class", ""); }
+            set
+            {
+                elem.Attributes["class"] = value ?? "";
+                overlay.RefreshUI();
+            }
+        }
         public string innerHTML
         {
             get { return string.Join("", elem.Children.OfType<TextElement>().Select(t => t.Content)); }
@@ -31,9 +42,34 @@ namespace SiegeEngine.Core.UI.JSParser
                 elem.Children.Clear();
                 if (!string.IsNullOrEmpty(value))
                 {
-                    TextElement textElem = new TextElement { Content = value };
-                    textElem.Parent = elem;
-                    elem.Children.Add(textElem);
+                    // Real HTML fragment parser – produces proper specialised elements
+                    // (TdElement, TrElement, TableElement, etc.) so TableElement.ComputeLayout works.
+                    var parser = new HtmlParser();
+                    // Wrap in a temporary root so sibling top-level tags become children of one node
+                    HtmlElement tempRoot = parser.Parse("<fragment>" + value + "</fragment>");
+                    // HtmlParser may return the fragment itself or a single child; collect all real children
+                    List<HtmlElement> childrenToAdd = new List<HtmlElement>();
+                    if (tempRoot.Tag.ToLower() == "fragment" || tempRoot.Tag.ToLower() == "root")
+                    {
+                        childrenToAdd.AddRange(tempRoot.Children);
+                    }
+                    else
+                    {
+                        childrenToAdd.Add(tempRoot);
+                    }
+                    foreach (var child in childrenToAdd)
+                    {
+                        child.Parent = elem;
+                        elem.Children.Add(child);
+                    }
+                }
+                // Force full layout recompute so TableElement sees the new cells
+                elem.MarkIntrinsicDirty();
+                var p = elem.Parent;
+                while (p != null)
+                {
+                    p.MarkIntrinsicDirty();
+                    p = p.Parent;
                 }
                 overlay.RefreshUI();
             }
@@ -501,10 +537,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 else if (prop == "innerHTML")
                 {
-                    if (value is string strVal && strVal == "")
-                    {
-                        jsElem.elem.Children.Clear();
-                    }
+                    jsElem.innerHTML = value?.ToString() ?? "";
                 }
                 else if (prop == "textContent")
                 {

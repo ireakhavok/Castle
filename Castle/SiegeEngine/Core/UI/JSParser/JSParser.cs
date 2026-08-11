@@ -1,4 +1,5 @@
-﻿using System;
+﻿// File: SiegeEngine/Core/UI/JSParser/JSParser.cs
+using System;
 using System.Collections.Generic;
 using System.Text;
 namespace SiegeEngine.Core.UI.JSParser
@@ -84,6 +85,8 @@ namespace SiegeEngine.Core.UI.JSParser
             if (PeekKeyword("while")) return ParseWhileStatement();
             if (PeekKeyword("for")) return ParseForStatement();
             if (PeekKeyword("return")) return ParseReturnStatement();
+            if (PeekKeyword("try")) return ParseTryStatement();
+            if (PeekKeyword("throw")) return ParseThrowStatement();
             if (_currentChar == '{') return ParseBlockStatement();
             return ParseExpressionStatement();
         }
@@ -102,9 +105,13 @@ namespace SiegeEngine.Core.UI.JSParser
             SkipWhitespaceAndComments();
             string name = ParseIdentifier();
             SkipWhitespaceAndComments();
-            Consume(TokenType.Assign);
-            SkipWhitespaceAndComments();
-            ASTNode initializer = ParseExpression();
+            ASTNode initializer = null;
+            if (_currentChar == '=')
+            {
+                Advance();
+                SkipWhitespaceAndComments();
+                initializer = ParseExpression();
+            }
             SkipWhitespaceAndComments();
             if (_currentChar == ';') Advance();
             return new VariableDeclarationNode(kind, name, initializer);
@@ -215,6 +222,52 @@ namespace SiegeEngine.Core.UI.JSParser
             if (_currentChar == ';') Advance();
             return new ReturnStatementNode(argument);
         }
+        private ASTNode ParseTryStatement()
+        {
+            ConsumeKeyword("try");
+            SkipWhitespaceAndComments();
+            ASTNode tryBlock = ParseBlockStatement();
+            string catchParam = null;
+            ASTNode catchBlock = null;
+            ASTNode finallyBlock = null;
+            SkipWhitespaceAndComments();
+            if (PeekKeyword("catch"))
+            {
+                ConsumeKeyword("catch");
+                SkipWhitespaceAndComments();
+                if (_currentChar == '(')
+                {
+                    Advance();
+                    SkipWhitespaceAndComments();
+                    catchParam = ParseIdentifier();
+                    SkipWhitespaceAndComments();
+                    Consume(TokenType.RightParen);
+                }
+                SkipWhitespaceAndComments();
+                catchBlock = ParseBlockStatement();
+            }
+            SkipWhitespaceAndComments();
+            if (PeekKeyword("finally"))
+            {
+                ConsumeKeyword("finally");
+                SkipWhitespaceAndComments();
+                finallyBlock = ParseBlockStatement();
+            }
+            return new TryStatementNode(tryBlock, catchParam, catchBlock, finallyBlock);
+        }
+        private ASTNode ParseThrowStatement()
+        {
+            ConsumeKeyword("throw");
+            SkipWhitespaceAndComments();
+            ASTNode argument = null;
+            if (_currentChar != ';' && _currentChar != '}' && _currentChar != '\0')
+            {
+                argument = ParseExpression();
+            }
+            SkipWhitespaceAndComments();
+            if (_currentChar == ';') Advance();
+            return new ThrowStatementNode(argument);
+        }
         private ASTNode ParseBlockStatement()
         {
             Consume(TokenType.LeftBrace);
@@ -245,9 +298,13 @@ namespace SiegeEngine.Core.UI.JSParser
             SkipWhitespaceAndComments();
             string name = ParseIdentifier();
             SkipWhitespaceAndComments();
-            Consume(TokenType.Assign);
-            SkipWhitespaceAndComments();
-            ASTNode initializer = ParseExpression();
+            ASTNode initializer = null;
+            if (_currentChar == '=')
+            {
+                Advance();
+                SkipWhitespaceAndComments();
+                initializer = ParseExpression();
+            }
             return new VariableDeclarationNode(kind, name, initializer);
         }
         private ASTNode ParseExpression()
@@ -406,6 +463,20 @@ namespace SiegeEngine.Core.UI.JSParser
         }
         private ASTNode ParseUnaryExpression()
         {
+            if (PeekKeyword("typeof"))
+            {
+                ConsumeKeyword("typeof");
+                SkipWhitespaceAndComments();
+                ASTNode argument = ParseUnaryExpression();
+                return new UnaryExpressionNode("typeof", argument);
+            }
+            if (PeekKeyword("void"))
+            {
+                ConsumeKeyword("void");
+                SkipWhitespaceAndComments();
+                ASTNode argument = ParseUnaryExpression();
+                return new UnaryExpressionNode("void", argument);
+            }
             if (_currentChar == '!')
             {
                 Advance();

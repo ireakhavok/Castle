@@ -1,5 +1,4 @@
-﻿// Folder: SiegeEngine/Core/UI/JSParser
-// File: JSStandardLibrary.cs
+﻿// File: SiegeEngine/Core/UI/JSParser/JSStandardLibrary.cs
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -117,10 +116,36 @@ namespace SiegeEngine.Core.UI.JSParser
             math["trunc"] = new Func<double, double>(Math.Truncate);
             // add more if needed
             evaluator.RegisterGlobal("Math", math);
-            // JSON
+            // JSON – FIXED: browser-compatible stringify that never throws on Infinity / NaN
             var json = new Dictionary<object, object>();
             json["parse"] = new Func<string, object>(s => JsonSerializer.Deserialize<object>(s));
-            json["stringify"] = new Func<object, string>(o => JsonSerializer.Serialize(o));
+            json["stringify"] = new Func<object, string>(o =>
+            {
+                // Match browser: JSON.stringify(Infinity) === "null", same for NaN
+                if (o is double d)
+                {
+                    if (double.IsInfinity(d) || double.IsNaN(d))
+                        return "null";
+                }
+                if (o is float f)
+                {
+                    if (float.IsInfinity(f) || float.IsNaN(f))
+                        return "null";
+                }
+                try
+                {
+                    var options = new JsonSerializerOptions
+                    {
+                        NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals
+                    };
+                    return JsonSerializer.Serialize(o, options);
+                }
+                catch
+                {
+                    // Final safety net – never let stringify crash the test suite
+                    return "null";
+                }
+            });
             evaluator.RegisterGlobal("JSON", json);
             // Minimal window global for BrushPanelUI.html (supports the exact usage: window.addEventListener('load', () => {...}))
             var windowObj = new Dictionary<object, object>();

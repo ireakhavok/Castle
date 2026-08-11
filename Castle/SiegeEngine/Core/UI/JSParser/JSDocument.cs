@@ -30,6 +30,16 @@ namespace SiegeEngine.Core.UI.JSParser
                 case "option":
                     newElem = new OptionElement();
                     break;
+                case "table":
+                    newElem = new TableElement();
+                    break;
+                case "tr":
+                    newElem = new TrElement();
+                    break;
+                case "td":
+                case "th":
+                    newElem = new TdElement();
+                    break;
                 default:
                     newElem = new HtmlElement { Tag = tag };
                     break;
