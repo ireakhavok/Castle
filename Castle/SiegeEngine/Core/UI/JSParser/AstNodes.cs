@@ -132,10 +132,20 @@ public class AssignmentExpressionNode : ASTNode
 {
     public ASTNode Left { get; }
     public ASTNode Right { get; }
+    /// <summary>
+    /// The assignment operator. "=" for simple assignment, "+=" / "-=" / "*=" / "/=" / "%=" for compound.
+    /// Defaults to "=" for backwards compatibility with existing call sites.
+    /// </summary>
+    public string Operator { get; }
     public AssignmentExpressionNode(ASTNode left, ASTNode right)
+        : this(left, right, "=")
+    {
+    }
+    public AssignmentExpressionNode(ASTNode left, ASTNode right, string op)
     {
         Left = left;
         Right = right;
+        Operator = op ?? "=";
     }
 }
 public class UpdateExpressionNode : ASTNode
