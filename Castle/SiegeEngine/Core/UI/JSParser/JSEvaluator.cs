@@ -6,7 +6,6 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.Core.UI.JSParser
 {
     public class JSEvaluator
@@ -15,31 +14,34 @@ namespace SiegeEngine.Core.UI.JSParser
         private Stack<Dictionary<string, object>> _scopeStack = new Stack<Dictionary<string, object>>();
         private Dictionary<string, FunctionDeclarationNode> _functions = new Dictionary<string, FunctionDeclarationNode>();
 
+        // Holds the current `this` value for method calls. Lives outside the
+        // normal scope stack so that PushScope / PopScope never loses it.
+        private object _currentThis = null;
+
         public JSEvaluator()
         {
             _scopeStack.Push(_globalScope);
-            // DEFINITIVE: register Math (and common globals) so timeline JS (Math.max/min) and future scripts work
             RegisterGlobal("Math", new Dictionary<object, object>
             {
-                ["max"] = new Func<double, double, double>(Math.Max),
-                ["min"] = new Func<double, double, double>(Math.Min),
-                ["abs"] = new Func<double, double>(Math.Abs),
-                ["floor"] = new Func<double, double>(Math.Floor),
-                ["ceil"] = new Func<double, double>(Math.Ceiling),
-                ["round"] = new Func<double, double>(Math.Round),
+                ["max"] = new Func<object[], object>(args => args.Length == 0 ? (object)double.NegativeInfinity : (object)args.Max(a => ToNumber(a))),
+                ["min"] = new Func<object[], object>(args => args.Length == 0 ? (object)double.PositiveInfinity : (object)args.Min(a => ToNumber(a))),
+                ["abs"] = new Func<object, double>(o => Math.Abs(ToNumber(o))),
+                ["floor"] = new Func<object, double>(o => Math.Floor(ToNumber(o))),
+                ["ceil"] = new Func<object, double>(o => Math.Ceiling(ToNumber(o))),
+                ["round"] = new Func<object, double>(o => Math.Round(ToNumber(o))),
                 ["random"] = new Func<double>(() => new Random().NextDouble())
             });
             RegisterGlobal("console", new Dictionary<object, object>
             {
                 ["log"] = new Action<object>(o => Console.WriteLine("[JS] " + (o?.ToString() ?? "null")))
             });
+            // Register a dummy Error constructor so "new Error(...)" never hits Undefined variable
+            RegisterGlobal("Error", "Error");
         }
-
         public object Evaluate(ASTNode node)
         {
             if (node == null)
             {
-                // Handle bare "return;" (no value) and any other null node gracefully
                 return null;
             }
             switch (node)
@@ -49,6 +51,7 @@ namespace SiegeEngine.Core.UI.JSParser
                     foreach (var stmt in program.Statements)
                     {
                         last = Evaluate(stmt);
+                        if (last is ReturnValue) return last;
                     }
                     return last;
                 case BlockStatementNode block:
@@ -68,12 +71,13 @@ namespace SiegeEngine.Core.UI.JSParser
                 case ExpressionStatementNode exprStmt:
                     return Evaluate(exprStmt.Expression);
                 case VariableDeclarationNode varDecl:
-                    object initValue = Evaluate(varDecl.Initializer);
+                    object initValue = varDecl.Initializer == null ? null : Evaluate(varDecl.Initializer);
                     CurrentScope()[varDecl.Name] = initValue;
                     return initValue;
                 case FunctionDeclarationNode funcDecl:
                     if (funcDecl.Name != null)
                     {
+                        CurrentScope()[funcDecl.Name] = funcDecl;
                         _functions[funcDecl.Name] = funcDecl;
                         _globalScope[funcDecl.Name] = funcDecl;
                     }
@@ -103,16 +107,86 @@ namespace SiegeEngine.Core.UI.JSParser
                     }
                     return whileLast;
                 case ForStatementNode forStmt:
-                    Evaluate(forStmt.Init);
+                    if (forStmt.Init != null) Evaluate(forStmt.Init);
                     object forLast = null;
-                    while (IsTruthy(Evaluate(forStmt.Test)))
+                    while (forStmt.Test == null || IsTruthy(Evaluate(forStmt.Test)))
                     {
                         forLast = Evaluate(forStmt.Body);
                         if (forLast is ReturnValue)
                             return forLast;
-                        Evaluate(forStmt.Update);
+                        if (forStmt.Update != null) Evaluate(forStmt.Update);
                     }
                     return forLast;
+                case TryStatementNode tryStmt:
+                    object tryResult = null;
+                    try
+                    {
+                        tryResult = Evaluate(tryStmt.Block);
+                        if (tryResult is ReturnValue)
+                            return tryResult;
+                    }
+                    catch (JSException jse)
+                    {
+                        if (tryStmt.CatchBlock != null)
+                        {
+                            PushScope();
+                            if (tryStmt.CatchParam != null)
+                            {
+                                // Prefer the original thrown value (the Error dictionary)
+                                CurrentScope()[tryStmt.CatchParam] = jse.Value ?? new Dictionary<object, object> { ["message"] = jse.Message };
+                            }
+                            try
+                            {
+                                tryResult = Evaluate(tryStmt.CatchBlock);
+                            }
+                            finally
+                            {
+                                PopScope();
+                            }
+                        }
+                        else
+                        {
+                            throw;
+                        }
+                    }
+                    catch (Exception ex) when (!(ex is ReturnException))
+                    {
+                        if (tryStmt.CatchBlock != null)
+                        {
+                            PushScope();
+                            if (tryStmt.CatchParam != null)
+                            {
+                                CurrentScope()[tryStmt.CatchParam] = new Dictionary<object, object>
+                                {
+                                    ["message"] = ex.Message,
+                                    ["name"] = ex.GetType().Name
+                                };
+                            }
+                            try
+                            {
+                                tryResult = Evaluate(tryStmt.CatchBlock);
+                            }
+                            finally
+                            {
+                                PopScope();
+                            }
+                        }
+                        else
+                        {
+                            throw new JSException(ex.Message);
+                        }
+                    }
+                    finally
+                    {
+                        if (tryStmt.FinallyBlock != null)
+                        {
+                            Evaluate(tryStmt.FinallyBlock);
+                        }
+                    }
+                    return tryResult;
+                case ThrowStatementNode throwStmt:
+                    object throwVal = throwStmt.Argument == null ? null : Evaluate(throwStmt.Argument);
+                    throw new JSException(throwVal);
                 case BinaryExpressionNode bin:
                     object left = Evaluate(bin.Left);
                     object right = Evaluate(bin.Right);
@@ -122,19 +196,24 @@ namespace SiegeEngine.Core.UI.JSParser
                     return ApplyUnaryOp(un.Operator, arg);
                 case AssignmentExpressionNode assign:
                     object assignRight = Evaluate(assign.Right);
+                    if (assign.Operator != null && assign.Operator != "=")
+                    {
+                        object current = Evaluate(assign.Left);
+                        assignRight = ApplyBinaryOp(assign.Operator.TrimEnd('='), current, assignRight);
+                    }
                     SetValue(assign.Left, assignRight);
                     return assignRight;
                 case UpdateExpressionNode update:
                     object updateArg = Evaluate(update.Argument);
                     object newVal;
-                    dynamic dUpdateArg = updateArg;
+                    double num = ToNumber(updateArg);
                     if (update.Operator == "++")
                     {
-                        newVal = dUpdateArg + 1;
+                        newVal = num + 1;
                     }
                     else
                     {
-                        newVal = dUpdateArg - 1;
+                        newVal = num - 1;
                     }
                     SetValue(update.Argument, newVal);
                     return update.Prefix ? newVal : updateArg;
@@ -151,13 +230,38 @@ namespace SiegeEngine.Core.UI.JSParser
                     }
                     return GetMember(objValue, propValue);
                 case CallExpressionNode call:
-                    object callee = Evaluate(call.Callee);
+                    // === THIS-BINDING for method calls ===
+                    object thisArg = null;
+                    object callee = null;
+                    if (call.Callee is MemberExpressionNode mem)
+                    {
+                        thisArg = Evaluate(mem.Object);
+                        object prop = mem.Computed ? Evaluate(mem.Property) : ((IdentifierNode)mem.Property).Name;
+                        callee = GetMember(thisArg, prop);
+                    }
+                    else
+                    {
+                        callee = Evaluate(call.Callee);
+                    }
                     List<object> args = new List<object>();
                     foreach (var a in call.Arguments)
                     {
                         args.Add(Evaluate(a));
                     }
-                    return CallFunction(callee, args);
+                    // Install this for the duration of the call (independent of scope stack)
+                    object previousThis = _currentThis;
+                    if (thisArg != null)
+                    {
+                        _currentThis = thisArg;
+                    }
+                    try
+                    {
+                        return CallFunction(callee, args);
+                    }
+                    finally
+                    {
+                        _currentThis = previousThis;
+                    }
                 case IdentifierNode id:
                     return GetVariable(id.Name);
                 case LiteralNode lit:
@@ -195,11 +299,49 @@ namespace SiegeEngine.Core.UI.JSParser
                     object condTest = Evaluate(cond.Test);
                     return IsTruthy(condTest) ? Evaluate(cond.Consequent) : Evaluate(cond.Alternate);
                 case ThisExpressionNode _:
-                    return CurrentScope().GetValueOrDefault("this", null);
+                    // Look at the dedicated this slot first, then fall back to scope walk
+                    if (_currentThis != null)
+                        return _currentThis;
+                    foreach (var scope in _scopeStack)
+                    {
+                        if (scope.TryGetValue("this", out object t))
+                            return t;
+                    }
+                    return null;
                 case NewExpressionNode newExpr:
-                    // Proper support for "new CustomEvent(...)" etc.
-                    // Returns a dummy object so the IIFE mouseup handler completes cleanly.
-                    // Flag reset (isDraggingEnd = false) now runs to completion every time.
+                    // CRITICAL: inspect the AST *before* evaluating the callee so that
+                    // "new Error(...)" never hits GetVariable("Error") and throws.
+                    string ctorName = null;
+                    if (newExpr.Callee is IdentifierNode idn)
+                        ctorName = idn.Name;
+
+                    List<object> newArgs = new List<object>();
+                    foreach (var a in newExpr.Arguments)
+                    {
+                        newArgs.Add(Evaluate(a));
+                    }
+
+                    if (ctorName == "Error")
+                    {
+                        string msg = newArgs.Count > 0 ? (newArgs[0]?.ToString() ?? "") : "";
+                        return new Dictionary<object, object>
+                        {
+                            ["message"] = msg,
+                            ["name"] = "Error"
+                        };
+                    }
+
+                    // Fallback for other constructors – evaluate the callee only now
+                    object ctor = Evaluate(newExpr.Callee);
+                    if (ctor is FunctionDeclarationNode fd && fd.Name == "Error")
+                    {
+                        string msg = newArgs.Count > 0 ? (newArgs[0]?.ToString() ?? "") : "";
+                        return new Dictionary<object, object>
+                        {
+                            ["message"] = msg,
+                            ["name"] = "Error"
+                        };
+                    }
                     return new Dictionary<object, object>();
                 default:
                     throw new Exception("Unsupported node type: " + node.GetType());
@@ -240,21 +382,18 @@ namespace SiegeEngine.Core.UI.JSParser
                     return scope[name];
                 }
             }
-            throw new Exception($"Undefined variable: {name}");
+            if (_functions.TryGetValue(name, out var func))
+                return func;
+            throw new JSException($"Undefined variable: {name}");
         }
         private void SetValue(ASTNode target, object value)
         {
             switch (target)
             {
                 case IdentifierNode id:
-                    if (id.Name == "isDraggingStart" || id.Name == "isDraggingEnd")
-                    {
-                        Console.WriteLine($"[JSEvaluator] FLAG SET: {id.Name} = {value}");
-                    }
                     bool set = false;
-                    for (int i = _scopeStack.Count - 1; i >= 0; i--)
+                    foreach (var scope in _scopeStack)
                     {
-                        var scope = _scopeStack.ToArray()[i];
                         if (scope.ContainsKey(id.Name))
                         {
                             scope[id.Name] = value;
@@ -288,9 +427,19 @@ namespace SiegeEngine.Core.UI.JSParser
         {
             if (objValue is Dictionary<object, object> dictObj)
             {
+                // Exact key match first
                 if (dictObj.TryGetValue(propValue, out object val))
                     return val;
-                return JSStandardLibrary.GetObjectMember(this, dictObj, propValue.ToString());
+                // Also try string form (covers Error.message etc.)
+                if (propValue != null && dictObj.TryGetValue(propValue.ToString(), out val))
+                    return val;
+                // Fallback for any object that might be living under a different key type
+                foreach (var kv in dictObj)
+                {
+                    if (kv.Key != null && kv.Key.ToString() == propValue?.ToString())
+                        return kv.Value;
+                }
+                return JSStandardLibrary.GetObjectMember(this, dictObj, propValue?.ToString());
             }
             if (objValue is List<object> listObj)
             {
@@ -371,11 +520,15 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 if (jsProp == "style")
                 {
-                    return jsElem.style; // ← SINGLE DEFINITIVE FIX: use the live StyleProxy
+                    return jsElem.style;
                 }
                 if (jsProp == "classList")
                 {
                     return jsElem.classList;
+                }
+                if (jsProp == "className")
+                {
+                    return jsElem.className;
                 }
                 if (jsProp == "preventDefault" || jsProp == "stopPropagation" || jsProp == "stopImmediatePropagation")
                 {
@@ -468,19 +621,13 @@ namespace SiegeEngine.Core.UI.JSParser
                     string tag = jsElem.elem.Tag.ToLower();
                     if (tag == "select")
                     {
-                        bool found = false;
                         foreach (var opt in jsElem.elem.Children.Where(c => c.Tag.ToLower() == "option"))
                         {
                             string optVal = opt.Attributes.GetValueOrDefault("value", ((TextElement)opt.Children.FirstOrDefault())?.Content ?? "");
                             if (optVal == value.ToString())
-                            {
                                 opt.Attributes["selected"] = "";
-                                found = true;
-                            }
                             else
-                            {
                                 opt.Attributes.Remove("selected");
-                            }
                         }
                     }
                     else if (tag == "option")
@@ -496,12 +643,13 @@ namespace SiegeEngine.Core.UI.JSParser
                         jsElem.elem.Attributes["value"] = value.ToString();
                     }
                 }
+                else if (prop == "className")
+                {
+                    jsElem.className = value?.ToString() ?? "";
+                }
                 else if (prop == "innerHTML")
                 {
-                    if (value is string strVal && strVal == "")
-                    {
-                        jsElem.elem.Children.Clear();
-                    }
+                    jsElem.innerHTML = value?.ToString() ?? "";
                 }
                 else if (prop == "textContent")
                 {
@@ -535,15 +683,12 @@ namespace SiegeEngine.Core.UI.JSParser
             var prop1 = type?.GetProperty(propValue.ToString());
             prop1?.SetValue(objValue, value);
         }
-
-        // FIXED: Relaxed argument count handling for UI callbacks (the exact crash you were seeing)
         public object CallFunction(object callee, List<object> args)
         {
             if (callee is object[] arr && arr.Length == 1)
             {
                 callee = arr[0];
             }
-
             if (callee is JSArrowClosure closure)
             {
                 List<object> callArgs = args ?? new List<object>();
@@ -551,14 +696,11 @@ namespace SiegeEngine.Core.UI.JSParser
                     callArgs.Add(null);
                 if (callArgs.Count > closure.Params.Count)
                     callArgs = callArgs.Take(closure.Params.Count).ToList();
-
                 PushScope();
                 foreach (var kv in closure.Captured)
                 {
                     if (!CurrentScope().ContainsKey(kv.Key))
-                    {
                         CurrentScope()[kv.Key] = kv.Value;
-                    }
                 }
                 for (int i = 0; i < callArgs.Count; i++)
                 {
@@ -578,7 +720,7 @@ namespace SiegeEngine.Core.UI.JSParser
                     }
                     else
                     {
-                        result = closure.Evaluator.Evaluate(closure.Body);
+                        result = Evaluate(closure.Body);
                     }
                 }
                 catch (ReturnException re)
@@ -594,19 +736,25 @@ namespace SiegeEngine.Core.UI.JSParser
                     }
                     PopScope();
                 }
-                return result;
+                return result is ReturnValue rv ? rv.Value : result;
             }
-
             if (callee is FunctionDeclarationNode func)
             {
-                // RELAXED: UI callbacks often receive 0 or 1 argument — do not throw
                 List<object> callArgs = args ?? new List<object>();
                 while (callArgs.Count < func.Params.Count)
                     callArgs.Add(null);
                 if (callArgs.Count > func.Params.Count)
                     callArgs = callArgs.Take(func.Params.Count).ToList();
-
                 PushScope();
+                if (func.Name != null)
+                {
+                    CurrentScope()[func.Name] = func;
+                }
+                // Also make the current `this` visible inside the function body
+                if (_currentThis != null)
+                {
+                    CurrentScope()["this"] = _currentThis;
+                }
                 for (int i = 0; i < callArgs.Count; i++)
                 {
                     CurrentScope()[func.Params[i]] = callArgs[i];
@@ -624,39 +772,26 @@ namespace SiegeEngine.Core.UI.JSParser
                 {
                     PopScope();
                 }
-                return result;
-            }
-
-            if (callee is Func<object[], object> funcObj)
-            {
-                return funcObj(args.ToArray());
-            }
-            if (callee is Action action)
-            {
-                action();
-                return null;
-            }
-            if (callee is Action<object[]> variadicAction)
-            {
-                variadicAction(args.ToArray());
-                return null;
-            }
-            if (callee.GetType().IsGenericType && callee.GetType().GetGenericTypeDefinition() == typeof(Action<>))
-            {
-                object arg = args.Count > 0 ? args[0] : null;
-                try
-                {
-                    ((Delegate)callee).DynamicInvoke(arg);
-                }
-                catch (Exception ex)
-                {
-                    throw;
-                }
-                return null;
+                return result is ReturnValue rv ? rv.Value : result;
             }
             if (callee is Delegate del)
             {
-                object[] invokeArgs = args.ToArray();
+                var method = del.Method;
+                var parameters = method.GetParameters();
+                object[] invokeArgs;
+                if (parameters.Length == 1 && parameters[0].ParameterType == typeof(object[]))
+                {
+                    invokeArgs = new object[] { (args ?? new List<object>()).ToArray() };
+                }
+                else
+                {
+                    var src = args ?? new List<object>();
+                    invokeArgs = new object[parameters.Length];
+                    for (int i = 0; i < parameters.Length; i++)
+                    {
+                        invokeArgs[i] = i < src.Count ? src[i] : null;
+                    }
+                }
                 try
                 {
                     return del.DynamicInvoke(invokeArgs);
@@ -669,14 +804,37 @@ namespace SiegeEngine.Core.UI.JSParser
                     }
                     throw;
                 }
-                catch (Exception ex)
+                catch (TargetInvocationException tie) when (tie.InnerException != null)
                 {
-                    throw;
+                    throw tie.InnerException;
                 }
             }
-            throw new Exception("Not callable");
+            throw new JSException("Not callable: " + (callee?.GetType().FullName ?? "null"));
         }
-
+        private static double ToNumber(object value)
+        {
+            if (value == null) return double.NaN;
+            if (value is double d) return d;
+            if (value is float f) return f;
+            if (value is int i) return i;
+            if (value is long l) return l;
+            if (value is bool b) return b ? 1.0 : 0.0;
+            if (value is string s)
+            {
+                if (string.IsNullOrWhiteSpace(s)) return 0.0;
+                if (double.TryParse(s, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double parsed))
+                    return parsed;
+                return double.NaN;
+            }
+            try
+            {
+                return Convert.ToDouble(value);
+            }
+            catch
+            {
+                return double.NaN;
+            }
+        }
         private object ApplyBinaryOp(string op, object left, object right)
         {
             if (op == "===")
@@ -690,36 +848,36 @@ namespace SiegeEngine.Core.UI.JSParser
             {
                 return !(bool)ApplyBinaryOp("===", left, right);
             }
-            dynamic dLeft = left ?? 0;
-            dynamic dRight = right ?? 0;
+            if (op == "-" || op == "*" || op == "/" || op == "%")
+            {
+                double dLeft = ToNumber(left);
+                double dRight = ToNumber(right);
+                switch (op)
+                {
+                    case "-": return dLeft - dRight;
+                    case "*": return dLeft * dRight;
+                    case "/":
+                        if (dRight == 0.0) return 0.0;
+                        return dLeft / dRight;
+                    case "%":
+                        if (dRight == 0.0) return 0.0;
+                        return dLeft % dRight;
+                }
+            }
+            dynamic dLeftDyn = left ?? 0;
+            dynamic dRightDyn = right ?? 0;
             switch (op)
             {
-                case "+": return dLeft + dRight;
-                case "-": return dLeft - dRight;
-                case "*": return dLeft * dRight;
-                case "/":
-                    if (dRight == 0)
-                    {
-                        Console.WriteLine("[JSEvaluator] ApplyBinaryOp - Division by zero prevented, returning 0");
-                        return 0;
-                    }
-                    return dLeft / dRight;
-                case "%":
-                    if (dRight == 0)
-                    {
-                        Console.WriteLine("[JSEvaluator] ApplyBinaryOp - Modulo by zero prevented, returning 0");
-                        return 0;
-                    }
-                    return dLeft % dRight;
-                case "==": return dLeft == dRight;
-                case "!=": return dLeft != dRight;
-                case "<": return dLeft < dRight;
-                case ">": return dLeft > dRight;
-                case "<=": return dLeft <= dRight;
-                case ">=": return dLeft >= dRight;
-                case "&": return dLeft & dRight;
-                case "|": return dLeft | dRight;
-                case "^": return dLeft ^ dRight;
+                case "+": return dLeftDyn + dRightDyn;
+                case "==": return dLeftDyn == dRightDyn;
+                case "!=": return dLeftDyn != dRightDyn;
+                case "<": return dLeftDyn < dRightDyn;
+                case ">": return dLeftDyn > dRightDyn;
+                case "<=": return dLeftDyn <= dRightDyn;
+                case ">=": return dLeftDyn >= dRightDyn;
+                case "&": return dLeftDyn & dRightDyn;
+                case "|": return dLeftDyn | dRightDyn;
+                case "^": return dLeftDyn ^ dRightDyn;
                 case "&&": return IsTruthy(left) ? right : left;
                 case "||": return IsTruthy(left) ? left : right;
                 default: throw new Exception($"Unsupported binary operator: {op}");
@@ -727,6 +885,19 @@ namespace SiegeEngine.Core.UI.JSParser
         }
         private object ApplyUnaryOp(string op, object arg)
         {
+            if (op == "typeof")
+            {
+                if (arg == null) return "undefined";
+                if (arg is bool) return "boolean";
+                if (arg is double || arg is float || arg is int || arg is long) return "number";
+                if (arg is string) return "string";
+                if (arg is FunctionDeclarationNode || arg is JSArrowClosure) return "function";
+                return "object";
+            }
+            if (op == "void")
+            {
+                return null;
+            }
             dynamic dArg = arg ?? 0;
             switch (op)
             {
@@ -741,10 +912,13 @@ namespace SiegeEngine.Core.UI.JSParser
         {
             if (value == null) return false;
             if (value is bool b) return b;
+            if (value is double d) return d != 0 && !double.IsNaN(d);
             if (value is float f) return f != 0f;
+            if (value is int i) return i != 0;
+            if (value is long l) return l != 0;
             if (value is string s) return !string.IsNullOrEmpty(s);
-            if (value is List<object> l) return l.Count > 0;
-            if (value is Dictionary<object, object> d) return d.Count > 0;
+            if (value is List<object> list) return list.Count > 0;
+            if (value is Dictionary<object, object> dict) return dict.Count > 0;
             return true;
         }
         public void RegisterFunction(string name, FunctionDeclarationNode func)
@@ -782,6 +956,14 @@ namespace SiegeEngine.Core.UI.JSParser
     {
         public object Value { get; }
         public ReturnException(object value) : base("Return")
+        {
+            Value = value;
+        }
+    }
+    public class JSException : Exception
+    {
+        public object Value { get; }
+        public JSException(object value) : base(value?.ToString() ?? "Error")
         {
             Value = value;
         }

@@ -103,7 +103,6 @@ namespace SiegeEngine.Core.Physics
                     {
                         body.Velocity += _gravity * dt;
                     }
-                    // Character Position is the feet; integrate directly.
                     body.Position += body.Velocity * dt;
                 }
                 else
@@ -111,9 +110,6 @@ namespace SiegeEngine.Core.Physics
                     if (body.InvMass > 0f)
                         body.Velocity += _gravity * dt;
 
-                    // Proper rigid-body integration about the centre of mass.
-                    // Advance the CoM by linear velocity, apply angular update,
-                    // then back-solve Position so that WorldCentreOfMass is correct.
                     Vector3 com = body.WorldCentreOfMass;
                     com += body.Velocity * dt;
 
@@ -197,7 +193,6 @@ namespace SiegeEngine.Core.Physics
             float invMassB = b != null ? b.InvMass : 0f;
             float totalInvMass = invMassA + invMassB;
 
-            // One-sided response for kinematic vs heightfield / static
             bool kinematicVsStatic = a != null && a.BodyType == BodyType.Kinematic
                                   && (b == null || b.BodyType == BodyType.Static);
 
@@ -222,7 +217,6 @@ namespace SiegeEngine.Core.Physics
 
                 if (kinematicVsStatic)
                 {
-                    // Cancel only the penetrating component on the kinematic body
                     a.Velocity -= n * velAlongNormal;
                     continue;
                 }
@@ -256,18 +250,27 @@ namespace SiegeEngine.Core.Physics
                     b.Velocity -= impulse * invMassB;
                     b.AngularVelocity -= b.ApplyInvInertiaWorld(Vector3.Cross(rB, impulse));
                 }
+
+                // Recompute relative velocity after normal impulse
                 relVel = (a != null ? a.Velocity + Vector3.Cross(a.AngularVelocity, rA) : Vector3.Zero)
                        - (b != null ? b.Velocity + Vector3.Cross(b.AngularVelocity, rB) : Vector3.Zero);
+
+                // ----- Coulomb friction -----
                 Vector3 tangent = relVel - n * Vector3.Dot(relVel, n);
                 float tLen = tangent.Length();
                 if (tLen > 1e-6f)
                 {
                     tangent /= tLen;
-                    float mu = b == null
-                        ? MathF.Max(1.2f, (a?.Friction ?? 0.5f) * 2f)
+
+                    float muKinetic = b == null
+                        ? 0.35f
                         : MathF.Sqrt((a?.Friction ?? 0.5f) * (b?.Friction ?? 0.5f));
+                    float muStatic = b == null ? 0.55f : muKinetic * 1.25f;
+
+                    float jtMax = (tLen < 0.06f ? muStatic : muKinetic) * MathF.Abs(j);
                     float jt = -Vector3.Dot(relVel, tangent) / invMassEff;
-                    jt = Math.Clamp(jt, -j * mu, j * mu);
+                    jt = Math.Clamp(jt, -jtMax, jtMax);
+
                     Vector3 frictionImpulse = tangent * jt;
                     if (a != null && invMassA > 0f)
                     {
@@ -280,19 +283,41 @@ namespace SiegeEngine.Core.Physics
                         b.AngularVelocity -= b.ApplyInvInertiaWorld(Vector3.Cross(rB, frictionImpulse));
                     }
                 }
+
+                // ----- Heightfield-specific: ensure parallel gravity can divert the ball -----
                 if (b == null && a != null && a.BodyType == BodyType.Dynamic && invMassA > 0f)
                 {
-                    const float rollingMu = 0.18f;
-                    float maxRolling = rollingMu * MathF.Abs(j);
-                    relVel = a.Velocity + Vector3.Cross(a.AngularVelocity, rA);
-                    tangent = relVel - n * Vector3.Dot(relVel, n);
-                    tLen = tangent.Length();
-                    if (tLen > 1e-6f)
+                    float mu = 0.55f;
+                    float remainingFriction = MathF.Max(0f, mu * MathF.Abs(j) - (tLen > 1e-6f ? MathF.Abs(-Vector3.Dot(relVel, tangent) / invMassEff) : 0f));
+
+                    Vector3 gParallel = _gravity - n * Vector3.Dot(_gravity, n);
+                    float gParLen = gParallel.Length();
+                    if (gParLen > 1e-6f && remainingFriction > 0f)
                     {
-                        tangent /= tLen;
-                        float jtRoll = -Vector3.Dot(relVel, tangent) / invMassEff;
-                        jtRoll = Math.Clamp(jtRoll, -maxRolling, maxRolling);
-                        Vector3 rollImpulse = tangent * jtRoll;
+                        Vector3 desiredDeltaV = gParallel * (1f / 60f);
+                        float desiredLen = desiredDeltaV.Length();
+                        if (desiredLen > 1e-8f)
+                        {
+                            float maxDelta = remainingFriction * invMassA;
+                            if (desiredLen > maxDelta)
+                                desiredDeltaV *= maxDelta / desiredLen;
+
+                            a.Velocity += desiredDeltaV;
+                        }
+                    }
+
+                    // Pure dissipative rolling resistance
+                    Vector3 vAtContact = a.Velocity + Vector3.Cross(a.AngularVelocity, rA);
+                    Vector3 vTang = vAtContact - n * Vector3.Dot(vAtContact, n);
+                    float vtLen = vTang.Length();
+                    if (vtLen > 1e-5f)
+                    {
+                        Vector3 tDir = vTang / vtLen;
+                        const float rollingMu = 0.10f;
+                        float maxRoll = rollingMu * MathF.Abs(j);
+                        float jtRoll = -vtLen / invMassEff;
+                        jtRoll = Math.Clamp(jtRoll, -maxRoll, maxRoll);
+                        Vector3 rollImpulse = tDir * jtRoll;
                         a.Velocity += rollImpulse * invMassA;
                         a.AngularVelocity += a.ApplyInvInertiaWorld(Vector3.Cross(rA, rollImpulse));
                     }
@@ -324,7 +349,6 @@ namespace SiegeEngine.Core.Physics
 
                     if (kinematicVsStatic)
                     {
-                        // Full one-sided correction onto the kinematic body
                         a.Position += p.Normal * depth;
                     }
                     else
@@ -393,16 +417,26 @@ namespace SiegeEngine.Core.Physics
         }
         private void ApplyRestingDeadZone()
         {
-            const float restThreshold = 0.08f;
+            const float restThreshold = 0.05f;
             for (int m = 0; m < _manifolds.Count; m++)
             {
                 var manifold = _manifolds[m];
                 if (manifold.BodyB != null) continue;
                 var a = manifold.BodyA;
                 if (a == null || a.BodyType != BodyType.Dynamic || a.InvMass <= 0f) continue;
+
                 float speed = a.Velocity.Length();
                 float spin = a.AngularVelocity.Length();
-                if (speed < restThreshold && spin < restThreshold * 2f)
+                if (speed > restThreshold || spin > restThreshold * 2.5f) continue;
+
+                Vector3 n = manifold.Points[0].Normal;
+                Vector3 gParallel = _gravity - n * Vector3.Dot(_gravity, n);
+                float gParLen = gParallel.Length();
+
+                float nForceApprox = a.Mass * MathF.Abs(Vector3.Dot(_gravity, n)) + a.Mass * 2f;
+                float frictionCapacity = 0.55f * nForceApprox;
+
+                if (gParLen * a.Mass <= frictionCapacity)
                 {
                     a.Velocity = Vector3.Zero;
                     a.AngularVelocity = Vector3.Zero;
@@ -492,15 +526,23 @@ namespace SiegeEngine.Core.Physics
         {
             Vector3 centre = body.WorldCentreOfMass;
             float groundZ = field.SampleHeight(centre.X, centre.Y);
-            float penetration = (groundZ + sphere.Radius) - centre.Z;
-            if (penetration > 0f)
+            float verticalPen = (groundZ + sphere.Radius) - centre.Z;
+            if (verticalPen > 0f)
             {
                 Vector3 n = field.SampleNormal(centre.X, centre.Y);
+                // Convert vertical penetration into penetration along the surface normal
+                float nZ = MathF.Max(n.Z, 0.15f);
+                float pen = verticalPen / nZ;
+
+                // True contact point on the sphere surface along the normal.
+                // This makes rA = -n * radius so friction torque correctly spins the ball.
+                Vector3 contactPos = centre - n * sphere.Radius;
+
                 manifold.Add(new ContactPoint
                 {
-                    Position = new Vector3(centre.X, centre.Y, groundZ),
+                    Position = contactPos,
                     Normal = n,
-                    Penetration = penetration
+                    Penetration = pen
                 });
                 float slopeDeg = MathF.Acos(Math.Clamp(n.Z, -1f, 1f)) * (180f / MathF.PI);
                 if (slopeDeg <= body.SlopeLimitDegrees)
@@ -533,7 +575,6 @@ namespace SiegeEngine.Core.Physics
             Vector3 feet = capBody.Position;
             float r = cap.Radius;
             float h = cap.Height;
-            // True cylindrical medial axis (excludes the hemispherical caps)
             Vector3 axisStart = feet + new Vector3(0f, 0f, r);
             Vector3 axisEnd = feet + new Vector3(0f, 0f, MathF.Max(r, h - r));
             Vector3 ab = axisEnd - axisStart;
@@ -549,18 +590,15 @@ namespace SiegeEngine.Core.Physics
             Vector3 n;
             if (dist > 1e-6f)
             {
-                n = delta / dist; // from capsule axis toward sphere centre
+                n = delta / dist;
             }
             else
             {
-                // Centres coincide – stable fallback
                 n = Vector3.UnitZ;
                 if (Vector3.Dot(n, ab) < 0f) n = -n;
             }
             float penetration = rSum - dist;
-            // Contact point lies on the capsule surface
             Vector3 contactPos = closest + n * r;
-            // Guarantee Normal points from BodyB toward BodyA
             if (sphereBody != manifold.BodyA)
             {
                 n = -n;
@@ -679,7 +717,6 @@ namespace SiegeEngine.Core.Physics
                 feet + new Vector3(0, 0, height * 0.5f),
                 feet + new Vector3(0, 0, height - radius)
             };
-            // Collect candidates then keep only the deepest contacts.
             var candidates = new List<ContactPoint>(32);
             for (int t = 0; t < _triA.Count; t++)
             {
@@ -714,15 +751,17 @@ namespace SiegeEngine.Core.Physics
         {
             Vector3 feet = body.Position;
             float groundZ = field.SampleHeight(feet.X, feet.Y);
-            float penetration = groundZ - feet.Z;
-            if (penetration > 0f)
+            float verticalPen = groundZ - feet.Z;
+            if (verticalPen > 0f)
             {
                 Vector3 n = field.SampleNormal(feet.X, feet.Y);
+                float nZ = MathF.Max(n.Z, 0.15f);
+                float pen = verticalPen / nZ;
                 manifold.Add(new ContactPoint
                 {
                     Position = new Vector3(feet.X, feet.Y, groundZ),
                     Normal = n,
-                    Penetration = penetration
+                    Penetration = pen
                 });
                 float slopeDeg = MathF.Acos(Math.Clamp(n.Z, -1f, 1f)) * (180f / MathF.PI);
                 if (slopeDeg <= body.SlopeLimitDegrees)
@@ -752,15 +791,17 @@ namespace SiegeEngine.Core.Physics
             {
                 Vector3 p = corners[i];
                 float groundZ = field.SampleHeight(p.X, p.Y);
-                float penetration = groundZ - p.Z;
-                if (penetration > 0f)
+                float verticalPen = groundZ - p.Z;
+                if (verticalPen > 0f)
                 {
                     Vector3 n = field.SampleNormal(p.X, p.Y);
+                    float nZ = MathF.Max(n.Z, 0.15f);
+                    float pen = verticalPen / nZ;
                     manifold.Add(new ContactPoint
                     {
                         Position = new Vector3(p.X, p.Y, groundZ),
                         Normal = n,
-                        Penetration = penetration
+                        Penetration = pen
                     });
                     float slopeDeg = MathF.Acos(Math.Clamp(n.Z, -1f, 1f)) * (180f / MathF.PI);
                     if (slopeDeg <= body.SlopeLimitDegrees)

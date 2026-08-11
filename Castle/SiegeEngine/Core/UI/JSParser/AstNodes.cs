@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// File: SiegeEngine/Core/UI/JSParser/AstNodes.cs
+using System.Collections.Generic;
 
 public abstract class ASTNode
 {
@@ -131,10 +132,20 @@ public class AssignmentExpressionNode : ASTNode
 {
     public ASTNode Left { get; }
     public ASTNode Right { get; }
+    /// <summary>
+    /// The assignment operator. "=" for simple assignment, "+=" / "-=" / "*=" / "/=" / "%=" for compound.
+    /// Defaults to "=" for backwards compatibility with existing call sites.
+    /// </summary>
+    public string Operator { get; }
     public AssignmentExpressionNode(ASTNode left, ASTNode right)
+        : this(left, right, "=")
+    {
+    }
+    public AssignmentExpressionNode(ASTNode left, ASTNode right, string op)
     {
         Left = left;
         Right = right;
+        Operator = op ?? "=";
     }
 }
 public class UpdateExpressionNode : ASTNode
@@ -226,5 +237,27 @@ public class JSRegex
     {
         Pattern = pattern;
         Flags = flags;
+    }
+}
+public class TryStatementNode : ASTNode
+{
+    public ASTNode Block { get; }
+    public string CatchParam { get; }
+    public ASTNode CatchBlock { get; }
+    public ASTNode FinallyBlock { get; }
+    public TryStatementNode(ASTNode block, string catchParam, ASTNode catchBlock, ASTNode finallyBlock)
+    {
+        Block = block;
+        CatchParam = catchParam;
+        CatchBlock = catchBlock;
+        FinallyBlock = finallyBlock;
+    }
+}
+public class ThrowStatementNode : ASTNode
+{
+    public ASTNode Argument { get; }
+    public ThrowStatementNode(ASTNode argument)
+    {
+        Argument = argument;
     }
 }
