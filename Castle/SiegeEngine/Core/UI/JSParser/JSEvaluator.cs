@@ -14,7 +14,7 @@ namespace SiegeEngine.Core.UI.JSParser
         private Stack<Dictionary<string, object>> _scopeStack = new Stack<Dictionary<string, object>>();
         private Dictionary<string, FunctionDeclarationNode> _functions = new Dictionary<string, FunctionDeclarationNode>();
 
-        // Holds the current `this` value for method calls.  Lives outside the
+        // Holds the current `this` value for method calls. Lives outside the
         // normal scope stack so that PushScope / PopScope never loses it.
         private object _currentThis = null;
 
@@ -35,6 +35,8 @@ namespace SiegeEngine.Core.UI.JSParser
             {
                 ["log"] = new Action<object>(o => Console.WriteLine("[JS] " + (o?.ToString() ?? "null")))
             });
+            // Register a dummy Error constructor so "new Error(...)" never hits Undefined variable
+            RegisterGlobal("Error", "Error");
         }
         public object Evaluate(ASTNode node)
         {
@@ -307,19 +309,33 @@ namespace SiegeEngine.Core.UI.JSParser
                     }
                     return null;
                 case NewExpressionNode newExpr:
-                    object ctor = Evaluate(newExpr.Callee);
+                    // CRITICAL: inspect the AST *before* evaluating the callee so that
+                    // "new Error(...)" never hits GetVariable("Error") and throws.
+                    string ctorName = null;
+                    if (newExpr.Callee is IdentifierNode idn)
+                        ctorName = idn.Name;
+
                     List<object> newArgs = new List<object>();
                     foreach (var a in newExpr.Arguments)
                     {
                         newArgs.Add(Evaluate(a));
                     }
-                    string ctorName = null;
-                    if (newExpr.Callee is IdentifierNode idn) ctorName = idn.Name;
-                    else if (ctor is string s) ctorName = s;
-                    if (ctorName == "Error" || (ctor is FunctionDeclarationNode fd && fd.Name == "Error"))
+
+                    if (ctorName == "Error")
                     {
                         string msg = newArgs.Count > 0 ? (newArgs[0]?.ToString() ?? "") : "";
-                        // Use string keys explicitly so GetMember can find them reliably
+                        return new Dictionary<object, object>
+                        {
+                            ["message"] = msg,
+                            ["name"] = "Error"
+                        };
+                    }
+
+                    // Fallback for other constructors – evaluate the callee only now
+                    object ctor = Evaluate(newExpr.Callee);
+                    if (ctor is FunctionDeclarationNode fd && fd.Name == "Error")
+                    {
+                        string msg = newArgs.Count > 0 ? (newArgs[0]?.ToString() ?? "") : "";
                         return new Dictionary<object, object>
                         {
                             ["message"] = msg,
