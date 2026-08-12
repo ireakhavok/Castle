@@ -186,18 +186,9 @@ namespace SiegeEngine.Core.Definitions
             }
             else if (model != null && model.Meshes != null && model.Meshes.Count > 0)
             {
-                if (BodyType == BodyType.Dynamic)
-                {
-                    var tempMesh = new TriangleMeshShape(model);
-                    Vector3 com = tempMesh.LocalCentreOfMass;
-                    float radius = tempMesh.BoundingRadius;
-                    if (radius < 0.001f) radius = 0.5f;
-                    Shape = new SphereShape(radius, com);
-                }
-                else
-                {
-                    Shape = new TriangleMeshShape(model);
-                }
+                // Always use the real FBX triangle mesh for both Dynamic and Static.
+                // This is the only way a ball mesh stays a ball and a wall mesh stays a wall.
+                Shape = new TriangleMeshShape(model);
             }
             else
             {
