@@ -430,7 +430,7 @@ Folder: IDE
       - void HandleDataHook(string hook)
       - bool HandleUIClick(HtmlElement elem)
       - void TriggerChange(HtmlElement elem)
-        - Calls: _parent.FlushLiveSettings
+        - Calls: _parent.ApplyComponentPropertyFromInput, _parent.FlushLiveSettings
       - bool OnContextMenuRequested( Vector2 mousePos, HtmlElement sourceElement)
         - Calls: ContextMenuItem, ShowContextMenu
 - File: SaveProjectEvent.cs
@@ -953,10 +953,12 @@ Folder: SiegeEngine
       - void main()
       - void main()
 - File: AstNodes.cs
-  - Class: JSRegex (Namespace: None)
+  - Class: ThrowStatementNode (Namespace: None)
+    - Inherits: ASTNode
+
     - Dependencies: System.Collections.Generic
     - Methods:
-      - constructor JSRegex( string flags, string pattern)
+      - constructor ThrowStatementNode(ASTNode argument)
 - File: AudioSystem.cs
   - Class: PlaybackInstance (Namespace: SiegeEngine.Systems)
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.IO, System.Linq, System.Media, System.Numerics, System.Threading.Tasks
@@ -1221,7 +1223,7 @@ Folder: SiegeEngine
         - Calls: Console.WriteLine, MovementRequest
       - void Update(float deltaTime)
       - void OnEntityMoved(EntityMovedEvent e)
-        - Calls: Console.WriteLine, _pendingMoves.Clear, _server.GetEntityById
+        - Calls: Console.WriteLine, _pendingMoves.Clear, _pendingMoves.Peek, _server.GetEntityById
 - File: ClosePanelEvent.cs
   - Class: ClosePanelEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -1920,7 +1922,7 @@ Folder: SiegeEngine
       - void PushViewport(Viewport viewport)
       - void PopViewport()
       - Viewport GetCurrentViewport()
-        - Calls: GetWindowSize, Viewport
+        - Calls: GetWindowSize, Viewport, _viewportStack.Peek
       - Key MapGlfwKey(Keys glfwKey)
       - Keys MapEngineKey(Key engineKey)
       - MouseButton MapGlfwMouseButton(MouseButton glfwButton)
@@ -2129,7 +2131,7 @@ Folder: SiegeEngine
         - Calls: JSElement
 - File: JSElement.cs
   - Class: ClassList (Namespace: SiegeEngine.Core.UI.JSParser)
-    - Dependencies: SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.Linq, System.Numerics
     - Fields:
       - HtmlElement _elem
       - UIOverlay _overlay
@@ -2143,7 +2145,7 @@ Folder: SiegeEngine
       - void toggle(string className)
         - Calls: add, contains, remove
 - File: JSEvaluator.cs
-  - Class: ReturnException (Namespace: SiegeEngine.Core.UI.JSParser)
+  - Class: JSException (Namespace: SiegeEngine.Core.UI.JSParser)
     - Inherits: Exception
     
     - Dependencies: SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Linq, System.Reflection, System.Text, System.Text.RegularExpressions
@@ -2734,8 +2736,8 @@ Folder: SiegeEngine
       - List<Vector3> _triA
       - List<Vector3> _triB
       - List<Vector3> _triC
+      - float ContactSkin
       - IHeightProvider HeightProvider
-      - float rollingMu
     - Methods:
       - void SetHeightProvider(IHeightProvider provider)
         - Calls: HeightfieldShape
@@ -2750,7 +2752,11 @@ Folder: SiegeEngine
         - Calls: DetectAndResolveContacts, Integrate, UpdateSleeping
       - void Integrate(float dt)
       - void DetectAndResolveContacts(float dt)
-        - Calls: ApplyRestingDeadZone, CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, RepairNormalVelocities, ResolveVelocity, SphereVsHeightfield, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
+        - Calls: ApplyRestingDeadZone, ApplyRollingResistance, CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, RepairNormalVelocities, ResolveVelocity, SphereVsHeightfield, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
+      - step ApplyRollingResistance()
+        - Calls: a.ApplyInvInertiaWorld
+      - void ApplyRollingResistance(float dt)
+        - Calls: a.ApplyInvInertiaWorld
       - void ResolveVelocity(ContactManifold m)
         - Calls: a.ApplyInvInertiaWorld, b.ApplyInvInertiaWorld
       - void ProjectPositions()
@@ -2780,7 +2786,7 @@ Folder: SiegeEngine
         - Calls: ClosestPointOnObb, manifold.Add
       - void CapsuleVsTriangleMesh(
             TriangleMeshShape mesh,  ContactManifold manifold,  PhysicsComponent capBody,  PhysicsComponent meshBody, CapsuleShape cap)
-        - Calls: ClosestPointOnTriangle, _triA.Clear, _triB.Clear, _triC.Clear, manifold.Add, mesh.GetAabb, mesh.QueryWorldTriangles
+        - Calls: ClosestPointOnTriangle, _triA.Clear, _triB.Clear, _triC.Clear, candidates.Add, manifold.Add, mesh.GetAabb, mesh.QueryWorldTriangles
       - void CapsuleVsHeightfield(
             HeightfieldShape field,  ContactManifold manifold,  PhysicsComponent body, CapsuleShape cap)
         - Calls: field.SampleHeight, field.SampleNormal, manifold.Add
@@ -3843,7 +3849,6 @@ Citadel.ServerProgram
 Citadel.Systems.PhysicsSystem
 FileSelectedEvent
 Foundation.Program
-JSRegex
 Keystone.IOutlinerProvider
 Keystone.OutlinerCoordinator
 Keystone.OutlinerNode
@@ -4053,8 +4058,8 @@ SiegeEngine.Core.UI.JSParser.JSBinding
 SiegeEngine.Core.UI.JSParser.JSClickEvent
 SiegeEngine.Core.UI.JSParser.JSContext
 SiegeEngine.Core.UI.JSParser.JSDate
+SiegeEngine.Core.UI.JSParser.JSException
 SiegeEngine.Core.UI.JSParser.NewExpressionNode
-SiegeEngine.Core.UI.JSParser.ReturnException
 SiegeEngine.Core.UI.MenuUIOverlay
 SiegeEngine.Core.UI.PanelChrome
 SiegeEngine.Core.UI.UIInteractionLayer
@@ -4091,6 +4096,7 @@ SiegeEngine.Systems.LightingSystem
 SiegeEngine.Systems.PlaybackInstance
 SiegeEngine.Systems.PlayerControllerSystem
 SwitchSceneEvent
+ThrowStatementNode
 ToolChest.AddSkyboxUIOverlay
 ToolChest.AssetBrowserUIOverlay
 ToolChest.BlendDotOverlay

@@ -845,7 +845,7 @@ Folder: Core
       - void PushViewport(Viewport viewport)
       - void PopViewport()
       - Viewport GetCurrentViewport()
-        - Calls: GetWindowSize, Viewport
+        - Calls: GetWindowSize, Viewport, _viewportStack.Peek
       - Key MapGlfwKey(Keys glfwKey)
       - Keys MapEngineKey(Key engineKey)
       - MouseButton MapGlfwMouseButton(MouseButton glfwButton)
@@ -1022,7 +1022,7 @@ Folder: Core
         - Calls: JSElement
 - File: JSElement.cs
   - Class: ClassList (Namespace: SiegeEngine.Core.UI.JSParser)
-    - Dependencies: SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.Linq, System.Numerics
     - Fields:
       - HtmlElement _elem
       - UIOverlay _overlay
@@ -1529,8 +1529,8 @@ Folder: Core
       - List<Vector3> _triA
       - List<Vector3> _triB
       - List<Vector3> _triC
+      - float ContactSkin
       - IHeightProvider HeightProvider
-      - float rollingMu
     - Methods:
       - void SetHeightProvider(IHeightProvider provider)
         - Calls: HeightfieldShape
@@ -1544,7 +1544,11 @@ Folder: Core
         - Calls: DetectAndResolveContacts, Integrate, UpdateSleeping
       - void Integrate(float dt)
       - void DetectAndResolveContacts(float dt)
-        - Calls: ApplyRestingDeadZone, CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, RepairNormalVelocities, ResolveVelocity, SphereVsHeightfield, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
+        - Calls: ApplyRestingDeadZone, ApplyRollingResistance, CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, RepairNormalVelocities, ResolveVelocity, SphereVsHeightfield, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
+      - step ApplyRollingResistance()
+        - Calls: a.ApplyInvInertiaWorld
+      - void ApplyRollingResistance(float dt)
+        - Calls: a.ApplyInvInertiaWorld
       - void ResolveVelocity(ContactManifold m)
         - Calls: a.ApplyInvInertiaWorld, b.ApplyInvInertiaWorld
       - void ProjectPositions()
@@ -2857,7 +2861,7 @@ Folder: Systems
         - Calls: MovementRequest
       - void Update(float deltaTime)
       - void OnEntityMoved(EntityMovedEvent e)
-        - Calls: _pendingMoves.Clear, _server.GetEntityById
+        - Calls: _pendingMoves.Clear, _pendingMoves.Peek, _server.GetEntityById
 - File: EnvironmentSystem.cs
   - Class: EnvironmentSystem (Namespace: SiegeEngine.Systems)
     - Inherits: GameSystem
