@@ -47,7 +47,17 @@ namespace ToolChest
                 {
                     string id = input.Attributes.GetValueOrDefault("id", "");
                     if (id.StartsWith("ss-"))
+                    {
                         _parent.FlushLiveSettings();
+                        return;
+                    }
+
+                    // Text inputs that edit component properties (RollingResistance, KineticFriction, etc.)
+                    string hook = input.Attributes.GetValueOrDefault("data-hook", "");
+                    if (hook == "SetComponentProperty")
+                    {
+                        _parent.ApplyComponentPropertyFromInput(input);
+                    }
                 }
             }
             protected override bool OnContextMenuRequested(HtmlElement sourceElement, Vector2 mousePos)
@@ -370,6 +380,23 @@ namespace ToolChest
                 }
             }
         }
+
+        /// <summary>
+        /// Applies a property change coming from a text <input> (used for floats such as
+        /// RollingResistance, KineticFriction, StaticFriction, Mass, etc.).
+        /// </summary>
+        public void ApplyComponentPropertyFromInput(InputElement input)
+        {
+            if (input == null) return;
+            string entityIdStr = input.Attributes.GetValueOrDefault("data-entityid", "-1");
+            if (!int.TryParse(entityIdStr, out int entityId) || entityId <= 0) return;
+            string componentName = input.Attributes.GetValueOrDefault("data-component", "");
+            string propertyName = input.Attributes.GetValueOrDefault("data-property", "");
+            if (string.IsNullOrEmpty(componentName) || string.IsNullOrEmpty(propertyName)) return;
+            string newValue = input.Value ?? "";
+            ApplyPropertyToEntity(entityId, componentName, propertyName, newValue);
+        }
+
         private void ApplyComponentPropertyChange(HtmlElement elem)
         {
             if (elem == null) return;
@@ -384,6 +411,11 @@ namespace ToolChest
             if (string.IsNullOrEmpty(componentName) || string.IsNullOrEmpty(propertyName)) return;
             string newValue = select.Value;
             if (string.IsNullOrEmpty(newValue)) return;
+            ApplyPropertyToEntity(entityId, componentName, propertyName, newValue);
+        }
+
+        private void ApplyPropertyToEntity(int entityId, string componentName, string propertyName, string newValue)
+        {
             var level = ProjectSettings.Current.CurrentLevel;
             if (level == null) return;
             var entity = level.Entities.FirstOrDefault(e => e.Id == entityId);
@@ -414,9 +446,7 @@ namespace ToolChest
                 {
                     prop.SetValue(target, converted);
                     Console.WriteLine($"[PropertiesPanel] Applied {componentName}.{propertyName} = {newValue} on entity {entityId}");
-
-                    // Critical: BodyType / Mass / Size changes require a full shape + mass rebuild
-                    // so InvMass becomes non-zero and the body can fall / collide correctly.
+                    // BodyType / Mass / Size changes require a full shape + mass rebuild
                     if (target is PhysicsComponent physics)
                     {
                         physics.IsSleeping = false;
@@ -424,7 +454,7 @@ namespace ToolChest
                         physics.InvalidateShape();
                         var modelComp = entity.GetComponent<ModelComponent>();
                         physics.RebuildShape(modelComp?.Model);
-                        Console.WriteLine($"[PropertiesPanel] Rebuilt physics shape/mass for entity {entityId} (BodyType={physics.BodyType}, InvMass={physics.InvMass})");
+                        Console.WriteLine($"[PropertiesPanel] Rebuilt physics shape/mass for entity {entityId} (BodyType={physics.BodyType}, InvMass={physics.InvMass}, RollingResistance={physics.RollingResistance})");
                     }
                 }
             }
@@ -433,6 +463,7 @@ namespace ToolChest
                 Console.WriteLine($"[PropertiesPanel] Failed to set {componentName}.{propertyName}: {ex.Message}");
             }
         }
+
         private static object ConvertPropertyValue(Type targetType, string raw)
         {
             if (targetType == typeof(string)) return raw;
