@@ -29,6 +29,9 @@ namespace SiegeEngine.Core.Definitions
             AngularDamping = 0.4f;
             Friction = 1.8f;
             Restitution = 0.0f;
+            KineticFriction = 0.60f;
+            StaticFriction = 0.85f;
+            RollingResistance = 0.20f;
             IsSleeping = false;
             IslandId = -1;
             SleepThreshold = 0.05f;
@@ -99,6 +102,12 @@ namespace SiegeEngine.Core.Definitions
         public float AngularDamping { get; set; } = 0.4f;
         public float Friction { get; set; } = 1.8f;
         public float Restitution { get; set; } = 0.0f;
+        /// <summary>Kinetic (sliding) friction coefficient used on heightfield / terrain.</summary>
+        public float KineticFriction { get; set; } = 0.60f;
+        /// <summary>Static friction coefficient used when nearly at rest on heightfield / terrain.</summary>
+        public float StaticFriction { get; set; } = 0.85f;
+        /// <summary>Rolling-resistance coefficient. Higher values make the body lose energy faster while rolling.</summary>
+        public float RollingResistance { get; set; } = 0.20f;
         public bool IsSleeping { get; set; } = false;
         public int IslandId { get; set; } = -1;
         public float SleepThreshold { get; set; } = 0.05f;
@@ -179,10 +188,6 @@ namespace SiegeEngine.Core.Definitions
             {
                 if (BodyType == BodyType.Dynamic)
                 {
-                    // Mesh defines the sphere. Keep the original authored origin and
-                    // store the true centre of mass as CenterOffset so the renderer
-                    // (which already does Translate(-LocalCentreOfMass) * Rotate * Translate(WorldCoM))
-                    // and the physics integration stay consistent.
                     var tempMesh = new TriangleMeshShape(model);
                     Vector3 com = tempMesh.LocalCentreOfMass;
                     float radius = tempMesh.BoundingRadius;
@@ -225,8 +230,6 @@ namespace SiegeEngine.Core.Definitions
         }
         public void RecomputeMassProperties()
         {
-            // Static and Kinematic never participate in mass-weighted resolution against dynamics.
-            // Kinematic still receives one-sided correction against heightfield/static (handled in PhysicsWorld).
             if (BodyType == BodyType.Static || BodyType == BodyType.Kinematic)
             {
                 InvMass = 0f;
@@ -399,6 +402,9 @@ namespace SiegeEngine.Core.Definitions
                 AngularDamping = AngularDamping,
                 Friction = Friction,
                 Restitution = Restitution,
+                KineticFriction = KineticFriction,
+                StaticFriction = StaticFriction,
+                RollingResistance = RollingResistance,
                 IsSleeping = IsSleeping,
                 IslandId = IslandId,
                 SleepThreshold = SleepThreshold,
@@ -422,6 +428,7 @@ namespace SiegeEngine.Core.Definitions
                     p.LocalBoundsMinCm, p.LocalBoundsMaxCm, p.Velocity,
                     p.BodyType, p.AngularVelocity,
                     p.LinearDamping, p.AngularDamping, p.Friction, p.Restitution,
+                    p.KineticFriction, p.StaticFriction, p.RollingResistance,
                     p.IsSleeping, p.IslandId, p.SleepThreshold, p.CollisionEnabled,
                     p.IsGrounded, p.SlopeLimitDegrees, p.StepHeight,
                     p.LocalCentreOfMass, p.InvMass, p.InvInertiaLocal);
@@ -458,6 +465,9 @@ namespace SiegeEngine.Core.Definitions
             float angularDamping = ReadFloat(je, "AngularDamping", AngularDamping);
             float friction = ReadFloat(je, "Friction", Friction);
             float restitution = ReadFloat(je, "Restitution", Restitution);
+            float kineticFriction = ReadFloat(je, "KineticFriction", KineticFriction);
+            float staticFriction = ReadFloat(je, "StaticFriction", StaticFriction);
+            float rollingResistance = ReadFloat(je, "RollingResistance", RollingResistance);
             bool isSleeping = ReadBool(je, "IsSleeping", IsSleeping);
             int islandId = ReadInt(je, "IslandId", IslandId);
             float sleepThreshold = ReadFloat(je, "SleepThreshold", SleepThreshold);
@@ -474,6 +484,7 @@ namespace SiegeEngine.Core.Definitions
                 localMin, localMax, velocity,
                 bodyType, angularVelocity,
                 linearDamping, angularDamping, friction, restitution,
+                kineticFriction, staticFriction, rollingResistance,
                 isSleeping, islandId, sleepThreshold, collisionEnabled,
                 isGrounded, slopeLimitDegrees, stepHeight,
                 localCentreOfMass, invMass, invInertiaLocal);
@@ -484,6 +495,7 @@ namespace SiegeEngine.Core.Definitions
             Vector3 localMin, Vector3 localMax, Vector3 velocity,
             int bodyType, Vector3 angularVelocity,
             float linearDamping, float angularDamping, float friction, float restitution,
+            float kineticFriction, float staticFriction, float rollingResistance,
             bool isSleeping, int islandId, float sleepThreshold, bool collisionEnabled,
             bool isGrounded, float slopeLimitDegrees, float stepHeight,
             Vector3 localCentreOfMass, float invMass, Vector3 invInertiaLocal)
@@ -505,6 +517,9 @@ namespace SiegeEngine.Core.Definitions
             AngularDamping = angularDamping;
             Friction = friction;
             Restitution = restitution;
+            KineticFriction = kineticFriction;
+            StaticFriction = staticFriction;
+            RollingResistance = rollingResistance;
             IsSleeping = isSleeping;
             IslandId = islandId;
             SleepThreshold = sleepThreshold;
@@ -583,6 +598,9 @@ namespace SiegeEngine.Core.Definitions
             public float AngularDamping { get; set; }
             public float Friction { get; set; }
             public float Restitution { get; set; }
+            public float KineticFriction { get; set; }
+            public float StaticFriction { get; set; }
+            public float RollingResistance { get; set; }
             public bool IsSleeping { get; set; }
             public int IslandId { get; set; }
             public float SleepThreshold { get; set; }
