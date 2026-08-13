@@ -25,6 +25,10 @@ namespace SiegeEngine.Core.Networking
             _eventBus = eventBus;
         }
 
+        // Editor / debug surface
+        public PhysicsWorld PhysicsWorld => _physicsWorld;
+        public IReadOnlyList<ContactManifold> CurrentManifolds => _physicsWorld.CurrentManifolds;
+
         public void SetHeightProvider(IHeightProvider provider)
         {
             _physicsWorld.SetHeightProvider(provider);
@@ -61,6 +65,9 @@ namespace SiegeEngine.Core.Networking
                     existingPhysics.AngularDamping = newPhysics.AngularDamping;
                     existingPhysics.Friction = newPhysics.Friction;
                     existingPhysics.Restitution = newPhysics.Restitution;
+                    existingPhysics.KineticFriction = newPhysics.KineticFriction;
+                    existingPhysics.StaticFriction = newPhysics.StaticFriction;
+                    existingPhysics.RollingResistance = newPhysics.RollingResistance;
                     existingPhysics.IsSleeping = newPhysics.IsSleeping;
                     existingPhysics.IslandId = newPhysics.IslandId;
                     existingPhysics.SleepThreshold = newPhysics.SleepThreshold;
@@ -69,6 +76,10 @@ namespace SiegeEngine.Core.Networking
                     existingPhysics.Health = newPhysics.Health;
                     existingPhysics.IsBreakable = newPhysics.IsBreakable;
                     existingPhysics.IsVisible = newPhysics.IsVisible;
+                    existingPhysics.CollisionEnabled = newPhysics.CollisionEnabled;
+                    existingPhysics.IsGrounded = newPhysics.IsGrounded;
+                    existingPhysics.SlopeLimitDegrees = newPhysics.SlopeLimitDegrees;
+                    existingPhysics.StepHeight = newPhysics.StepHeight;
 
                     existingPhysics.InvalidateShape();
                     var model = (existing.GetComponent<ModelComponent>() ?? entity.GetComponent<ModelComponent>())?.Model;

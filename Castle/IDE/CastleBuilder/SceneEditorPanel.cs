@@ -9,6 +9,7 @@ using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Networking;
+using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI;
@@ -76,6 +77,7 @@ namespace CastleBuilder
         private Vector2 _boxEnd = Vector2.Zero;
         private const float MinDragDistance = 5f;
         private TransformGizmoOverlay _transformGizmo;
+        private PhysicsDebugOverlay _physicsDebug;
         private bool _fileSelectedSubscribed = false;
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
@@ -103,6 +105,62 @@ namespace CastleBuilder
                 id => _editorScene.GetEntityById(id)
             );
             CustomOverlays.Add(_transformGizmo);
+
+            _physicsDebug = new PhysicsDebugOverlay(
+                renderContext,
+                () =>
+                {
+                    var ents = _editorScene.GetEntities();
+                    if (ents != null && ents.Count > 0) return ents;
+                    var serverField = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (serverField != null)
+                    {
+                        var server = serverField.GetValue(_editorScene) as IGameServer;
+                        return server?.GetEntities() ?? (IReadOnlyList<Entity>)Array.Empty<Entity>();
+                    }
+                    return Array.Empty<Entity>();
+                },
+                () =>
+                {
+                    try
+                    {
+                        var serverField = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance);
+                        if (serverField == null) return Array.Empty<ContactManifold>();
+                        var server = serverField.GetValue(_editorScene);
+
+                        // Editor path – ClientGameServerProxy owns the live PhysicsWorld
+                        if (server is ClientGameServerProxy proxy)
+                            return proxy.CurrentManifolds;
+
+                        // Play-mode / full GameServer path
+                        if (server != null)
+                        {
+                            var physSysField = server.GetType().GetField("_physicsSystem", BindingFlags.NonPublic | BindingFlags.Instance);
+                            if (physSysField != null)
+                            {
+                                var physSys = physSysField.GetValue(server);
+                                if (physSys != null)
+                                {
+                                    var worldProp = physSys.GetType().GetProperty("World");
+                                    if (worldProp != null)
+                                    {
+                                        var world = worldProp.GetValue(physSys) as PhysicsWorld;
+                                        return world?.CurrentManifolds ?? (IReadOnlyList<ContactManifold>)Array.Empty<ContactManifold>();
+                                    }
+                                }
+                            }
+                        }
+
+                        return Array.Empty<ContactManifold>();
+                    }
+                    catch
+                    {
+                        return Array.Empty<ContactManifold>();
+                    }
+                },
+                () => _selectedEntityIds
+            );
+            CustomOverlays.Add(_physicsDebug);
         }
         public string ContentType => "SceneEditor";
         protected override UIOverlay CreateUIOverlay()
@@ -251,6 +309,11 @@ namespace CastleBuilder
                 fileSelector.UserData = "PlaceEntity";
                 fileSelector.IsModal = true;
                 _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
+            }
+            else if (hook == "TogglePhysicsDebug")
+            {
+                if (_physicsDebug != null)
+                    _physicsDebug.Enabled = !_physicsDebug.Enabled;
             }
         }
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
@@ -497,6 +560,10 @@ namespace CastleBuilder
             if (_transformGizmo != null)
             {
                 _transformGizmo.RenderWorld(view, projection);
+            }
+            if (_physicsDebug != null)
+            {
+                _physicsDebug.RenderWorld(view, projection);
             }
         }
         public override void OnLiveResize(float w, float h)
