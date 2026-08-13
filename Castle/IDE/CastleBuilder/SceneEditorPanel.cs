@@ -127,15 +127,31 @@ namespace CastleBuilder
                         var serverField = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance);
                         if (serverField == null) return Array.Empty<ContactManifold>();
                         var server = serverField.GetValue(_editorScene);
-                        if (server == null) return Array.Empty<ContactManifold>();
-                        var physSysField = server.GetType().GetField("_physicsSystem", BindingFlags.NonPublic | BindingFlags.Instance);
-                        if (physSysField == null) return Array.Empty<ContactManifold>();
-                        var physSys = physSysField.GetValue(server);
-                        if (physSys == null) return Array.Empty<ContactManifold>();
-                        var worldProp = physSys.GetType().GetProperty("World");
-                        if (worldProp == null) return Array.Empty<ContactManifold>();
-                        var world = worldProp.GetValue(physSys) as PhysicsWorld;
-                        return world?.CurrentManifolds ?? (IReadOnlyList<ContactManifold>)Array.Empty<ContactManifold>();
+
+                        // Editor path – ClientGameServerProxy owns the live PhysicsWorld
+                        if (server is ClientGameServerProxy proxy)
+                            return proxy.CurrentManifolds;
+
+                        // Play-mode / full GameServer path
+                        if (server != null)
+                        {
+                            var physSysField = server.GetType().GetField("_physicsSystem", BindingFlags.NonPublic | BindingFlags.Instance);
+                            if (physSysField != null)
+                            {
+                                var physSys = physSysField.GetValue(server);
+                                if (physSys != null)
+                                {
+                                    var worldProp = physSys.GetType().GetProperty("World");
+                                    if (worldProp != null)
+                                    {
+                                        var world = worldProp.GetValue(physSys) as PhysicsWorld;
+                                        return world?.CurrentManifolds ?? (IReadOnlyList<ContactManifold>)Array.Empty<ContactManifold>();
+                                    }
+                                }
+                            }
+                        }
+
+                        return Array.Empty<ContactManifold>();
                     }
                     catch
                     {

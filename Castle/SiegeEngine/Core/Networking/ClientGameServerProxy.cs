@@ -25,6 +25,10 @@ namespace SiegeEngine.Core.Networking
             _eventBus = eventBus;
         }
 
+        // Editor / debug surface
+        public PhysicsWorld PhysicsWorld => _physicsWorld;
+        public IReadOnlyList<ContactManifold> CurrentManifolds => _physicsWorld.CurrentManifolds;
+
         public void SetHeightProvider(IHeightProvider provider)
         {
             _physicsWorld.SetHeightProvider(provider);
