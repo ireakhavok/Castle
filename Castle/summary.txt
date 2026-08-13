@@ -2752,7 +2752,7 @@ Folder: SiegeEngine
         - Calls: DetectAndResolveContacts, Integrate, UpdateSleeping
       - void Integrate(float dt)
       - void DetectAndResolveContacts(float dt)
-        - Calls: ApplyRestingDeadZone, ApplyRollingResistance, CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, RepairNormalVelocities, ResolveVelocity, SphereVsHeightfield, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
+        - Calls: ApplyRestingDeadZone, ApplyRollingResistance, CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, RepairNormalVelocities, ResolveVelocity, SphereVsHeightfield, TriangleMeshVsHeightfield, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
       - step ApplyRollingResistance()
         - Calls: a.ApplyInvInertiaWorld
       - void ApplyRollingResistance(float dt)
@@ -2793,6 +2793,9 @@ Folder: SiegeEngine
       - void ObbVsHeightfield(
             HeightfieldShape field,  ContactManifold manifold,  PhysicsComponent body, ObbShape obb)
         - Calls: field.SampleHeight, field.SampleNormal, manifold.Add
+      - void TriangleMeshVsHeightfield(
+            HeightfieldShape field,  ContactManifold manifold,  PhysicsComponent body, TriangleMeshShape mesh)
+        - Calls: _triA.Clear, _triB.Clear, _triC.Clear, candidates.Add, field.SampleHeight, field.SampleNormal, manifold.Add, mesh.GetAabb, mesh.QueryWorldTriangles
       - void ObbVsObb(
             ObbShape b,  ContactManifold manifold,  PhysicsComponent bodyA,  PhysicsComponent bodyB, ObbShape a)
         - Calls: manifold.Add

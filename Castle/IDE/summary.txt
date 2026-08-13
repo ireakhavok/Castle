@@ -1,7 +1,7 @@
 Folder: CastleBuilder
 - File: BlueprintManager.cs
   - Class: StringExtensions (Namespace: CastleBuilder)
-    - Dependencies: CastleBuilder.Events, Keystone, MapRoom, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Terrain, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.IO, System.Linq, System.Text.Json, ToolChest
+    - Dependencies: CastleBuilder.Events, Keystone, MapRoom, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Terrain, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.IO, System.Linq, System.Text.Json, ToolChest
     - Methods:
       - string ReplaceInvalidFileChars(this string)
 - File: ContextChangedEvent.cs
@@ -18,14 +18,14 @@ Folder: CastleBuilder
   - Class: BasicGameScene (Namespace: CastleBuilder)
     - Inherits: GameScene
         
-    - Dependencies: Keystone, MapRoom, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json, ToolChest
+    - Dependencies: Keystone, MapRoom, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json, ToolChest
     - Methods:
       - void Render(IReadOnlyList<Entity> entities)
 - File: IDEBasePanel.cs
   - Class: IDEUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
         
-    - Dependencies: CastleBuilder.Events, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Linq, System.Numerics
+    - Dependencies: CastleBuilder.Events, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Systems, System, System.IO, System.Linq, System.Numerics
     - Fields:
       - EventBus _eventBus
     - Methods:
@@ -34,7 +34,7 @@ Folder: CastleBuilder
       - void RefreshMenuForContext(string context)
         - Calls: Console.WriteLine
       - void HandleDataHook(string hook)
-        - Calls: CloseAllOpenNavDropdowns
+        - Calls: CloseAllOpenNavDropdowns, MenuCommands.BuildScripts, MenuCommands.ExportGame, MenuCommands.OpenScriptsPanel, MenuCommands.PlayGame
       - void CloseAllOpenNavDropdowns()
 - File: LoadProjectEvent.cs
   - Class: LoadProjectEvent (Namespace: CastleBuilder.Events)
@@ -48,7 +48,7 @@ Folder: CastleBuilder
       - void Deserialize(byte[] data)
 - File: MenuCommands.cs
   - Class: MenuCommands (Namespace: CastleBuilder)
-    - Dependencies: CastleBuilder.Events, Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, System.IO, ToolChest
+    - Dependencies: CastleBuilder.Events, Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Scenes.StartingPoints, System.Diagnostics, System.IO, System.Text.Json, System.Threading.Tasks, ToolChest
     - Fields:
       - string DefaultProjectsPath
     - Methods:
@@ -86,6 +86,21 @@ Folder: CastleBuilder
         - Calls: AnimationTimelinePanel.Open, Console.WriteLine
       - void OpenAnimationBlend( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: AnimationBlendPanel.Open, Console.WriteLine
+      - void OpenAddSkybox( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: AddSkyboxPanel.Open, Console.WriteLine
+      - void PlayGame( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: BlueprintManager.BuildPlayPayloadFile, Console.WriteLine
+      - void SandboxRegressionTest( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: Console.WriteLine
+      - void ExportGame( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: BlueprintManager.CopyDirectory, BlueprintManager.SaveCurrentProject, Console.WriteLine, level.Serialize
+      - void BuildScripts( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: Console.WriteLine
+      - void OpenScriptsPanel( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: Console.WriteLine, ScriptEditorPanel.Open
+- File: MusicPlayerPanel.cs
+  - Class: value (Namespace: CastleBuilder)
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Systems, System, System.IO, System.Numerics
 - File: NewProjectEvent.cs
   - Class: NewProjectEvent (Namespace: CastleBuilder.Events)
     - Inherits: IEvent
@@ -100,7 +115,7 @@ Folder: CastleBuilder
   - Class: NewProjectUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics
     - Fields:
       - NewProjectPanel _parent
       - EventBus _eventBus
@@ -132,7 +147,7 @@ Folder: CastleBuilder
   - Class: SaveUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics, ToolChest
+    - Dependencies: Keystone, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics, ToolChest
     - Fields:
       - SaveProjectPanel _parent
       - EventBus _eventBus
@@ -143,12 +158,21 @@ Folder: CastleBuilder
   - Class: SelectionBoxOverlay (Namespace: CastleBuilder)
     - Inherits: ICustomOverlay
         
-    - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
+    - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
     - Fields:
       - SceneEditorPanel _parent
     - Methods:
       - constructor SelectionBoxOverlay(SceneEditorPanel parent)
       - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
+- File: ScriptEditorPanel.cs
+  - Class: ScriptEditorUIOverlay (Namespace: ToolChest)
+    - Inherits: UIOverlay
+        
+    - Dependencies: CastleBuilder, Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Numerics, System.Text, System.Text.RegularExpressions
+    - Fields:
+      - ScriptEditorPanel _parent
+    - Methods:
+      - void HandleDataHook(string hook)
 
 Folder: Keystone
 - File: IOutlinerProvider.cs
@@ -177,8 +201,10 @@ Folder: Keystone
   - Class: OutlinerNode (Namespace: Keystone)
     - Dependencies: System.Collections.Generic
 - File: ProjectData.cs
-  - Class: binding (Namespace: Keystone)
+  - Class: ProjectData (Namespace: Keystone)
     - Dependencies: SiegeEngine.Core.Definitions, System.Collections.Generic, System.Text.Json
+    - Fields:
+      - JsonSerializerOptions ProjectJsonOptions
 - File: ProjectLayoutManager.cs
   - Class: ProjectLayoutManager (Namespace: Keystone)
     - Dependencies: SiegeEngine.Core.Managers, System, System.Collections.Generic, System.IO, System.Text.Json
@@ -191,20 +217,61 @@ Folder: Keystone
         - Calls: Console.WriteLine
 - File: ProjectSettings.cs
   - Class: ProjectSettings (Namespace: Keystone)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Terrain, System, System.Collections.Generic, System.IO, System.Reflection.Emit
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Terrain, System, System.Collections.Generic, System.IO
     - Fields:
       - string _projectsRoot
+      - SceneData CurrentSceneData
+      - string CurrentSceneName
+      - Level CurrentLevel
+      - SceneSettings CurrentSceneSettings
     - Methods:
       - constructor ProjectSettings()
       - void SetCurrentTerrain( string heightmapPath = null,  string sceneName = null, SceneData sceneData, ] heightmap)
-        - Calls: Console.WriteLine, GetOrCreatePaintData
+        - Calls: Console.WriteLine, ProjectStateManager.Current.GetOrCreatePaintData, ProjectStateManager.Current.StoreUnsavedHeightmap
       - void SetCurrentLevel(Level level)
-        - Calls: Console.WriteLine
+      - void SetCurrentSceneSettings(SceneSettings settings)
+      - SceneSettings GetOrCreateSceneSettings(string sceneName)
+      - SceneSettings GetSceneSettings(string sceneName)
+      - void SetSceneSettings( SceneSettings settings, string sceneName)
       - ] GetUnsavedHeightmap(string sceneName)
       - void StoreUnsavedHeightmap(] heightmap, string sceneName)
+      - List<string> GetUnsavedHeightmapKeys()
       - TerrainPaintData GetOrCreatePaintData( int height = 200,  int width = 200, string sceneName)
       - TerrainPaintData GetPaintData(string sceneName)
       - string GetLayoutTempPath(string projectPath)
+- File: ProjectStateManager.cs
+  - Class: ProjectStateManager (Namespace: Keystone)
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Terrain, SiegeEngine.Scenes, System, System.Collections.Generic
+    - Fields:
+      - SceneData _currentSceneData
+      - string _currentSceneName
+      - Level _currentLevel
+      - SceneData CurrentSceneData
+      - string CurrentSceneName
+    - Methods:
+      - constructor ProjectStateManager()
+        - Calls: Console.WriteLine
+      - LiveSceneState GetOrCreateLiveState( int height = 200,  int width = 200, string sceneName)
+        - Calls: Console.WriteLine
+      - LiveSceneState GetLiveState(string sceneName)
+      - void BindSceneToLiveState( GameScene scene, string sceneName)
+        - Calls: Console.WriteLine, GetOrCreateLiveState, terrainScene.BindLiveState
+      - void StoreUnsavedHeightmap(] heightmap, string sceneName)
+        - Calls: GetLiveState
+      - ] GetUnsavedHeightmap(string sceneName)
+        - Calls: GetLiveState
+      - List<string> GetUnsavedHeightmapKeys()
+      - TerrainPaintData GetOrCreatePaintData( int height = 200,  int width = 200, string sceneName)
+      - TerrainPaintData GetPaintData(string sceneName)
+      - void SetCurrentTerrain( string sceneName = null, SceneData sceneData, ] heightmap)
+        - Calls: Console.WriteLine, GetOrCreateLiveState
+      - void SetCurrentLevel(Level level)
+      - void SetCurrentSceneSettings(SceneSettings settings)
+      - SceneSettings GetOrCreateSceneSettings(string sceneName)
+      - SceneSettings GetSceneSettings(string sceneName)
+      - void SetSceneSettings( SceneSettings settings, string sceneName)
+      - void Clear()
+        - Calls: state.Dispose
 
 Folder: MapRoom
 - File: CreateTerrainEvent.cs
@@ -222,7 +289,7 @@ Folder: MapRoom
   - Class: NewTerrainUIOverlay (Namespace: MapRoom)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.IO, System.Numerics
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.IO, System.Numerics
     - Fields:
       - NewTerrainPanel _parent
     - Methods:
@@ -231,7 +298,7 @@ Folder: MapRoom
   - Class: TerrainUIOverlay (Namespace: MapRoom)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
     - Fields:
       - TerrainCreatorPanel _parent
     - Methods:
@@ -240,7 +307,7 @@ Folder: MapRoom
   - Class: TerrainCreatorScene (Namespace: MapRoom)
     - Inherits: TerrainScene
     
-    - Dependencies: Keystone, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Terrain, SiegeEngine.Scenes, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics, ToolChest
+    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, SiegeEngine.Scenes, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics, System.Text.Json, ToolChest
     - Fields:
       - Vector3 _ghostPosition
       - bool _ghostVisible
@@ -253,9 +320,28 @@ Folder: MapRoom
       - float BrushMoveThreshold
       - SceneData _sceneData
       - TerrainPaintData _paintData
-      - uint _splatTextureId
-      - bool _hasSplatMap
+      - string _activeMaterialPath
+      - uint _ghostMaterialTextureId
+      - ShaderProgram _spriteShader
+      - Bitmap _colorBitmapCache
+      - int ColorLayerResolution
+      - bool _enableBrush
+      - TerrainRenderer _terrainRenderer
+      - SkyboxRenderer _skyboxRenderer
+      - float _skyboxTempRotationOffset
     - Methods:
+      - void Initialize( int height, int width)
+      - void Render(IReadOnlyList<Entity> entities)
+        - Calls: ComposeSkybox, _renderContext.Clear
+      - void Dispose()
+      - void BindLiveState(ISceneStateProvider liveState)
+      - void RefreshFromLiveState(SceneData sd)
+        - Calls: ComposeSkybox, LoadTerrain, SetColorTexture
+      - void ComposeSkybox(SkyboxData skybox)
+        - Calls: ResolveSkyboxPaths, _skyboxRenderer.Initialize
+      - void ResolveSkyboxPaths( string projectPath, SkyboxData skybox)
+      - void OnSelectBrushEvent(SelectBrushEvent e)
+        - Calls: SetActiveMaterial, TryPerformPlacementRaycast, UpdateGhostMesh
       - bool TryPerformPlacementRaycast(out Vector3 hitPoint)
         - Calls: GetLookDirection, RayTerrainIntersect
       - return RayTerrainIntersect( out hitPoint)
@@ -267,34 +353,46 @@ Folder: MapRoom
       - bool GetMouseRay( float viewportHeight,  float viewportWidth,  out Vector3, Vector2 normalizedMouse)
       - string ResolveFullPath(string inputPath)
       - void CreateBlank()
-        - Calls: Console.WriteLine, ProjectSettings.Current.GetOrCreatePaintData, RebuildSplatTexture
+        - Calls: ProjectSettings.Current.GetOrCreatePaintData
       - void CreateTerrain(TerrainCreationParams parameters)
-        - Calls: Console.WriteLine, CreateBlank, LoadTerrain, ProjectSettings.Current.GetOrCreatePaintData, RebuildSplatTexture
+        - Calls: CreateBlank, LoadTerrain, ProjectSettings.Current.GetOrCreatePaintData
       - void LoadSceneData(SceneData data)
-        - Calls: Console.WriteLine, LoadTerrain, ProjectSettings.Current.GetOrCreatePaintData, ProjectSettings.Current.GetUnsavedHeightmap, RebuildSplatTexture
+        - Calls: ComposeSkybox, LoadTerrain, ProjectSettings.Current.GetOrCreatePaintData, ProjectSettings.Current.GetUnsavedHeightmap
       - void LoadTerrain(string path)
-        - Calls: Console.WriteLine, RebuildSplatTexture, ResolveFullPath
+        - Calls: ResolveFullPath
       - void SetColorTexture(string path)
+        - Calls: Console.WriteLine, Dispose, ResolveFullPath, _colorBitmapCache.Dispose, g.Clear
+      - string GetColorTexturePath()
       - void SaveTerrain(string terrainName)
-        - Calls: Console.WriteLine, RebuildSplatTexture, ResolveFullPath, SaveAsPng
-      - void Export2D(string projectAssetsDir)
-        - Calls: Console.WriteLine
+        - Calls: Dispose, ResolveFullPath, SaveAsPng, SaveSkybox
       - void SaveAsPng(string path)
+        - Calls: Console.WriteLine, Dispose
+      - void Export2D(string projectAssetsDir)
       - void SetActiveBrush(Brush brush)
+        - Calls: UpdateGhostMesh
       - Brush GetActiveBrush()
-      - void Initialize( int height, int width)
       - void UpdateGhostMesh()
+      - void SetActiveMaterial(string albedoPath)
+        - Calls: ResolveFullPath, UpdateGhostMesh
+      - void PaintAlbedo(Vector3 worldPos)
+        - Calls: Dispose, ResolveFullPath, UpdateGPUColorTexture, g.Clear
+      - void UpdateGPUColorTexture()
+      - void SyncColorTextureFromLiveState()
+        - Calls: Dispose
       - void Update( Vector2 relMousePos,  bool cameraMode,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
-        - Calls: GetLookDirection, ProjectSettings.Current.StoreUnsavedHeightmap, RayTerrainIntersect, TerrainModifiedEvent, UpdateGhostMesh
+        - Calls: GetLookDirection, PaintAlbedo, ProjectSettings.Current.StoreUnsavedHeightmap, RayTerrainIntersect, TerrainModifiedEvent, UpdateGhostMesh
       - bool RayTerrainIntersect( Vector3 dir,  out Vector3, Vector3 origin)
-      - void Render(IReadOnlyList<Entity> entities)
-        - Calls: _renderContext.Clear
-      - void RebuildSplatTexture()
-      - void Dispose()
       - void OnTerrainModified(TerrainModifiedEvent e)
         - Calls: ApplyModification
       - void ApplyModification(TerrainModifiedEvent e)
-        - Calls: RebuildSplatTexture, brush.Apply
+        - Calls: brush.Apply
+      - void SetSkybox(SkyboxData skybox)
+        - Calls: ComposeSkybox, Console.WriteLine
+      - void SaveSkybox(string sceneName)
+      - void OnSkyboxDataHook( GenericEvent evt = null, string hook)
+        - Calls: AddSkyboxPanel.Open, ComposeSkybox, Console.WriteLine, RefreshFromLiveState, SetSkybox
+      - void ApplyTempSkyboxRotation(float offset)
+        - Calls: ComposeSkybox
 - File: TerrainModifiedEvent.cs
   - Class: TerrainModifiedEvent (Namespace: MapRoom)
     - Inherits: IEvent
@@ -311,7 +409,7 @@ Folder: MapRoom
   - Class: TwoDCreatorUIOverlay (Namespace: MapRoom)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
     - Fields:
       - TwoDCreatorPanel _parent
     - Methods:
@@ -320,7 +418,7 @@ Folder: MapRoom
   - Class: TwoDCreatorScene (Namespace: MapRoom)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics
     - Fields:
       - AngledOrthoCamera _orthoCamera
       - ShaderProgram _gridShader
@@ -355,7 +453,7 @@ Folder: ReadingChamber
   - Class: AssetUIOverlay (Namespace: ReadingChamber)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text, System.Text.Json
+    - Dependencies: Keystone, SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text, System.Text.Json
     - Fields:
       - AnimationViewerPanel _parent
     - Methods:
@@ -364,18 +462,29 @@ Folder: ReadingChamber
   - Class: FileSelectorUIOverlay (Namespace: ReadingChamber)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
     - Fields:
       - FileSelectorPanel _parent
     - Methods:
       - bool HandleUIClick(HtmlElement elem)
 
 Folder: ToolChest
+- File: AddSkyboxPanel.cs
+  - Class: AddSkyboxUIOverlay (Namespace: ToolChest)
+    - Inherits: UIOverlay
+        
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics, System.Text.Json
+    - Fields:
+      - AddSkyboxPanel _parent
+      - EventBus _eventBus
+    - Methods:
+      - void HandleDataHook(string hook)
+        - Calls: JsonSerializer.Serialize, _parent.OpenCubemapSelector, _parent.OpenFaceSelector
 - File: AnimationBlendPanel.cs
   - Class: BlendUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text, System.Text.Json
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text, System.Text.Json
     - Fields:
       - AnimationBlendPanel _parent
     - Methods:
@@ -384,7 +493,7 @@ Folder: ToolChest
   - Class: TimelineUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics, System.Text.Json
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics, System.Text.Json
     - Fields:
       - AnimationTimelinePanel _parent
     - Methods:
@@ -393,7 +502,7 @@ Folder: ToolChest
   - Class: AssetBrowserUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
     - Fields:
       - AssetBrowserPanel _parent
     - Methods:
@@ -414,7 +523,7 @@ Folder: ToolChest
     - Dependencies: System, System.Numerics
     - Methods:
       - void Apply( Vector2 gridPos,  float worldScaleX,  float worldScaleZ, ] heightmap, ref float)
-        - Calls: Console.WriteLine, GetFalloff, GetNeighborAverage, IsInShape
+        - Calls: GetFalloff, GetNeighborAverage, IsInShape
       - bool IsInShape( float dz,  float radius, float dx)
       - float GetFalloff( float dz,  float radius, float dx)
       - float GetNeighborAverage( int height,  int width,  int x,  int z, ] heightmap)
@@ -422,7 +531,7 @@ Folder: ToolChest
   - Class: BrushUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Linq, System.Numerics, System.Text
+    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Linq, System.Numerics, System.Text
     - Fields:
       - BrushPanel _parent
     - Methods:
@@ -443,7 +552,7 @@ Folder: ToolChest
   - Class: LogCaptureWriter (Namespace: ToolChest)
     - Inherits: TextWriter
         
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics, System.Text
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics, System.Text
     - Methods:
       - void WriteLine(string value)
         - Calls: AddLogInternal
@@ -459,7 +568,7 @@ Folder: ToolChest
   - Class: NewMaterialUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics
     - Fields:
       - NewMaterialPanel _parent
       - EventBus _eventBus
@@ -470,7 +579,7 @@ Folder: ToolChest
   - Class: PlacementOverlay (Namespace: ToolChest)
     - Inherits: ICustomOverlay
     
-    - Dependencies: Keystone, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, System, System.Numerics
+    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, System, System.Numerics
     - Fields:
       - EventBus _eventBus
       - Vector3 _camPos
@@ -485,27 +594,86 @@ Folder: ToolChest
   - Class: PropertiesUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
+    - Dependencies: Keystone, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
     - Fields:
       - PropertiesPanel _parent
     - Methods:
       - void HandleDataHook(string hook)
       - bool HandleUIClick(HtmlElement elem)
+      - void TriggerChange(HtmlElement elem)
+        - Calls: _parent.ApplyComponentPropertyFromInput, _parent.FlushLiveSettings
+      - bool OnContextMenuRequested( Vector2 mousePos, HtmlElement sourceElement)
 - File: SpritePlacementPanel.cs
   - Class: SpritePlacementUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics
+    - Dependencies: ReadingChamber, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics
     - Fields:
       - SpritePlacementPanel _parent
     - Methods:
       - void HandleDataHook(string hook)
       - bool HandleUIClick(HtmlElement elem)
+- File: TransformGizmoOverlay.cs
+  - Class: TransformGizmoOverlay (Namespace: ToolChest)
+    - Inherits: ICustomOverlay
+    
+    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - IRenderContext _renderContext
+      - EventBus _eventBus
+      - int _selectedEntityId
+      - VertexBuffer _arrowBuffer
+      - VertexBuffer _ringBuffer
+      - bool _isDragging
+      - int _activeAxis
+      - bool _isRotating
+      - Vector3 _dragAxisWorld
+      - Vector2 _lastDragMouse
+      - Vector3 _dragStartClosestPoint
+      - Vector3 _lastClosestPoint
+      - Vector3 _lastPlanePoint
+      - Matrix4x4 _lastView
+      - Matrix4x4 _lastProjection
+      - float ArrowPickTolerance
+      - float RingPickTolerance
+    - Methods:
+      - void UpdateMatrices( Matrix4x4 projection, Matrix4x4 view)
+      - void OnEntitySelected( Quaternion rotation,  Vector3 position, int entityId)
+        - Calls: RebuildGizmoGeometry
+      - void ClearSelection()
+      - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
+      - void RebuildGizmoGeometry()
+        - Calls: BuildArrowGeometry, BuildRingGeometry
+      - void BuildArrowGeometry()
+        - Calls: AddArrow
+      - void AddArrow( List<uint> indices,  Vector3 direction,  Vector4 color, List<Vertex> vertices)
+      - void BuildRingGeometry()
+        - Calls: AddRing
+      - void AddRing( List<uint> indices,  Vector3 axis,  Vector4 color, List<Vertex> vertices)
+      - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
+        - Calls: arrowShader.Dispose
+      - bool HandleMouseInput( bool mouseDown,  bool mousePressed,  bool mouseReleased,  float contentH,  float contentW, Vector2 contentMouse)
+        - Calls: EndDrag, PerformDrag, PickAxisScreenSpace, PickRingScreenSpace, StartDrag
+      - void StartDrag( float contentH,  float contentW, Vector2 contentMouse)
+        - Calls: ClosestPointOnInfiniteAxis, ClosestPointOnRingPlane, Console.WriteLine
+      - void PerformDrag( float contentH,  float contentW, Vector2 contentMouse)
+        - Calls: ClosestPointOnInfiniteAxis, ClosestPointOnRingPlane, Console.WriteLine
+      - void EndDrag()
+        - Calls: Console.WriteLine
+      - Vector3 ClosestPointOnInfiniteAxis( Vector3 lineDir,  Vector3 linePoint,  Vector3 rayDir, Vector3 rayOrigin)
+      - Vector3 ClosestPointOnRingPlane( Vector3 center,  Vector3 normal,  Vector3 rayDir, Vector3 rayOrigin)
+      - int PickAxisScreenSpace( float contentH,  float contentW, Vector2 contentMouse)
+        - Calls: Console.WriteLine, DistanceToLineSegment2D
+      - int PickRingScreenSpace( float contentH,  float contentW, Vector2 contentMouse)
+        - Calls: Console.WriteLine, DistanceToLineSegment2D
+      - float DistanceToLineSegment2D( Vector3 a3,  Vector3 b3,  float viewportH,  float viewportW, Vector2 p)
+        - Calls: WorldToScreen
+      - Vector2 WorldToScreen( float viewportH,  float viewportW, Vector3 worldPos)
 - File: TreeViewPanel.cs
   - Class: TreeViewUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
+    - Dependencies: Keystone, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
     - Fields:
       - TreeViewPanel _parent
     - Methods:
@@ -525,12 +693,14 @@ CastleBuilder.ProjectSceneCache
 CastleBuilder.SaveUIOverlay
 CastleBuilder.SelectionBoxOverlay
 CastleBuilder.StringExtensions
+CastleBuilder.value
 Keystone.IOutlinerProvider
 Keystone.OutlinerCoordinator
 Keystone.OutlinerNode
+Keystone.ProjectData
 Keystone.ProjectLayoutManager
 Keystone.ProjectSettings
-Keystone.binding
+Keystone.ProjectStateManager
 MapRoom.CreateTerrainEvent
 MapRoom.NewTerrainUIOverlay
 MapRoom.TerrainCreatorScene
@@ -540,6 +710,7 @@ MapRoom.TwoDCreatorScene
 MapRoom.TwoDCreatorUIOverlay
 ReadingChamber.AssetUIOverlay
 ReadingChamber.FileSelectorUIOverlay
+ToolChest.AddSkyboxUIOverlay
 ToolChest.AssetBrowserUIOverlay
 ToolChest.BlendDotOverlay
 ToolChest.BlendUIOverlay
@@ -551,6 +722,8 @@ ToolChest.LogCaptureWriter
 ToolChest.NewMaterialUIOverlay
 ToolChest.PlacementOverlay
 ToolChest.PropertiesUIOverlay
+ToolChest.ScriptEditorUIOverlay
 ToolChest.SpritePlacementUIOverlay
 ToolChest.TimelineUIOverlay
+ToolChest.TransformGizmoOverlay
 ToolChest.TreeViewUIOverlay
