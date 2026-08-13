@@ -30,6 +30,11 @@ namespace SiegeEngine.Core.Physics
         }
         public int SolverIterations { get; set; } = 10;
         public EventBus EventBus { get; set; }
+
+        // Editor / debug read-only surface (pure data, zero behaviour change)
+        public IReadOnlyList<ContactManifold> CurrentManifolds => _manifolds;
+        public IReadOnlyList<PhysicsComponent> Bodies => _bodies;
+
         public void SetHeightProvider(IHeightProvider provider)
         {
             _heightProvider = provider;

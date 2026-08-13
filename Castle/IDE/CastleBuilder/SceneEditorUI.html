@@ -76,6 +76,24 @@
                 background: #4a6a9a;
                 transform: translateY(-1px);
             }
+
+        .physics-debug-btn {
+            padding: 8px 18px;
+            background: #2a5a4a;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13.5px;
+            font-weight: 500;
+            transition: all 0.2s;
+            margin-left: 12px;
+        }
+
+            .physics-debug-btn:hover {
+                background: #3a6a5a;
+                transform: translateY(-1px);
+            }
     </style>
 </head>
 <body>
@@ -86,6 +104,7 @@
         </select>
         <button class="new-scene-btn" data-hook="CreateNewScene">+ New Scene</button>
         <button class="place-entity-btn" data-hook="OpenPlaceEntityBrowser">Place Entity</button>
+        <button class="physics-debug-btn" data-hook="TogglePhysicsDebug">Physics Debug</button>
     </div>
 </body>
 </html>
