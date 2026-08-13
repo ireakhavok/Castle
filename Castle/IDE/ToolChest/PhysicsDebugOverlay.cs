@@ -21,9 +21,9 @@ namespace ToolChest
 
         // Local-space geometry caches (uploaded once, GPU transforms thereafter)
         private readonly Dictionary<object, VertexBuffer> _shapeCaches = new Dictionary<object, VertexBuffer>();
-        private readonly Dictionary<object, Vector4> _shapeColors = new Dictionary<object, Vector4>();
+        private readonly Dictionary<object, bool> _cacheWasSleeping = new Dictionary<object, bool>();
 
-        // Small dynamic buffer for contacts + velocities only
+        // Small dynamic buffer for contacts + velocities + angular
         private VertexBuffer _dynamicBuffer;
         private ShaderProgram _shader;
 
@@ -37,6 +37,7 @@ namespace ToolChest
 
         private bool _dynamicDirty = true;
         private int _lastAwakeCount = -1;
+        private int _lastContactCount = -1;
         private bool _wasEnabled = false;
 
         public bool Enabled { get; set; } = false;
@@ -92,7 +93,8 @@ namespace ToolChest
                     awakeCount++;
             }
 
-            if (awakeCount != _lastAwakeCount)
+            // Always keep dynamic buffer live while anything is moving or contacts may change
+            if (awakeCount != _lastAwakeCount || awakeCount > 0)
             {
                 _dynamicDirty = true;
                 _lastAwakeCount = awakeCount;
@@ -102,7 +104,7 @@ namespace ToolChest
             _shader.Use();
             _shader.SetMatrix4("uView", view);
             _shader.SetMatrix4("uProjection", projection);
-            _shader.SetUniform("uPointSize", 4f);
+            _shader.SetUniform("uPointSize", 6f);
 
             // ── Static / local-space shape geometry (GPU transformed) ──────────
             if (ShowShapes)
@@ -117,11 +119,24 @@ namespace ToolChest
                     if (physics == null || physics.Shape == null) continue;
 
                     object cacheKey = GetCacheKey(physics);
+
+                    // Invalidate cache if sleeping state changed so colour updates
+                    if (_cacheWasSleeping.TryGetValue(cacheKey, out bool wasSleeping) && wasSleeping != physics.IsSleeping)
+                    {
+                        if (_shapeCaches.TryGetValue(cacheKey, out var oldBuf))
+                        {
+                            oldBuf.Dispose();
+                            _shapeCaches.Remove(cacheKey);
+                        }
+                        _cacheWasSleeping.Remove(cacheKey);
+                    }
+
                     if (!_shapeCaches.TryGetValue(cacheKey, out VertexBuffer buf))
                     {
                         buf = BuildLocalShapeBuffer(physics);
                         if (buf == null) continue;
                         _shapeCaches[cacheKey] = buf;
+                        _cacheWasSleeping[cacheKey] = physics.IsSleeping;
                     }
 
                     Matrix4x4 model = BuildModelMatrix(physics);
@@ -131,10 +146,10 @@ namespace ToolChest
                 }
             }
 
-            // ── Dynamic contacts + velocities (small buffer, rebuilt only when needed) ──
+            // ── Dynamic contacts + linear + angular velocities ─────────────────
             if (ShowContacts || ShowVelocities)
             {
-                if (_dynamicDirty || awakeCount > 0)
+                if (_dynamicDirty)
                 {
                     RebuildDynamicBuffer(entities, selected, filterSelected);
                     _dynamicDirty = false;
@@ -153,14 +168,11 @@ namespace ToolChest
 
         private static object GetCacheKey(PhysicsComponent physics)
         {
-            // Key by shape instance + body type so colour stays correct
-            return (physics.Shape, physics.BodyType);
+            return (physics.Shape, physics.BodyType, physics.IsSleeping);
         }
 
         private static Matrix4x4 BuildModelMatrix(PhysicsComponent physics)
         {
-            // Match the convention used by SceneEditorPanel model rendering
-            // Kinematic capsules ignore rotation (feet locked to Position)
             if (physics.BodyType == BodyType.Kinematic && physics.Shape is CapsuleShape)
                 return Matrix4x4.CreateTranslation(physics.Position);
 
@@ -190,7 +202,6 @@ namespace ToolChest
             }
             else if (shape is TriangleMeshShape mesh)
             {
-                // Extract pure local-space triangles once
                 _triA.Clear();
                 _triB.Clear();
                 _triC.Clear();
@@ -217,7 +228,7 @@ namespace ToolChest
             _dynVerts.Clear();
             _dynIndices.Clear();
 
-            // Velocities
+            // Linear + Angular velocity arrows at centre of mass
             if (ShowVelocities)
             {
                 for (int i = 0; i < entities.Count; i++)
@@ -230,16 +241,30 @@ namespace ToolChest
                     if (physics == null || physics.BodyType != BodyType.Dynamic) continue;
 
                     Vector3 com = physics.WorldCentreOfMass;
+
+                    // Linear velocity (green)
                     Vector3 vel = physics.Velocity;
-                    float len = vel.Length();
-                    if (len < 0.01f) continue;
-                    float scale = Math.Clamp(len * 0.25f, 0.15f, 1.5f);
-                    Vector3 end = com + Vector3.Normalize(vel) * scale;
-                    AddLocalLine(_dynVerts, _dynIndices, com, end, new Vector4(0.3f, 1.0f, 0.4f, 1.0f));
+                    float vLen = vel.Length();
+                    if (vLen > 0.01f)
+                    {
+                        float scale = Math.Clamp(vLen * 0.25f, 0.2f, 2.0f);
+                        Vector3 end = com + Vector3.Normalize(vel) * scale;
+                        AddLocalLine(_dynVerts, _dynIndices, com, end, new Vector4(0.2f, 1.0f, 0.3f, 1.0f));
+                    }
+
+                    // Angular velocity (magenta) – direction of spin axis, length = spin rate
+                    Vector3 ang = physics.AngularVelocity;
+                    float aLen = ang.Length();
+                    if (aLen > 0.05f)
+                    {
+                        float scale = Math.Clamp(aLen * 0.15f, 0.15f, 1.5f);
+                        Vector3 end = com + Vector3.Normalize(ang) * scale;
+                        AddLocalLine(_dynVerts, _dynIndices, com, end, new Vector4(1.0f, 0.2f, 1.0f, 1.0f));
+                    }
                 }
             }
 
-            // Contacts (live or last known)
+            // Contact normals / normal forces (bright orange-red)
             if (ShowContacts)
             {
                 if (_getManifolds != null)
@@ -258,15 +283,18 @@ namespace ToolChest
                                 _cachedContacts.Add((cp.Position, cp.Normal, cp.Penetration));
                             }
                         }
+                        _lastContactCount = _cachedContacts.Count;
                     }
                 }
 
+                // Always draw the last known contacts so resting contacts stay visible
                 for (int c = 0; c < _cachedContacts.Count; c++)
                 {
                     var (pos, n, pen) = _cachedContacts[c];
-                    float len = Math.Clamp(0.15f + pen * 3.0f, 0.15f, 1.2f);
-                    float intensity = Math.Clamp(pen * 4.0f, 0.4f, 1.0f);
-                    Vector4 color = new Vector4(1.0f, 0.25f + 0.4f * (1f - intensity), 0.1f, 0.7f + 0.3f * intensity);
+                    // Longer, brighter lines so they are obvious
+                    float len = Math.Clamp(0.35f + pen * 4.0f, 0.4f, 2.0f);
+                    float intensity = Math.Clamp(0.6f + pen * 3.0f, 0.6f, 1.0f);
+                    Vector4 color = new Vector4(1.0f, 0.35f, 0.05f, intensity);
                     AddLocalLine(_dynVerts, _dynIndices, pos, pos + n * len, color);
                 }
             }
@@ -297,7 +325,7 @@ namespace ToolChest
             return c;
         }
 
-        // ── Local-space geometry helpers (origin-centred) ─────────────────────
+        // ── Local-space geometry helpers ──────────────────────────────────────
 
         private static void AddLocalLine(List<Vertex> verts, List<uint> indices, Vector3 a, Vector3 b, Vector4 color)
         {
