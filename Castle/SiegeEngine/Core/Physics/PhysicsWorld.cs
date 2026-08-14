@@ -138,7 +138,7 @@ namespace SiegeEngine.Core.Physics
             {
                 var a = _bodies[i];
                 if (a == null || !a.CollisionEnabled || a.IsSleeping) continue;
-                if (a.Shape == null) continue;   // shape must already be built; never rebuild here
+                if (a.Shape == null) continue; // shape must already be built; never rebuild here
                 for (int j = i + 1; j < _bodies.Count; j++)
                 {
                     var b = _bodies[j];
@@ -149,7 +149,7 @@ namespace SiegeEngine.Core.Physics
                         b.IsSleeping = false;
                         b.SleepTimer = 0f;
                     }
-                    if (b.Shape == null) continue;   // shape must already be built; never rebuild here
+                    if (b.Shape == null) continue; // shape must already be built; never rebuild here
                     if (a.BodyType == BodyType.Static && b.BodyType == BodyType.Static)
                         continue;
                     var manifold = GenerateManifold(a, b);
@@ -164,7 +164,7 @@ namespace SiegeEngine.Core.Physics
                     var body = _bodies[i];
                     if (body == null || !body.CollisionEnabled || body.IsSleeping) continue;
                     if (body.BodyType == BodyType.Static) continue;
-                    if (body.Shape == null) continue;   // shape must already be built; never rebuild here
+                    if (body.Shape == null) continue; // shape must already be built; never rebuild here
                     var manifold = new ContactManifold { BodyA = body, BodyB = null };
                     if (body.Shape is CapsuleShape cap)
                         CapsuleVsHeightfield(cap, body, _heightfieldShape, manifold);
@@ -505,12 +505,13 @@ namespace SiegeEngine.Core.Physics
             return manifold.PointCount > 0 ? manifold : null;
         }
         /// <summary>
-        /// Mesh–mesh contact generation using exactly the same methodology as CapsuleVsTriangleMesh:
-        ///   - Fixed, small number of sample points derived from mesh A (centre + 8 AABB corners)
-        ///   - Query only mesh B’s AABB tree with the volume of those samples
-        ///   - ClosestPointOnTriangle for each sample
-        ///   - Keep the deepest contacts
-        /// Cost profile is identical to the capsule path: O(fixed_samples × nearby_triangles).
+        /// Mesh–mesh contact generation using true surface features.
+        /// Overlapping triangles are obtained from both AABB trees using the
+        /// intersection volume of the two world AABBs. Vertices of those
+        /// triangles become the sample points (they lie on the real surface).
+        /// Bidirectional closest-point tests (A verts → B tris and B verts → A tris)
+        /// with a hard cap on triangle / sample count keep cost bounded and
+        /// identical in spirit to the proven CapsuleVsTriangleMesh path.
         /// </summary>
         private void TriangleMeshVsTriangleMesh(
             TriangleMeshShape meshA, PhysicsComponent bodyA,
@@ -519,64 +520,101 @@ namespace SiegeEngine.Core.Physics
         {
             meshA.GetAabb(bodyA.Position, bodyA.Rotation, out Vector3 aabbAMin, out Vector3 aabbAMax);
             meshB.GetAabb(bodyB.Position, bodyB.Rotation, out Vector3 aabbBMin, out Vector3 aabbBMax);
-
             // Early-out if world AABBs do not overlap
             if (aabbAMax.X < aabbBMin.X || aabbAMin.X > aabbBMax.X ||
                 aabbAMax.Y < aabbBMin.Y || aabbAMin.Y > aabbBMax.Y ||
                 aabbAMax.Z < aabbBMin.Z || aabbAMin.Z > aabbBMax.Z)
                 return;
-
-            // Fixed sample points from mesh A (exactly analogous to the 3 capsule samples)
-            Vector3 centre = bodyA.WorldCentreOfMass;
-            Vector3[] samples =
-            {
-                centre,
-                new Vector3(aabbAMin.X, aabbAMin.Y, aabbAMin.Z),
-                new Vector3(aabbAMax.X, aabbAMin.Y, aabbAMin.Z),
-                new Vector3(aabbAMin.X, aabbAMax.Y, aabbAMin.Z),
-                new Vector3(aabbAMax.X, aabbAMax.Y, aabbAMin.Z),
-                new Vector3(aabbAMin.X, aabbAMin.Y, aabbAMax.Z),
-                new Vector3(aabbAMax.X, aabbAMin.Y, aabbAMax.Z),
-                new Vector3(aabbAMin.X, aabbAMax.Y, aabbAMax.Z),
-                new Vector3(aabbAMax.X, aabbAMax.Y, aabbAMax.Z)
-            };
-
-            // Query volume around the samples (same idea as the capsule query AABB)
-            Vector3 queryMin = aabbAMin - new Vector3(0.05f);
-            Vector3 queryMax = aabbAMax + new Vector3(0.05f);
-
+            // Intersection volume expanded by a small skin
+            const float skin = 0.05f;
+            Vector3 queryMin = Vector3.Max(aabbAMin, aabbBMin) - new Vector3(skin);
+            Vector3 queryMax = Vector3.Min(aabbAMax, aabbBMax) + new Vector3(skin);
+            // Overlapping triangles of mesh B (re-use instance lists)
             _triA.Clear();
             _triB.Clear();
             _triC.Clear();
             meshB.QueryWorldTriangles(bodyB.Position, bodyB.Rotation, queryMin, queryMax, _triA, _triB, _triC);
-            if (_triA.Count == 0) return;
-
-            var candidates = new List<ContactPoint>(32);
-
-            // Exactly like CapsuleVsTriangleMesh: fixed samples × returned triangles
-            for (int s = 0; s < samples.Length; s++)
+            int triCountB = _triA.Count;
+            if (triCountB == 0) return;
+            // Hard cap so cost stays bounded
+            const int MaxTrianglesPerMesh = 24;
+            const int MaxSamples = 24;
+            const float MeshContactThreshold = 0.08f;
+            if (triCountB > MaxTrianglesPerMesh)
+                triCountB = MaxTrianglesPerMesh;
+            // Overlapping triangles of mesh A (local lists)
+            var triA_A = new List<Vector3>(MaxTrianglesPerMesh);
+            var triB_A = new List<Vector3>(MaxTrianglesPerMesh);
+            var triC_A = new List<Vector3>(MaxTrianglesPerMesh);
+            meshA.QueryWorldTriangles(bodyA.Position, bodyA.Rotation, queryMin, queryMax, triA_A, triB_A, triC_A);
+            int triCountA = triA_A.Count;
+            if (triCountA == 0) return;
+            if (triCountA > MaxTrianglesPerMesh)
+                triCountA = MaxTrianglesPerMesh;
+            // Surface samples = vertices of the overlapping triangles (capped)
+            var samplesA = new List<Vector3>(MaxSamples);
+            for (int t = 0; t < triCountA && samplesA.Count < MaxSamples; t++)
             {
-                Vector3 p = samples[s];
-                for (int t = 0; t < _triA.Count; t++)
+                samplesA.Add(triA_A[t]);
+                if (samplesA.Count >= MaxSamples) break;
+                samplesA.Add(triB_A[t]);
+                if (samplesA.Count >= MaxSamples) break;
+                samplesA.Add(triC_A[t]);
+            }
+            var samplesB = new List<Vector3>(MaxSamples);
+            for (int t = 0; t < triCountB && samplesB.Count < MaxSamples; t++)
+            {
+                samplesB.Add(_triA[t]);
+                if (samplesB.Count >= MaxSamples) break;
+                samplesB.Add(_triB[t]);
+                if (samplesB.Count >= MaxSamples) break;
+                samplesB.Add(_triC[t]);
+            }
+            var candidates = new List<ContactPoint>(32);
+            // A → B pass: sample points on surface of A against triangles of B
+            for (int s = 0; s < samplesA.Count; s++)
+            {
+                Vector3 p = samplesA[s];
+                for (int t = 0; t < triCountB; t++)
                 {
                     Vector3 closest = ClosestPointOnTriangle(p, _triA[t], _triB[t], _triC[t]);
                     Vector3 delta = p - closest;
                     float dist = delta.Length();
-                    if (dist < 0.08f && dist > 1e-6f)
+                    if (dist < MeshContactThreshold && dist > 1e-6f)
                     {
                         Vector3 n = delta / dist;
                         candidates.Add(new ContactPoint
                         {
                             Position = closest,
                             Normal = n,
-                            Penetration = 0.08f - dist
+                            Penetration = MeshContactThreshold - dist
                         });
                     }
                 }
             }
-
+            // B → A pass: sample points on surface of B against triangles of A
+            // (normal is flipped so it always points from B toward A)
+            for (int s = 0; s < samplesB.Count; s++)
+            {
+                Vector3 p = samplesB[s];
+                for (int t = 0; t < triCountA; t++)
+                {
+                    Vector3 closest = ClosestPointOnTriangle(p, triA_A[t], triB_A[t], triC_A[t]);
+                    Vector3 delta = p - closest;
+                    float dist = delta.Length();
+                    if (dist < MeshContactThreshold && dist > 1e-6f)
+                    {
+                        Vector3 n = -(delta / dist);
+                        candidates.Add(new ContactPoint
+                        {
+                            Position = closest,
+                            Normal = n,
+                            Penetration = MeshContactThreshold - dist
+                        });
+                    }
+                }
+            }
             if (candidates.Count == 0) return;
-
             candidates.Sort((x, y) => y.Penetration.CompareTo(x.Penetration));
             int keep = Math.Min(4, candidates.Count);
             for (int i = 0; i < keep; i++)
