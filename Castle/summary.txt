@@ -318,6 +318,51 @@ Folder: IDE
 - File: OutlinerNode.cs
   - Class: OutlinerNode (Namespace: Keystone)
     - Dependencies: System.Collections.Generic
+- File: PhysicsDebugOverlay.cs
+  - Class: PhysicsDebugOverlay (Namespace: ToolChest)
+    - Inherits: ICustomOverlay
+    
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - IRenderContext _renderContext
+      - Func<IReadOnlyList<Entity>> _getEntities
+      - Func<IReadOnlyList<ContactManifold>> _getManifolds
+      - Func<IReadOnlyList<int>> _getSelectedIds
+      - VertexBuffer _dynamicBuffer
+      - ShaderProgram _shader
+      - List<Vertex> _dynVerts
+      - List<uint> _dynIndices
+      - List<Vector3> _triA
+      - List<Vector3> _triB
+      - List<Vector3> _triC
+      - bool _dynamicDirty
+      - int _lastAwakeCount
+      - int _lastContactCount
+      - bool _wasEnabled
+    - Methods:
+      - constructor PhysicsDebugOverlay(
+            Func<IReadOnlyList<ContactManifold>> getManifolds, 
+            Func<IReadOnlyList<Entity>> getEntities, 
+            Func<IReadOnlyList<int>> getSelectedIds, 
+            IRenderContext renderContext)
+      - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
+      - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
+        - Calls: BuildLocalShapeBuffer, BuildModelMatrix, GetCacheKey, RebuildDynamicBuffer, ShaderProgram, _cacheWasSleeping.Remove, _dynamicBuffer.Bind, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _shapeCaches.Remove, buf.Bind, oldBuf.Dispose
+      - object GetCacheKey(PhysicsComponent physics)
+      - Matrix4x4 BuildModelMatrix(PhysicsComponent physics)
+      - VertexBuffer BuildLocalShapeBuffer(PhysicsComponent physics)
+        - Calls: AddLocalCapsule, AddLocalLine, AddLocalObb, AddLocalSphere, BodyColor, VertexBuffer, _triA.Clear, _triB.Clear, _triC.Clear, buf.UpdateCustom, mesh.GetWorldTriangles
+      - void RebuildDynamicBuffer( IReadOnlyList<int> selected,  bool filterSelected, IReadOnlyList<Entity> entities)
+        - Calls: AddLocalLine, VertexBuffer, _cachedContacts.Add, _cachedContacts.Clear, _dynIndices.Clear, _dynVerts.Clear, _dynamicBuffer.UpdateCustom
+      - Vector4 BodyColor( bool sleeping, BodyType t)
+      - void AddLocalLine( List<uint> indices,  Vector3 a,  Vector3 b,  Vector4 color, List<Vertex> verts)
+        - Calls: Vertex, indices.Add, verts.Add
+      - void AddLocalSphere( List<uint> indices,  Vector4 color,  float radius, List<Vertex> verts)
+        - Calls: Vertex, indices.Add, verts.Add
+      - void AddLocalCapsule( List<uint> indices,  Vector4 color,  float height,  float radius, List<Vertex> verts)
+        - Calls: AddLocalLine, Vertex, indices.Add, verts.Add
+      - void AddLocalObb( List<uint> indices,  Vector3 centerOffset,  Vector3 halfExtents,  Vector4 color, List<Vertex> verts)
+        - Calls: AddLocalLine
 - File: PlacementOverlay.cs
   - Class: PlacementOverlay (Namespace: ToolChest)
     - Inherits: ICustomOverlay
@@ -458,7 +503,7 @@ Folder: IDE
   - Class: SelectionBoxOverlay (Namespace: CastleBuilder)
     - Inherits: ICustomOverlay
         
-    - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
+    - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
     - Fields:
       - SceneEditorPanel _parent
     - Methods:
@@ -1185,6 +1230,8 @@ Folder: SiegeEngine
       - List<GameSystem> _systems
       - PhysicsWorld _physicsWorld
       - int _nextEntityId
+      - PhysicsWorld PhysicsWorld
+      - IReadOnlyList<ContactManifold> CurrentManifolds
     - Methods:
       - constructor ClientGameServerProxy(EventBus eventBus)
       - void SetHeightProvider(IHeightProvider provider)
@@ -2737,6 +2784,8 @@ Folder: SiegeEngine
       - List<Vector3> _triB
       - List<Vector3> _triC
       - float ContactSkin
+      - IReadOnlyList<ContactManifold> CurrentManifolds
+      - IReadOnlyList<PhysicsComponent> Bodies
       - IHeightProvider HeightProvider
     - Methods:
       - void SetHeightProvider(IHeightProvider provider)
@@ -4110,6 +4159,7 @@ ToolChest.ConsoleLogEvent
 ToolChest.EditorActionConfig
 ToolChest.LogCaptureWriter
 ToolChest.NewMaterialUIOverlay
+ToolChest.PhysicsDebugOverlay
 ToolChest.PlacementOverlay
 ToolChest.PropertiesUIOverlay
 ToolChest.ScriptEditorUIOverlay

@@ -158,7 +158,7 @@ Folder: CastleBuilder
   - Class: SelectionBoxOverlay (Namespace: CastleBuilder)
     - Inherits: ICustomOverlay
         
-    - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
+    - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
     - Fields:
       - SceneEditorPanel _parent
     - Methods:
@@ -575,6 +575,49 @@ Folder: ToolChest
     - Methods:
       - void HandleDataHook(string hook)
         - Calls: Console.WriteLine, ProjectSettings.Current.GetPaintData, brushPanel.RefreshMaterialDropdown
+- File: PhysicsDebugOverlay.cs
+  - Class: PhysicsDebugOverlay (Namespace: ToolChest)
+    - Inherits: ICustomOverlay
+    
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - IRenderContext _renderContext
+      - Func<IReadOnlyList<Entity>> _getEntities
+      - Func<IReadOnlyList<ContactManifold>> _getManifolds
+      - Func<IReadOnlyList<int>> _getSelectedIds
+      - VertexBuffer _dynamicBuffer
+      - ShaderProgram _shader
+      - List<Vertex> _dynVerts
+      - List<uint> _dynIndices
+      - List<Vector3> _triA
+      - List<Vector3> _triB
+      - List<Vector3> _triC
+      - bool _dynamicDirty
+      - int _lastAwakeCount
+      - int _lastContactCount
+      - bool _wasEnabled
+    - Methods:
+      - constructor PhysicsDebugOverlay(
+            Func<IReadOnlyList<ContactManifold>> getManifolds, 
+            Func<IReadOnlyList<Entity>> getEntities, 
+            Func<IReadOnlyList<int>> getSelectedIds, 
+            IRenderContext renderContext)
+      - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
+      - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
+        - Calls: BuildLocalShapeBuffer, BuildModelMatrix, GetCacheKey, RebuildDynamicBuffer, _cacheWasSleeping.Remove, _shapeCaches.Remove, oldBuf.Dispose
+      - object GetCacheKey(PhysicsComponent physics)
+      - Matrix4x4 BuildModelMatrix(PhysicsComponent physics)
+      - VertexBuffer BuildLocalShapeBuffer(PhysicsComponent physics)
+        - Calls: AddLocalCapsule, AddLocalLine, AddLocalObb, AddLocalSphere, BodyColor, _triA.Clear, _triB.Clear, _triC.Clear
+      - void RebuildDynamicBuffer( IReadOnlyList<int> selected,  bool filterSelected, IReadOnlyList<Entity> entities)
+        - Calls: AddLocalLine, _cachedContacts.Clear, _dynIndices.Clear, _dynVerts.Clear
+      - Vector4 BodyColor( bool sleeping, BodyType t)
+      - void AddLocalLine( List<uint> indices,  Vector3 a,  Vector3 b,  Vector4 color, List<Vertex> verts)
+      - void AddLocalSphere( List<uint> indices,  Vector4 color,  float radius, List<Vertex> verts)
+      - void AddLocalCapsule( List<uint> indices,  Vector4 color,  float height,  float radius, List<Vertex> verts)
+        - Calls: AddLocalLine
+      - void AddLocalObb( List<uint> indices,  Vector3 centerOffset,  Vector3 halfExtents,  Vector4 color, List<Vertex> verts)
+        - Calls: AddLocalLine
 - File: PlacementOverlay.cs
   - Class: PlacementOverlay (Namespace: ToolChest)
     - Inherits: ICustomOverlay
@@ -720,6 +763,7 @@ ToolChest.ConsoleLogEvent
 ToolChest.EditorActionConfig
 ToolChest.LogCaptureWriter
 ToolChest.NewMaterialUIOverlay
+ToolChest.PhysicsDebugOverlay
 ToolChest.PlacementOverlay
 ToolChest.PropertiesUIOverlay
 ToolChest.ScriptEditorUIOverlay

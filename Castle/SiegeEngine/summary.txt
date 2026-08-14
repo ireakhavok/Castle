@@ -214,6 +214,8 @@ Folder: Core
       - List<GameSystem> _systems
       - PhysicsWorld _physicsWorld
       - int _nextEntityId
+      - PhysicsWorld PhysicsWorld
+      - IReadOnlyList<ContactManifold> CurrentManifolds
     - Methods:
       - constructor ClientGameServerProxy(EventBus eventBus)
       - void SetHeightProvider(IHeightProvider provider)
@@ -1530,6 +1532,8 @@ Folder: Core
       - List<Vector3> _triB
       - List<Vector3> _triC
       - float ContactSkin
+      - IReadOnlyList<ContactManifold> CurrentManifolds
+      - IReadOnlyList<PhysicsComponent> Bodies
       - IHeightProvider HeightProvider
     - Methods:
       - void SetHeightProvider(IHeightProvider provider)
