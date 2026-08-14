@@ -228,6 +228,7 @@ namespace ToolChest
             // Contact normals + friction impulses + rolling-resistance impulses
             if (ShowContacts)
             {
+                bool hasLive = false;
                 if (_getManifolds != null)
                 {
                     var manifolds = _getManifolds();
@@ -239,14 +240,37 @@ namespace ToolChest
                             var man = manifolds[m];
                             if (man == null) continue;
                             for (int p = 0; p < man.PointCount; p++)
-                            {
                                 _cachedContacts.Add(man.Points[p]);
-                            }
                         }
+                        hasLive = true;
                         _lastContactCount = _cachedContacts.Count;
                     }
                 }
-                // Always draw the last known contacts so resting contacts stay visible
+
+                // Refined hybrid:
+                // - Live manifolds present → already filled above (zero lag).
+                // - No live manifolds this frame:
+                //     * any dynamic body still awake → clear cache (kill trailing ghosts).
+                //     * everything sleeping → keep previous cache so resting contacts stay visible.
+                if (!hasLive)
+                {
+                    bool anyAwake = false;
+                    for (int i = 0; i < entities.Count; i++)
+                    {
+                        var e = entities[i];
+                        if (e == null) continue;
+                        var phys = e.GetComponent<PhysicsComponent>();
+                        if (phys != null && !phys.IsSleeping && phys.BodyType == BodyType.Dynamic)
+                        {
+                            anyAwake = true;
+                            break;
+                        }
+                    }
+                    if (anyAwake)
+                        _cachedContacts.Clear();
+                }
+
+                // Draw whatever is now in the cache (live or retained resting)
                 for (int c = 0; c < _cachedContacts.Count; c++)
                 {
                     var cp = _cachedContacts[c];
