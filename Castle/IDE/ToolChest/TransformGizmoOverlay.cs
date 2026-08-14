@@ -4,6 +4,7 @@ using Keystone;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Rendering.Shaders;
@@ -329,6 +330,14 @@ namespace ToolChest
                 Console.WriteLine($"[TransformGizmoOverlay] PerformDrag - axis {_activeAxis} worldDelta={worldDelta} newPos={physics.Position}");
             }
 
+            // External editor transform must wake a sleeping dynamic body
+            // so gravity and contact generation resume immediately after the gizmo is released.
+            if (physics.BodyType == BodyType.Dynamic)
+            {
+                physics.IsSleeping = false;
+                physics.SleepTimer = 0f;
+            }
+
             _lastDragMouse = contentMouse;
 
             var level = ProjectSettings.Current.CurrentLevel;
@@ -342,6 +351,11 @@ namespace ToolChest
                     {
                         bpPhysics.Position = physics.Position;
                         bpPhysics.Rotation = physics.Rotation;
+                        if (bpPhysics.BodyType == BodyType.Dynamic)
+                        {
+                            bpPhysics.IsSleeping = false;
+                            bpPhysics.SleepTimer = 0f;
+                        }
                     }
                 }
             }

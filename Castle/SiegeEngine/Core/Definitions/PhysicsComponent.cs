@@ -14,6 +14,7 @@ namespace SiegeEngine.Core.Definitions
         private readonly TransformComponent _transform;
         private Vector3 _forceAccum;
         private Vector3 _torqueAccum;
+        private BodyType _bodyType = BodyType.Static;
         public PhysicsComponent()
         {
             _transform = new TransformComponent();
@@ -96,7 +97,16 @@ namespace SiegeEngine.Core.Definitions
         }
         public Vector3 LocalBoundsMinCm { get; set; } = new Vector3(float.MaxValue);
         public Vector3 LocalBoundsMaxCm { get; set; } = new Vector3(float.MinValue);
-        public BodyType BodyType { get; set; } = BodyType.Static;
+        public BodyType BodyType
+        {
+            get => _bodyType;
+            set
+            {
+                if (_bodyType == value) return;
+                _bodyType = value;
+                RecomputeMassProperties();
+            }
+        }
         public Vector3 AngularVelocity { get; set; } = Vector3.Zero;
         public float LinearDamping { get; set; } = 0.4f;
         public float AngularDamping { get; set; } = 0.4f;

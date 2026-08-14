@@ -5,7 +5,6 @@ using SiegeEngine.Core.Events;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Physics
 {
     public class PhysicsWorld
@@ -139,7 +138,7 @@ namespace SiegeEngine.Core.Physics
             {
                 var a = _bodies[i];
                 if (a == null || !a.CollisionEnabled || a.IsSleeping) continue;
-                if (a.Shape == null) a.RebuildShape();
+                if (a.Shape == null) continue;   // shape must already be built; never rebuild here
                 for (int j = i + 1; j < _bodies.Count; j++)
                 {
                     var b = _bodies[j];
@@ -150,7 +149,7 @@ namespace SiegeEngine.Core.Physics
                         b.IsSleeping = false;
                         b.SleepTimer = 0f;
                     }
-                    if (b.Shape == null) b.RebuildShape();
+                    if (b.Shape == null) continue;   // shape must already be built; never rebuild here
                     if (a.BodyType == BodyType.Static && b.BodyType == BodyType.Static)
                         continue;
                     var manifold = GenerateManifold(a, b);
@@ -165,7 +164,7 @@ namespace SiegeEngine.Core.Physics
                     var body = _bodies[i];
                     if (body == null || !body.CollisionEnabled || body.IsSleeping) continue;
                     if (body.BodyType == BodyType.Static) continue;
-                    if (body.Shape == null) body.RebuildShape();
+                    if (body.Shape == null) continue;   // shape must already be built; never rebuild here
                     var manifold = new ContactManifold { BodyA = body, BodyB = null };
                     if (body.Shape is CapsuleShape cap)
                         CapsuleVsHeightfield(cap, body, _heightfieldShape, manifold);
@@ -500,8 +499,88 @@ namespace SiegeEngine.Core.Physics
                     SphereVsTriangleMesh(sphereB, b, meshA, a, manifold);
                 else if (shapeB is ObbShape obbB)
                     ObbVsMeshAabb(obbB, b, meshA, a, manifold);
+                else if (shapeB is TriangleMeshShape meshB)
+                    TriangleMeshVsTriangleMesh(meshA, a, meshB, b, manifold);
             }
             return manifold.PointCount > 0 ? manifold : null;
+        }
+        /// <summary>
+        /// Mesh–mesh contact generation using exactly the same methodology as CapsuleVsTriangleMesh:
+        ///   - Fixed, small number of sample points derived from mesh A (centre + 8 AABB corners)
+        ///   - Query only mesh B’s AABB tree with the volume of those samples
+        ///   - ClosestPointOnTriangle for each sample
+        ///   - Keep the deepest contacts
+        /// Cost profile is identical to the capsule path: O(fixed_samples × nearby_triangles).
+        /// </summary>
+        private void TriangleMeshVsTriangleMesh(
+            TriangleMeshShape meshA, PhysicsComponent bodyA,
+            TriangleMeshShape meshB, PhysicsComponent bodyB,
+            ContactManifold manifold)
+        {
+            meshA.GetAabb(bodyA.Position, bodyA.Rotation, out Vector3 aabbAMin, out Vector3 aabbAMax);
+            meshB.GetAabb(bodyB.Position, bodyB.Rotation, out Vector3 aabbBMin, out Vector3 aabbBMax);
+
+            // Early-out if world AABBs do not overlap
+            if (aabbAMax.X < aabbBMin.X || aabbAMin.X > aabbBMax.X ||
+                aabbAMax.Y < aabbBMin.Y || aabbAMin.Y > aabbBMax.Y ||
+                aabbAMax.Z < aabbBMin.Z || aabbAMin.Z > aabbBMax.Z)
+                return;
+
+            // Fixed sample points from mesh A (exactly analogous to the 3 capsule samples)
+            Vector3 centre = bodyA.WorldCentreOfMass;
+            Vector3[] samples =
+            {
+                centre,
+                new Vector3(aabbAMin.X, aabbAMin.Y, aabbAMin.Z),
+                new Vector3(aabbAMax.X, aabbAMin.Y, aabbAMin.Z),
+                new Vector3(aabbAMin.X, aabbAMax.Y, aabbAMin.Z),
+                new Vector3(aabbAMax.X, aabbAMax.Y, aabbAMin.Z),
+                new Vector3(aabbAMin.X, aabbAMin.Y, aabbAMax.Z),
+                new Vector3(aabbAMax.X, aabbAMin.Y, aabbAMax.Z),
+                new Vector3(aabbAMin.X, aabbAMax.Y, aabbAMax.Z),
+                new Vector3(aabbAMax.X, aabbAMax.Y, aabbAMax.Z)
+            };
+
+            // Query volume around the samples (same idea as the capsule query AABB)
+            Vector3 queryMin = aabbAMin - new Vector3(0.05f);
+            Vector3 queryMax = aabbAMax + new Vector3(0.05f);
+
+            _triA.Clear();
+            _triB.Clear();
+            _triC.Clear();
+            meshB.QueryWorldTriangles(bodyB.Position, bodyB.Rotation, queryMin, queryMax, _triA, _triB, _triC);
+            if (_triA.Count == 0) return;
+
+            var candidates = new List<ContactPoint>(32);
+
+            // Exactly like CapsuleVsTriangleMesh: fixed samples × returned triangles
+            for (int s = 0; s < samples.Length; s++)
+            {
+                Vector3 p = samples[s];
+                for (int t = 0; t < _triA.Count; t++)
+                {
+                    Vector3 closest = ClosestPointOnTriangle(p, _triA[t], _triB[t], _triC[t]);
+                    Vector3 delta = p - closest;
+                    float dist = delta.Length();
+                    if (dist < 0.08f && dist > 1e-6f)
+                    {
+                        Vector3 n = delta / dist;
+                        candidates.Add(new ContactPoint
+                        {
+                            Position = closest,
+                            Normal = n,
+                            Penetration = 0.08f - dist
+                        });
+                    }
+                }
+            }
+
+            if (candidates.Count == 0) return;
+
+            candidates.Sort((x, y) => y.Penetration.CompareTo(x.Penetration));
+            int keep = Math.Min(4, candidates.Count);
+            for (int i = 0; i < keep; i++)
+                manifold.Add(candidates[i]);
         }
         private void SphereVsHeightfield(SphereShape sphere, PhysicsComponent body,
             HeightfieldShape field, ContactManifold manifold)
