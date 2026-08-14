@@ -110,5 +110,6 @@ namespace SiegeEngine.Core.Rendering.ContextManagement
         {
             _gl.FrontFace((FrontFaceDirection)mode);
         }
+        public void LineWidth(float width) => _gl.LineWidth(width);
     }
 }
