@@ -5,6 +5,7 @@ using SiegeEngine.Core.Events;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.Core.Physics
 {
     public class PhysicsWorld
@@ -30,11 +31,9 @@ namespace SiegeEngine.Core.Physics
         }
         public int SolverIterations { get; set; } = 10;
         public EventBus EventBus { get; set; }
-
         // Editor / debug read-only surface (pure data, zero behaviour change)
         public IReadOnlyList<ContactManifold> CurrentManifolds => _manifolds;
         public IReadOnlyList<PhysicsComponent> Bodies => _bodies;
-
         public void SetHeightProvider(IHeightProvider provider)
         {
             _heightProvider = provider;
@@ -222,6 +221,9 @@ namespace SiegeEngine.Core.Physics
                 Vector3 forceImpulse = tDir * jt;
                 a.Velocity += forceImpulse * a.InvMass;
                 a.AngularVelocity += a.ApplyInvInertiaWorld(Vector3.Cross(rA, forceImpulse));
+                // Store for debug visualisation
+                p.RollingResistanceImpulse = forceImpulse;
+                manifold.Points[0] = p;
             }
         }
         private void ResolveVelocity(ContactManifold m)
@@ -311,7 +313,10 @@ namespace SiegeEngine.Core.Physics
                         b.Velocity -= frictionImpulse * invMassB;
                         b.AngularVelocity -= b.ApplyInvInertiaWorld(Vector3.Cross(rB, frictionImpulse));
                     }
+                    // Store for debug visualisation (last solver iteration wins)
+                    p.FrictionImpulse = frictionImpulse;
                 }
+                m.Points[i] = p;
             }
         }
         private void ProjectPositions()
