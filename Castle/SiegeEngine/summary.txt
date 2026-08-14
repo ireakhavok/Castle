@@ -1548,7 +1548,7 @@ Folder: Core
         - Calls: DetectAndResolveContacts, Integrate, UpdateSleeping
       - void Integrate(float dt)
       - void DetectAndResolveContacts(float dt)
-        - Calls: ApplyRestingDeadZone, ApplyRollingResistance, CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, RepairNormalVelocities, ResolveVelocity, SphereVsHeightfield, TriangleMeshVsHeightfield, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
+        - Calls: ApplyRestingDeadZone, ApplyRollingResistance, CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, RepairNormalVelocities, ResolveVelocity, SphereVsHeightfield, TriangleMeshVsHeightfield, _manifolds.Add, _manifolds.Clear
       - step ApplyRollingResistance()
         - Calls: a.ApplyInvInertiaWorld
       - void ApplyRollingResistance(float dt)
@@ -1561,7 +1561,12 @@ Folder: Core
       - void ApplyRestingDeadZone()
       - void UpdateSleeping(float dt)
       - ContactManifold GenerateManifold( PhysicsComponent b, PhysicsComponent a)
-        - Calls: CapsuleVsCapsule, CapsuleVsObb, CapsuleVsTriangleMesh, ObbVsMeshAabb, ObbVsObb, SphereVsCapsule, SphereVsSphere, SphereVsTriangleMesh
+        - Calls: CapsuleVsCapsule, CapsuleVsObb, CapsuleVsTriangleMesh, ObbVsMeshAabb, ObbVsObb, SphereVsCapsule, SphereVsSphere, SphereVsTriangleMesh, TriangleMeshVsTriangleMesh
+      - void TriangleMeshVsTriangleMesh(
+            ContactManifold manifold, 
+            TriangleMeshShape meshA, 
+            TriangleMeshShape meshB,  PhysicsComponent bodyA,  PhysicsComponent bodyB)
+        - Calls: ClosestPointOnTriangle, _triA.Clear, _triB.Clear, _triC.Clear, candidates.Add, manifold.Add, meshA.GetAabb, meshB.GetAabb, meshB.QueryWorldTriangles
       - void SphereVsHeightfield(
             HeightfieldShape field,  ContactManifold manifold,  PhysicsComponent body, SphereShape sphere)
         - Calls: field.SampleHeight, field.SampleNormal, manifold.Add

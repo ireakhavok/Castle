@@ -301,7 +301,7 @@ Found 6 dependencies
 Found: PhysicsComponent.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\PhysicsComponent.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\PhysicsComponent.cs
-Read 26896 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\PhysicsComponent.cs
+Read 27137 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\PhysicsComponent.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 5 dependencies
 Found: PreviewComponent.cs
@@ -706,7 +706,7 @@ Found 1 dependencies
 Found: ContactManifold.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\ContactManifold.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\ContactManifold.cs
-Read 828 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\ContactManifold.cs
+Read 912 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\ContactManifold.cs
 Namespace: SiegeEngine.Core.Physics
 Found 2 dependencies
 Found: HeightfieldShape.cs
@@ -736,7 +736,7 @@ Found 2 dependencies
 Found: PhysicsWorld.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\PhysicsWorld.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\PhysicsWorld.cs
-Read 43232 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\PhysicsWorld.cs
+Read 47484 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\PhysicsWorld.cs
 Namespace: SiegeEngine.Core.Physics
 Found 5 dependencies
 Found: SphereShape.cs
@@ -804,7 +804,7 @@ Found 2 dependencies
 Found: IRenderContext.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\IRenderContext.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\IRenderContext.cs
-Read 4032 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\IRenderContext.cs
+Read 4069 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\IRenderContext.cs
 Namespace: SiegeEngine.Core.Rendering.ContextManagement
 Found 1 dependencies
 Found: OpenGLContextManager.cs
@@ -822,7 +822,7 @@ Found 1 dependencies
 Found: OpenGLRenderContext.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\OpenGLRenderContext.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\OpenGLRenderContext.cs
-Read 8579 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\OpenGLRenderContext.cs
+Read 8647 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\OpenGLRenderContext.cs
 Namespace: SiegeEngine.Core.Rendering.ContextManagement
 Found 3 dependencies
 Found: Viewport.cs

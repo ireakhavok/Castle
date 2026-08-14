@@ -335,6 +335,7 @@ Folder: IDE
       - List<Vector3> _triA
       - List<Vector3> _triB
       - List<Vector3> _triC
+      - List<ContactPoint> _cachedContacts
       - bool _dynamicDirty
       - int _lastAwakeCount
       - int _lastContactCount
@@ -653,7 +654,7 @@ Folder: IDE
   - Class: TransformGizmoOverlay (Namespace: ToolChest)
     - Inherits: ICustomOverlay
     
-    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, System, System.Collections.Generic, System.Numerics
+    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - EventBus _eventBus
@@ -689,7 +690,7 @@ Folder: IDE
       - void AddRing( List<uint> indices,  Vector3 axis,  Vector4 color, List<Vertex> vertices)
         - Calls: Vertex, indices.Add, vertices.Add
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: ShaderProgram, _arrowBuffer.Bind, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _ringBuffer.Bind, arrowShader.Dispose, arrowShader.SetMatrix4, arrowShader.SetUniform, arrowShader.Use
+        - Calls: ShaderProgram, _arrowBuffer.Bind, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _renderContext.LineWidth, _ringBuffer.Bind, arrowShader.Dispose, arrowShader.SetMatrix4, arrowShader.SetUniform, arrowShader.Use
       - bool HandleMouseInput( bool mouseDown,  bool mousePressed,  bool mouseReleased,  float contentH,  float contentW, Vector2 contentMouse)
         - Calls: EndDrag, PerformDrag, PickAxisScreenSpace, PickRingScreenSpace, StartDrag
       - void StartDrag( float contentH,  float contentW, Vector2 contentMouse)
@@ -2801,7 +2802,7 @@ Folder: SiegeEngine
         - Calls: DetectAndResolveContacts, Integrate, UpdateSleeping
       - void Integrate(float dt)
       - void DetectAndResolveContacts(float dt)
-        - Calls: ApplyRestingDeadZone, ApplyRollingResistance, CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, RepairNormalVelocities, ResolveVelocity, SphereVsHeightfield, TriangleMeshVsHeightfield, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
+        - Calls: ApplyRestingDeadZone, ApplyRollingResistance, CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, RepairNormalVelocities, ResolveVelocity, SphereVsHeightfield, TriangleMeshVsHeightfield, _manifolds.Add, _manifolds.Clear
       - step ApplyRollingResistance()
         - Calls: a.ApplyInvInertiaWorld
       - void ApplyRollingResistance(float dt)
@@ -2814,7 +2815,12 @@ Folder: SiegeEngine
       - void ApplyRestingDeadZone()
       - void UpdateSleeping(float dt)
       - ContactManifold GenerateManifold( PhysicsComponent b, PhysicsComponent a)
-        - Calls: CapsuleVsCapsule, CapsuleVsObb, CapsuleVsTriangleMesh, ObbVsMeshAabb, ObbVsObb, SphereVsCapsule, SphereVsSphere, SphereVsTriangleMesh
+        - Calls: CapsuleVsCapsule, CapsuleVsObb, CapsuleVsTriangleMesh, ObbVsMeshAabb, ObbVsObb, SphereVsCapsule, SphereVsSphere, SphereVsTriangleMesh, TriangleMeshVsTriangleMesh
+      - void TriangleMeshVsTriangleMesh(
+            ContactManifold manifold, 
+            TriangleMeshShape meshA, 
+            TriangleMeshShape meshB,  PhysicsComponent bodyA,  PhysicsComponent bodyB)
+        - Calls: ClosestPointOnTriangle, _triA.Clear, _triB.Clear, _triC.Clear, candidates.Add, manifold.Add, meshA.GetAabb, meshB.GetAabb, meshB.QueryWorldTriangles
       - void SphereVsHeightfield(
             HeightfieldShape field,  ContactManifold manifold,  PhysicsComponent body, SphereShape sphere)
         - Calls: field.SampleHeight, field.SampleNormal, manifold.Add
