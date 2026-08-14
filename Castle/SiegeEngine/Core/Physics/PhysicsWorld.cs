@@ -319,23 +319,37 @@ namespace SiegeEngine.Core.Physics
                 bool kinematicVsStatic = a != null && a.BodyType == BodyType.Kinematic
                                       && (b == null || b.BodyType == BodyType.Static);
                 if (totalInv < 1e-8f && !kinematicVsStatic) continue;
+
+                if (kinematicVsStatic)
+                {
+                    // Apply only the single deepest contact. Multiple conflicting
+                    // normals in one frame are what cause the character to pop.
+                    int best = -1;
+                    float bestPen = 0f;
+                    for (int i = 0; i < manifold.PointCount; i++)
+                    {
+                        float depth = manifold.Points[i].Penetration - numericSlop;
+                        if (depth > bestPen)
+                        {
+                            bestPen = depth;
+                            best = i;
+                        }
+                    }
+                    if (best >= 0)
+                        a.Position += manifold.Points[best].Normal * bestPen;
+                    continue;
+                }
+
                 for (int i = 0; i < manifold.PointCount; i++)
                 {
                     var p = manifold.Points[i];
                     float depth = p.Penetration - numericSlop;
                     if (depth <= 0f) continue;
-                    if (kinematicVsStatic)
-                    {
-                        a.Position += p.Normal * depth;
-                    }
-                    else
-                    {
-                        Vector3 corr = p.Normal * (depth / totalInv);
-                        if (invMassA > 0f && a != null)
-                            a.Position += corr * invMassA;
-                        if (invMassB > 0f && b != null)
-                            b.Position -= corr * invMassB;
-                    }
+                    Vector3 corr = p.Normal * (depth / totalInv);
+                    if (invMassA > 0f && a != null)
+                        a.Position += corr * invMassA;
+                    if (invMassB > 0f && b != null)
+                        b.Position -= corr * invMassB;
                 }
             }
         }
@@ -491,11 +505,6 @@ namespace SiegeEngine.Core.Physics
             }
             return manifold.PointCount > 0 ? manifold : null;
         }
-        /// <summary>
-        /// Mesh–mesh contact generation using signed distance against the opposing
-        /// triangle normal (same geometric authority the capsule path enjoys).
-        /// Ranked closest triangles only — never a full mesh scan.
-        /// </summary>
         private void TriangleMeshVsTriangleMesh(
             TriangleMeshShape meshA, PhysicsComponent bodyA,
             TriangleMeshShape meshB, PhysicsComponent bodyB,
@@ -509,9 +518,7 @@ namespace SiegeEngine.Core.Physics
                 return;
             const float skin = 0.05f;
             const int MaxTrianglesPerMesh = 16;
-            // Small geometric threshold — contacts appear near the true surface
             const float MeshContactThreshold = 0.025f;
-            // Query B with expanded AABB of A
             Vector3 queryMinB = aabbAMin - new Vector3(skin);
             Vector3 queryMaxB = aabbAMax + new Vector3(skin);
             _triA.Clear();
@@ -529,7 +536,6 @@ namespace SiegeEngine.Core.Physics
             }
             scoredB.Sort((x, y) => x.distSq.CompareTo(y.distSq));
             int countB = Math.Min(MaxTrianglesPerMesh, scoredB.Count);
-            // Query A with expanded AABB of B
             Vector3 queryMinA = aabbBMin - new Vector3(skin);
             Vector3 queryMaxA = aabbBMax + new Vector3(skin);
             var triA_A = new List<Vector3>(64);
@@ -556,24 +562,19 @@ namespace SiegeEngine.Core.Physics
                 {
                     int tb = scoredB[ib].idx;
                     Vector3 b0 = _triA[tb], b1 = _triB[tb], b2 = _triC[tb];
-                    // Closest points between the two triangles
                     ClosestPointsBetweenTriangles(a0, a1, a2, b0, b1, b2,
                         out Vector3 closestA, out Vector3 closestB, out float dist);
-                    // Triangle normal of B (opposing surface)
                     Vector3 e1 = b1 - b0;
                     Vector3 e2 = b2 - b0;
                     Vector3 normalB = Vector3.Cross(e1, e2);
                     float nLen = normalB.Length();
                     if (nLen < 1e-8f) continue;
                     normalB /= nLen;
-                    // Orient normal so it points toward body A (from B toward A)
                     if (Vector3.Dot(normalB, comA - closestB) < 0f)
                         normalB = -normalB;
-                    // Signed distance of closestA relative to the plane of triangle B
                     float signed = Vector3.Dot(closestA - closestB, normalB);
                     if (signed < MeshContactThreshold)
                     {
-                        // Penetration is how far A has crossed (or is about to cross) the surface of B
                         float pen = MeshContactThreshold - signed;
                         candidates.Add(new ContactPoint
                         {
