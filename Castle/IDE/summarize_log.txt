@@ -105,7 +105,7 @@ Found 12 dependencies
 Found: SceneEditorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
-Read 37662 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
+Read 40892 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
 Namespace: CastleBuilder
 Found 24 dependencies
 Found: SceneEditorUI.html
@@ -344,7 +344,7 @@ Found 9 dependencies
 Found: PropertiesPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
-Read 29833 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
+Read 32682 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
 Namespace: ToolChest
 Found 18 dependencies
 Found: PropertiesPanelUI.html

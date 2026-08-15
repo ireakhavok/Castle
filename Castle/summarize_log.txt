@@ -567,7 +567,7 @@ Found 12 dependencies
 Found: SceneEditorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
-Read 37662 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
+Read 40892 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
 Namespace: CastleBuilder
 Found 24 dependencies
 Found: SceneEditorUI.html
@@ -806,7 +806,7 @@ Found 9 dependencies
 Found: PropertiesPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
-Read 29833 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
+Read 32682 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
 Namespace: ToolChest
 Found 18 dependencies
 Found: PropertiesPanelUI.html
@@ -1176,7 +1176,7 @@ Found 0 dependencies
 Found: Entity.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Entity.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Entity.cs
-Read 7102 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Entity.cs
+Read 9734 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Entity.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 6 dependencies
 Found: EntityData.cs
@@ -1285,6 +1285,12 @@ Found: SceneSettings.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SceneSettings.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SceneSettings.cs
 Read 751 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SceneSettings.cs
+Namespace: SiegeEngine.Core.Definitions
+Found 2 dependencies
+Found: SoundComponent.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SoundComponent.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SoundComponent.cs
+Read 2794 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SoundComponent.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 2 dependencies
 Found: SoundSource.cs
@@ -1631,7 +1637,7 @@ Found: ..
 Found: ClientGameServerProxy.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\ClientGameServerProxy.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\ClientGameServerProxy.cs
-Read 8090 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\ClientGameServerProxy.cs
+Read 9029 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\ClientGameServerProxy.cs
 Namespace: SiegeEngine.Core.Networking
 Found 9 dependencies
 Found: MovementRequest.cs
@@ -2424,7 +2430,7 @@ Found 6 dependencies
 Found: AudioSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
-Read 30977 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
+Read 31916 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Namespace: SiegeEngine.Systems
 Found 10 dependencies
 Found: ClientPredictionSystem.cs

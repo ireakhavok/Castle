@@ -221,7 +221,7 @@ Folder: Core
       - void SetHeightProvider(IHeightProvider provider)
       - void SnapToGround(PhysicsComponent body)
       - void AddEntity(Entity entity)
-        - Calls: Entity.SanitizeRotation, EntityAddedEvent, _entities.Add, existingPhysics.InvalidateShape, existingPhysics.RebuildShape
+        - Calls: Entity.SanitizeRotation, EntityAddedEvent, _entities.Add, existing.AddComponent, existingPhysics.InvalidateShape, existingPhysics.RebuildShape
       - void RemoveEntity(int id)
         - Calls: EntityRemovedEvent, _physicsWorld.UnregisterBody
       - void ClearEntities()
@@ -1877,6 +1877,9 @@ Folder: Core
     - Methods:
       - void main()
       - void main()
+- File: SoundComponent.cs
+  - Class: SoundComponentData (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: System, System.Text.Json
 - File: SoundEmissionEvent.cs
   - Class: SoundRayTraceResult (Namespace: SiegeEngine.Core.Events)
     - Dependencies: SiegeEngine.Core.Definitions, System.Numerics, System.Text.Json
@@ -1896,7 +1899,7 @@ Folder: Core
     - Methods:
       - constructor Spawner(IGameServer server)
       - Entity SpawnEntity( Vector3 position, string type)
-        - Calls: Player, _server.AddEntity, _server.GetEntities
+        - Calls: Player, _server.AddEntity, _server.GetEntities, entity.AddComponent
 - File: SphereShape.cs
   - Class: SphereShape (Namespace: SiegeEngine.Core.Physics)
     - Inherits: ColliderShape
@@ -2673,7 +2676,7 @@ Folder: Scenes
       - void LoadExactSavedTerrain( string levelName, string projectPath)
         - Calls: BuildTexturedMesh, CustomTerrainParser.Load, TerrainTextureParser.LoadColorTexture
       - void SetupPureRuntimeWorld()
-        - Calls: _server.AddEntity
+        - Calls: _server.AddEntity, terrainEntity.AddComponent
       - void BuildTexturedMesh()
         - Calls: VertexBuffer, _terrainBuffer.UpdateCustomWithUV, indices.Add, vertices.Add
       - void Render(IReadOnlyList<Entity> entities)
@@ -2990,6 +2993,7 @@ SiegeEngine.Core.Definitions.PreviewComponent
 SiegeEngine.Core.Definitions.Rarity
 SiegeEngine.Core.Definitions.SceneSettings
 SiegeEngine.Core.Definitions.SkyboxData
+SiegeEngine.Core.Definitions.SoundComponentData
 SiegeEngine.Core.Definitions.SoundSource
 SiegeEngine.Core.Definitions.Spawner
 SiegeEngine.Core.Definitions.SpriteComponent

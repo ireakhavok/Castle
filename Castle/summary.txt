@@ -758,7 +758,7 @@ Folder: IDE
       - void OnSpriteSelected(SelectSpriteEvent e)
         - Calls: UpdateGhostMesh, _renderContext.DeleteTexture
       - void OnEntityPlaced(EntityPlacedEvent e)
-        - Calls: PhysicsComponent, _server.AddEntity
+        - Calls: PhysicsComponent, _server.AddEntity, entity.AddComponent
       - void Update( Vector3 worldMousePos,  bool cameraActive,  bool mouseReleased, float deltaTime)
         - Calls: EntityPlacedEvent
       - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
@@ -849,7 +849,7 @@ Folder: Server
       - void OnExitEditor(ExitEditorEvent e)
         - Calls: Console.WriteLine, PlayerExitedEditorEvent
       - void OnEntityPlaced(EntityPlacedEvent e)
-        - Calls: AddEntity, Console.WriteLine, PhysicsComponent, Player
+        - Calls: AddEntity, Console.WriteLine, PhysicsComponent, Player, entity.AddComponent
       - void OnItemPickedUp(ItemPickedUpEvent e)
         - Calls: Console.WriteLine, GetEntityById, _validationSystem.ValidateInventory
       - void OnPhysicsCollision(PhysicsCollisionEvent e)
@@ -1238,7 +1238,7 @@ Folder: SiegeEngine
       - void SetHeightProvider(IHeightProvider provider)
       - void SnapToGround(PhysicsComponent body)
       - void AddEntity(Entity entity)
-        - Calls: Console.WriteLine, Entity.SanitizeRotation, EntityAddedEvent, _entities.Add, existingPhysics.InvalidateShape, existingPhysics.RebuildShape
+        - Calls: Console.WriteLine, Entity.SanitizeRotation, EntityAddedEvent, _entities.Add, existing.AddComponent, existingPhysics.InvalidateShape, existingPhysics.RebuildShape
       - void RemoveEntity(int id)
         - Calls: EntityRemovedEvent, _entities.Remove, _physicsWorld.UnregisterBody
       - void ClearEntities()
@@ -3065,7 +3065,7 @@ Folder: SiegeEngine
       - void LoadExactSavedTerrain( string levelName, string projectPath)
         - Calls: BuildTexturedMesh, Console.WriteLine, CustomTerrainParser.Load, TerrainTextureParser.LoadColorTexture
       - void SetupPureRuntimeWorld()
-        - Calls: _server.AddEntity
+        - Calls: _server.AddEntity, terrainEntity.AddComponent
       - void BuildTexturedMesh()
         - Calls: VertexBuffer, _terrainBuffer.UpdateCustomWithUV, indices.Add, vertices.Add
       - void Render(IReadOnlyList<Entity> entities)
@@ -3313,6 +3313,9 @@ Folder: SiegeEngine
     - Methods:
       - void main()
       - void main()
+- File: SoundComponent.cs
+  - Class: SoundComponentData (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: System, System.Text.Json
 - File: SoundEmissionEvent.cs
   - Class: SoundRayTraceResult (Namespace: SiegeEngine.Core.Events)
     - Dependencies: SiegeEngine.Core.Definitions, System.Numerics, System.Text.Json
@@ -3332,7 +3335,7 @@ Folder: SiegeEngine
     - Methods:
       - constructor Spawner(IGameServer server)
       - Entity SpawnEntity( Vector3 position, string type)
-        - Calls: Console.WriteLine, Player, _server.AddEntity, _server.GetEntities
+        - Calls: Console.WriteLine, Player, _server.AddEntity, _server.GetEntities, entity.AddComponent
 - File: SphereShape.cs
   - Class: SphereShape (Namespace: SiegeEngine.Core.Physics)
     - Inherits: ColliderShape
@@ -3979,6 +3982,7 @@ SiegeEngine.Core.Definitions.PreviewComponent
 SiegeEngine.Core.Definitions.Rarity
 SiegeEngine.Core.Definitions.SceneSettings
 SiegeEngine.Core.Definitions.SkyboxData
+SiegeEngine.Core.Definitions.SoundComponentData
 SiegeEngine.Core.Definitions.SoundSource
 SiegeEngine.Core.Definitions.Spawner
 SiegeEngine.Core.Definitions.SpriteComponent
