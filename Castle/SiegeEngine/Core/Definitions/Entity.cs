@@ -25,10 +25,25 @@ namespace SiegeEngine.Core.Definitions
         {
         }
 
+        /// <summary>
+        /// Generic path – used by every concrete call site (AddComponent(physics), AddComponent(soundComp), etc.).
+        /// Behaviour is identical to the original: key = typeof(T).
+        /// </summary>
         public void AddComponent<T>(T component) where T : IComponent
         {
             if (component == null) throw new ArgumentNullException(nameof(component));
             _components[typeof(T)] = component;
+        }
+
+        /// <summary>
+        /// Non-generic overload. C# overload resolution selects this only when the argument
+        /// is typed as IComponent (the FromData / sync paths). Keys by the concrete runtime type
+        /// so GetComponent&lt;SoundComponent&gt;() works after reload.
+        /// </summary>
+        public void AddComponent(IComponent component)
+        {
+            if (component == null) throw new ArgumentNullException(nameof(component));
+            _components[component.GetType()] = component;
         }
 
         public T GetComponent<T>() where T : IComponent
@@ -88,6 +103,10 @@ namespace SiegeEngine.Core.Definitions
                 var componentType = kvp.Key;
                 var component = kvp.Value;
 
+                // Never write the interface type – it cannot be recreated and pollutes the file.
+                if (componentType == typeof(IComponent) || componentType.IsInterface)
+                    continue;
+
                 if (component is IComponentData serializable)
                 {
                     var entry = new EntityData.ComponentEntry
@@ -145,25 +164,35 @@ namespace SiegeEngine.Core.Definitions
             if (data.Components != null)
             {
                 string physicsFullName = typeof(PhysicsComponent).FullName;
+                string modelFullName = typeof(ModelComponent).FullName;
 
                 foreach (var entry in data.Components)
                 {
                     if (string.IsNullOrEmpty(entry.Type)) continue;
 
+                    // Physics is already created and will be updated in-place.
                     if (entry.Type == physicsFullName)
                     {
                         if (entry.Data != null)
                             physics.FromSerializableData(entry.Data);
-                        // Re-sanitize after component data may have overwritten Rotation
                         physics.Rotation = SanitizeRotation(physics.Rotation);
                         continue;
                     }
 
+                    // Model is already owned by the AssetPackKey path above.
+                    if (entry.Type == modelFullName)
+                        continue;
+
                     try
                     {
-                        var componentType = System.Type.GetType(entry.Type);
-                        if (componentType == null || !typeof(IComponent).IsAssignableFrom(componentType))
+                        System.Type componentType = ResolveComponentType(entry.Type);
+                        if (componentType == null ||
+                            !typeof(IComponent).IsAssignableFrom(componentType) ||
+                            componentType.IsInterface)
+                        {
+                            Console.WriteLine($"[Entity.FromData] Could not recreate component type: {entry.Type}");
                             continue;
+                        }
 
                         var component = (IComponent)Activator.CreateInstance(componentType);
 
@@ -172,17 +201,46 @@ namespace SiegeEngine.Core.Definitions
                             serializable.FromSerializableData(entry.Data);
                         }
 
+                        // Non-generic overload → keys by concrete runtime type.
                         entity.AddComponent(component);
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        Console.WriteLine($"[Entity.FromData] Could not recreate component type: {entry.Type}");
+                        Console.WriteLine($"[Entity.FromData] Could not recreate component type: {entry.Type} ({ex.Message})");
                     }
                 }
             }
 
             Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm}) Components={entity.Components.Count}");
             return entity;
+        }
+
+        /// <summary>
+        /// Resolves a component type by full name. First tries System.Type.GetType, then
+        /// searches every loaded assembly (required because components live in SiegeEngine.dll
+        /// while the editor process is Foundation.exe).
+        /// Must use System.Type explicitly – Entity already has a string property named Type.
+        /// </summary>
+        private static System.Type ResolveComponentType(string fullName)
+        {
+            if (string.IsNullOrEmpty(fullName)) return null;
+
+            System.Type t = System.Type.GetType(fullName);
+            if (t != null) return t;
+
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    t = asm.GetType(fullName);
+                    if (t != null) return t;
+                }
+                catch
+                {
+                    // Some dynamic / reflection-only assemblies throw; ignore.
+                }
+            }
+            return null;
         }
 
         /// <summary>

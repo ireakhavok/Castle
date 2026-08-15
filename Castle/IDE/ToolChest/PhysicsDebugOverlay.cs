@@ -18,34 +18,27 @@ namespace ToolChest
         private readonly Func<IReadOnlyList<Entity>> _getEntities;
         private readonly Func<IReadOnlyList<ContactManifold>> _getManifolds;
         private readonly Func<IReadOnlyList<int>> _getSelectedIds;
-
         // Local-space geometry caches (uploaded once, GPU transforms thereafter)
         private readonly Dictionary<object, VertexBuffer> _shapeCaches = new Dictionary<object, VertexBuffer>();
         private readonly Dictionary<object, bool> _cacheWasSleeping = new Dictionary<object, bool>();
-
-        // Small dynamic buffer for contacts + velocities + angular
+        // Small dynamic buffer for contacts + velocities + angular + friction/rolling impulses
         private VertexBuffer _dynamicBuffer;
         private ShaderProgram _shader;
-
         private readonly List<Vertex> _dynVerts = new List<Vertex>(512);
         private readonly List<uint> _dynIndices = new List<uint>(1024);
         private readonly List<Vector3> _triA = new List<Vector3>(256);
         private readonly List<Vector3> _triB = new List<Vector3>(256);
         private readonly List<Vector3> _triC = new List<Vector3>(256);
-
-        private readonly List<(Vector3 pos, Vector3 normal, float pen)> _cachedContacts = new List<(Vector3, Vector3, float)>(64);
-
+        private readonly List<ContactPoint> _cachedContacts = new List<ContactPoint>(64);
         private bool _dynamicDirty = true;
         private int _lastAwakeCount = -1;
         private int _lastContactCount = -1;
         private bool _wasEnabled = false;
-
         public bool Enabled { get; set; } = false;
         public bool ShowShapes { get; set; } = true;
         public bool ShowContacts { get; set; } = true;
         public bool ShowVelocities { get; set; } = true;
         public bool SelectedOnly { get; set; } = false;
-
         public PhysicsDebugOverlay(
             IRenderContext renderContext,
             Func<IReadOnlyList<Entity>> getEntities,
@@ -57,9 +50,7 @@ namespace ToolChest
             _getManifolds = getManifolds;
             _getSelectedIds = getSelectedIds ?? (() => Array.Empty<int>());
         }
-
         public void Draw(UIQuadRenderer quadRenderer, float panelWidth, float panelHeight) { }
-
         public unsafe void RenderWorld(Matrix4x4 view, Matrix4x4 projection)
         {
             if (!Enabled)
@@ -67,22 +58,17 @@ namespace ToolChest
                 _wasEnabled = false;
                 return;
             }
-
             if (!_wasEnabled)
             {
                 _dynamicDirty = true;
                 _wasEnabled = true;
             }
-
             if (_shader == null)
                 _shader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
-
             var entities = _getEntities();
             if (entities == null || entities.Count == 0) return;
-
             var selected = _getSelectedIds();
             bool filterSelected = SelectedOnly && selected != null && selected.Count > 0;
-
             int awakeCount = 0;
             for (int i = 0; i < entities.Count; i++)
             {
@@ -92,20 +78,17 @@ namespace ToolChest
                 if (p != null && !p.IsSleeping && p.BodyType == BodyType.Dynamic)
                     awakeCount++;
             }
-
             // Always keep dynamic buffer live while anything is moving or contacts may change
             if (awakeCount != _lastAwakeCount || awakeCount > 0)
             {
                 _dynamicDirty = true;
                 _lastAwakeCount = awakeCount;
             }
-
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _shader.Use();
             _shader.SetMatrix4("uView", view);
             _shader.SetMatrix4("uProjection", projection);
             _shader.SetUniform("uPointSize", 6f);
-
             // ── Static / local-space shape geometry (GPU transformed) ──────────
             if (ShowShapes)
             {
@@ -114,12 +97,9 @@ namespace ToolChest
                     var entity = entities[i];
                     if (entity == null) continue;
                     if (filterSelected && (selected == null || !selected.Contains(entity.Id))) continue;
-
                     var physics = entity.GetComponent<PhysicsComponent>();
                     if (physics == null || physics.Shape == null) continue;
-
                     object cacheKey = GetCacheKey(physics);
-
                     // Invalidate cache if sleeping state changed so colour updates
                     if (_cacheWasSleeping.TryGetValue(cacheKey, out bool wasSleeping) && wasSleeping != physics.IsSleeping)
                     {
@@ -130,7 +110,6 @@ namespace ToolChest
                         }
                         _cacheWasSleeping.Remove(cacheKey);
                     }
-
                     if (!_shapeCaches.TryGetValue(cacheKey, out VertexBuffer buf))
                     {
                         buf = BuildLocalShapeBuffer(physics);
@@ -138,15 +117,13 @@ namespace ToolChest
                         _shapeCaches[cacheKey] = buf;
                         _cacheWasSleeping[cacheKey] = physics.IsSleeping;
                     }
-
                     Matrix4x4 model = BuildModelMatrix(physics);
                     _shader.SetMatrix4("uModel", model);
                     buf.Bind();
                     _renderContext.DrawElements(_renderContext.Enums.Lines, buf.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
                 }
             }
-
-            // ── Dynamic contacts + linear + angular velocities ─────────────────
+            // ── Dynamic contacts + linear + angular velocities + friction / rolling impulses ─
             if (ShowContacts || ShowVelocities)
             {
                 if (_dynamicDirty)
@@ -154,7 +131,6 @@ namespace ToolChest
                     RebuildDynamicBuffer(entities, selected, filterSelected);
                     _dynamicDirty = false;
                 }
-
                 if (_dynamicBuffer != null && _dynamicBuffer.GetIndexCount() > 0)
                 {
                     _shader.SetMatrix4("uModel", Matrix4x4.Identity);
@@ -162,31 +138,25 @@ namespace ToolChest
                     _renderContext.DrawElements(_renderContext.Enums.Lines, _dynamicBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
                 }
             }
-
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
-
         private static object GetCacheKey(PhysicsComponent physics)
         {
             return (physics.Shape, physics.BodyType, physics.IsSleeping);
         }
-
         private static Matrix4x4 BuildModelMatrix(PhysicsComponent physics)
         {
             if (physics.BodyType == BodyType.Kinematic && physics.Shape is CapsuleShape)
                 return Matrix4x4.CreateTranslation(physics.Position);
-
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(physics.Rotation);
             rot.Translation = physics.Position;
             return rot;
         }
-
         private VertexBuffer BuildLocalShapeBuffer(PhysicsComponent physics)
         {
             var verts = new List<Vertex>(512);
             var indices = new List<uint>(1024);
             Vector4 color = BodyColor(physics.BodyType, physics.IsSleeping);
-
             var shape = physics.Shape;
             if (shape is SphereShape sphere)
             {
@@ -215,19 +185,15 @@ namespace ToolChest
                 }
             }
             else return null;
-
             if (verts.Count == 0) return null;
-
             var buf = new VertexBuffer(_renderContext);
             buf.UpdateCustom(verts, indices);
             return buf;
         }
-
         private void RebuildDynamicBuffer(IReadOnlyList<Entity> entities, IReadOnlyList<int> selected, bool filterSelected)
         {
             _dynVerts.Clear();
             _dynIndices.Clear();
-
             // Linear + Angular velocity arrows at centre of mass
             if (ShowVelocities)
             {
@@ -236,12 +202,9 @@ namespace ToolChest
                     var entity = entities[i];
                     if (entity == null) continue;
                     if (filterSelected && (selected == null || !selected.Contains(entity.Id))) continue;
-
                     var physics = entity.GetComponent<PhysicsComponent>();
                     if (physics == null || physics.BodyType != BodyType.Dynamic) continue;
-
                     Vector3 com = physics.WorldCentreOfMass;
-
                     // Linear velocity (green)
                     Vector3 vel = physics.Velocity;
                     float vLen = vel.Length();
@@ -251,7 +214,6 @@ namespace ToolChest
                         Vector3 end = com + Vector3.Normalize(vel) * scale;
                         AddLocalLine(_dynVerts, _dynIndices, com, end, new Vector4(0.2f, 1.0f, 0.3f, 1.0f));
                     }
-
                     // Angular velocity (magenta) – direction of spin axis, length = spin rate
                     Vector3 ang = physics.AngularVelocity;
                     float aLen = ang.Length();
@@ -263,10 +225,10 @@ namespace ToolChest
                     }
                 }
             }
-
-            // Contact normals / normal forces (bright orange-red)
+            // Contact normals + friction impulses + rolling-resistance impulses
             if (ShowContacts)
             {
+                bool hasLive = false;
                 if (_getManifolds != null)
                 {
                     var manifolds = _getManifolds();
@@ -278,35 +240,73 @@ namespace ToolChest
                             var man = manifolds[m];
                             if (man == null) continue;
                             for (int p = 0; p < man.PointCount; p++)
-                            {
-                                var cp = man.Points[p];
-                                _cachedContacts.Add((cp.Position, cp.Normal, cp.Penetration));
-                            }
+                                _cachedContacts.Add(man.Points[p]);
                         }
+                        hasLive = true;
                         _lastContactCount = _cachedContacts.Count;
                     }
                 }
 
-                // Always draw the last known contacts so resting contacts stay visible
+                // Refined hybrid:
+                // - Live manifolds present → already filled above (zero lag).
+                // - No live manifolds this frame:
+                //     * any dynamic body still awake → clear cache (kill trailing ghosts).
+                //     * everything sleeping → keep previous cache so resting contacts stay visible.
+                if (!hasLive)
+                {
+                    bool anyAwake = false;
+                    for (int i = 0; i < entities.Count; i++)
+                    {
+                        var e = entities[i];
+                        if (e == null) continue;
+                        var phys = e.GetComponent<PhysicsComponent>();
+                        if (phys != null && !phys.IsSleeping && phys.BodyType == BodyType.Dynamic)
+                        {
+                            anyAwake = true;
+                            break;
+                        }
+                    }
+                    if (anyAwake)
+                        _cachedContacts.Clear();
+                }
+
+                // Draw whatever is now in the cache (live or retained resting)
                 for (int c = 0; c < _cachedContacts.Count; c++)
                 {
-                    var (pos, n, pen) = _cachedContacts[c];
-                    // Longer, brighter lines so they are obvious
+                    var cp = _cachedContacts[c];
+                    Vector3 pos = cp.Position;
+                    Vector3 n = cp.Normal;
+                    float pen = cp.Penetration;
+                    // Contact normal (bright orange-red)
                     float len = Math.Clamp(0.35f + pen * 4.0f, 0.4f, 2.0f);
                     float intensity = Math.Clamp(0.6f + pen * 3.0f, 0.6f, 1.0f);
                     Vector4 color = new Vector4(1.0f, 0.35f, 0.05f, intensity);
                     AddLocalLine(_dynVerts, _dynIndices, pos, pos + n * len, color);
+                    // Friction impulse (cyan)
+                    Vector3 fImp = cp.FrictionImpulse;
+                    float fLen = fImp.Length();
+                    if (fLen > 1e-5f)
+                    {
+                        float scale = Math.Clamp(fLen * 0.8f, 0.15f, 1.8f);
+                        Vector3 end = pos + Vector3.Normalize(fImp) * scale;
+                        AddLocalLine(_dynVerts, _dynIndices, pos, end, new Vector4(0.1f, 0.9f, 1.0f, 1.0f));
+                    }
+                    // Rolling-resistance impulse (purple)
+                    Vector3 rImp = cp.RollingResistanceImpulse;
+                    float rLen = rImp.Length();
+                    if (rLen > 1e-5f)
+                    {
+                        float scale = Math.Clamp(rLen * 0.8f, 0.15f, 1.8f);
+                        Vector3 end = pos + Vector3.Normalize(rImp) * scale;
+                        AddLocalLine(_dynVerts, _dynIndices, pos, end, new Vector4(0.85f, 0.2f, 1.0f, 1.0f));
+                    }
                 }
             }
-
             if (_dynVerts.Count == 0) return;
-
             if (_dynamicBuffer == null)
                 _dynamicBuffer = new VertexBuffer(_renderContext);
-
             _dynamicBuffer.UpdateCustom(_dynVerts, _dynIndices);
         }
-
         private static Vector4 BodyColor(BodyType t, bool sleeping)
         {
             Vector4 c = t switch
@@ -324,9 +324,7 @@ namespace ToolChest
             }
             return c;
         }
-
         // ── Local-space geometry helpers ──────────────────────────────────────
-
         private static void AddLocalLine(List<Vertex> verts, List<uint> indices, Vector3 a, Vector3 b, Vector4 color)
         {
             uint i0 = (uint)verts.Count;
@@ -335,7 +333,6 @@ namespace ToolChest
             indices.Add(i0);
             indices.Add(i0 + 1);
         }
-
         private static void AddLocalSphere(List<Vertex> verts, List<uint> indices, float radius, Vector4 color)
         {
             const int segs = 24;
@@ -362,13 +359,11 @@ namespace ToolChest
                 }
             }
         }
-
         private static void AddLocalCapsule(List<Vertex> verts, List<uint> indices, float radius, float height, Vector4 color)
         {
             Vector3 bottom = new Vector3(0f, 0f, radius);
             Vector3 top = new Vector3(0f, 0f, height - radius);
             const int segs = 16;
-
             uint baseBottom = (uint)verts.Count;
             for (int i = 0; i < segs; i++)
             {
@@ -381,7 +376,6 @@ namespace ToolChest
                 indices.Add(baseBottom + (uint)i);
                 indices.Add(baseBottom + (uint)((i + 1) % segs));
             }
-
             uint baseTop = (uint)verts.Count;
             for (int i = 0; i < segs; i++)
             {
@@ -394,7 +388,6 @@ namespace ToolChest
                 indices.Add(baseTop + (uint)i);
                 indices.Add(baseTop + (uint)((i + 1) % segs));
             }
-
             for (int i = 0; i < 4; i++)
             {
                 float a = i * MathF.PI * 0.5f;
@@ -402,14 +395,12 @@ namespace ToolChest
                 AddLocalLine(verts, indices, bottom + offset, top + offset, color);
             }
         }
-
         private static void AddLocalObb(List<Vertex> verts, List<uint> indices, Vector3 halfExtents, Vector3 centerOffset, Vector4 color)
         {
             Vector3 centre = centerOffset;
             Vector3 hx = new Vector3(halfExtents.X, 0f, 0f);
             Vector3 hy = new Vector3(0f, halfExtents.Y, 0f);
             Vector3 hz = new Vector3(0f, 0f, halfExtents.Z);
-
             Vector3[] corners = new Vector3[8];
             corners[0] = centre + hx + hy + hz;
             corners[1] = centre + hx + hy - hz;
@@ -419,7 +410,6 @@ namespace ToolChest
             corners[5] = centre - hx + hy - hz;
             corners[6] = centre - hx - hy + hz;
             corners[7] = centre - hx - hy - hz;
-
             int[,] edges = {
                 {0,1},{0,2},{0,4},
                 {1,3},{1,5},

@@ -4,6 +4,7 @@ using Keystone;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Rendering.Shaders;
@@ -142,7 +143,7 @@ namespace ToolChest
         {
             uint baseIndex = (uint)vertices.Count;
             int segments = 48;
-            float radius = 1.8f * 0.5f;
+            float radius = 1.5f;
             for (int i = 0; i < segments; i++)
             {
                 float angle = i * MathF.PI * 2f / segments;
@@ -184,7 +185,9 @@ namespace ToolChest
             _renderContext.DrawElements(_renderContext.Enums.Lines, _arrowBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             _ringBuffer.Bind();
             arrowShader.SetMatrix4("uModel", model);
+            _renderContext.LineWidth(3f);
             _renderContext.DrawElements(_renderContext.Enums.Lines, _ringBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            _renderContext.LineWidth(1f);
             arrowShader.Dispose();
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
@@ -244,7 +247,8 @@ namespace ToolChest
 
             if (_isRotating)
             {
-                _dragAxisWorld = GetAxisVector(_activeAxis);   // local axis for rotation
+                Vector3 localAxis = GetAxisVector(_activeAxis);
+                _dragAxisWorld = Vector3.Normalize(Vector3.Transform(localAxis, Matrix4x4.CreateFromQuaternion(physics.Rotation)));
             }
             else
             {
@@ -304,7 +308,7 @@ namespace ToolChest
                 if (Vector3.Dot(cross, _dragAxisWorld) < 0) angleDelta = -angleDelta;
 
                 Quaternion deltaQuat = Quaternion.CreateFromAxisAngle(_dragAxisWorld, angleDelta);
-                physics.Rotation = Quaternion.Normalize(physics.Rotation * deltaQuat);
+                physics.Rotation = Quaternion.Normalize(deltaQuat * physics.Rotation);
 
                 if (float.IsNaN(physics.Rotation.X) || float.IsNaN(physics.Rotation.Y) ||
                     float.IsNaN(physics.Rotation.Z) || float.IsNaN(physics.Rotation.W))
@@ -313,7 +317,7 @@ namespace ToolChest
                     Console.WriteLine("[TransformGizmoOverlay] *** NaN quaternion detected - reset to Identity ***");
                 }
 
-                Console.WriteLine($"[TransformGizmoOverlay] Rotation performed: {angleDelta * (180f / MathF.PI):F2} deg around local axis {_dragAxisWorld}");
+                Console.WriteLine($"[TransformGizmoOverlay] Rotation performed: {angleDelta * (180f / MathF.PI):F2} deg around axis {_dragAxisWorld}");
 
                 _lastPlanePoint = currentPlanePoint;
             }
@@ -324,6 +328,14 @@ namespace ToolChest
                 physics.Position += worldDelta;
                 _lastClosestPoint = newClosest;
                 Console.WriteLine($"[TransformGizmoOverlay] PerformDrag - axis {_activeAxis} worldDelta={worldDelta} newPos={physics.Position}");
+            }
+
+            // External editor transform must wake a sleeping dynamic body
+            // so gravity and contact generation resume immediately after the gizmo is released.
+            if (physics.BodyType == BodyType.Dynamic)
+            {
+                physics.IsSleeping = false;
+                physics.SleepTimer = 0f;
             }
 
             _lastDragMouse = contentMouse;
@@ -339,6 +351,11 @@ namespace ToolChest
                     {
                         bpPhysics.Position = physics.Position;
                         bpPhysics.Rotation = physics.Rotation;
+                        if (bpPhysics.BodyType == BodyType.Dynamic)
+                        {
+                            bpPhysics.IsSleeping = false;
+                            bpPhysics.SleepTimer = 0f;
+                        }
                     }
                 }
             }
@@ -419,7 +436,7 @@ namespace ToolChest
             {
                 Vector3 localAxis = GetAxisVector(ring);
                 int segments = 48;
-                float radius = 0.9f;
+                float radius = 1.5f;
                 Vector3 prevPoint = Vector3.Zero;
 
                 for (int i = 0; i < segments; i++)

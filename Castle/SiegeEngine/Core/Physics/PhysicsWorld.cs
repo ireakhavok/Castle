@@ -18,8 +18,6 @@ namespace SiegeEngine.Core.Physics
         private readonly List<Vector3> _triA = new List<Vector3>(64);
         private readonly List<Vector3> _triB = new List<Vector3>(64);
         private readonly List<Vector3> _triC = new List<Vector3>(64);
-        // Contact skin so rolling resistance / friction stay active when the body
-        // is sitting on or very slightly above the surface after projection.
         private const float ContactSkin = 0.03f;
         public bool UseFixedTimestep { get; set; } = true;
         public float FixedTimestep { get; set; } = 1f / 60f;
@@ -30,11 +28,8 @@ namespace SiegeEngine.Core.Physics
         }
         public int SolverIterations { get; set; } = 10;
         public EventBus EventBus { get; set; }
-
-        // Editor / debug read-only surface (pure data, zero behaviour change)
         public IReadOnlyList<ContactManifold> CurrentManifolds => _manifolds;
         public IReadOnlyList<PhysicsComponent> Bodies => _bodies;
-
         public void SetHeightProvider(IHeightProvider provider)
         {
             _heightProvider = provider;
@@ -140,7 +135,7 @@ namespace SiegeEngine.Core.Physics
             {
                 var a = _bodies[i];
                 if (a == null || !a.CollisionEnabled || a.IsSleeping) continue;
-                if (a.Shape == null) a.RebuildShape();
+                if (a.Shape == null) continue;
                 for (int j = i + 1; j < _bodies.Count; j++)
                 {
                     var b = _bodies[j];
@@ -151,7 +146,7 @@ namespace SiegeEngine.Core.Physics
                         b.IsSleeping = false;
                         b.SleepTimer = 0f;
                     }
-                    if (b.Shape == null) b.RebuildShape();
+                    if (b.Shape == null) continue;
                     if (a.BodyType == BodyType.Static && b.BodyType == BodyType.Static)
                         continue;
                     var manifold = GenerateManifold(a, b);
@@ -166,7 +161,7 @@ namespace SiegeEngine.Core.Physics
                     var body = _bodies[i];
                     if (body == null || !body.CollisionEnabled || body.IsSleeping) continue;
                     if (body.BodyType == BodyType.Static) continue;
-                    if (body.Shape == null) body.RebuildShape();
+                    if (body.Shape == null) continue;
                     var manifold = new ContactManifold { BodyA = body, BodyB = null };
                     if (body.Shape is CapsuleShape cap)
                         CapsuleVsHeightfield(cap, body, _heightfieldShape, manifold);
@@ -180,7 +175,6 @@ namespace SiegeEngine.Core.Physics
                         _manifolds.Add(manifold);
                 }
             }
-            // Velocity solver (Coulomb friction + normal impulses only)
             for (int iter = 0; iter < SolverIterations; iter++)
             {
                 for (int m = 0; m < _manifolds.Count; m++)
@@ -188,22 +182,15 @@ namespace SiegeEngine.Core.Physics
             }
             ProjectPositions();
             RepairNormalVelocities();
-            // Physically correct rolling resistance — applied ONCE per physics step
             ApplyRollingResistance(dt);
             ApplyRestingDeadZone();
         }
-        /// <summary>
-        /// Physically correct rolling resistance.
-        /// F_rr = -C_rr * N * normalize(v_plane) applied at the contact point,
-        /// plus the matching torque r × F_rr.
-        /// Applied once per physics step so the magnitude is correct.
-        /// </summary>
         private void ApplyRollingResistance(float dt)
         {
             for (int m = 0; m < _manifolds.Count; m++)
             {
                 var manifold = _manifolds[m];
-                if (manifold.BodyB != null) continue; // heightfield only
+                if (manifold.BodyB != null) continue;
                 var a = manifold.BodyA;
                 if (a == null || a.BodyType != BodyType.Dynamic || a.InvMass <= 0f) continue;
                 if (manifold.PointCount == 0) continue;
@@ -222,6 +209,8 @@ namespace SiegeEngine.Core.Physics
                 Vector3 forceImpulse = tDir * jt;
                 a.Velocity += forceImpulse * a.InvMass;
                 a.AngularVelocity += a.ApplyInvInertiaWorld(Vector3.Cross(rA, forceImpulse));
+                p.RollingResistanceImpulse = forceImpulse;
+                manifold.Points[0] = p;
             }
         }
         private void ResolveVelocity(ContactManifold m)
@@ -311,7 +300,9 @@ namespace SiegeEngine.Core.Physics
                         b.Velocity -= frictionImpulse * invMassB;
                         b.AngularVelocity -= b.ApplyInvInertiaWorld(Vector3.Cross(rB, frictionImpulse));
                     }
+                    p.FrictionImpulse = frictionImpulse;
                 }
+                m.Points[i] = p;
             }
         }
         private void ProjectPositions()
@@ -328,23 +319,37 @@ namespace SiegeEngine.Core.Physics
                 bool kinematicVsStatic = a != null && a.BodyType == BodyType.Kinematic
                                       && (b == null || b.BodyType == BodyType.Static);
                 if (totalInv < 1e-8f && !kinematicVsStatic) continue;
+
+                if (kinematicVsStatic)
+                {
+                    // Apply only the single deepest contact. Multiple conflicting
+                    // normals in one frame are what cause the character to pop.
+                    int best = -1;
+                    float bestPen = 0f;
+                    for (int i = 0; i < manifold.PointCount; i++)
+                    {
+                        float depth = manifold.Points[i].Penetration - numericSlop;
+                        if (depth > bestPen)
+                        {
+                            bestPen = depth;
+                            best = i;
+                        }
+                    }
+                    if (best >= 0)
+                        a.Position += manifold.Points[best].Normal * bestPen;
+                    continue;
+                }
+
                 for (int i = 0; i < manifold.PointCount; i++)
                 {
                     var p = manifold.Points[i];
                     float depth = p.Penetration - numericSlop;
                     if (depth <= 0f) continue;
-                    if (kinematicVsStatic)
-                    {
-                        a.Position += p.Normal * depth;
-                    }
-                    else
-                    {
-                        Vector3 corr = p.Normal * (depth / totalInv);
-                        if (invMassA > 0f && a != null)
-                            a.Position += corr * invMassA;
-                        if (invMassB > 0f && b != null)
-                            b.Position -= corr * invMassB;
-                    }
+                    Vector3 corr = p.Normal * (depth / totalInv);
+                    if (invMassA > 0f && a != null)
+                        a.Position += corr * invMassA;
+                    if (invMassB > 0f && b != null)
+                        b.Position -= corr * invMassB;
                 }
             }
         }
@@ -495,8 +500,187 @@ namespace SiegeEngine.Core.Physics
                     SphereVsTriangleMesh(sphereB, b, meshA, a, manifold);
                 else if (shapeB is ObbShape obbB)
                     ObbVsMeshAabb(obbB, b, meshA, a, manifold);
+                else if (shapeB is TriangleMeshShape meshB)
+                    TriangleMeshVsTriangleMesh(meshA, a, meshB, b, manifold);
             }
             return manifold.PointCount > 0 ? manifold : null;
+        }
+        private void TriangleMeshVsTriangleMesh(
+            TriangleMeshShape meshA, PhysicsComponent bodyA,
+            TriangleMeshShape meshB, PhysicsComponent bodyB,
+            ContactManifold manifold)
+        {
+            meshA.GetAabb(bodyA.Position, bodyA.Rotation, out Vector3 aabbAMin, out Vector3 aabbAMax);
+            meshB.GetAabb(bodyB.Position, bodyB.Rotation, out Vector3 aabbBMin, out Vector3 aabbBMax);
+            if (aabbAMax.X < aabbBMin.X || aabbAMin.X > aabbBMax.X ||
+                aabbAMax.Y < aabbBMin.Y || aabbAMin.Y > aabbBMax.Y ||
+                aabbAMax.Z < aabbBMin.Z || aabbAMin.Z > aabbBMax.Z)
+                return;
+            const float skin = 0.05f;
+            const int MaxTrianglesPerMesh = 16;
+            const float MeshContactThreshold = 0.025f;
+            Vector3 queryMinB = aabbAMin - new Vector3(skin);
+            Vector3 queryMaxB = aabbAMax + new Vector3(skin);
+            _triA.Clear();
+            _triB.Clear();
+            _triC.Clear();
+            meshB.QueryWorldTriangles(bodyB.Position, bodyB.Rotation, queryMinB, queryMaxB, _triA, _triB, _triC);
+            int rawB = _triA.Count;
+            if (rawB == 0) return;
+            Vector3 comA = bodyA.WorldCentreOfMass;
+            var scoredB = new List<(int idx, float distSq)>(rawB);
+            for (int t = 0; t < rawB; t++)
+            {
+                Vector3 c = (_triA[t] + _triB[t] + _triC[t]) * (1f / 3f);
+                scoredB.Add((t, (c - comA).LengthSquared()));
+            }
+            scoredB.Sort((x, y) => x.distSq.CompareTo(y.distSq));
+            int countB = Math.Min(MaxTrianglesPerMesh, scoredB.Count);
+            Vector3 queryMinA = aabbBMin - new Vector3(skin);
+            Vector3 queryMaxA = aabbBMax + new Vector3(skin);
+            var triA_A = new List<Vector3>(64);
+            var triB_A = new List<Vector3>(64);
+            var triC_A = new List<Vector3>(64);
+            meshA.QueryWorldTriangles(bodyA.Position, bodyA.Rotation, queryMinA, queryMaxA, triA_A, triB_A, triC_A);
+            int rawA = triA_A.Count;
+            if (rawA == 0) return;
+            Vector3 comB = bodyB.WorldCentreOfMass;
+            var scoredA = new List<(int idx, float distSq)>(rawA);
+            for (int t = 0; t < rawA; t++)
+            {
+                Vector3 c = (triA_A[t] + triB_A[t] + triC_A[t]) * (1f / 3f);
+                scoredA.Add((t, (c - comB).LengthSquared()));
+            }
+            scoredA.Sort((x, y) => x.distSq.CompareTo(y.distSq));
+            int countA = Math.Min(MaxTrianglesPerMesh, scoredA.Count);
+            var candidates = new List<ContactPoint>(32);
+            for (int ia = 0; ia < countA; ia++)
+            {
+                int ta = scoredA[ia].idx;
+                Vector3 a0 = triA_A[ta], a1 = triB_A[ta], a2 = triC_A[ta];
+                for (int ib = 0; ib < countB; ib++)
+                {
+                    int tb = scoredB[ib].idx;
+                    Vector3 b0 = _triA[tb], b1 = _triB[tb], b2 = _triC[tb];
+                    ClosestPointsBetweenTriangles(a0, a1, a2, b0, b1, b2,
+                        out Vector3 closestA, out Vector3 closestB, out float dist);
+                    Vector3 e1 = b1 - b0;
+                    Vector3 e2 = b2 - b0;
+                    Vector3 normalB = Vector3.Cross(e1, e2);
+                    float nLen = normalB.Length();
+                    if (nLen < 1e-8f) continue;
+                    normalB /= nLen;
+                    if (Vector3.Dot(normalB, comA - closestB) < 0f)
+                        normalB = -normalB;
+                    float signed = Vector3.Dot(closestA - closestB, normalB);
+                    if (signed < MeshContactThreshold)
+                    {
+                        float pen = MeshContactThreshold - signed;
+                        candidates.Add(new ContactPoint
+                        {
+                            Position = closestB,
+                            Normal = normalB,
+                            Penetration = pen
+                        });
+                    }
+                }
+            }
+            if (candidates.Count == 0) return;
+            candidates.Sort((x, y) => y.Penetration.CompareTo(x.Penetration));
+            int keep = Math.Min(4, candidates.Count);
+            for (int i = 0; i < keep; i++)
+                manifold.Add(candidates[i]);
+        }
+        private static void ClosestPointsBetweenTriangles(
+            Vector3 a0, Vector3 a1, Vector3 a2,
+            Vector3 b0, Vector3 b1, Vector3 b2,
+            out Vector3 closestA, out Vector3 closestB, out float dist)
+        {
+            closestA = a0;
+            closestB = b0;
+            dist = float.MaxValue;
+            CheckVertexFace(a0, b0, b1, b2, ref closestA, ref closestB, ref dist);
+            CheckVertexFace(a1, b0, b1, b2, ref closestA, ref closestB, ref dist);
+            CheckVertexFace(a2, b0, b1, b2, ref closestA, ref closestB, ref dist);
+            CheckVertexFace(b0, a0, a1, a2, ref closestB, ref closestA, ref dist);
+            CheckVertexFace(b1, a0, a1, a2, ref closestB, ref closestA, ref dist);
+            CheckVertexFace(b2, a0, a1, a2, ref closestB, ref closestA, ref dist);
+            CheckEdgeEdge(a0, a1, b0, b1, ref closestA, ref closestB, ref dist);
+            CheckEdgeEdge(a0, a1, b1, b2, ref closestA, ref closestB, ref dist);
+            CheckEdgeEdge(a0, a1, b2, b0, ref closestA, ref closestB, ref dist);
+            CheckEdgeEdge(a1, a2, b0, b1, ref closestA, ref closestB, ref dist);
+            CheckEdgeEdge(a1, a2, b1, b2, ref closestA, ref closestB, ref dist);
+            CheckEdgeEdge(a1, a2, b2, b0, ref closestA, ref closestB, ref dist);
+            CheckEdgeEdge(a2, a0, b0, b1, ref closestA, ref closestB, ref dist);
+            CheckEdgeEdge(a2, a0, b1, b2, ref closestA, ref closestB, ref dist);
+            CheckEdgeEdge(a2, a0, b2, b0, ref closestA, ref closestB, ref dist);
+        }
+        private static void CheckVertexFace(Vector3 v, Vector3 t0, Vector3 t1, Vector3 t2,
+            ref Vector3 closestV, ref Vector3 closestT, ref float bestDist)
+        {
+            Vector3 c = ClosestPointOnTriangle(v, t0, t1, t2);
+            float d = (v - c).Length();
+            if (d < bestDist)
+            {
+                bestDist = d;
+                closestV = v;
+                closestT = c;
+            }
+        }
+        private static void CheckEdgeEdge(Vector3 p1, Vector3 q1, Vector3 p2, Vector3 q2,
+            ref Vector3 closestA, ref Vector3 closestB, ref float bestDist)
+        {
+            Vector3 d1 = q1 - p1;
+            Vector3 d2 = q2 - p2;
+            Vector3 r = p1 - p2;
+            float a = Vector3.Dot(d1, d1);
+            float e = Vector3.Dot(d2, d2);
+            float f = Vector3.Dot(d2, r);
+            float s, t;
+            if (a <= 1e-12f && e <= 1e-12f)
+            {
+                s = t = 0f;
+            }
+            else if (a <= 1e-12f)
+            {
+                s = 0f;
+                t = Math.Clamp(f / e, 0f, 1f);
+            }
+            else
+            {
+                float c = Vector3.Dot(d1, r);
+                if (e <= 1e-12f)
+                {
+                    t = 0f;
+                    s = Math.Clamp(-c / a, 0f, 1f);
+                }
+                else
+                {
+                    float b = Vector3.Dot(d1, d2);
+                    float denom = a * e - b * b;
+                    s = denom != 0f ? Math.Clamp((b * f - c * e) / denom, 0f, 1f) : 0f;
+                    t = (b * s + f) / e;
+                    if (t < 0f)
+                    {
+                        t = 0f;
+                        s = Math.Clamp(-c / a, 0f, 1f);
+                    }
+                    else if (t > 1f)
+                    {
+                        t = 1f;
+                        s = Math.Clamp((b - c) / a, 0f, 1f);
+                    }
+                }
+            }
+            Vector3 c1 = p1 + d1 * s;
+            Vector3 c2 = p2 + d2 * t;
+            float d = (c1 - c2).Length();
+            if (d < bestDist)
+            {
+                bestDist = d;
+                closestA = c1;
+                closestB = c2;
+            }
         }
         private void SphereVsHeightfield(SphereShape sphere, PhysicsComponent body,
             HeightfieldShape field, ContactManifold manifold)
@@ -504,14 +688,10 @@ namespace SiegeEngine.Core.Physics
             Vector3 centre = body.WorldCentreOfMass;
             float groundZ = field.SampleHeight(centre.X, centre.Y);
             float verticalPen = (groundZ + sphere.Radius) - centre.Z;
-            // Contact skin: keep a manifold while the sphere is within ContactSkin
-            // of the surface so rolling resistance and friction stay active.
             if (verticalPen > -ContactSkin)
             {
                 Vector3 n = field.SampleNormal(centre.X, centre.Y);
                 float nZ = MathF.Max(n.Z, 0.15f);
-                // Only positive penetration is used for position projection;
-                // zero or negative is fine for velocity / rolling-resistance.
                 float pen = MathF.Max(0f, verticalPen) / nZ;
                 Vector3 contactPos = centre - n * sphere.Radius;
                 manifold.Add(new ContactPoint
@@ -728,7 +908,6 @@ namespace SiegeEngine.Core.Physics
             Vector3 feet = body.Position;
             float groundZ = field.SampleHeight(feet.X, feet.Y);
             float verticalPen = groundZ - feet.Z;
-            // Same contact skin for the kinematic capsule
             if (verticalPen > -ContactSkin)
             {
                 Vector3 n = field.SampleNormal(feet.X, feet.Y);
@@ -786,15 +965,10 @@ namespace SiegeEngine.Core.Physics
                 }
             }
         }
-        /// <summary>
-        /// Triangle mesh vs heightfield. Uses the body's full Orientation and places
-        /// contact points at the actual surface locations of the oriented mesh triangles.
-        /// </summary>
         private void TriangleMeshVsHeightfield(TriangleMeshShape mesh, PhysicsComponent body,
             HeightfieldShape field, ContactManifold manifold)
         {
             mesh.GetAabb(body.Position, body.Rotation, out Vector3 aabbMin, out Vector3 aabbMax);
-            // Vertical query band under the oriented AABB so we only consider relevant triangles
             float band = ContactSkin + 0.5f;
             Vector3 queryMin = new Vector3(aabbMin.X, aabbMin.Y, aabbMin.Z - band);
             Vector3 queryMax = new Vector3(aabbMax.X, aabbMax.Y, aabbMax.Z + band);
@@ -805,7 +979,6 @@ namespace SiegeEngine.Core.Physics
             var candidates = new List<ContactPoint>(16);
             for (int t = 0; t < _triA.Count; t++)
             {
-                // Test the three vertices of the already-oriented triangle
                 Vector3[] verts = { _triA[t], _triB[t], _triC[t] };
                 for (int v = 0; v < 3; v++)
                 {

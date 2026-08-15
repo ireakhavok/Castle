@@ -80,5 +80,6 @@ namespace SiegeEngine.Core.Rendering.ContextManagement
         void Scissor(int x, int y, uint width, uint height);
         void CullFace(int mode);
         void FrontFace(int mode);
+        void LineWidth(float width);
     }
 }

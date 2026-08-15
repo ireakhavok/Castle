@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: SiegeEngine/Systems
+// File: AudioSystem.cs
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -51,6 +53,7 @@ namespace SiegeEngine.Systems
             {
                 _eventBus.Subscribe<SoundEvent>(OnSoundEvent);
             }
+            _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
         }
 
         public string CurrentTitle => _currentTitle;
@@ -216,6 +219,19 @@ namespace SiegeEngine.Systems
             }
         }
 
+        /// <summary>
+        /// Stops every active non-music player. Leaves the IDE music playlist alone.
+        /// </summary>
+        public void StopNonMusic()
+        {
+            var keys = new List<int>(_activePlayers.Keys);
+            foreach (var h in keys)
+            {
+                if (_activePlayers.TryGetValue(h, out var inst) && !inst.IsMusic)
+                    Stop(h);
+            }
+        }
+
         public void Pause(int handle)
         {
             if (_activePlayers.TryGetValue(handle, out var inst) && !inst.IsPaused)
@@ -292,6 +308,12 @@ namespace SiegeEngine.Systems
             return null;
         }
 
+        private void OnGenericEvent(GenericEvent e)
+        {
+            if (e?.Hook == "StopSoundPreview")
+                StopNonMusic();
+        }
+
         private void OnSoundEmission(SoundEmissionEvent e)
         {
             if (_isServer)
@@ -315,13 +337,13 @@ namespace SiegeEngine.Systems
             }
             else
             {
+                // Non-sensitive sources (editor preview / ambient) play immediately on the client.
+                // Client ray-trace always returns no-hit, so the occlusion path can never succeed here.
                 if (!e.Source.IsSensitive)
                 {
-                    var result = RayTraceSound(e.Source);
-                    if (result != null)
-                    {
-                        PlaySound(e.Source, result);
-                    }
+                    StopNonMusic(); // prevent stacking previous previews
+                    string clip = !string.IsNullOrEmpty(e.Source.AudioClip) ? e.Source.AudioClip : e.Source.Type;
+                    Play(clip, 1f, false, false);
                 }
             }
         }

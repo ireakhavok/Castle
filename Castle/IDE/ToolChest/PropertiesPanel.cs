@@ -18,6 +18,7 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI.Elements;
 using SiegeEngine.Core.Physics;
+
 namespace ToolChest
 {
     public class PropertiesPanel : BasePanel, IDataAwarePanel
@@ -51,8 +52,6 @@ namespace ToolChest
                         _parent.FlushLiveSettings();
                         return;
                     }
-
-                    // Text inputs that edit component properties (RollingResistance, KineticFriction, etc.)
                     string hook = input.Attributes.GetValueOrDefault("data-hook", "");
                     if (hook == "SetComponentProperty")
                     {
@@ -73,11 +72,26 @@ namespace ToolChest
                     ShowContextMenu(mousePos, items);
                     return true;
                 }
+                if (_parent._currentTarget is Entity entity && entity.GetComponent<SoundComponent>() != null)
+                {
+                    var items = new List<ContextMenuItem>
+                    {
+                        new ContextMenuItem("Play / Pause", "PlayPreviewSound")
+                    };
+                    ShowContextMenu(mousePos, items);
+                    return true;
+                }
                 return false;
             }
         }
+
         private object _currentTarget;
         private string _activeSceneSettingsName;
+
+        // Toggle state for Play / Pause
+        private bool _previewIsPlaying;
+        private int _previewEntityId = -1;
+
         public PropertiesPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -91,20 +105,24 @@ namespace ToolChest
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
         }
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new PropertiesUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
         public override void Init()
         {
             base.Init();
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             LoadPropertiesUI();
         }
+
         public void FlushLiveSettings()
         {
             FlushSceneSettingsFromUI();
         }
+
         private void OnGenericEvent(GenericEvent e)
         {
             if (e.Hook == "OutlinerSelectionChanged")
@@ -115,6 +133,9 @@ namespace ToolChest
                 if (provider != null)
                 {
                     _currentTarget = provider.GetObjectForNode(nodeId);
+                    // Selection changed – reset toggle so next click always plays
+                    _previewIsPlaying = false;
+                    _previewEntityId = -1;
                     Console.WriteLine($"[PropertiesPanel] Selection changed - nodeId: {nodeId} | Target type: {_currentTarget?.GetType().FullName ?? "null"}");
                     RebuildPropertiesUI();
                 }
@@ -128,6 +149,7 @@ namespace ToolChest
                 FlushSceneSettingsFromUI();
             }
         }
+
         private void OnEntitySelected(EntitySelectedEvent e)
         {
             if (e.SelectedEntityIds.Count > 0)
@@ -137,6 +159,7 @@ namespace ToolChest
             FlushSceneSettingsFromUI();
             RebuildPropertiesUI();
         }
+
         private void LoadPropertiesUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
@@ -147,6 +170,7 @@ namespace ToolChest
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         private void RebuildPropertiesUI()
         {
             FlushSceneSettingsFromUI();
@@ -162,6 +186,7 @@ namespace ToolChest
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         private void FlushSceneSettingsFromUI()
         {
             if (_uiOverlay == null || string.IsNullOrEmpty(_activeSceneSettingsName)) return;
@@ -197,6 +222,7 @@ namespace ToolChest
             ProjectSettings.Current.SetSceneSettings(_activeSceneSettingsName, settings);
             Console.WriteLine($"[PropertiesPanel] Flushed Scene Settings for '{_activeSceneSettingsName}': Avatar={settings.AvatarPackKey}, Animation={settings.AnimationPackKey}, Controller={settings.ControllerTypeName}, Camera={settings.CameraMode}, Spawns=[{string.Join(",", settings.PreferredSpawnPointIds ?? new List<int>())}]");
         }
+
         private string BuildPropertiesHtml(object obj)
         {
             if (obj == null) return "";
@@ -272,6 +298,13 @@ namespace ToolChest
                     }
                     sb.Append("</details>");
                 }
+                var soundComp = ent.GetComponent<SoundComponent>();
+                if (soundComp != null)
+                {
+                    sb.Append("<details open><summary>Sound</summary>");
+                    AppendEditableProperties(sb, soundComp, ent.Id);
+                    sb.Append("</details>");
+                }
                 return sb.ToString();
             }
             sb.Append("<details open><summary>Properties</summary>");
@@ -279,6 +312,7 @@ namespace ToolChest
             sb.Append("</details>");
             return sb.ToString();
         }
+
         private void BuildObjectHtml(StringBuilder sb, object obj, int entityId)
         {
             if (obj == null) return;
@@ -339,6 +373,7 @@ namespace ToolChest
                 }
             }
         }
+
         private void AppendEditableProperties(StringBuilder sb, object obj, int entityId)
         {
             if (obj == null) return;
@@ -381,10 +416,6 @@ namespace ToolChest
             }
         }
 
-        /// <summary>
-        /// Applies a property change coming from a text <input> (used for floats such as
-        /// RollingResistance, KineticFriction, StaticFriction, Mass, etc.).
-        /// </summary>
         public void ApplyComponentPropertyFromInput(InputElement input)
         {
             if (input == null) return;
@@ -425,6 +456,10 @@ namespace ToolChest
             {
                 target = entity.GetComponent<PhysicsComponent>();
             }
+            else if (componentName == "SoundComponent" || componentName == "Sound")
+            {
+                target = entity.GetComponent<SoundComponent>();
+            }
             else
             {
                 foreach (var kvp in entity.Components)
@@ -446,7 +481,6 @@ namespace ToolChest
                 {
                     prop.SetValue(target, converted);
                     Console.WriteLine($"[PropertiesPanel] Applied {componentName}.{propertyName} = {newValue} on entity {entityId}");
-                    // BodyType / Mass / Size changes require a full shape + mass rebuild
                     if (target is PhysicsComponent physics)
                     {
                         physics.IsSleeping = false;
@@ -514,6 +548,7 @@ namespace ToolChest
             }
             return null;
         }
+
         public void HandleDataHook(string hook)
         {
             Console.WriteLine($"[PropertiesPanel] HandleDataHook: {hook}");
@@ -533,7 +568,48 @@ namespace ToolChest
                 RebuildPropertiesUI();
                 return;
             }
+            if (hook == "PlayPreviewSound")
+            {
+                if (_currentTarget is Entity entity)
+                {
+                    var soundComp = entity.GetComponent<SoundComponent>();
+                    var physics = entity.GetComponent<PhysicsComponent>();
+                    if (soundComp != null && physics != null)
+                    {
+                        // TOGGLE: if already playing this exact entity → STOP
+                        if (_previewIsPlaying && _previewEntityId == entity.Id)
+                        {
+                            _eventBus.Publish(new GenericEvent { Hook = "StopSoundPreview" });
+                            _previewIsPlaying = false;
+                            _previewEntityId = -1;
+                            Console.WriteLine($"[PropertiesPanel] StopSoundPreview for entity {entity.Id}");
+                        }
+                        else
+                        {
+                            // START
+                            var emission = new SoundEmissionEvent
+                            {
+                                Source = new SoundSource
+                                {
+                                    EntityId = entity.Id,
+                                    Position = physics.Position,
+                                    Type = soundComp.Type ?? "SoundSource",
+                                    IsSensitive = false,
+                                    AudioClip = soundComp.AudioClip ?? "",
+                                    SteamId = 0
+                                }
+                            };
+                            _eventBus.Publish(emission);
+                            _previewIsPlaying = true;
+                            _previewEntityId = entity.Id;
+                            Console.WriteLine($"[PropertiesPanel] PlayPreviewSound emitted for entity {entity.Id} at {physics.Position}");
+                        }
+                    }
+                }
+                return;
+            }
         }
+
         public void HandleUIClick(HtmlElement elem)
         {
             if (elem == null) return;
@@ -545,11 +621,13 @@ namespace ToolChest
                 RebuildPropertiesUI();
             }
         }
+
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new PropertiesPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Overlay });
         }
+
         public string DataKey => "PropertiesPanel";
         public JsonElement SavePanelState()
         {

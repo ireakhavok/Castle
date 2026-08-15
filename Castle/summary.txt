@@ -318,6 +318,52 @@ Folder: IDE
 - File: OutlinerNode.cs
   - Class: OutlinerNode (Namespace: Keystone)
     - Dependencies: System.Collections.Generic
+- File: PhysicsDebugOverlay.cs
+  - Class: PhysicsDebugOverlay (Namespace: ToolChest)
+    - Inherits: ICustomOverlay
+    
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - IRenderContext _renderContext
+      - Func<IReadOnlyList<Entity>> _getEntities
+      - Func<IReadOnlyList<ContactManifold>> _getManifolds
+      - Func<IReadOnlyList<int>> _getSelectedIds
+      - VertexBuffer _dynamicBuffer
+      - ShaderProgram _shader
+      - List<Vertex> _dynVerts
+      - List<uint> _dynIndices
+      - List<Vector3> _triA
+      - List<Vector3> _triB
+      - List<Vector3> _triC
+      - List<ContactPoint> _cachedContacts
+      - bool _dynamicDirty
+      - int _lastAwakeCount
+      - int _lastContactCount
+      - bool _wasEnabled
+    - Methods:
+      - constructor PhysicsDebugOverlay(
+            Func<IReadOnlyList<ContactManifold>> getManifolds, 
+            Func<IReadOnlyList<Entity>> getEntities, 
+            Func<IReadOnlyList<int>> getSelectedIds, 
+            IRenderContext renderContext)
+      - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
+      - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
+        - Calls: BuildLocalShapeBuffer, BuildModelMatrix, GetCacheKey, RebuildDynamicBuffer, ShaderProgram, _cacheWasSleeping.Remove, _dynamicBuffer.Bind, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _shapeCaches.Remove, buf.Bind, oldBuf.Dispose
+      - object GetCacheKey(PhysicsComponent physics)
+      - Matrix4x4 BuildModelMatrix(PhysicsComponent physics)
+      - VertexBuffer BuildLocalShapeBuffer(PhysicsComponent physics)
+        - Calls: AddLocalCapsule, AddLocalLine, AddLocalObb, AddLocalSphere, BodyColor, VertexBuffer, _triA.Clear, _triB.Clear, _triC.Clear, buf.UpdateCustom, mesh.GetWorldTriangles
+      - void RebuildDynamicBuffer( IReadOnlyList<int> selected,  bool filterSelected, IReadOnlyList<Entity> entities)
+        - Calls: AddLocalLine, VertexBuffer, _cachedContacts.Add, _cachedContacts.Clear, _dynIndices.Clear, _dynVerts.Clear, _dynamicBuffer.UpdateCustom
+      - Vector4 BodyColor( bool sleeping, BodyType t)
+      - void AddLocalLine( List<uint> indices,  Vector3 a,  Vector3 b,  Vector4 color, List<Vertex> verts)
+        - Calls: Vertex, indices.Add, verts.Add
+      - void AddLocalSphere( List<uint> indices,  Vector4 color,  float radius, List<Vertex> verts)
+        - Calls: Vertex, indices.Add, verts.Add
+      - void AddLocalCapsule( List<uint> indices,  Vector4 color,  float height,  float radius, List<Vertex> verts)
+        - Calls: AddLocalLine, Vertex, indices.Add, verts.Add
+      - void AddLocalObb( List<uint> indices,  Vector3 centerOffset,  Vector3 halfExtents,  Vector4 color, List<Vertex> verts)
+        - Calls: AddLocalLine
 - File: PlacementOverlay.cs
   - Class: PlacementOverlay (Namespace: ToolChest)
     - Inherits: ICustomOverlay
@@ -458,7 +504,7 @@ Folder: IDE
   - Class: SelectionBoxOverlay (Namespace: CastleBuilder)
     - Inherits: ICustomOverlay
         
-    - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
+    - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
     - Fields:
       - SceneEditorPanel _parent
     - Methods:
@@ -608,7 +654,7 @@ Folder: IDE
   - Class: TransformGizmoOverlay (Namespace: ToolChest)
     - Inherits: ICustomOverlay
     
-    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, System, System.Collections.Generic, System.Numerics
+    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - EventBus _eventBus
@@ -644,7 +690,7 @@ Folder: IDE
       - void AddRing( List<uint> indices,  Vector3 axis,  Vector4 color, List<Vertex> vertices)
         - Calls: Vertex, indices.Add, vertices.Add
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: ShaderProgram, _arrowBuffer.Bind, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _ringBuffer.Bind, arrowShader.Dispose, arrowShader.SetMatrix4, arrowShader.SetUniform, arrowShader.Use
+        - Calls: ShaderProgram, _arrowBuffer.Bind, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _renderContext.LineWidth, _ringBuffer.Bind, arrowShader.Dispose, arrowShader.SetMatrix4, arrowShader.SetUniform, arrowShader.Use
       - bool HandleMouseInput( bool mouseDown,  bool mousePressed,  bool mouseReleased,  float contentH,  float contentW, Vector2 contentMouse)
         - Calls: EndDrag, PerformDrag, PickAxisScreenSpace, PickRingScreenSpace, StartDrag
       - void StartDrag( float contentH,  float contentW, Vector2 contentMouse)
@@ -851,7 +897,7 @@ Folder: Server
       - PhysicsWorld World
     - Methods:
       - void Update(float deltaTime)
-        - Calls: Console.WriteLine, _server.GetEntities, _world.RegisterBody, _world.Step
+        - Calls: Console.WriteLine, SiegeEngine.Core.Events.PhysicsCollisionEvent, _server.GetEntities, _world.RegisterBody, _world.Step
 - File: ServerProgram.cs
   - Class: ServerProgram (Namespace: Citadel)
     - Dependencies: Citadel.Network, Citadel.Server, SiegeEngine.Core.Events, SiegeEngine.Core.Networking, System, System.Diagnostics, System.Linq, System.Threading, Trebuchet
@@ -1185,6 +1231,8 @@ Folder: SiegeEngine
       - List<GameSystem> _systems
       - PhysicsWorld _physicsWorld
       - int _nextEntityId
+      - PhysicsWorld PhysicsWorld
+      - IReadOnlyList<ContactManifold> CurrentManifolds
     - Methods:
       - constructor ClientGameServerProxy(EventBus eventBus)
       - void SetHeightProvider(IHeightProvider provider)
@@ -2737,6 +2785,8 @@ Folder: SiegeEngine
       - List<Vector3> _triB
       - List<Vector3> _triC
       - float ContactSkin
+      - IReadOnlyList<ContactManifold> CurrentManifolds
+      - IReadOnlyList<PhysicsComponent> Bodies
       - IHeightProvider HeightProvider
     - Methods:
       - void SetHeightProvider(IHeightProvider provider)
@@ -2752,9 +2802,7 @@ Folder: SiegeEngine
         - Calls: DetectAndResolveContacts, Integrate, UpdateSleeping
       - void Integrate(float dt)
       - void DetectAndResolveContacts(float dt)
-        - Calls: ApplyRestingDeadZone, ApplyRollingResistance, CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, RepairNormalVelocities, ResolveVelocity, SphereVsHeightfield, TriangleMeshVsHeightfield, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
-      - step ApplyRollingResistance()
-        - Calls: a.ApplyInvInertiaWorld
+        - Calls: ApplyRestingDeadZone, ApplyRollingResistance, CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, RepairNormalVelocities, ResolveVelocity, SphereVsHeightfield, TriangleMeshVsHeightfield, _manifolds.Add, _manifolds.Clear
       - void ApplyRollingResistance(float dt)
         - Calls: a.ApplyInvInertiaWorld
       - void ResolveVelocity(ContactManifold m)
@@ -2765,7 +2813,22 @@ Folder: SiegeEngine
       - void ApplyRestingDeadZone()
       - void UpdateSleeping(float dt)
       - ContactManifold GenerateManifold( PhysicsComponent b, PhysicsComponent a)
-        - Calls: CapsuleVsCapsule, CapsuleVsObb, CapsuleVsTriangleMesh, ObbVsMeshAabb, ObbVsObb, SphereVsCapsule, SphereVsSphere, SphereVsTriangleMesh
+        - Calls: CapsuleVsCapsule, CapsuleVsObb, CapsuleVsTriangleMesh, ObbVsMeshAabb, ObbVsObb, SphereVsCapsule, SphereVsSphere, SphereVsTriangleMesh, TriangleMeshVsTriangleMesh
+      - void TriangleMeshVsTriangleMesh(
+            ContactManifold manifold, 
+            TriangleMeshShape meshA, 
+            TriangleMeshShape meshB,  PhysicsComponent bodyA,  PhysicsComponent bodyB)
+        - Calls: ClosestPointsBetweenTriangles, _triA.Clear, _triB.Clear, _triC.Clear, candidates.Add, manifold.Add, meshA.GetAabb, meshA.QueryWorldTriangles, meshB.GetAabb, meshB.QueryWorldTriangles, scoredA.Add, scoredB.Add
+      - void ClosestPointsBetweenTriangles(
+            Vector3 a0, 
+            Vector3 b0, 
+            out Vector3,  Vector3 a1,  Vector3 a2,  Vector3 b1,  Vector3 b2,  out Vector3,  out float)
+        - Calls: CheckEdgeEdge, CheckVertexFace
+      - void CheckVertexFace(
+            ref Vector3,  Vector3 t0,  Vector3 t1,  Vector3 t2,  ref Vector3,  ref float, Vector3 v)
+        - Calls: ClosestPointOnTriangle
+      - void CheckEdgeEdge(
+            ref Vector3,  Vector3 p2,  Vector3 q1,  Vector3 q2,  ref Vector3,  ref float, Vector3 p1)
       - void SphereVsHeightfield(
             HeightfieldShape field,  ContactManifold manifold,  PhysicsComponent body, SphereShape sphere)
         - Calls: field.SampleHeight, field.SampleNormal, manifold.Add
@@ -4110,6 +4173,7 @@ ToolChest.ConsoleLogEvent
 ToolChest.EditorActionConfig
 ToolChest.LogCaptureWriter
 ToolChest.NewMaterialUIOverlay
+ToolChest.PhysicsDebugOverlay
 ToolChest.PlacementOverlay
 ToolChest.PropertiesUIOverlay
 ToolChest.ScriptEditorUIOverlay

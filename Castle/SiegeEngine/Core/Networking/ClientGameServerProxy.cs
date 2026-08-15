@@ -101,6 +101,26 @@ namespace SiegeEngine.Core.Networking
                     existing.AddComponent(newBlend);
                 }
 
+                // Typed SoundComponent merge (same pattern as BlendedAnimation).
+                // Must use the concrete type so the generic AddComponent keys correctly.
+                var existingSound = existing.GetComponent<SoundComponent>();
+                var newSound = entity.GetComponent<SoundComponent>();
+                if (newSound != null)
+                {
+                    if (existingSound != null)
+                    {
+                        existingSound.AudioClip = newSound.AudioClip;
+                        existingSound.Type = newSound.Type;
+                        existingSound.IsSensitive = newSound.IsSensitive;
+                        existingSound.Loop = newSound.Loop;
+                        existingSound.Volume = newSound.Volume;
+                    }
+                    else
+                    {
+                        existing.AddComponent(newSound);
+                    }
+                }
+
                 Console.WriteLine($"[ClientGameServerProxy] Updated existing entity {entity.Id} (prevented duplicate from editor sync)");
                 return;
             }

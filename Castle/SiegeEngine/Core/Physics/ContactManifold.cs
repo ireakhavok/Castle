@@ -8,10 +8,12 @@ namespace SiegeEngine.Core.Physics
     public struct ContactPoint
     {
         public Vector3 Position;
-        public Vector3 Normal;      // points from bodyB toward bodyA
+        public Vector3 Normal; // points from bodyB toward bodyA
         public float Penetration;
         public float Friction;
         public float Restitution;
+        public Vector3 FrictionImpulse;
+        public Vector3 RollingResistanceImpulse;
     }
 
     public class ContactManifold
