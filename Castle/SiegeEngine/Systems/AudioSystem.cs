@@ -33,6 +33,8 @@ namespace SiegeEngine.Systems
         private int _currentPlaylistHandle = -1;
         private string _currentTitle = "";
 
+        private bool _hasEmittedAutoPlaySources = false;
+
         private class PlaybackInstance
         {
             public SoundPlayer Player;
@@ -67,6 +69,44 @@ namespace SiegeEngine.Systems
 
         public override void Update(float deltaTime)
         {
+            if (!_hasEmittedAutoPlaySources)
+            {
+                _hasEmittedAutoPlaySources = true;
+                EmitAutoPlaySources();
+            }
+        }
+
+        private void EmitAutoPlaySources()
+        {
+            if (_server == null) return;
+
+            var entities = _server.GetEntities();
+            if (entities == null || entities.Count == 0) return;
+
+            foreach (var entity in entities)
+            {
+                var soundComp = entity.GetComponent<SoundComponent>();
+                if (soundComp == null || !soundComp.AutoPlay) continue;
+
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (physics == null) continue;
+
+                var emission = new SoundEmissionEvent
+                {
+                    Source = new SoundSource
+                    {
+                        EntityId = entity.Id,
+                        Position = physics.Position,
+                        Type = soundComp.Type ?? "SoundSource",
+                        IsSensitive = soundComp.IsSensitive,
+                        AudioClip = soundComp.AudioClip ?? "",
+                        SteamId = 0,
+                        Loop = soundComp.Loop,
+                        Volume = soundComp.Volume
+                    }
+                };
+                _eventBus.Publish(emission);
+            }
         }
 
         public int Play(string clipNameOrPath, float volume = 1f, bool loop = false, bool isMusic = false)
@@ -343,7 +383,7 @@ namespace SiegeEngine.Systems
                 {
                     StopNonMusic(); // prevent stacking previous previews
                     string clip = !string.IsNullOrEmpty(e.Source.AudioClip) ? e.Source.AudioClip : e.Source.Type;
-                    Play(clip, 1f, false, false);
+                    Play(clip, e.Source.Volume, e.Source.Loop, false);
                 }
             }
         }
@@ -376,9 +416,9 @@ namespace SiegeEngine.Systems
                     intensity *= 1.0f / (distance * distance);
                     if (result.Material != null)
                     {
-                        float density = result.Material.Density;
-                        intensity *= (float)Math.Pow(10, -2 * density * result.Distance / 10);
-                        intensity *= density > 1.5f ? 0.9f : 0.7f;
+                        float dens = result.Material.Density;
+                        intensity *= (float)Math.Pow(10, -2 * dens * result.Distance / 10);
+                        intensity *= dens > 1.5f ? 0.9f : 0.7f;
                     }
                     if (Vector3.Distance(result.HitPoint, _listenerPosition) < ListenerRadius)
                     {
@@ -580,7 +620,7 @@ namespace SiegeEngine.Systems
                 Console.WriteLine("Unsupported number of channels");
                 return;
             }
-            float volume = Math.Clamp(result.Intensity, 0f, 1f);
+            float volume = Math.Clamp(result.Intensity * source.Volume, 0f, 1f);
             for (int i = 0; i < filteredSamples.Length; i++)
             {
                 int scaled = (int)(filteredSamples[i] * volume);
@@ -601,7 +641,10 @@ namespace SiegeEngine.Systems
                 await Task.Delay((int)(result.Delay * 1000));
                 using MemoryStream playStream = new MemoryStream(modifiedWav);
                 SoundPlayer player = new SoundPlayer(playStream);
-                player.Play();
+                if (source.Loop)
+                    player.PlayLooping();
+                else
+                    player.Play();
             });
         }
 
