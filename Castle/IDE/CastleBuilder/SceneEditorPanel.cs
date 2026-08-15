@@ -209,6 +209,40 @@ namespace CastleBuilder
                     Console.WriteLine("[SceneEditorPanel] SkyboxSet event → forced RefreshFromLiveState on active TerrainCreatorScene");
                 }
             }
+            else if (e.Hook == "OutlinerSelectionChanged")
+            {
+                // Selection originated from Outliner / Properties.
+                // Update local state + gizmo directly. Do NOT re-publish EntitySelectedEvent
+                // (that would re-enter NotifySelectionChanged and cause infinite recursion).
+                string nodeId = e.Data != null && e.Data.ContainsKey("nodeId") ? e.Data["nodeId"]?.ToString() ?? "" : "";
+                if (nodeId.StartsWith("entity-") && int.TryParse(nodeId.Substring(7), out int entityId))
+                {
+                    _selectedEntityIds = new List<int> { entityId };
+                    var entity = _editorScene.GetEntityById(entityId);
+                    if (entity != null)
+                    {
+                        var physics = entity.GetComponent<PhysicsComponent>();
+                        if (physics != null)
+                        {
+                            _transformGizmo.OnEntitySelected(entityId, physics.Position, physics.Rotation);
+                        }
+                        else
+                        {
+                            _transformGizmo.ClearSelection();
+                        }
+                    }
+                    else
+                    {
+                        _transformGizmo.ClearSelection();
+                    }
+                }
+                else
+                {
+                    _selectedEntityIds.Clear();
+                    _transformGizmo.ClearSelection();
+                }
+                NotifyHierarchyChanged();
+            }
         }
         private void OnEntitySelected(EntitySelectedEvent e)
         {
@@ -310,6 +344,41 @@ namespace CastleBuilder
             {
                 if (_physicsDebug != null)
                     _physicsDebug.Enabled = !_physicsDebug.Enabled;
+            }
+            else if (hook == "PlaceSoundSource")
+            {
+                if (!_editorScene.TryGetPlacementPosition(out var hitPoint))
+                {
+                    Console.WriteLine("[SceneEditorPanel.PlaceSoundSource] Raycast failed - no valid placement position");
+                    return;
+                }
+                Vector3 placePos = hitPoint + new Vector3(0, 0, 0.1f);
+                var level = ProjectSettings.Current.CurrentLevel;
+                if (level == null)
+                {
+                    string sceneName = _editorScene.CurrentGameScene ?? "Main";
+                    level = new Level(_eventBus) { Name = sceneName };
+                    ProjectSettings.Current.SetCurrentLevel(level);
+                }
+                var entity = level.PlaceEntity(placePos, "SoundSource");
+                entity.Type = "SoundSource";
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (physics != null)
+                {
+                    physics.BodyType = BodyType.Static;
+                    physics.CollisionEnabled = false;
+                }
+                entity.AddComponent(new SoundComponent
+                {
+                    AudioClip = "",
+                    Type = "SoundSource",
+                    IsSensitive = false,
+                    Loop = false,
+                    Volume = 1f
+                });
+                Console.WriteLine($"[SceneEditorPanel.PlaceSoundSource] Placed SoundSource entity ID={entity.Id} at {placePos}");
+                _editorScene.SyncCurrentLevelToRuntimeServer();
+                NotifyHierarchyChanged();
             }
         }
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
@@ -458,7 +527,6 @@ namespace CastleBuilder
                 float contentW = Size.X;
                 float contentH = Size.Y - headerHeight;
                 _transformGizmo.HandleMouseInput(contentMouse, contentW, contentH, mouseDown, mousePressed, mouseReleased);
-
                 // Camera-relative keyboard: arrows = translation, WASD = rotation
                 if (_selectedEntityIds.Count == 1)
                 {
@@ -478,17 +546,14 @@ namespace CastleBuilder
                             float lenR = camRight.Length();
                             if (lenF > 1e-5f) camForward /= lenF;
                             if (lenR > 1e-5f) camRight /= lenR;
-
                             const float translateSpeed = 5.0f;
                             const float rotateSpeed = 90.0f * (MathF.PI / 180f); // rad/s
-
                             // Arrows → camera-relative translation
                             Vector3 delta = Vector3.Zero;
                             if (_controlContext.GetKey(_window, Key.Up) == InputAction.Press) delta += camForward;
                             if (_controlContext.GetKey(_window, Key.Down) == InputAction.Press) delta -= camForward;
                             if (_controlContext.GetKey(_window, Key.Left) == InputAction.Press) delta -= camRight;
                             if (_controlContext.GetKey(_window, Key.Right) == InputAction.Press) delta += camRight;
-
                             bool moved = false;
                             if (delta.LengthSquared() > 1e-8f)
                             {
@@ -496,7 +561,6 @@ namespace CastleBuilder
                                 physics.Position += delta;
                                 moved = true;
                             }
-
                             // WASD → camera-relative rotation
                             float yawDelta = 0f;
                             float pitchDelta = 0f;
@@ -504,7 +568,6 @@ namespace CastleBuilder
                             if (_controlContext.GetKey(_window, Key.D) == InputAction.Press) yawDelta -= rotateSpeed * deltaTime;
                             if (_controlContext.GetKey(_window, Key.W) == InputAction.Press) pitchDelta += rotateSpeed * deltaTime;
                             if (_controlContext.GetKey(_window, Key.S) == InputAction.Press) pitchDelta -= rotateSpeed * deltaTime;
-
                             if (MathF.Abs(yawDelta) > 1e-6f || MathF.Abs(pitchDelta) > 1e-6f)
                             {
                                 Quaternion q = physics.Rotation;
@@ -522,7 +585,6 @@ namespace CastleBuilder
                                 physics.Rotation = q;
                                 moved = true;
                             }
-
                             if (moved)
                             {
                                 if (physics.BodyType == BodyType.Dynamic)
@@ -530,7 +592,6 @@ namespace CastleBuilder
                                     physics.IsSleeping = false;
                                     physics.SleepTimer = 0f;
                                 }
-
                                 var level = ProjectSettings.Current.CurrentLevel;
                                 if (level != null)
                                 {
@@ -550,7 +611,6 @@ namespace CastleBuilder
                                         }
                                     }
                                 }
-
                                 _eventBus.Publish(new EntityMovedEvent(_selectedEntityIds[0], new Vector2(physics.Position.X, physics.Position.Y), physics.Rotation));
                             }
                         }

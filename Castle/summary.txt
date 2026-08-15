@@ -897,7 +897,7 @@ Folder: Server
       - PhysicsWorld World
     - Methods:
       - void Update(float deltaTime)
-        - Calls: Console.WriteLine, _server.GetEntities, _world.RegisterBody, _world.Step
+        - Calls: Console.WriteLine, SiegeEngine.Core.Events.PhysicsCollisionEvent, _server.GetEntities, _world.RegisterBody, _world.Step
 - File: ServerProgram.cs
   - Class: ServerProgram (Namespace: Citadel)
     - Dependencies: Citadel.Network, Citadel.Server, SiegeEngine.Core.Events, SiegeEngine.Core.Networking, System, System.Diagnostics, System.Linq, System.Threading, Trebuchet
