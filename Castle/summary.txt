@@ -2803,8 +2803,6 @@ Folder: SiegeEngine
       - void Integrate(float dt)
       - void DetectAndResolveContacts(float dt)
         - Calls: ApplyRestingDeadZone, ApplyRollingResistance, CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ProjectPositions, RepairNormalVelocities, ResolveVelocity, SphereVsHeightfield, TriangleMeshVsHeightfield, _manifolds.Add, _manifolds.Clear
-      - step ApplyRollingResistance()
-        - Calls: a.ApplyInvInertiaWorld
       - void ApplyRollingResistance(float dt)
         - Calls: a.ApplyInvInertiaWorld
       - void ResolveVelocity(ContactManifold m)
@@ -2820,7 +2818,17 @@ Folder: SiegeEngine
             ContactManifold manifold, 
             TriangleMeshShape meshA, 
             TriangleMeshShape meshB,  PhysicsComponent bodyA,  PhysicsComponent bodyB)
-        - Calls: ClosestPointOnTriangle, _triA.Clear, _triB.Clear, _triC.Clear, candidates.Add, manifold.Add, meshA.GetAabb, meshB.GetAabb, meshB.QueryWorldTriangles
+        - Calls: ClosestPointsBetweenTriangles, _triA.Clear, _triB.Clear, _triC.Clear, candidates.Add, manifold.Add, meshA.GetAabb, meshA.QueryWorldTriangles, meshB.GetAabb, meshB.QueryWorldTriangles, scoredA.Add, scoredB.Add
+      - void ClosestPointsBetweenTriangles(
+            Vector3 a0, 
+            Vector3 b0, 
+            out Vector3,  Vector3 a1,  Vector3 a2,  Vector3 b1,  Vector3 b2,  out Vector3,  out float)
+        - Calls: CheckEdgeEdge, CheckVertexFace
+      - void CheckVertexFace(
+            ref Vector3,  Vector3 t0,  Vector3 t1,  Vector3 t2,  ref Vector3,  ref float, Vector3 v)
+        - Calls: ClosestPointOnTriangle
+      - void CheckEdgeEdge(
+            ref Vector3,  Vector3 p2,  Vector3 q1,  Vector3 q2,  ref Vector3,  ref float, Vector3 p1)
       - void SphereVsHeightfield(
             HeightfieldShape field,  ContactManifold manifold,  PhysicsComponent body, SphereShape sphere)
         - Calls: field.SampleHeight, field.SampleNormal, manifold.Add
