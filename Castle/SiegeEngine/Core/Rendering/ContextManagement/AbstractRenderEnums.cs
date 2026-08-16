@@ -1,6 +1,7 @@
-﻿// Folder: SiegeEngine/ContextManagement
+﻿// Folder: SiegeEngine/Core/Rendering/ContextManagement
 // File: AbstractRenderEnums.cs
 using System;
+
 namespace SiegeEngine.Core.Rendering.ContextManagement
 {
     public abstract class AbstractRenderEnums
@@ -68,5 +69,20 @@ namespace SiegeEngine.Core.Rendering.ContextManagement
         public abstract int TextureCubeMapPositiveZ { get; }
         public abstract int TextureCubeMapNegativeZ { get; }
         public abstract int TextureWrapR { get; }
+
+        // Compute / SSBO support
+        public abstract int ComputeShader { get; }
+        public abstract int ShaderStorageBuffer { get; }
+        public abstract int ShaderStorageBarrierBit { get; }
+        public abstract int MaxComputeWorkGroupCount { get; }
+        public abstract int MaxComputeWorkGroupSize { get; }
+        public abstract int MaxComputeWorkGroupInvocations { get; }
+        public abstract int DynamicCopy { get; }
+        public abstract int StreamDraw { get; }
+        public abstract int StreamRead { get; }
+        public abstract int StreamCopy { get; }
+        public abstract int MapReadBit { get; }
+        public abstract int MapWriteBit { get; }
+        public abstract int MapInvalidateBufferBit { get; }
     }
 }

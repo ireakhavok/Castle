@@ -42,12 +42,10 @@ namespace SiegeEngine.Core.Networking
         public void AddEntity(Entity entity)
         {
             if (entity == null) return;
-
             var existing = _entities.Find(e => e.Id == entity.Id && entity.Id > 0);
             if (existing != null)
             {
                 existing.Type = entity.Type;
-
                 var existingPhysics = existing.GetComponent<PhysicsComponent>();
                 var newPhysics = entity.GetComponent<PhysicsComponent>();
                 if (existingPhysics != null && newPhysics != null)
@@ -80,12 +78,10 @@ namespace SiegeEngine.Core.Networking
                     existingPhysics.IsGrounded = newPhysics.IsGrounded;
                     existingPhysics.SlopeLimitDegrees = newPhysics.SlopeLimitDegrees;
                     existingPhysics.StepHeight = newPhysics.StepHeight;
-
                     existingPhysics.InvalidateShape();
                     var model = (existing.GetComponent<ModelComponent>() ?? entity.GetComponent<ModelComponent>())?.Model;
                     existingPhysics.RebuildShape(model);
                 }
-
                 var existingModel = existing.GetComponent<ModelComponent>();
                 var newModel = entity.GetComponent<ModelComponent>();
                 if (existingModel != null && newModel != null)
@@ -93,14 +89,12 @@ namespace SiegeEngine.Core.Networking
                     existingModel.Key = newModel.Key;
                     existingModel.Model = newModel.Model;
                 }
-
                 var existingBlend = existing.GetComponent<BlendedAnimationComponent>();
                 var newBlend = entity.GetComponent<BlendedAnimationComponent>();
                 if (existingBlend == null && newBlend != null)
                 {
                     existing.AddComponent(newBlend);
                 }
-
                 // Typed SoundComponent merge (same pattern as BlendedAnimation).
                 // Must use the concrete type so the generic AddComponent keys correctly.
                 var existingSound = existing.GetComponent<SoundComponent>();
@@ -120,11 +114,9 @@ namespace SiegeEngine.Core.Networking
                         existing.AddComponent(newSound);
                     }
                 }
-
                 Console.WriteLine($"[ClientGameServerProxy] Updated existing entity {entity.Id} (prevented duplicate from editor sync)");
                 return;
             }
-
             bool isDuplicate = _entities.Any(e => e.Id == entity.Id && entity.Id > 0);
             if (entity.Id <= 0 || isDuplicate)
             {
@@ -134,11 +126,8 @@ namespace SiegeEngine.Core.Networking
             {
                 _nextEntityId = Math.Max(_nextEntityId, entity.Id + 1);
             }
-
             var physics = entity.GetComponent<PhysicsComponent>();
-            if (physics != null)
-                physics.Rotation = Entity.SanitizeRotation(physics.Rotation);
-
+            if (physics != null) physics.Rotation = Entity.SanitizeRotation(physics.Rotation);
             _entities.Add(entity);
             _eventBus.Publish(new EntityAddedEvent(entity), true);
         }
@@ -149,8 +138,7 @@ namespace SiegeEngine.Core.Networking
             if (entity != null)
             {
                 var physics = entity.GetComponent<PhysicsComponent>();
-                if (physics != null)
-                    _physicsWorld.UnregisterBody(physics);
+                if (physics != null) _physicsWorld.UnregisterBody(physics);
                 _entities.Remove(entity);
                 _eventBus.Publish(new EntityRemovedEvent(id), true);
             }
@@ -188,11 +176,9 @@ namespace SiegeEngine.Core.Networking
             foreach (var entity in _entities)
             {
                 var physics = entity.GetComponent<PhysicsComponent>();
-                if (physics != null)
-                    _physicsWorld.RegisterBody(physics);
+                if (physics != null) _physicsWorld.RegisterBody(physics);
             }
             _physicsWorld.Step(deltaTime);
-
             foreach (var system in _systems)
                 system.Update(deltaTime);
         }
@@ -213,11 +199,69 @@ namespace SiegeEngine.Core.Networking
             _eventBus.Publish(eventData, networkSync);
         }
 
+        /// <summary>
+        /// Local client-side ray-trace against the same PhysicsComponent shapes the server uses.
+        /// Enables continuous occlusion / wall muffling in pure-client Play mode.
+        /// </summary>
         public RayTraceResult RequestRayTrace(Vector3 start, Vector3 direction, float maxDistance)
         {
-            return new RayTraceResult { DidHit = false };
+            RayTraceResult result = new RayTraceResult { DidHit = false };
+            float closestDistance = float.MaxValue;
+            PhysicsComponent hitPhysics = null;
+
+            if (direction.LengthSquared() < 1e-8f)
+                return result;
+
+            Vector3 dir = Vector3.Normalize(direction);
+
+            for (int i = 0; i < _entities.Count; i++)
+            {
+                var entity = _entities[i];
+                if (entity == null) continue;
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (physics == null || !physics.CollisionEnabled) continue;
+
+                if (physics.RayIntersects(start, dir, out float distance, out Vector3 hitPoint) &&
+                    distance < closestDistance && distance <= maxDistance && distance > 0.001f)
+                {
+                    closestDistance = distance;
+                    hitPhysics = physics;
+                    result.HitPoint = hitPoint;
+                }
+            }
+
+            if (hitPhysics != null)
+            {
+                result.DidHit = true;
+                result.Distance = closestDistance;
+                result.HitNormal = ApproximateNormal(result.HitPoint, hitPhysics);
+                float volume = hitPhysics.Size.X * hitPhysics.Size.Y * hitPhysics.Size.Z;
+                result.Material = new MaterialProperties
+                {
+                    Density = volume > 1e-6f ? hitPhysics.Mass / volume : 1.0f
+                };
+            }
+
+            return result;
         }
 
-        public void QueueNetworkEvent(IEvent e) { }
+        private static Vector3 ApproximateNormal(Vector3 hitPoint, PhysicsComponent physics)
+        {
+            Vector3 center = physics.Position;
+            Vector3 halfSize = physics.Size * 0.5f;
+            Vector3 localHit = hitPoint - center;
+            Vector3 absLocalHit = new Vector3(Math.Abs(localHit.X), Math.Abs(localHit.Y), Math.Abs(localHit.Z));
+            Vector3 faceDistances = halfSize - absLocalHit;
+            if (faceDistances.X < faceDistances.Y && faceDistances.X < faceDistances.Z)
+                return new Vector3(localHit.X > 0 ? 1 : -1, 0, 0);
+            else if (faceDistances.Y < faceDistances.Z)
+                return new Vector3(0, localHit.Y > 0 ? 1 : -1, 0);
+            else
+                return new Vector3(0, 0, localHit.Z > 0 ? 1 : -1);
+        }
+
+        public void QueueNetworkEvent(IEvent e)
+        {
+        }
     }
 }

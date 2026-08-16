@@ -26,6 +26,7 @@ namespace SiegeEngine.Systems
         private const float SpatialMaxDistance = 200f;
         private const float SpatialRefDistance = 1.5f;
         private const float MaxITDSeconds = 0.00065f;
+        private const float OcclusionUpdateInterval = 0.12f; // ~8 Hz continuous occlusion queries
 
         private Vector3 _listenerPosition;
         private Vector3 _listenerForward = new Vector3(0, 1, 0);
@@ -39,6 +40,7 @@ namespace SiegeEngine.Systems
         private int _playlistIndex = -1;
         private int _currentPlaylistHandle = -1;
         private string _currentTitle = "";
+        private float _occlusionTimer;
 
         // Resident mono PCM sound bank – loaded once, kept for lifetime of the system
         private readonly Dictionary<string, MonoPcmClip> _soundBank = new Dictionary<string, MonoPcmClip>(StringComparer.OrdinalIgnoreCase);
@@ -127,7 +129,13 @@ namespace SiegeEngine.Systems
                     _autoPlayScanned = true;
                 }
                 if (_listenerValid)
-                    TickAutoPlayRegistrations();
+                {
+                    _occlusionTimer += deltaTime;
+                    bool doOcclusion = _occlusionTimer >= OcclusionUpdateInterval;
+                    if (doOcclusion)
+                        _occlusionTimer = 0f;
+                    TickAutoPlayRegistrations(doOcclusion);
+                }
             }
         }
 
@@ -181,7 +189,7 @@ namespace SiegeEngine.Systems
             }
         }
 
-        private void TickAutoPlayRegistrations()
+        private void TickAutoPlayRegistrations(bool updateOcclusion)
         {
             for (int i = 0; i < _autoPlayRegs.Count; i++)
             {
@@ -196,6 +204,10 @@ namespace SiegeEngine.Systems
 
                 if (!reg.Started)
                 {
+                    // First occlusion query so the sound starts with correct wall filtering
+                    if (updateOcclusion || reg.LastRayResult == null)
+                        reg.LastRayResult = RayTraceSound(reg.Source);
+
                     int h = PlaySpatial(reg.Source, reg.LastRayResult);
                     if (h >= 0)
                     {
@@ -205,7 +217,10 @@ namespace SiegeEngine.Systems
                     continue;
                 }
 
-                // Continuous update – never stop / restart the player
+                // Continuous occlusion against real physics geometry
+                if (updateOcclusion)
+                    reg.LastRayResult = RayTraceSound(reg.Source);
+
                 if (reg.Handle >= 0 && _spatialPlayers.TryGetValue(reg.Handle, out var player) && player.IsPlaying)
                 {
                     ApplySpatialToPlayer(player, reg.Source, reg.LastRayResult);
@@ -218,30 +233,33 @@ namespace SiegeEngine.Systems
             Vector3 toSource = source.Position - _listenerPosition;
             float distance = toSource.Length();
 
-            float atten;
-            if (rayResult != null)
+            // Base geometric attenuation (inverse-square)
+            float geometric;
+            if (!_listenerValid)
             {
-                atten = Math.Clamp(rayResult.Intensity, 0f, 1f);
-            }
-            else if (!_listenerValid)
-            {
-                atten = 1f;
+                geometric = 1f;
             }
             else if (distance <= SpatialRefDistance)
             {
-                atten = 1f;
-            }
-            else if (distance >= SpatialMaxDistance)
-            {
-                atten = 0.02f;
+                geometric = 1f;
             }
             else
             {
-                float t = (distance - SpatialRefDistance) / (SpatialMaxDistance - SpatialRefDistance);
-                atten = Math.Max(0.02f, 1f / (1f + 5f * t * t));
+                float ratio = SpatialRefDistance / distance;
+                geometric = Math.Max(0.02f, ratio * ratio);
             }
 
-            float finalVolume = Math.Clamp(atten * Math.Max(source.Volume, 0.01f), 0f, 1f);
+            // Occlusion intensity from multi-bounce ray-trace (walls / geometry)
+            float occlusion = 1f;
+            float lowPass = 0f;
+            if (rayResult != null)
+            {
+                occlusion = Math.Clamp(rayResult.Intensity, 0.02f, 1f);
+                if (rayResult.LowPassCutoff > 0f)
+                    lowPass = rayResult.LowPassCutoff;
+            }
+
+            float finalVolume = Math.Clamp(geometric * occlusion * Math.Max(source.Volume, 0.01f), 0f, 1f);
 
             Vector3 flatTo = new Vector3(toSource.X, toSource.Y, 0f);
             Vector3 flatFwd = new Vector3(_listenerForward.X, _listenerForward.Y, 0f);
@@ -259,10 +277,6 @@ namespace SiegeEngine.Systems
 
             float leftGain = (float)Math.Sqrt((1f - pan) * 0.5f);
             float rightGain = (float)Math.Sqrt((1f + pan) * 0.5f);
-
-            float lowPass = 0f;
-            if (rayResult != null && rayResult.LowPassCutoff > 0f)
-                lowPass = rayResult.LowPassCutoff;
 
             player.UpdateSpatial(leftGain, rightGain, finalVolume, lowPass);
         }
@@ -339,7 +353,7 @@ namespace SiegeEngine.Systems
                     return -1;
                 }
 
-                // Apply initial spatialisation immediately
+                // Apply initial spatialisation immediately (includes occlusion if provided)
                 ApplySpatialToPlayer(wave, source, rayResult);
 
                 int handle = _nextHandle++;
@@ -671,7 +685,9 @@ namespace SiegeEngine.Systems
             {
                 if (!e.Source.Loop)
                     StopNonMusic();
-                PlaySpatial(e.Source);
+                // One-shot also gets a fresh occlusion query
+                var result = RayTraceSound(e.Source);
+                PlaySpatial(e.Source, result);
             }
         }
 
@@ -692,13 +708,22 @@ namespace SiegeEngine.Systems
             PlaySpatial(e.Source, e.Result);
         }
 
+        /// <summary>
+        /// Multi-bounce acoustic ray-trace against the real physics geometry
+        /// (same path used by the authoritative server). Returns Intensity + LowPass
+        /// that correctly muffles sound behind walls.
+        /// </summary>
         private SoundRayTraceResult RayTraceSound(SoundSource source)
         {
-            int numRays = _isServer ? 500 : 300;
-            int maxBounces = _isServer ? 8 : 6;
+            if (_server == null || !_listenerValid)
+                return null;
+
+            int numRays = _isServer ? 500 : 120;          // lighter on client for continuous use
+            int maxBounces = _isServer ? 8 : 5;
             float totalIntensity = 0f;
             float totalDelay = 0f;
             int validRays = 0;
+
             for (int i = 0; i < numRays; i++)
             {
                 Vector3 direction = RandomDirection();
@@ -706,18 +731,38 @@ namespace SiegeEngine.Systems
                 float distance = 0f;
                 int bounceCount = 0;
                 Vector3 position = source.Position;
+
                 while (bounceCount < maxBounces && intensity > MinIntensity)
                 {
-                    var result = _isServer ? _server.RequestRayTrace(position, direction, MaxDistance) : new RayTraceResult { DidHit = false, Distance = MaxDistance };
+                    var result = _server.RequestRayTrace(position, direction, MaxDistance);
+                    if (!result.DidHit || result.Distance <= 0.001f)
+                    {
+                        // Open path – still accumulate a small residual if we are close to the listener
+                        float remaining = Vector3.Distance(position, _listenerPosition);
+                        if (remaining < ListenerRadius * 2f)
+                        {
+                            totalIntensity += intensity * 0.15f;
+                            totalDelay += (distance + remaining) / 34300f;
+                            validRays++;
+                        }
+                        break;
+                    }
+
                     distance += result.Distance;
-                    if (!result.DidHit || distance > MaxDistance) break;
-                    intensity *= 1.0f / (distance * distance);
+                    if (distance > MaxDistance) break;
+
+                    // Geometric spreading
+                    intensity *= 1.0f / Math.Max(1f, distance * distance * 0.0001f + 1f);
+
+                    // Material absorption
                     if (result.Material != null)
                     {
-                        float dens = result.Material.Density;
-                        intensity *= (float)Math.Pow(10, -2 * dens * result.Distance / 10);
-                        intensity *= dens > 1.5f ? 0.9f : 0.7f;
+                        float dens = Math.Max(0.1f, result.Material.Density);
+                        intensity *= (float)Math.Pow(10, -1.5 * dens * result.Distance / 10);
+                        intensity *= dens > 1.5f ? 0.85f : 0.65f;
                     }
+
+                    // Did this bounce reach the listener?
                     if (Vector3.Distance(result.HitPoint, _listenerPosition) < ListenerRadius)
                     {
                         totalIntensity += intensity;
@@ -725,17 +770,31 @@ namespace SiegeEngine.Systems
                         validRays++;
                         break;
                     }
+
+                    // Reflect and continue
                     direction = Vector3.Reflect(direction, result.HitNormal);
-                    position = result.HitPoint + direction * 0.01f;
+                    position = result.HitPoint + direction * 0.02f;
                     bounceCount++;
                 }
             }
-            if (validRays == 0) return null;
+
+            if (validRays == 0)
+            {
+                // Completely occluded or no path found – heavy muffling
+                return new SoundRayTraceResult
+                {
+                    Intensity = 0.04f,
+                    Delay = 0.05f,
+                    LowPassCutoff = 800f
+                };
+            }
+
+            float avgIntensity = totalIntensity / validRays;
             return new SoundRayTraceResult
             {
-                Intensity = totalIntensity / validRays,
+                Intensity = Math.Clamp(avgIntensity, 0.02f, 1f),
                 Delay = totalDelay / validRays,
-                LowPassCutoff = 8000f / (totalIntensity > 0 ? Math.Max(1f, totalIntensity) : 1f)
+                LowPassCutoff = 18000f / (1f + avgIntensity * 4f)   // more occlusion → lower cutoff
             };
         }
 

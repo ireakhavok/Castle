@@ -1,5 +1,5 @@
-﻿// Folder: SiegeEngine.Core
-// File: ContextManagement/IRenderContext.cs
+﻿// Folder: SiegeEngine/Core/Rendering/ContextManagement
+// File: IRenderContext.cs
 using System;
 
 namespace SiegeEngine.Core.Rendering.ContextManagement
@@ -9,6 +9,7 @@ namespace SiegeEngine.Core.Rendering.ContextManagement
         AbstractRenderEnums Enums { get; }
         int ViewportWidth { get; }
         int ViewportHeight { get; }
+
         uint GenVertexArray();
         void GenVertexArrays(uint n, out uint arrays);
         uint GenBuffer();
@@ -65,7 +66,7 @@ namespace SiegeEngine.Core.Rendering.ContextManagement
         int GetUniformLocation(uint program, string name);
         void Uniform1(int location, float value);
         void Uniform1(int location, int value);
-        void Uniform2(int location, float x, float y);  // NEW for vec2 (Tiling / Offset)
+        void Uniform2(int location, float x, float y);
         void Uniform3(int location, float x, float y, float z);
         void Uniform4(int location, float x, float y, float z, float w);
         void UniformMatrix4(int location, uint count, bool transpose, float* value);
@@ -81,5 +82,18 @@ namespace SiegeEngine.Core.Rendering.ContextManagement
         void CullFace(int mode);
         void FrontFace(int mode);
         void LineWidth(float width);
+
+        // Compute / SSBO support
+        void DispatchCompute(uint numGroupsX, uint numGroupsY, uint numGroupsZ);
+        void MemoryBarrier(int barriers);
+        void BindBufferBase(int target, uint index, uint buffer);
+        void BindBufferRange(int target, uint index, uint buffer, int offset, uint size);
+        void* MapBuffer(int target, int access);
+        void* MapBufferRange(int target, int offset, uint length, int access);
+        bool UnmapBuffer(int target);
+        void GetInteger(int pname, out int data);
+        void GetInteger(int pname, int* data);
+        void GetProgramInterface(uint program, int programInterface, int pname, out int param);
+        int GetProgramResourceLocation(uint program, int programInterface, string name);
     }
 }
