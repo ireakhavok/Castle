@@ -567,7 +567,7 @@ Found 12 dependencies
 Found: SceneEditorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
-Read 40892 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
+Read 40902 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
 Namespace: CastleBuilder
 Found 24 dependencies
 Found: SceneEditorUI.html
@@ -661,9 +661,9 @@ Found 17 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
-Read 46859 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
+Read 46903 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
-Found 17 dependencies
+Found 18 dependencies
 Found: TerrainCreatorUI.html
 Found: TerrainModifiedEvent.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainModifiedEvent.cs
@@ -691,7 +691,7 @@ Found: ..
 Found: AnimationViewerPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\AnimationViewerPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\AnimationViewerPanel.cs
-Read 10118 chars from: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\AnimationViewerPanel.cs
+Read 10128 chars from: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\AnimationViewerPanel.cs
 Namespace: ReadingChamber
 Found 22 dependencies
 Found: AssetViewerUI.html
@@ -747,7 +747,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\ToolChest\bin
 Found: BlendDotOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BlendDotOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BlendDotOverlay.cs
-Read 2040 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BlendDotOverlay.cs
+Read 2050 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BlendDotOverlay.cs
 Namespace: ToolChest
 Found 4 dependencies
 Found: Brush.cs
@@ -794,13 +794,13 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\ToolChest\obj
 Found: PhysicsDebugOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PhysicsDebugOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PhysicsDebugOverlay.cs
-Read 20216 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PhysicsDebugOverlay.cs
+Read 20260 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PhysicsDebugOverlay.cs
 Namespace: ToolChest
-Found 9 dependencies
+Found 10 dependencies
 Found: PlacementOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PlacementOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PlacementOverlay.cs
-Read 3485 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PlacementOverlay.cs
+Read 3495 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PlacementOverlay.cs
 Namespace: ToolChest
 Found 9 dependencies
 Found: PropertiesPanel.cs
@@ -821,9 +821,9 @@ Found: ToolChest.csproj
 Found: TransformGizmoOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
-Read 21980 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
+Read 22024 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
 Namespace: ToolChest
-Found 11 dependencies
+Found 12 dependencies
 Found: TreeViewPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TreeViewPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TreeViewPanel.cs
@@ -1152,9 +1152,9 @@ Found: ..
 Found: WaveOutPlayer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Audio\WaveOutPlayer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Audio\WaveOutPlayer.cs
-Read 6251 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Audio\WaveOutPlayer.cs
+Read 12925 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Audio\WaveOutPlayer.cs
 Namespace: SiegeEngine.Audio
-Found 2 dependencies
+Found 3 dependencies
 Found: Definitions
 Listing folder: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions
 Found: .
@@ -1495,7 +1495,7 @@ Found: ..
 Found: ICustomOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\ICustomOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\ICustomOverlay.cs
-Read 278 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\ICustomOverlay.cs
+Read 288 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\ICustomOverlay.cs
 Namespace: SiegeEngine.Core.Interfaces
 Found 1 dependencies
 Found: IDockingStrategy.cs
@@ -1553,7 +1553,7 @@ Found 4 dependencies
 Found: DesktopDockingStrategy.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DesktopDockingStrategy.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DesktopDockingStrategy.cs
-Read 18463 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DesktopDockingStrategy.cs
+Read 18473 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DesktopDockingStrategy.cs
 Namespace: SiegeEngine.Core.Managers
 Found 8 dependencies
 Found: DockManager.cs
@@ -1565,7 +1565,7 @@ Found 9 dependencies
 Found: DynamicDockingStrategy.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DynamicDockingStrategy.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DynamicDockingStrategy.cs
-Read 14427 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DynamicDockingStrategy.cs
+Read 14437 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DynamicDockingStrategy.cs
 Namespace: SiegeEngine.Core.Managers
 Found 9 dependencies
 Found: GameModeManager.cs
@@ -1577,7 +1577,7 @@ Found 2 dependencies
 Found: IDEDockingStrategy.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
-Read 46901 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
+Read 46911 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
 Namespace: SiegeEngine.Core.Managers
 Found 13 dependencies
 Found: LevelManager.cs
@@ -1647,7 +1647,7 @@ Found: ..
 Found: ClientGameServerProxy.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\ClientGameServerProxy.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\ClientGameServerProxy.cs
-Read 9029 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\ClientGameServerProxy.cs
+Read 11476 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\ClientGameServerProxy.cs
 Namespace: SiegeEngine.Core.Networking
 Found 9 dependencies
 Found: MovementRequest.cs
@@ -1736,18 +1736,34 @@ Found: Rendering
 Listing folder: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering
 Found: .
 Found: ..
-Found: BackgroundRenderer.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\BackgroundRenderer.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\BackgroundRenderer.cs
-Read 7812 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\BackgroundRenderer.cs
-Namespace: SiegeEngine.Core.Rendering
-Found 5 dependencies
-Found: ChromeRenderer.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ChromeRenderer.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ChromeRenderer.cs
-Read 2231 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ChromeRenderer.cs
-Namespace: SiegeEngine.Core.Rendering
+Found: Compute
+Listing folder: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute
+Found: .
+Found: ..
+Found: AcousticGeometry.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticGeometry.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticGeometry.cs
+Read 8256 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticGeometry.cs
+Namespace: SiegeEngine.Core.Rendering.Compute
+Found 7 dependencies
+Found: AcousticRayTracer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticRayTracer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticRayTracer.cs
+Read 9279 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticRayTracer.cs
+Namespace: SiegeEngine.Core.Rendering.Compute
+Found 6 dependencies
+Found: ComputeProgram.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\ComputeProgram.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\ComputeProgram.cs
+Read 6381 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\ComputeProgram.cs
+Namespace: SiegeEngine.Core.Rendering.Compute
 Found 4 dependencies
+Found: ShaderStorageBuffer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\ShaderStorageBuffer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\ShaderStorageBuffer.cs
+Read 3733 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\ShaderStorageBuffer.cs
+Namespace: SiegeEngine.Core.Rendering.Compute
+Found 2 dependencies
 Found: ContextManagement
 Listing folder: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement
 Found: .
@@ -1755,7 +1771,7 @@ Found: ..
 Found: AbstractRenderEnums.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\AbstractRenderEnums.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\AbstractRenderEnums.cs
-Read 3366 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\AbstractRenderEnums.cs
+Read 4127 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\AbstractRenderEnums.cs
 Namespace: SiegeEngine.Core.Rendering.ContextManagement
 Found 1 dependencies
 Found: ContextManager.cs
@@ -1785,7 +1801,7 @@ Found 2 dependencies
 Found: IRenderContext.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\IRenderContext.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\IRenderContext.cs
-Read 4069 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\IRenderContext.cs
+Read 4807 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\IRenderContext.cs
 Namespace: SiegeEngine.Core.Rendering.ContextManagement
 Found 1 dependencies
 Found: OpenGLContextManager.cs
@@ -1797,13 +1813,13 @@ Found 3 dependencies
 Found: OpenGLEnums.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\OpenGLEnums.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\OpenGLEnums.cs
-Read 4580 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\OpenGLEnums.cs
+Read 5661 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\OpenGLEnums.cs
 Namespace: SiegeEngine.Core.Rendering.ContextManagement
 Found 1 dependencies
 Found: OpenGLRenderContext.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\OpenGLRenderContext.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\OpenGLRenderContext.cs
-Read 8647 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\OpenGLRenderContext.cs
+Read 10981 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\OpenGLRenderContext.cs
 Namespace: SiegeEngine.Core.Rendering.ContextManagement
 Found 3 dependencies
 Found: Viewport.cs
@@ -1818,41 +1834,21 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextMan
 Read 8423 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ContextManagement\VulkanNative.cs
 Namespace: SiegeEngine.Core.Rendering.ContextManagement
 Found 2 dependencies
-Found: EditorTextRenderer.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\EditorTextRenderer.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\EditorTextRenderer.cs
-Read 13403 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\EditorTextRenderer.cs
-Namespace: SiegeEngine.Core.Rendering
-Found 4 dependencies
-Found: GameRenderer.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\GameRenderer.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\GameRenderer.cs
-Read 13008 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\GameRenderer.cs
-Namespace: SiegeEngine.Core.Rendering
-Found 12 dependencies
-Found: LayeredUIRenderer.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\LayeredUIRenderer.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\LayeredUIRenderer.cs
-Read 3330 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\LayeredUIRenderer.cs
-Namespace: SiegeEngine.Core.Rendering
-Found 3 dependencies
-Found: ModelRenderer.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ModelRenderer.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ModelRenderer.cs
-Read 11257 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ModelRenderer.cs
-Namespace: SiegeEngine.Core.Rendering
-Found 7 dependencies
+Found: Projections
+Listing folder: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Projections
+Found: .
+Found: ..
 Found: OrthoProjection.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\OrthoProjection.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\OrthoProjection.cs
-Read 960 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\OrthoProjection.cs
-Namespace: SiegeEngine.Core.Rendering
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Projections\OrthoProjection.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Projections\OrthoProjection.cs
+Read 972 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Projections\OrthoProjection.cs
+Namespace: SiegeEngine.Core.Rendering.Projections
 Found 3 dependencies
 Found: PerspectiveProjection.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\PerspectiveProjection.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\PerspectiveProjection.cs
-Read 479 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\PerspectiveProjection.cs
-Namespace: SiegeEngine.Core.Rendering
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Projections\PerspectiveProjection.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Projections\PerspectiveProjection.cs
+Read 491 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Projections\PerspectiveProjection.cs
+Namespace: SiegeEngine.Core.Rendering.Projections
 Found 3 dependencies
 Found: Renderer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderer.cs
@@ -1866,12 +1862,76 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\RendererDe
 Read 5085 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\RendererDetector.cs
 Namespace: SiegeEngine.Core.Rendering
 Found 3 dependencies
-Found: ShaderProgram.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ShaderProgram.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ShaderProgram.cs
-Read 9816 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ShaderProgram.cs
-Namespace: SiegeEngine.Core.Rendering
+Found: Renderers
+Listing folder: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers
+Found: .
+Found: ..
+Found: BackgroundRenderer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\BackgroundRenderer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\BackgroundRenderer.cs
+Read 7864 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\BackgroundRenderer.cs
+Namespace: SiegeEngine.Core.Rendering.Renderers
+Found 6 dependencies
+Found: ChromeRenderer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\ChromeRenderer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\ChromeRenderer.cs
+Read 2241 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\ChromeRenderer.cs
+Namespace: SiegeEngine.Core.Rendering.Renderers
+Found 4 dependencies
+Found: EditorTextRenderer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\EditorTextRenderer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\EditorTextRenderer.cs
+Read 13455 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\EditorTextRenderer.cs
+Namespace: SiegeEngine.Core.Rendering.Renderers
 Found 5 dependencies
+Found: GameRenderer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\GameRenderer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\GameRenderer.cs
+Read 13018 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\GameRenderer.cs
+Namespace: SiegeEngine.Core.Rendering.Renderers
+Found 12 dependencies
+Found: LayeredUIRenderer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\LayeredUIRenderer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\LayeredUIRenderer.cs
+Read 3340 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\LayeredUIRenderer.cs
+Namespace: SiegeEngine.Core.Rendering.Renderers
+Found 3 dependencies
+Found: ModelRenderer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\ModelRenderer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\ModelRenderer.cs
+Read 11267 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\ModelRenderer.cs
+Namespace: SiegeEngine.Core.Rendering.Renderers
+Found 7 dependencies
+Found: SkyboxRenderer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\SkyboxRenderer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\SkyboxRenderer.cs
+Read 5133 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\SkyboxRenderer.cs
+Namespace: SiegeEngine.Core.Rendering.Renderers
+Found 7 dependencies
+Found: SystemFontRenderer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\SystemFontRenderer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\SystemFontRenderer.cs
+Read 12442 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\SystemFontRenderer.cs
+Namespace: SiegeEngine.Core.Rendering.Renderers
+Found 7 dependencies
+Found: TerrainRenderer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\TerrainRenderer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\TerrainRenderer.cs
+Read 5224 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\TerrainRenderer.cs
+Namespace: SiegeEngine.Core.Rendering.Renderers
+Found 7 dependencies
+Found: TextRenderer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\TextRenderer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\TextRenderer.cs
+Read 20606 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\TextRenderer.cs
+Namespace: SiegeEngine.Core.Rendering.Renderers
+Found 6 dependencies
+Found: UIQuadRenderer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\UIQuadRenderer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\UIQuadRenderer.cs
+Read 9199 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Renderers\UIQuadRenderer.cs
+Namespace: SiegeEngine.Core.Rendering.Renderers
+Found 6 dependencies
 Found: Shaders
 Listing folder: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders
 Found: .
@@ -1912,6 +1972,18 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\Sc
 Read 1462 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\SceneShader.cs
 Namespace: SiegeEngine.Core.Rendering.Shaders
 Found 1 dependencies
+Found: ShaderProgram.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\ShaderProgram.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\ShaderProgram.cs
+Read 9824 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\ShaderProgram.cs
+Namespace: SiegeEngine.Core.Rendering.Shaders
+Found 5 dependencies
+Found: ShaderSetup.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\ShaderSetup.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\ShaderSetup.cs
+Read 1193 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\ShaderSetup.cs
+Namespace: SiegeEngine.Core.Rendering.Shaders
+Found 2 dependencies
 Found: SkyboxShader.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\SkyboxShader.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\SkyboxShader.cs
@@ -1942,48 +2014,12 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\Wa
 Read 921 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\WaterShader.cs
 Namespace: SiegeEngine.Core.Rendering.Shaders
 Found 0 dependencies
-Found: ShaderSetup.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ShaderSetup.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ShaderSetup.cs
-Read 1227 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ShaderSetup.cs
-Namespace: SiegeEngine.Core.Rendering
-Found 3 dependencies
-Found: SkyboxRenderer.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\SkyboxRenderer.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\SkyboxRenderer.cs
-Read 5123 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\SkyboxRenderer.cs
-Namespace: SiegeEngine.Core.Rendering
-Found 7 dependencies
-Found: SystemFontRenderer.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\SystemFontRenderer.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\SystemFontRenderer.cs
-Read 12432 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\SystemFontRenderer.cs
-Namespace: SiegeEngine.Core.Rendering
-Found 7 dependencies
-Found: TerrainRenderer.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TerrainRenderer.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TerrainRenderer.cs
-Read 5214 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TerrainRenderer.cs
-Namespace: SiegeEngine.Core.Rendering
-Found 7 dependencies
-Found: TextRenderer.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextRenderer.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextRenderer.cs
-Read 20554 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextRenderer.cs
-Namespace: SiegeEngine.Core.Rendering
-Found 5 dependencies
 Found: TextureLoader.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextureLoader.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextureLoader.cs
 Read 21739 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextureLoader.cs
 Namespace: SiegeEngine.Core.Rendering
 Found 8 dependencies
-Found: UIQuadRenderer.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\UIQuadRenderer.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\UIQuadRenderer.cs
-Read 9189 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\UIQuadRenderer.cs
-Namespace: SiegeEngine.Core.Rendering
-Found 6 dependencies
 Found: Vertex.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Vertex.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Vertex.cs
@@ -2049,15 +2085,15 @@ Found: ..
 Found: BasePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
-Read 12706 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
+Read 12716 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Namespace: SiegeEngine.Core.UI
 Found 9 dependencies
 Found: Core.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Core.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Core.cs
-Read 7088 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Core.cs
+Read 7140 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Core.cs
 Namespace: SiegeEngine.Core.UI
-Found 7 dependencies
+Found 8 dependencies
 Found: CssParser.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
@@ -2083,7 +2119,7 @@ Found: ..
 Found: ButtonElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\ButtonElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\ButtonElement.cs
-Read 2933 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\ButtonElement.cs
+Read 2943 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\ButtonElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 5 dependencies
 Found: DivElement.cs
@@ -2095,13 +2131,13 @@ Found 0 dependencies
 Found: InputElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\InputElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\InputElement.cs
-Read 11017 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\InputElement.cs
+Read 11027 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\InputElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 6 dependencies
 Found: LiElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\LiElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\LiElement.cs
-Read 8639 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\LiElement.cs
+Read 8649 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\LiElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 6 dependencies
 Found: NavElement.cs
@@ -2113,7 +2149,7 @@ Found 5 dependencies
 Found: NavLiElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\NavLiElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\NavLiElement.cs
-Read 9724 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\NavLiElement.cs
+Read 9734 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\NavLiElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 6 dependencies
 Found: NavUlElement.cs
@@ -2131,25 +2167,25 @@ Found 3 dependencies
 Found: OptionElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\OptionElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\OptionElement.cs
-Read 1579 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\OptionElement.cs
+Read 1589 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\OptionElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 4 dependencies
 Found: RangeElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\RangeElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\RangeElement.cs
-Read 3829 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\RangeElement.cs
+Read 3839 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\RangeElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 5 dependencies
 Found: SelectElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\SelectElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\SelectElement.cs
-Read 15279 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\SelectElement.cs
+Read 15289 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\SelectElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 6 dependencies
 Found: TableElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TableElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TableElement.cs
-Read 10445 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TableElement.cs
+Read 10455 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TableElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 6 dependencies
 Found: TdElement.cs
@@ -2161,7 +2197,7 @@ Found 3 dependencies
 Found: TextElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TextElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TextElement.cs
-Read 4472 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TextElement.cs
+Read 4482 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TextElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 5 dependencies
 Found: ThElement.cs
@@ -2173,7 +2209,7 @@ Found 3 dependencies
 Found: TrElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TrElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TrElement.cs
-Read 918 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TrElement.cs
+Read 928 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TrElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 3 dependencies
 Found: UlElement.cs
@@ -2255,7 +2291,7 @@ Found 7 dependencies
 Found: Layout.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Layout.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Layout.cs
-Read 65324 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Layout.cs
+Read 65334 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Layout.cs
 Namespace: SiegeEngine.Core.UI
 Found 9 dependencies
 Found: MenuPanel.cs
@@ -2267,13 +2303,13 @@ Found 9 dependencies
 Found: PanelChrome.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\PanelChrome.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\PanelChrome.cs
-Read 2649 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\PanelChrome.cs
+Read 2659 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\PanelChrome.cs
 Namespace: SiegeEngine.Core.UI
 Found 4 dependencies
 Found: Render.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
-Read 16126 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
+Read 16136 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
 Namespace: SiegeEngine.Core.UI
 Found 8 dependencies
 Found: UIInteractionLayer.cs
@@ -2285,7 +2321,7 @@ Found 9 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
-Read 34289 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Read 34299 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Namespace: SiegeEngine.Core.UI
 Found 12 dependencies
 Found: HeirarchySummary.exe
@@ -2380,13 +2416,13 @@ Found 17 dependencies
 Found: RuntimeGameplayScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
-Read 27559 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
+Read 27603 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
 Namespace: SiegeEngine.Scenes
-Found 17 dependencies
+Found 18 dependencies
 Found: Scene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
-Read 4123 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
+Read 4133 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
 Namespace: SiegeEngine.Scenes
 Found 11 dependencies
 Found: SceneContext.cs
@@ -2414,15 +2450,15 @@ Found 12 dependencies
 Found: TwoDSandboxScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\StartingPoints\TwoDSandboxScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\StartingPoints\TwoDSandboxScene.cs
-Read 4381 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\StartingPoints\TwoDSandboxScene.cs
+Read 4427 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\StartingPoints\TwoDSandboxScene.cs
 Namespace: SiegeEngine.Scenes.StartingPoints
-Found 12 dependencies
+Found 13 dependencies
 Found: TerrainScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
-Read 23362 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
+Read 23406 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Namespace: SiegeEngine.Scenes
-Found 15 dependencies
+Found 16 dependencies
 Found: SiegeEngine.csproj
 Found: siegeEngineSummary.txt
 Found: summarize_log.txt
@@ -2440,9 +2476,9 @@ Found 6 dependencies
 Found: AudioSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
-Read 28455 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
+Read 29861 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Namespace: SiegeEngine.Systems
-Found 11 dependencies
+Found 13 dependencies
 Found: ClientPredictionSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\ClientPredictionSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\ClientPredictionSystem.cs
