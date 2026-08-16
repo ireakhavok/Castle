@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Managers
-// File: SceneManager.cs
-using SiegeEngine.Core.Definitions;
+﻿using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Networking;
@@ -66,7 +64,7 @@ namespace SiegeEngine.Core.Managers
             var predictionSystem = new ClientPredictionSystem(_server, _eventBus);
             _server.AddSystem(predictionSystem);
             _server.AddSystem(new AnimationSystem(_server));
-            _server.AddSystem(new AudioSystem(_server, _eventBus, false));
+            _server.AddSystem(new AudioSystem(_server, _eventBus, false, null, _renderContext));
             _modelManager = new ModelManager(_renderContext);
             var ctx = new SceneContext
             {
@@ -172,7 +170,7 @@ namespace SiegeEngine.Core.Managers
             var predictionSystem = new ClientPredictionSystem(ctx.Server, _eventBus);
             ctx.Server.AddSystem(predictionSystem);
             ctx.Server.AddSystem(new AnimationSystem(ctx.Server));
-            ctx.Server.AddSystem(new AudioSystem(ctx.Server, _eventBus, false));
+            ctx.Server.AddSystem(new AudioSystem(ctx.Server, _eventBus, false, null, _renderContext));
             ctx.Player = null;
             ctx.PlayerMovement = null;
             // Activate first so [CustomSceneEntry] factories are registered before resolution.
@@ -183,7 +181,6 @@ namespace SiegeEngine.Core.Managers
             }
             _playerMovement = ctx.PlayerMovement;
             _player = ctx.Player;
-
             // First-class resolution: pure-client [CustomSceneEntry] or classic RuntimeGameplay.
             string preferred = SceneRegistry.ResolvePreferredSceneName(levelName, reconstructedSceneData ?? ctx.SceneData);
             if (!SceneRegistry.IsRegistered(preferred))

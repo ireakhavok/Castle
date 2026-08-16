@@ -61,6 +61,12 @@ namespace SiegeEngine.Core.Events
         public float Intensity { get; set; }
         public float Delay { get; set; }
         public float LowPassCutoff { get; set; }
+        /// <summary>
+        /// Unit direction from listener toward the apparent arrival of the sound.
+        /// True source when clear LOS; door/opening direction when multipath finds an alternate route.
+        /// Zero vector means "use true source position".
+        /// </summary>
+        public Vector3 ApparentDirection { get; set; }
 
         public byte[] Serialize()
         {
@@ -75,6 +81,7 @@ namespace SiegeEngine.Core.Events
             Intensity = obj.Intensity;
             Delay = obj.Delay;
             LowPassCutoff = obj.LowPassCutoff;
+            ApparentDirection = obj.ApparentDirection;
         }
     }
 }
