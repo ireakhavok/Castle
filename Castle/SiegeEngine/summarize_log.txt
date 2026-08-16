@@ -778,13 +778,13 @@ Found: ..
 Found: AcousticGeometry.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticGeometry.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticGeometry.cs
-Read 4944 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticGeometry.cs
+Read 7294 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticGeometry.cs
 Namespace: SiegeEngine.Core.Rendering.Compute
 Found 7 dependencies
 Found: AcousticRayTracer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticRayTracer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticRayTracer.cs
-Read 12119 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticRayTracer.cs
+Read 11971 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticRayTracer.cs
 Namespace: SiegeEngine.Core.Rendering.Compute
 Found 6 dependencies
 Found: ComputeProgram.cs
@@ -1511,9 +1511,9 @@ Found 6 dependencies
 Found: AudioSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
-Read 31691 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
+Read 33103 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Namespace: SiegeEngine.Systems
-Found 13 dependencies
+Found 15 dependencies
 Found: ClientPredictionSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\ClientPredictionSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\ClientPredictionSystem.cs

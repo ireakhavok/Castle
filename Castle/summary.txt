@@ -1017,7 +1017,7 @@ Folder: SiegeEngine
       - constructor ThrowStatementNode(ASTNode argument)
 - File: AudioSystem.cs
   - Class: AutoPlayRegistration (Namespace: SiegeEngine.Systems)
-    - Dependencies: SiegeEngine.Audio, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering.Compute, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.PlayerSystem, System, System.Collections.Generic, System.IO, System.Linq, System.Media, System.Numerics
+    - Dependencies: SiegeEngine.Audio, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering.Compute, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.PlayerSystem, System, System.Collections.Generic, System.IO, System.Linq, System.Media, System.Numerics
     - Fields:
       - int EntityId
       - SoundSource Source
