@@ -28,8 +28,8 @@ namespace SiegeEngine.Systems
         private const float SpatialMaxDistance = 300f;
         private const float MinAudibleVolume = 0.01f;
         // Continuous smoothing rates (applied on main thread every frame)
-        private const float IntensitySmoothRate = 12.0f;
-        private const float DirectionSmoothRate = 14.0f;
+        private const float IntensitySmoothRate = 18.0f;
+        private const float DirectionSmoothRate = 22.0f;
         private Vector3 _listenerPosition;
         private Vector3 _listenerForward = new Vector3(0, 1, 0);
         private volatile bool _listenerValid;
@@ -193,16 +193,8 @@ namespace SiegeEngine.Systems
                                     reg.Source.Position = phys.Position;
                             }
                             Vector3 srcPos = reg.Source.Position;
-                            // Primary LOS
-                            SoundRayTraceResult los = PrimaryLosRayInternal(srcPos, listenerPos);
-                            SoundRayTraceResult result = los;
-                            // Diffraction probe when blocked
-                            if (los.Intensity < 0.95f)
-                            {
-                                SoundRayTraceResult probe = DiffractionProbeInternal(srcPos, listenerPos, los);
-                                if (probe.Intensity > result.Intensity)
-                                    result = probe;
-                            }
+                            // Continuous energy-weighted multi-path (no hard switches, no lag gates)
+                            SoundRayTraceResult result = ComputeContinuousResult(srcPos, listenerPos);
                             // Mutate pre-allocated slot (zero allocation)
                             reg.WorkerResult.Intensity = result.Intensity;
                             reg.WorkerResult.Delay = result.Delay;
@@ -220,6 +212,105 @@ namespace SiegeEngine.Systems
                 if (_workerSnapshot.Count == 0)
                     Thread.Yield();
             }
+        }
+        // Pure continuous energy-weighted combination of PrimaryLos + all successful diffraction probes.
+        // No intensity membership gates that cause lag or sticky behaviour.
+        private SoundRayTraceResult ComputeContinuousResult(Vector3 sourcePos, Vector3 listenerPos)
+        {
+            SoundRayTraceResult los = PrimaryLosRayInternal(sourcePos, listenerPos);
+            Vector3 toListener = listenerPos - sourcePos;
+            float dist = toListener.Length();
+            if (dist < 0.01f)
+                return los;
+            // LOS contribution
+            float totalEnergy = 0f;
+            Vector3 weightedDir = Vector3.Zero;
+            float maxIntensity = 0f;
+            float bestTotalDist = dist;
+            if (los.Intensity > 0.0001f)
+            {
+                float energy = los.Intensity * los.Intensity;
+                totalEnergy += energy;
+                Vector3 losDir = sourcePos - listenerPos;
+                if (losDir.LengthSquared() > 1e-8f)
+                    losDir = Vector3.Normalize(losDir);
+                weightedDir += losDir * energy;
+                maxIntensity = los.Intensity;
+            }
+            // Diffraction probes – continuous contribution, no hard intensity cutoffs
+            Vector3 dir = toListener / dist;
+            Vector3 up = Vector3.UnitZ;
+            Vector3 right = Vector3.Cross(dir, up);
+            if (right.LengthSquared() < 1e-6f)
+                right = Vector3.UnitX;
+            else
+                right = Vector3.Normalize(right);
+            Vector3 realUp = Vector3.Normalize(Vector3.Cross(right, dir));
+            float[] lateral = { -70f, -50f, -35f, -20f, -10f, 10f, 20f, 35f, 50f, 70f };
+            float[] elev = { -15f, 0f, 20f, 40f };
+            const float Deg2Rad = MathF.PI / 180f;
+            for (int li = 0; li < lateral.Length; li++)
+            {
+                for (int ei = 0; ei < elev.Length; ei++)
+                {
+                    float a = lateral[li] * Deg2Rad;
+                    float e = elev[ei] * Deg2Rad;
+                    Vector3 probeDir = Vector3.Normalize(
+                        dir + right * MathF.Tan(a) + realUp * MathF.Tan(e));
+                    float probeMax = dist * 1.8f;
+                    RayTraceResult hit;
+                    lock (_rayLock)
+                    {
+                        hit = _server.RequestRayTrace(sourcePos, probeDir, probeMax);
+                    }
+                    float clearDist = hit.DidHit ? hit.Distance : probeMax;
+                    // Soft contribution – no hard continue that creates lag
+                    float freeT = Math.Min(clearDist * 0.92f, dist * 0.95f);
+                    if (freeT < 0.05f) continue;
+                    Vector3 freePoint = sourcePos + probeDir * freeT;
+                    Vector3 finalVec = freePoint - listenerPos;
+                    float finalDist = finalVec.Length();
+                    if (finalDist < 0.05f) continue;
+                    Vector3 finalDir = finalVec / finalDist;
+                    Vector3 travelDir = -finalDir;
+                    RayTraceResult finalHit;
+                    lock (_rayLock)
+                    {
+                        finalHit = _server.RequestRayTrace(freePoint, travelDir, finalDist + 0.5f);
+                    }
+                    // Soft occlusion factor instead of binary reject
+                    float occlusionFactor = 1f;
+                    if (finalHit.DidHit && finalHit.Distance < finalDist - 0.1f)
+                    {
+                        float blocked = (finalDist - finalHit.Distance) / finalDist;
+                        occlusionFactor = Math.Clamp(1f - blocked * 1.5f, 0.05f, 1f);
+                    }
+                    float totalD = freeT + finalDist;
+                    float pathFactor = MathF.Sqrt(dist / Math.Max(totalD, 0.5f));
+                    float inten = pathFactor * 0.75f * occlusionFactor;
+                    if (inten < 0.01f) continue;
+                    float energy = inten * inten;
+                    totalEnergy += energy;
+                    weightedDir += finalDir * energy;
+                    if (inten > maxIntensity)
+                    {
+                        maxIntensity = inten;
+                        bestTotalDist = totalD;
+                    }
+                }
+            }
+            if (totalEnergy < 1e-8f)
+                return los;
+            Vector3 arrival = Vector3.Normalize(weightedDir);
+            float intensity = Math.Clamp(maxIntensity, 0.001f, 1f);
+            float lowPass = 2800f + 3200f * intensity;
+            return new SoundRayTraceResult
+            {
+                Intensity = intensity,
+                Delay = bestTotalDist / 34300f,
+                LowPassCutoff = lowPass,
+                ApparentDirection = arrival
+            };
         }
         // ------------------------------------------------------------------
         // Main-thread Update – only listener, smoothing, and ApplySpatial
@@ -303,9 +394,7 @@ namespace SiegeEngine.Systems
                 Vector3 targetDir = target.ApparentDirection.LengthSquared() > 0.0001f
                     ? Vector3.Normalize(target.ApparentDirection)
                     : Vector3.Normalize(reg.Source.Position - _listenerPosition);
-                float targetLowPass = target.ApparentDirection.LengthSquared() < 0.0001f
-                    ? 700f + 900f * targetIntensity // transmission – heavy muffling
-                    : 2800f + 3200f * targetIntensity; // diffracted – more highs
+                float targetLowPass = 2800f + 3200f * targetIntensity;
                 if (!reg.HasSmoothedState)
                 {
                     reg.SmoothedIntensity = targetIntensity;
@@ -320,15 +409,15 @@ namespace SiegeEngine.Systems
                     float aLp = 1f - MathF.Exp(-IntensitySmoothRate * deltaTime);
                     reg.SmoothedIntensity += (targetIntensity - reg.SmoothedIntensity) * aInt;
                     reg.SmoothedLowPass += (targetLowPass - reg.SmoothedLowPass) * aLp;
+                    // Always use continuous spherical interpolation – no special-case gate
                     float dot = Math.Clamp(Vector3.Dot(reg.SmoothedDirection, targetDir), -1f, 1f);
-                    if (dot > 0.9995f)
+                    float theta = MathF.Acos(dot);
+                    if (theta < 1e-5f)
                     {
-                        reg.SmoothedDirection = Vector3.Normalize(
-                            reg.SmoothedDirection + (targetDir - reg.SmoothedDirection) * aDir);
+                        reg.SmoothedDirection = targetDir;
                     }
                     else
                     {
-                        float theta = MathF.Acos(dot);
                         float sinTheta = MathF.Sin(theta);
                         float w1 = MathF.Sin((1f - aDir) * theta) / sinTheta;
                         float w2 = MathF.Sin(aDir * theta) / sinTheta;
@@ -383,97 +472,6 @@ namespace SiegeEngine.Systems
                 LowPassCutoff = lowPass,
                 ApparentDirection = Vector3.Zero
             };
-        }
-        private SoundRayTraceResult DiffractionProbeInternal(Vector3 sourcePos, Vector3 listenerPos, SoundRayTraceResult losFallback)
-        {
-            if (_server == null)
-                return losFallback;
-            Vector3 toListener = listenerPos - sourcePos;
-            float dist = toListener.Length();
-            if (dist < 0.5f)
-                return losFallback;
-            Vector3 dir = toListener / dist;
-            Vector3 up = Vector3.UnitZ;
-            Vector3 right = Vector3.Cross(dir, up);
-            if (right.LengthSquared() < 1e-6f)
-                right = Vector3.UnitX;
-            else
-                right = Vector3.Normalize(right);
-            Vector3 realUp = Vector3.Normalize(Vector3.Cross(right, dir));
-            // Denser fixed angular sampling for continuous ApparentDirection
-            float[] lateral = { -70f, -50f, -35f, -20f, -10f, 10f, 20f, 35f, 50f, 70f };
-            float[] elev = { -15f, 0f, 20f, 40f };
-            // Energy-weighted multi-path accumulation (continuous ApparentDirection)
-            float totalEnergy = 0f;
-            Vector3 weightedDir = Vector3.Zero;
-            float maxIntensity = 0f;
-            float bestTotalDist = float.MaxValue;
-            const float Deg2Rad = MathF.PI / 180f;
-            for (int li = 0; li < lateral.Length; li++)
-            {
-                for (int ei = 0; ei < elev.Length; ei++)
-                {
-                    float a = lateral[li] * Deg2Rad;
-                    float e = elev[ei] * Deg2Rad;
-                    Vector3 probeDir = Vector3.Normalize(
-                        dir + right * MathF.Tan(a) + realUp * MathF.Tan(e));
-                    float probeMax = dist * 1.8f;
-                    RayTraceResult hit;
-                    lock (_rayLock)
-                    {
-                        hit = _server.RequestRayTrace(sourcePos, probeDir, probeMax);
-                    }
-                    float clearDist = hit.DidHit ? hit.Distance : probeMax;
-                    if (clearDist < dist * 0.35f)
-                        continue;
-                    float freeT = Math.Min(clearDist * 0.92f, dist * 0.95f);
-                    Vector3 freePoint = sourcePos + probeDir * freeT;
-                    // Correct direction: from listener toward the free point (apparent arrival)
-                    // Matches SoundRayTraceResult contract and clear-LOS / GPU paths
-                    Vector3 finalVec = freePoint - listenerPos;
-                    float finalDist = finalVec.Length();
-                    if (finalDist < 0.1f)
-                        continue;
-                    Vector3 finalDir = finalVec / finalDist;
-                    // Final free-segment occlusion check still uses the travel direction
-                    Vector3 travelDir = -finalDir;
-                    RayTraceResult finalHit;
-                    lock (_rayLock)
-                    {
-                        finalHit = _server.RequestRayTrace(freePoint, travelDir, finalDist + 0.5f);
-                    }
-                    if (finalHit.DidHit && finalHit.Distance < finalDist - 0.15f)
-                        continue;
-                    float totalD = freeT + finalDist;
-                    float pathFactor = MathF.Sqrt(dist / Math.Max(totalD, 0.5f));
-                    float inten = pathFactor * 0.75f;
-                    if (inten < 0.08f)
-                        continue;
-                    // Energy weight (power)
-                    float energy = inten * inten;
-                    totalEnergy += energy;
-                    weightedDir += finalDir * energy;
-                    if (inten > maxIntensity)
-                    {
-                        maxIntensity = inten;
-                        bestTotalDist = totalD;
-                    }
-                }
-            }
-            if (totalEnergy > 1e-6f)
-            {
-                Vector3 arrival = Vector3.Normalize(weightedDir);
-                // Intensity continuous: energy-weighted mean biased toward strongest path
-                float intensity = Math.Clamp(maxIntensity * 0.65f + (totalEnergy / Math.Max(1, lateral.Length * elev.Length)) * 0.35f, 0.08f, 0.95f);
-                return new SoundRayTraceResult
-                {
-                    Intensity = intensity,
-                    Delay = bestTotalDist / 34300f,
-                    LowPassCutoff = 3200f + 2800f * intensity,
-                    ApparentDirection = arrival
-                };
-            }
-            return losFallback;
         }
         // ------------------------------------------------------------------
         // Playback / spatial application (main thread)
