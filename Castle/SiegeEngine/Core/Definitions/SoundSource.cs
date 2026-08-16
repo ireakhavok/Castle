@@ -1,4 +1,6 @@
-﻿using System.Numerics;
+﻿// Folder: SiegeEngine/Core/Definitions
+// File: SoundSource.cs
+using System.Numerics;
 
 namespace SiegeEngine.Core.Definitions
 {
@@ -10,5 +12,7 @@ namespace SiegeEngine.Core.Definitions
         public bool IsSensitive { get; set; }
         public string AudioClip { get; set; }
         public ulong SteamId { get; set; } = 0;
+        public bool Loop { get; set; } = false;
+        public float Volume { get; set; } = 1f;
     }
 }

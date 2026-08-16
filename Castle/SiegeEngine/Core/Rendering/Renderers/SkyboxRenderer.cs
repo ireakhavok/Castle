@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 
-namespace SiegeEngine.Core.Rendering
+namespace SiegeEngine.Core.Rendering.Renderers
 {
     public unsafe class SkyboxRenderer : IDisposable
     {

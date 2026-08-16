@@ -8,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace SiegeEngine.Core.Rendering
+namespace SiegeEngine.Core.Rendering.Renderers
 {
     public unsafe sealed class TerrainRenderer : IDisposable
     {

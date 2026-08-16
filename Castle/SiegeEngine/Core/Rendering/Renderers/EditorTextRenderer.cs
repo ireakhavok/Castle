@@ -4,7 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using SiegeEngine.Core.Rendering.ContextManagement;
-namespace SiegeEngine.Core.Rendering
+using SiegeEngine.Core.Rendering.Shaders;
+namespace SiegeEngine.Core.Rendering.Renderers
 {
     public unsafe class EditorTextRenderer : IDisposable
     {

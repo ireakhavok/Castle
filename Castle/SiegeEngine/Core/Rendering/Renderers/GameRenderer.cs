@@ -11,7 +11,7 @@ using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.ContextManagement;
 
-namespace SiegeEngine.Core.Rendering
+namespace SiegeEngine.Core.Rendering.Renderers
 {
     public unsafe class GameRenderer : Renderer
     {

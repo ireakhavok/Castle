@@ -1,6 +1,7 @@
-﻿// Folder: SiegeEngine/ContextManagement
+﻿// Folder: SiegeEngine/Core/Rendering/ContextManagement
 // File: OpenGLEnums.cs
 using Silk.NET.OpenGL;
+
 namespace SiegeEngine.Core.Rendering.ContextManagement
 {
     public class OpenGLEnums : AbstractRenderEnums
@@ -68,5 +69,20 @@ namespace SiegeEngine.Core.Rendering.ContextManagement
         public override int TextureCubeMapPositiveZ => (int)GLEnum.TextureCubeMapPositiveZ;
         public override int TextureCubeMapNegativeZ => (int)GLEnum.TextureCubeMapNegativeZ;
         public override int TextureWrapR => (int)GLEnum.TextureWrapR;
+
+        // Compute / SSBO support
+        public override int ComputeShader => (int)GLEnum.ComputeShader;
+        public override int ShaderStorageBuffer => (int)GLEnum.ShaderStorageBuffer;
+        public override int ShaderStorageBarrierBit => (int)GLEnum.ShaderStorageBarrierBit;
+        public override int MaxComputeWorkGroupCount => (int)GLEnum.MaxComputeWorkGroupCount;
+        public override int MaxComputeWorkGroupSize => (int)GLEnum.MaxComputeWorkGroupSize;
+        public override int MaxComputeWorkGroupInvocations => (int)GLEnum.MaxComputeWorkGroupInvocations;
+        public override int DynamicCopy => (int)GLEnum.DynamicCopy;
+        public override int StreamDraw => (int)GLEnum.StreamDraw;
+        public override int StreamRead => (int)GLEnum.StreamRead;
+        public override int StreamCopy => (int)GLEnum.StreamCopy;
+        public override int MapReadBit => (int)GLEnum.MapReadBit;
+        public override int MapWriteBit => (int)GLEnum.MapWriteBit;
+        public override int MapInvalidateBufferBit => (int)GLEnum.MapInvalidateBufferBit;
     }
 }

@@ -8,7 +8,7 @@ using SiegeEngine.Core.Rendering.Shaders;
 using System;
 using System.Numerics;
 
-namespace SiegeEngine.Core.Rendering
+namespace SiegeEngine.Core.Rendering.Renderers
 {
     public unsafe class ModelRenderer
     {

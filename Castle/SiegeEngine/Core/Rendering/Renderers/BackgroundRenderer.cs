@@ -1,12 +1,13 @@
 ﻿// Folder: SiegeEngine.Rendering
 // File: BackgroundRenderer.cs
 using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.Rendering.Shaders;
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Numerics;
 
-namespace SiegeEngine.Core.Rendering
+namespace SiegeEngine.Core.Rendering.Renderers
 {
     public unsafe class BackgroundRenderer : IDisposable
     {

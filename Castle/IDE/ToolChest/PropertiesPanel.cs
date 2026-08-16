@@ -18,7 +18,6 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI.Elements;
 using SiegeEngine.Core.Physics;
-
 namespace ToolChest
 {
     public class PropertiesPanel : BasePanel, IDataAwarePanel
@@ -84,14 +83,11 @@ namespace ToolChest
                 return false;
             }
         }
-
         private object _currentTarget;
         private string _activeSceneSettingsName;
-
         // Toggle state for Play / Pause
         private bool _previewIsPlaying;
         private int _previewEntityId = -1;
-
         public PropertiesPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -105,24 +101,20 @@ namespace ToolChest
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new PropertiesUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             LoadPropertiesUI();
         }
-
         public void FlushLiveSettings()
         {
             FlushSceneSettingsFromUI();
         }
-
         private void OnGenericEvent(GenericEvent e)
         {
             if (e.Hook == "OutlinerSelectionChanged")
@@ -149,7 +141,6 @@ namespace ToolChest
                 FlushSceneSettingsFromUI();
             }
         }
-
         private void OnEntitySelected(EntitySelectedEvent e)
         {
             if (e.SelectedEntityIds.Count > 0)
@@ -159,7 +150,6 @@ namespace ToolChest
             FlushSceneSettingsFromUI();
             RebuildPropertiesUI();
         }
-
         private void LoadPropertiesUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
@@ -170,7 +160,6 @@ namespace ToolChest
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         private void RebuildPropertiesUI()
         {
             FlushSceneSettingsFromUI();
@@ -186,7 +175,6 @@ namespace ToolChest
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         private void FlushSceneSettingsFromUI()
         {
             if (_uiOverlay == null || string.IsNullOrEmpty(_activeSceneSettingsName)) return;
@@ -222,7 +210,6 @@ namespace ToolChest
             ProjectSettings.Current.SetSceneSettings(_activeSceneSettingsName, settings);
             Console.WriteLine($"[PropertiesPanel] Flushed Scene Settings for '{_activeSceneSettingsName}': Avatar={settings.AvatarPackKey}, Animation={settings.AnimationPackKey}, Controller={settings.ControllerTypeName}, Camera={settings.CameraMode}, Spawns=[{string.Join(",", settings.PreferredSpawnPointIds ?? new List<int>())}]");
         }
-
         private string BuildPropertiesHtml(object obj)
         {
             if (obj == null) return "";
@@ -312,7 +299,6 @@ namespace ToolChest
             sb.Append("</details>");
             return sb.ToString();
         }
-
         private void BuildObjectHtml(StringBuilder sb, object obj, int entityId)
         {
             if (obj == null) return;
@@ -373,7 +359,6 @@ namespace ToolChest
                 }
             }
         }
-
         private void AppendEditableProperties(StringBuilder sb, object obj, int entityId)
         {
             if (obj == null) return;
@@ -415,7 +400,6 @@ namespace ToolChest
                 }
             }
         }
-
         public void ApplyComponentPropertyFromInput(InputElement input)
         {
             if (input == null) return;
@@ -424,10 +408,16 @@ namespace ToolChest
             string componentName = input.Attributes.GetValueOrDefault("data-component", "");
             string propertyName = input.Attributes.GetValueOrDefault("data-property", "");
             if (string.IsNullOrEmpty(componentName) || string.IsNullOrEmpty(propertyName)) return;
+
+            // Checkboxes report state via Checked, not Value (Value is often the static "on"/empty).
             string newValue = input.Value ?? "";
+            if (string.Equals(input.Attributes.GetValueOrDefault("type", ""), "checkbox", StringComparison.OrdinalIgnoreCase))
+            {
+                newValue = input.Checked ? "true" : "false";
+            }
+
             ApplyPropertyToEntity(entityId, componentName, propertyName, newValue);
         }
-
         private void ApplyComponentPropertyChange(HtmlElement elem)
         {
             if (elem == null) return;
@@ -444,7 +434,6 @@ namespace ToolChest
             if (string.IsNullOrEmpty(newValue)) return;
             ApplyPropertyToEntity(entityId, componentName, propertyName, newValue);
         }
-
         private void ApplyPropertyToEntity(int entityId, string componentName, string propertyName, string newValue)
         {
             var level = ProjectSettings.Current.CurrentLevel;
@@ -497,7 +486,6 @@ namespace ToolChest
                 Console.WriteLine($"[PropertiesPanel] Failed to set {componentName}.{propertyName}: {ex.Message}");
             }
         }
-
         private static object ConvertPropertyValue(Type targetType, string raw)
         {
             if (targetType == typeof(string)) return raw;
@@ -548,7 +536,6 @@ namespace ToolChest
             }
             return null;
         }
-
         public void HandleDataHook(string hook)
         {
             Console.WriteLine($"[PropertiesPanel] HandleDataHook: {hook}");
@@ -609,7 +596,6 @@ namespace ToolChest
                 return;
             }
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
             if (elem == null) return;
@@ -621,13 +607,11 @@ namespace ToolChest
                 RebuildPropertiesUI();
             }
         }
-
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new PropertiesPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Overlay });
         }
-
         public string DataKey => "PropertiesPanel";
         public JsonElement SavePanelState()
         {

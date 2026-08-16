@@ -4,9 +4,9 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
-using SiegeEngine.Core.Rendering;
 using System;
 using System.Numerics;
+using SiegeEngine.Core.Rendering.Renderers;
 namespace ToolChest
 {
     public class PlacementOverlay : ICustomOverlay

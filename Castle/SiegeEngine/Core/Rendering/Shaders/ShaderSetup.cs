@@ -1,9 +1,8 @@
 ﻿//SiegeEngine.Rendering/ShaderSetup.cs
 using Silk.NET.OpenGL;
-using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.Core.Rendering.ContextManagement;
 
-namespace SiegeEngine.Core.Rendering
+namespace SiegeEngine.Core.Rendering.Shaders
 {
     public static class ShaderSetup
     {

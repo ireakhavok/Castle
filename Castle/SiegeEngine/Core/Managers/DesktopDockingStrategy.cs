@@ -2,8 +2,8 @@
 // File: DesktopDockingStrategy.cs
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.Rendering.Renderers;
 using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;

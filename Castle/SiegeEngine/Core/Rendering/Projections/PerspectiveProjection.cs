@@ -4,7 +4,7 @@ using SiegeEngine.Core.Interfaces;
 using System;
 using System.Numerics;
 
-namespace SiegeEngine.Core.Rendering
+namespace SiegeEngine.Core.Rendering.Projections
 {
     public class PerspectiveProjection : IProjectionProvider
     {

@@ -6,7 +6,7 @@ using System.Numerics;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.ContextManagement;
 
-namespace SiegeEngine.Core.Rendering
+namespace SiegeEngine.Core.Rendering.Shaders
 {
     public class ShaderProgram : IDisposable
     {

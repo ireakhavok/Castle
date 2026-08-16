@@ -12,6 +12,7 @@ namespace SiegeEngine.Core.Definitions
         public bool IsSensitive { get; set; } = false;
         public bool Loop { get; set; } = false;
         public float Volume { get; set; } = 1f;
+        public bool AutoPlay { get; set; } = false;
 
         public object ToSerializableData()
         {
@@ -21,7 +22,8 @@ namespace SiegeEngine.Core.Definitions
                 Type = Type,
                 IsSensitive = IsSensitive,
                 Loop = Loop,
-                Volume = Volume
+                Volume = Volume,
+                AutoPlay = AutoPlay
             };
         }
 
@@ -36,6 +38,7 @@ namespace SiegeEngine.Core.Definitions
                 IsSensitive = s.IsSensitive;
                 Loop = s.Loop;
                 Volume = s.Volume;
+                AutoPlay = s.AutoPlay;
                 return;
             }
 
@@ -66,6 +69,8 @@ namespace SiegeEngine.Core.Definitions
                 Loop = loop.ValueKind == JsonValueKind.True;
             if (je.TryGetProperty("Volume", out var vol) && vol.TryGetSingle(out float v))
                 Volume = v;
+            if (je.TryGetProperty("AutoPlay", out var ap))
+                AutoPlay = ap.ValueKind == JsonValueKind.True;
         }
 
         private class SoundComponentData
@@ -75,6 +80,7 @@ namespace SiegeEngine.Core.Definitions
             public bool IsSensitive { get; set; }
             public bool Loop { get; set; }
             public float Volume { get; set; }
+            public bool AutoPlay { get; set; }
         }
     }
 }
