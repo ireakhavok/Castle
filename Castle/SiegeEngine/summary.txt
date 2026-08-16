@@ -2346,6 +2346,18 @@ Folder: Core
     - Methods:
       - void main()
       - void main()
+- File: WaveOutPlayer.cs
+  - Class: WAVEHDR (Namespace: SiegeEngine.Audio)
+    - Dependencies: System, System.Runtime.InteropServices
+    - Fields:
+      - IntPtr lpData
+      - uint dwBufferLength
+      - uint dwBytesRecorded
+      - IntPtr dwUser
+      - uint dwFlags
+      - uint dwLoops
+      - IntPtr lpNext
+      - IntPtr reserved
 - File: WeatherChangedEvent.cs
   - Class: WeatherChangedEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -2858,15 +2870,14 @@ Folder: Systems
       - void UpdateBlendedAnimation( ModelComponent modelComp,  float deltaTime, BlendedAnimationComponent blendComp)
         - Calls: Matrix3x3, Matrix4x4.Transpose, blendComp.Pack.CreateBlendStack, modelComp.Model.Skeleton.ComputeGlobalTransforms, stack.ComputeBlendedLocals
 - File: AudioSystem.cs
-  - Class: PlaybackInstance (Namespace: SiegeEngine.Systems)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.IO, System.Linq, System.Media, System.Numerics, System.Threading.Tasks
+  - Class: AutoPlayRegistration (Namespace: SiegeEngine.Systems)
+    - Dependencies: SiegeEngine.Audio, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, System, System.Collections.Generic, System.IO, System.Linq, System.Media, System.Numerics
     - Fields:
-      - SoundPlayer Player
-      - float Volume
-      - bool Loop
-      - bool IsMusic
-      - string Path
-      - bool IsPaused
+      - int EntityId
+      - SoundSource Source
+      - int Handle
+      - Vector3 LastListenerPos
+      - bool Started
 - File: ClientPredictionSystem.cs
   - Class: ClientPredictionSystem (Namespace: SiegeEngine.Systems)
     - Inherits: GameSystem
@@ -2945,6 +2956,7 @@ Folder: Systems
 
 Class Hierarchy:
 FileSelectedEvent
+SiegeEngine.Audio.WAVEHDR
 SiegeEngine.Core.AssetObjects.BaseNode
 SiegeEngine.Core.AssetObjects.FBXFileForest
 SiegeEngine.Core.AssetObjects.FBXNode
@@ -3166,11 +3178,11 @@ SiegeEngine.Scenes.StartingPoints.TwoDSandboxScene
 SiegeEngine.Scenes.TerrainScene
 SiegeEngine.Scenes.declaration
 SiegeEngine.Systems.AnimationSystem
+SiegeEngine.Systems.AutoPlayRegistration
 SiegeEngine.Systems.ClientPredictionSystem
 SiegeEngine.Systems.EnvironmentSystem
 SiegeEngine.Systems.GameSystem
 SiegeEngine.Systems.LightingSystem
-SiegeEngine.Systems.PlaybackInstance
 SiegeEngine.Systems.PlayerControllerSystem
 SwitchSceneEvent
 ThrowStatementNode
