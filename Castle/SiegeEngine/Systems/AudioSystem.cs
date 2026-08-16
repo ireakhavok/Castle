@@ -1,9 +1,13 @@
-﻿using System;
+﻿// Folder: SiegeEngine/Systems
+// File: AudioSystem.cs
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Media;
 using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
 using SiegeEngine.Audio;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -13,7 +17,6 @@ using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.Rendering.Compute;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.PlayerSystem;
-
 namespace SiegeEngine.Systems
 {
     public partial class AudioSystem : GameSystem
@@ -26,6 +29,11 @@ namespace SiegeEngine.Systems
         private const float SpatialMaxDistance = 300f;
         private const float MinAudibleVolume = 0.01f;
         private const int OcclusionUpdateIntervalFrames = 6;
+
+        // Stronger temporal smoothing (lower rate = longer time constant)
+        private const float IntensitySmoothRate = 2.8f;
+        private const float DirectionSmoothRate = 3.5f;
+
         private Vector3 _listenerPosition;
         private Vector3 _listenerForward = new Vector3(0, 1, 0);
         private bool _listenerValid;
@@ -47,12 +55,14 @@ namespace SiegeEngine.Systems
         private readonly Dictionary<string, MonoPcmClip> _soundBank =
             new Dictionary<string, MonoPcmClip>(StringComparer.OrdinalIgnoreCase);
 
+        private readonly object _probeLock = new object();
+        private volatile bool _probeBusy;
+
         private class MonoPcmClip
         {
             public short[] Samples;
             public int SampleRate;
         }
-
         private class PlaybackInstance
         {
             public SoundPlayer Player;
@@ -62,7 +72,6 @@ namespace SiegeEngine.Systems
             public string Path;
             public bool IsPaused;
         }
-
         private class AutoPlayRegistration
         {
             public int EntityId;
@@ -70,8 +79,14 @@ namespace SiegeEngine.Systems
             public int Handle = -1;
             public bool Started;
             public SoundRayTraceResult LastRayResult;
-        }
 
+            public volatile SoundRayTraceResult ProbeResult;
+            public volatile bool HasProbeResult;
+
+            public float SmoothedIntensity = 1f;
+            public Vector3 SmoothedDirection = Vector3.Zero;
+            public bool HasSmoothedState;
+        }
         public AudioSystem(IGameServer server, EventBus eventBus, bool isServer,
             ISoundValidator validationSystem = null, IRenderContext renderContext = null)
             : base(server)
@@ -83,11 +98,9 @@ namespace SiegeEngine.Systems
             if (!isServer)
                 _eventBus.Subscribe<SoundEvent>(OnSoundEvent);
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
-
             if (!isServer && renderContext != null)
                 InitializeGpuOcclusion(renderContext);
         }
-
         public void InitializeGpuOcclusion(IRenderContext renderContext)
         {
             if (_isServer || renderContext == null) return;
@@ -107,39 +120,32 @@ namespace SiegeEngine.Systems
                 _gpuOcclusionReady = false;
             }
         }
-
         public void SetHeightProvider(IHeightProvider provider)
         {
             _heightProvider = provider;
         }
-
         public void RebuildAcousticGeometry()
         {
             if (!_gpuOcclusionReady || _acousticGeometry == null || _server == null) return;
-
             if (_heightProvider == null &&
                 _server is ClientGameServerProxy proxy &&
                 proxy.PhysicsWorld != null)
             {
                 _heightProvider = proxy.PhysicsWorld.HeightProvider;
             }
-
             _acousticGeometry.Rebuild(_server.GetEntities(), _heightProvider);
             _geometryUploaded = true;
             Console.WriteLine($"AudioSystem: Acoustic geometry rebuilt – {_acousticGeometry.TriangleCount} triangles" +
                               (_heightProvider != null ? " (with heightmap)" : " (OBBs only)"));
         }
-
         public string CurrentTitle => _currentTitle;
         public bool HasPlaylist => _playlist.Count > 0;
         public int PlaylistCount => _playlist.Count;
-
         public void SetListenerPosition(Vector3 position)
         {
             _listenerPosition = position;
             _listenerValid = true;
         }
-
         public void SetListener(Vector3 position, Vector3 forward)
         {
             _listenerPosition = position;
@@ -147,11 +153,9 @@ namespace SiegeEngine.Systems
                 _listenerForward = Vector3.Normalize(forward);
             _listenerValid = true;
         }
-
         public override void Update(float deltaTime)
         {
             _frameCounter++;
-
             if (!_isServer && _server != null)
             {
                 foreach (var e in _server.GetEntities())
@@ -171,7 +175,6 @@ namespace SiegeEngine.Systems
                     }
                 }
             }
-
             if (!_isServer)
             {
                 if (!_autoPlayScanned)
@@ -179,10 +182,8 @@ namespace SiegeEngine.Systems
                     ScanAndRegisterAutoPlay();
                     _autoPlayScanned = true;
                 }
-
                 if (_gpuOcclusionReady && !_geometryUploaded && _server != null && _server.GetEntities().Count > 0)
                     RebuildAcousticGeometry();
-
                 if (_gpuOcclusionReady && _geometryUploaded && _heightProvider == null &&
                     _acousticGeometry != null && _acousticGeometry.TriangleCount <= 60 &&
                     _server is ClientGameServerProxy p && p.PhysicsWorld?.HeightProvider != null)
@@ -190,12 +191,10 @@ namespace SiegeEngine.Systems
                     _heightProvider = p.PhysicsWorld.HeightProvider;
                     RebuildAcousticGeometry();
                 }
-
                 if (_listenerValid)
-                    TickAutoPlayRegistrations();
+                    TickAutoPlayRegistrations(deltaTime);
             }
         }
-
         private void ScanAndRegisterAutoPlay()
         {
             if (_server == null) return;
@@ -239,11 +238,9 @@ namespace SiegeEngine.Systems
                 }
             }
         }
-
-        private void TickAutoPlayRegistrations()
+        private void TickAutoPlayRegistrations(float deltaTime)
         {
             bool doOcclusionUpdate = (_frameCounter % OcclusionUpdateIntervalFrames) == 0;
-
             for (int i = 0; i < _autoPlayRegs.Count; i++)
             {
                 var reg = _autoPlayRegs[i];
@@ -254,49 +251,211 @@ namespace SiegeEngine.Systems
                     if (phys != null)
                         reg.Source.Position = phys.Position;
                 }
-
                 if (!reg.Started)
                 {
                     if (!_listenerValid) continue;
-
                     reg.LastRayResult = PrimaryLosRay(reg.Source);
                     int h = PlaySpatial(reg.Source, reg.LastRayResult);
                     if (h >= 0)
                     {
                         reg.Handle = h;
                         reg.Started = true;
+                        reg.SmoothedIntensity = reg.LastRayResult?.Intensity ?? 1f;
+                        reg.SmoothedDirection = reg.LastRayResult?.ApparentDirection.LengthSquared() > 0.0001f
+                            ? reg.LastRayResult.ApparentDirection
+                            : (reg.Source.Position - _listenerPosition);
+                        reg.HasSmoothedState = true;
                     }
                     continue;
                 }
-
                 if (reg.Handle >= 0 && _spatialPlayers.TryGetValue(reg.Handle, out var player) && player.IsPlaying)
                 {
-                    if (_gpuOcclusionReady && _acousticRayTracer != null && _geometryUploaded &&
-                        _acousticGeometry != null && _acousticGeometry.TriangleCount > 0)
-                    {
-                        _acousticRayTracer.KickContinuousTrace(reg.Source.Position, _listenerPosition);
-                    }
-
                     if (doOcclusionUpdate)
                     {
                         SoundRayTraceResult losResult = PrimaryLosRay(reg.Source);
-                        SoundRayTraceResult gpuResult = null;
+                        SoundRayTraceResult target = losResult;
 
                         if (_gpuOcclusionReady && _acousticRayTracer != null && _geometryUploaded &&
                             _acousticGeometry != null && _acousticGeometry.TriangleCount > 0)
                         {
-                            gpuResult = _acousticRayTracer.ReadCompletedResult();
+                            _acousticRayTracer.KickContinuousTrace(reg.Source.Position, _listenerPosition);
+                            SoundRayTraceResult gpuResult = _acousticRayTracer.ReadCompletedResult();
+                            if (gpuResult != null && gpuResult.Intensity > target.Intensity &&
+                                gpuResult.ApparentDirection.LengthSquared() > 0.0001f)
+                                target = gpuResult;
                         }
 
-                        if (gpuResult != null && gpuResult.Intensity > losResult.Intensity)
-                            reg.LastRayResult = gpuResult;
-                        else
-                            reg.LastRayResult = losResult;
+                        if (reg.HasProbeResult && reg.ProbeResult != null &&
+                            reg.ProbeResult.Intensity > target.Intensity)
+                        {
+                            target = reg.ProbeResult;
+                        }
+
+                        reg.LastRayResult = target;
+
+                        if (losResult.Intensity < 0.95f && !_probeBusy)
+                        {
+                            Vector3 srcPos = reg.Source.Position;
+                            Vector3 lisPos = _listenerPosition;
+                            AutoPlayRegistration targetReg = reg;
+                            _probeBusy = true;
+                            Task.Run(() =>
+                            {
+                                try
+                                {
+                                    SoundRayTraceResult probe = DiffractionProbe(srcPos, lisPos, losResult);
+                                    targetReg.ProbeResult = probe;
+                                    targetReg.HasProbeResult = true;
+                                }
+                                finally
+                                {
+                                    _probeBusy = false;
+                                }
+                            });
+                        }
                     }
 
-                    ApplySpatialToPlayer(player, reg.Source, reg.LastRayResult);
+                    SoundRayTraceResult targetResult = reg.LastRayResult ?? new SoundRayTraceResult { Intensity = 1f };
+                    float targetIntensity = Math.Clamp(targetResult.Intensity, 0.001f, 1f);
+                    Vector3 targetDir = targetResult.ApparentDirection.LengthSquared() > 0.0001f
+                        ? Vector3.Normalize(targetResult.ApparentDirection)
+                        : Vector3.Normalize(reg.Source.Position - _listenerPosition);
+
+                    if (!reg.HasSmoothedState)
+                    {
+                        reg.SmoothedIntensity = targetIntensity;
+                        reg.SmoothedDirection = targetDir;
+                        reg.HasSmoothedState = true;
+                    }
+                    else
+                    {
+                        float aInt = 1f - MathF.Exp(-IntensitySmoothRate * deltaTime);
+                        float aDir = 1f - MathF.Exp(-DirectionSmoothRate * deltaTime);
+
+                        reg.SmoothedIntensity += (targetIntensity - reg.SmoothedIntensity) * aInt;
+
+                        float dot = Math.Clamp(Vector3.Dot(reg.SmoothedDirection, targetDir), -1f, 1f);
+                        if (dot > 0.9995f)
+                        {
+                            reg.SmoothedDirection = Vector3.Normalize(
+                                reg.SmoothedDirection + (targetDir - reg.SmoothedDirection) * aDir);
+                        }
+                        else
+                        {
+                            float theta = MathF.Acos(dot);
+                            float sinTheta = MathF.Sin(theta);
+                            float w1 = MathF.Sin((1f - aDir) * theta) / sinTheta;
+                            float w2 = MathF.Sin(aDir * theta) / sinTheta;
+                            reg.SmoothedDirection = Vector3.Normalize(
+                                reg.SmoothedDirection * w1 + targetDir * w2);
+                        }
+                    }
+
+                    var smoothed = new SoundRayTraceResult
+                    {
+                        Intensity = reg.SmoothedIntensity,
+                        Delay = targetResult.Delay,
+                        LowPassCutoff = targetResult.LowPassCutoff,
+                        ApparentDirection = reg.SmoothedDirection
+                    };
+
+                    ApplySpatialToPlayer(player, reg.Source, smoothed);
                 }
             }
+        }
+
+        private SoundRayTraceResult DiffractionProbe(Vector3 sourcePos, Vector3 listenerPos, SoundRayTraceResult losFallback)
+        {
+            if (_server == null)
+                return losFallback;
+
+            Vector3 toListener = listenerPos - sourcePos;
+            float dist = toListener.Length();
+            if (dist < 0.5f)
+                return losFallback;
+
+            Vector3 dir = toListener / dist;
+
+            Vector3 up = Vector3.UnitZ;
+            Vector3 right = Vector3.Cross(dir, up);
+            if (right.LengthSquared() < 1e-6f)
+                right = Vector3.UnitX;
+            else
+                right = Vector3.Normalize(right);
+            Vector3 realUp = Vector3.Normalize(Vector3.Cross(right, dir));
+
+            float[] lateral = { -50f, -30f, 30f, 50f };
+            float[] elev = { 0f, 35f };
+
+            float bestIntensity = 0f;
+            Vector3 bestArrival = Vector3.Zero;
+            float bestTotalDist = float.MaxValue;
+
+            const float Deg2Rad = MathF.PI / 180f;
+
+            for (int li = 0; li < lateral.Length; li++)
+            {
+                for (int ei = 0; ei < elev.Length; ei++)
+                {
+                    float a = lateral[li] * Deg2Rad;
+                    float e = elev[ei] * Deg2Rad;
+
+                    Vector3 probeDir = Vector3.Normalize(
+                        dir + right * MathF.Tan(a) + realUp * MathF.Tan(e));
+
+                    float probeMax = dist * 1.8f;
+                    RayTraceResult hit;
+                    lock (_probeLock)
+                    {
+                        hit = _server.RequestRayTrace(sourcePos, probeDir, probeMax);
+                    }
+
+                    float clearDist = hit.DidHit ? hit.Distance : probeMax;
+                    if (clearDist < dist * 0.35f)
+                        continue;
+
+                    float freeT = Math.Min(clearDist * 0.92f, dist * 0.95f);
+                    Vector3 freePoint = sourcePos + probeDir * freeT;
+
+                    Vector3 finalVec = listenerPos - freePoint;
+                    float finalDist = finalVec.Length();
+                    if (finalDist < 0.1f)
+                        continue;
+                    Vector3 finalDir = finalVec / finalDist;
+
+                    RayTraceResult finalHit;
+                    lock (_probeLock)
+                    {
+                        finalHit = _server.RequestRayTrace(freePoint, finalDir, finalDist + 0.5f);
+                    }
+                    if (finalHit.DidHit && finalHit.Distance < finalDist - 0.15f)
+                        continue;
+
+                    float totalD = freeT + finalDist;
+                    float pathFactor = MathF.Sqrt(dist / Math.Max(totalD, 0.5f));
+                    float inten = pathFactor * 0.75f;
+
+                    if (inten > bestIntensity)
+                    {
+                        bestIntensity = inten;
+                        bestArrival = finalDir;
+                        bestTotalDist = totalD;
+                    }
+                }
+            }
+
+            if (bestIntensity > 0.08f)
+            {
+                return new SoundRayTraceResult
+                {
+                    Intensity = Math.Clamp(bestIntensity, 0.08f, 0.95f),
+                    Delay = bestTotalDist / 34300f,
+                    LowPassCutoff = 3500f + 2500f * bestIntensity,
+                    ApparentDirection = bestArrival
+                };
+            }
+
+            return losFallback;
         }
 
         private void ApplySpatialToPlayer(WaveOutPlayer player, SoundSource source, SoundRayTraceResult rayResult)
@@ -306,15 +465,7 @@ namespace SiegeEngine.Systems
                 toSource = rayResult.ApparentDirection;
             else
                 toSource = source.Position - _listenerPosition;
-
             float distance = Vector3.Distance(source.Position, _listenerPosition);
-
-            // Free-field point source (physics):
-            //   intensity  ∝ 1/r²
-            //   pressure   ∝ 1/r
-            //   level (dB) = 20 · log10(r_ref / r)   → −6 dB per distance doubling
-            // WaveOutPlayer multiplies PCM samples (amplitude = pressure),
-            // therefore the linear gain must be the 1/r form.
             float geometric;
             if (!_listenerValid || distance <= SpatialRefDistance)
             {
@@ -327,10 +478,9 @@ namespace SiegeEngine.Systems
             else
             {
                 float gainDb = -20f * MathF.Log10(distance / SpatialRefDistance);
-                geometric = MathF.Pow(10f, gainDb / 20f);          // ≡ SpatialRefDistance / distance
+                geometric = MathF.Pow(10f, gainDb / 20f);
                 geometric = Math.Max(MinAudibleVolume, geometric);
             }
-
             float occlusion = 1f;
             float lowPass = 0f;
             if (rayResult != null)
@@ -339,9 +489,7 @@ namespace SiegeEngine.Systems
                 if (rayResult.LowPassCutoff > 0f)
                     lowPass = rayResult.LowPassCutoff;
             }
-
             float finalVolume = Math.Clamp(geometric * occlusion * Math.Max(source.Volume, 0.01f), 0f, 1f);
-
             Vector3 flatTo = new Vector3(toSource.X, toSource.Y, 0f);
             Vector3 flatFwd = new Vector3(_listenerForward.X, _listenerForward.Y, 0f);
             float pan = 0f;
@@ -354,12 +502,10 @@ namespace SiegeEngine.Systems
                 float angle = (float)Math.Atan2(cross, dot);
                 pan = -Math.Clamp((float)Math.Sin(angle), -1f, 1f);
             }
-
             float leftGain = (float)Math.Sqrt((1f - pan) * 0.5f);
             float rightGain = (float)Math.Sqrt((1f + pan) * 0.5f);
             player.UpdateSpatial(leftGain, rightGain, finalVolume, lowPass);
         }
-
         public int Play(string clipNameOrPath, float volume = 1f, bool loop = false, bool isMusic = false)
         {
             if (string.IsNullOrWhiteSpace(clipNameOrPath))
@@ -401,7 +547,6 @@ namespace SiegeEngine.Systems
                 return -1;
             }
         }
-
         public int PlaySpatial(SoundSource source, SoundRayTraceResult rayResult = null)
         {
             if (source == null) return -1;
@@ -441,7 +586,6 @@ namespace SiegeEngine.Systems
                 return -1;
             }
         }
-
         private MonoPcmClip GetOrLoadMonoClip(string resolvedPath)
         {
             if (_soundBank.TryGetValue(resolvedPath, out var existing))
@@ -489,7 +633,6 @@ namespace SiegeEngine.Systems
             Console.WriteLine($"AudioSystem: [Bank] loaded mono '{Path.GetFileName(resolvedPath)}' ({mono.Length} samples @ {sampleRate} Hz)");
             return clip;
         }
-
         private bool TryParseWav(byte[] audioData, out short channels, out int sampleRate, out short bitsPerSample,
                                  out int dataSize, out long dataStart, out short[] samples)
         {
@@ -536,7 +679,6 @@ namespace SiegeEngine.Systems
             }
             catch { return false; }
         }
-
         public void PlayFolder(string folderRelativeOrAbsolute, bool shuffle = false, bool loopPlaylist = true)
         {
             string folder = folderRelativeOrAbsolute;
@@ -571,21 +713,18 @@ namespace SiegeEngine.Systems
             _playlistIndex = 0;
             PlayCurrentPlaylistTrack(loopPlaylist);
         }
-
         public void Next(bool loopPlaylist = true)
         {
             if (_playlist.Count == 0) return;
             _playlistIndex = (_playlistIndex + 1) % _playlist.Count;
             PlayCurrentPlaylistTrack(loopPlaylist);
         }
-
         public void Previous(bool loopPlaylist = true)
         {
             if (_playlist.Count == 0) return;
             _playlistIndex = (_playlistIndex - 1 + _playlist.Count) % _playlist.Count;
             PlayCurrentPlaylistTrack(loopPlaylist);
         }
-
         private void PlayCurrentPlaylistTrack(bool loop)
         {
             if (_playlistIndex < 0 || _playlistIndex >= _playlist.Count) return;
@@ -595,7 +734,6 @@ namespace SiegeEngine.Systems
             _currentTitle = Path.GetFileNameWithoutExtension(path);
             Console.WriteLine($"AudioSystem: Playlist now playing '{_currentTitle}' ({_playlistIndex + 1}/{_playlist.Count})");
         }
-
         public void Stop(int handle)
         {
             if (_spatialPlayers.TryGetValue(handle, out var wave))
@@ -612,7 +750,6 @@ namespace SiegeEngine.Systems
                 if (handle == _currentPlaylistHandle) _currentPlaylistHandle = -1;
             }
         }
-
         public void StopAll(bool musicOnly = false)
         {
             if (!musicOnly)
@@ -632,7 +769,6 @@ namespace SiegeEngine.Systems
             }
             if (musicOnly) _currentPlaylistHandle = -1;
         }
-
         public void StopNonMusic()
         {
             foreach (var kv in _spatialPlayers.ToList())
@@ -648,7 +784,6 @@ namespace SiegeEngine.Systems
                     Stop(h);
             }
         }
-
         public void Pause(int handle)
         {
             if (_activePlayers.TryGetValue(handle, out var inst) && !inst.IsPaused)
@@ -656,12 +791,10 @@ namespace SiegeEngine.Systems
                 try { inst.Player?.Stop(); inst.IsPaused = true; } catch { }
             }
         }
-
         public void PauseCurrent()
         {
             if (_currentPlaylistHandle >= 0) Pause(_currentPlaylistHandle);
         }
-
         public void Resume(int handle)
         {
             if (_activePlayers.TryGetValue(handle, out var inst) && inst.IsPaused)
@@ -675,18 +808,15 @@ namespace SiegeEngine.Systems
                 catch { }
             }
         }
-
         public void ResumeCurrent()
         {
             if (_currentPlaylistHandle >= 0) Resume(_currentPlaylistHandle);
         }
-
         public void SetVolume(int handle, float volume)
         {
             if (_activePlayers.TryGetValue(handle, out var inst))
                 inst.Volume = Math.Clamp(volume, 0f, 1f);
         }
-
         private string ResolveSoundPath(string clipNameOrPath)
         {
             if (string.IsNullOrWhiteSpace(clipNameOrPath)) return null;
@@ -719,13 +849,11 @@ namespace SiegeEngine.Systems
             }
             return null;
         }
-
         private void OnGenericEvent(GenericEvent e)
         {
             if (e?.Hook == "StopSoundPreview")
                 StopNonMusic();
         }
-
         private void OnSoundEmission(SoundEmissionEvent e)
         {
             if (e?.Source == null) return;
@@ -753,7 +881,6 @@ namespace SiegeEngine.Systems
                 PlaySpatial(e.Source, result);
             }
         }
-
         private void OnSoundEvent(SoundEvent e)
         {
             if (e?.Source == null) return;
@@ -767,7 +894,6 @@ namespace SiegeEngine.Systems
             }
             PlaySpatial(e.Source, e.Result);
         }
-
         private SoundRayTraceResult PrimaryLosRay(SoundSource source)
         {
             if (_server == null || !_listenerValid)
@@ -800,12 +926,10 @@ namespace SiegeEngine.Systems
                 ApparentDirection = Vector3.Zero
             };
         }
-
         private byte[] ConvertMp3ToWav(byte[] mp3Data)
         {
             return null;
         }
-
         public void Dispose()
         {
             _acousticRayTracer?.Dispose();

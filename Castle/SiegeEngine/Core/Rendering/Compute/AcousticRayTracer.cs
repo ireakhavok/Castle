@@ -1,10 +1,11 @@
-﻿using System;
+﻿// Folder: SiegeEngine/Core/Rendering/Compute
+// File: AcousticRayTracer.cs
+using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Rendering.ContextManagement;
-
 namespace SiegeEngine.Core.Rendering.Compute
 {
     public unsafe class AcousticRayTracer : IDisposable
@@ -18,7 +19,6 @@ namespace SiegeEngine.Core.Rendering.Compute
             public float Pad;
             public Vector4 ArrivalDir;
         }
-
         private readonly IRenderContext _renderContext;
         private readonly ComputeProgram _program;
         private readonly ShaderStorageBuffer[] _resultSsbo = new ShaderStorageBuffer[2];
@@ -26,11 +26,9 @@ namespace SiegeEngine.Core.Rendering.Compute
         private bool _disposed;
         private int _writeIdx;
         private int _readIdx = 1;
-
-        private const int MaxRays = 64;
-        private const int ContinuousRays = 64;
+        private const int MaxRays = 96;
+        private const int ContinuousRays = 96;
         private const int ContinuousBounces = 4;
-
         public AcousticRayTracer(IRenderContext renderContext, AcousticGeometry geometry)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
@@ -43,7 +41,6 @@ namespace SiegeEngine.Core.Rendering.Compute
                 _resultSsbo[i].SetData((uint)resultBytes, null, _renderContext.Enums.DynamicCopy);
             }
         }
-
         public void KickContinuousTrace(Vector3 sourcePos, Vector3 listenerPos)
         {
             if (_disposed || _geometry.TriangleCount <= 0) return;
@@ -60,11 +57,10 @@ namespace SiegeEngine.Core.Rendering.Compute
             _program.SetUniform("uConeHalfAngle", 0.3927f);
             uint groups = (uint)((ContinuousRays + 63) / 64);
             _program.Dispatch(groups, 1, 1);
-            _program.Barrier();
+            // Non-blocking: no Barrier here. Double-buffer + latency keeps Map off the critical path.
             _readIdx = _writeIdx;
             _writeIdx = 1 - _writeIdx;
         }
-
         public SoundRayTraceResult ReadCompletedResult()
         {
             if (_disposed || _geometry.TriangleCount <= 0)
@@ -77,7 +73,8 @@ namespace SiegeEngine.Core.Rendering.Compute
                     ApparentDirection = Vector3.Zero
                 };
             }
-
+            // Barrier only at the moment we actually need the previous write visible.
+            _program.Barrier();
             GpuRayResult* results = (GpuRayResult*)_resultSsbo[_readIdx].Map(_renderContext.Enums.MapReadBit);
             if (results == null)
             {
@@ -89,13 +86,11 @@ namespace SiegeEngine.Core.Rendering.Compute
                     ApparentDirection = Vector3.Zero
                 };
             }
-
             float bestIntensity = 0f;
             float bestDelay = 0f;
             float bestLowPass = 0f;
             Vector3 bestArrival = Vector3.Zero;
             int valid = 0;
-
             for (int i = 0; i < ContinuousRays; i++)
             {
                 float inten = results[i].Intensity;
@@ -114,9 +109,7 @@ namespace SiegeEngine.Core.Rendering.Compute
                     }
                 }
             }
-
             _resultSsbo[_readIdx].Unmap();
-
             if (valid == 0)
             {
                 return new SoundRayTraceResult
@@ -127,10 +120,8 @@ namespace SiegeEngine.Core.Rendering.Compute
                     ApparentDirection = Vector3.Zero
                 };
             }
-
             if (bestArrival.LengthSquared() > 0.0001f)
                 bestArrival = Vector3.Normalize(bestArrival);
-
             return new SoundRayTraceResult
             {
                 Intensity = Math.Clamp(bestIntensity, 0.001f, 1f),
@@ -139,21 +130,18 @@ namespace SiegeEngine.Core.Rendering.Compute
                 ApparentDirection = bestArrival
             };
         }
-
         private static string BuildComputeShaderSource()
         {
             var sb = new StringBuilder();
             sb.Append(@"
 #version 430
 layout(local_size_x = 64) in;
-
 struct GpuTriangle
 {
     vec4 A;
     vec4 B;
     vec4 C;
 };
-
 struct GpuRayResult
 {
     float Intensity;
@@ -162,10 +150,8 @@ struct GpuRayResult
     float Pad;
     vec4 ArrivalDir;
 };
-
 layout(std430, binding = 0) readonly buffer TriangleBuffer { GpuTriangle triangles[]; };
 layout(std430, binding = 1) writeonly buffer ResultBuffer { GpuRayResult results[]; };
-
 uniform vec3 uSourcePos;
 uniform vec3 uListenerPos;
 uniform int uTriangleCount;
@@ -174,9 +160,7 @@ uniform int uMaxBounces;
 uniform float uListenerRadius;
 uniform float uMaxDistance;
 uniform float uConeHalfAngle;
-
 float hash(float n) { return fract(sin(n) * 43758.5453); }
-
 vec3 randomUnit(float seed)
 {
     float z = hash(seed) * 2.0 - 1.0;
@@ -184,15 +168,6 @@ vec3 randomUnit(float seed)
     float r = sqrt(max(0.0, 1.0 - z * z));
     return vec3(r * cos(a), r * sin(a), z);
 }
-
-vec3 lowerHemisphere(float seed)
-{
-    float z = hash(seed) * -1.0;
-    float a = hash(seed + 17.0) * 6.2831853;
-    float r = sqrt(max(0.0, 1.0 - z * z));
-    return vec3(r * cos(a), r * sin(a), z);
-}
-
 vec3 coneDir(vec3 axis, float seed)
 {
     vec3 a = normalize(axis);
@@ -206,7 +181,6 @@ vec3 coneDir(vec3 axis, float seed)
     float st = sin(theta);
     return normalize(a * cos(theta) + (tangent * cos(phi) + bitangent * sin(phi)) * st);
 }
-
 bool rayTriangle(vec3 origin, vec3 dir, vec3 a, vec3 b, vec3 c, out float t, out vec3 normal)
 {
     vec3 e1 = b - a;
@@ -227,7 +201,6 @@ bool rayTriangle(vec3 origin, vec3 dir, vec3 a, vec3 b, vec3 c, out float t, out
     if (dot(normal, dir) > 0.0) normal = -normal;
     return true;
 }
-
 bool closestHit(vec3 pos, vec3 dir, out float tHit, out vec3 nHit, out float dens)
 {
     tHit = uMaxDistance;
@@ -251,31 +224,17 @@ bool closestHit(vec3 pos, vec3 dir, out float tHit, out vec3 nHit, out float den
     }
     return hit;
 }
-
 void main()
 {
     uint idx = gl_GlobalInvocationID.x;
     if (idx >= uint(uRayCount)) return;
-
     vec3 toListener = uListenerPos - uSourcePos;
     float distSL = length(toListener);
-    vec3 primaryDir;
 
-    if (idx < 22u)
-    {
-        if (distSL > 0.01)
-            primaryDir = coneDir(normalize(toListener), float(idx) * 12.9898);
-        else
-            primaryDir = randomUnit(float(idx) * 12.9898);
-    }
-    else if (idx < 43u)
-    {
-        primaryDir = lowerHemisphere(float(idx) * 12.9898);
-    }
-    else
-    {
-        primaryDir = randomUnit(float(idx) * 12.9898);
-    }
+    // Uniform spherical sampling — every solid angle has equal probability.
+    // Removes the previous cone-to-listener and lower-hemisphere bias that
+    // failed when an occluder sits close to the source.
+    vec3 primaryDir = randomUnit(float(idx) * 12.9898);
 
     vec3 pos = uSourcePos;
     vec3 dir = primaryDir;
@@ -284,12 +243,10 @@ void main()
     float lowPass = 20000.0;
     bool reached = false;
     vec3 arrivalDir = vec3(0.0);
-
     for (int bounce = 0; bounce < uMaxBounces; bounce++)
     {
         vec3 toL = uListenerPos - pos;
         float dL = length(toL);
-
         if (dL < uListenerRadius)
         {
             distanceTravelled += dL;
@@ -297,7 +254,6 @@ void main()
             reached = true;
             break;
         }
-
         if (dL > 0.01)
         {
             vec3 losDir = toL / dL;
@@ -313,7 +269,6 @@ void main()
                 break;
             }
         }
-
         float tHit;
         vec3 nHit;
         float dens;
@@ -329,37 +284,27 @@ void main()
             }
             break;
         }
-
         distanceTravelled += tHit;
         if (distanceTravelled > uMaxDistance) break;
-
-        float R = clamp(exp(-0.12 * dens), 0.35, 0.92);
+        float R = clamp(exp(-0.08 * dens), 0.55, 0.95);
         intensity *= R;
-
         lowPass = min(lowPass, 18000.0 / (1.0 + dens * 1.2 + distanceTravelled * 0.008));
-
         vec3 hitPoint = pos + dir * tHit;
         vec3 reflected = reflect(dir, nHit);
         dir = coneDir(reflected, float(idx) * 7.13 + float(bounce) * 3.71);
         pos = hitPoint + dir * 0.02;
     }
-
     if (reached)
     {
         float D = max(distanceTravelled, 0.5);
-
-        // Relative path-length penalty in amplitude form (1/r law)
-        // so that intensity follows 1/r² relative to free field
         float pathFactor = 1.0;
         if (distSL > 0.01)
-            pathFactor = distSL / D;
+            pathFactor = sqrt(distSL / D);
         intensity *= pathFactor;
-
-        // Mild air absorption (relative)
-        intensity *= exp(-0.002 * D);
-
+        intensity *= exp(-0.0015 * D);
+        if (D < distSL * 1.8)
+            intensity = min(1.0, intensity * 1.25);
         intensity = clamp(intensity, 0.0, 1.0);
-
         results[idx].Intensity = intensity;
         results[idx].Delay = distanceTravelled / 34300.0;
         results[idx].LowPass = lowPass;
@@ -377,7 +322,6 @@ void main()
 ");
             return sb.ToString();
         }
-
         public void Dispose()
         {
             if (!_disposed)
