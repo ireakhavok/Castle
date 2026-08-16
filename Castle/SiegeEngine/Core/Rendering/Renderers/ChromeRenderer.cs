@@ -5,7 +5,7 @@ using SiegeEngine.Core.UI;
 using System;
 using System.Numerics;
 
-namespace SiegeEngine.Core.Rendering
+namespace SiegeEngine.Core.Rendering.Renderers
 {
     public sealed class ChromeRenderer : IDisposable
     {

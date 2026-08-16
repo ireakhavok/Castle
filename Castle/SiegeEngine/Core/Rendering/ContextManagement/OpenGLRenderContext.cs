@@ -239,17 +239,15 @@ namespace SiegeEngine.Core.Rendering.ContextManagement
         public void GetInteger(int pname, int* data) =>
             _gl.GetInteger((GetPName)pname, data);
 
-        // These two are optional for the first acoustic path and are
-        // deliberately left as no-ops / simple stubs so we do not depend
-        // on Silk.NET enum names that vary between versions.
         public void GetProgramInterface(uint program, int programInterface, int pname, out int param)
         {
-            param = 0;
+            // Silk.NET uses ProgramInterfacePName (not ProgramInterfaceParameterName).
+            _gl.GetProgramInterface(program, (ProgramInterface)programInterface, (ProgramInterfacePName)pname, out param);
         }
 
         public int GetProgramResourceLocation(uint program, int programInterface, string name)
         {
-            return -1;
+            return _gl.GetProgramResourceLocation(program, (ProgramInterface)programInterface, name);
         }
     }
 }

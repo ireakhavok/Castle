@@ -4,7 +4,7 @@ using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI;
 using System.Numerics;
 
-namespace SiegeEngine.Core.Rendering
+namespace SiegeEngine.Core.Rendering.Renderers
 {
     public sealed class LayeredUIRenderer
     {

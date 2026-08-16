@@ -8,7 +8,7 @@ using System.Drawing.Imaging;
 using System.Linq;
 using SiegeEngine.Core.Rendering.ContextManagement;
 
-namespace SiegeEngine.Core.Rendering
+namespace SiegeEngine.Core.Rendering.Renderers
 {
     public class SystemFontRenderer
     {

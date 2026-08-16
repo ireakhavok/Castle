@@ -1,8 +1,8 @@
 ﻿// Folder: SiegeEngine.UI
 // File: TrElement.cs
 using SiegeEngine.Core.Rendering.ContextManagement;
-using SiegeEngine.Core.Rendering;
 using System.Numerics;
+using SiegeEngine.Core.Rendering.Renderers;
 
 namespace SiegeEngine.Core.UI.Elements
 {

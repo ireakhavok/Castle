@@ -1,7 +1,6 @@
 ﻿// Folder: SiegeEngine.Core.UI
 // File: layout.cs
 using SiegeEngine.Core.Rendering.ContextManagement;
-using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI.Elements;
 using System;
 using System.Collections.Generic;
@@ -9,6 +8,7 @@ using System.IO;
 using System.Numerics;
 using System.Linq;
 using System.Text.RegularExpressions;
+using SiegeEngine.Core.Rendering.Renderers;
 namespace SiegeEngine.Core.UI
 {
     public partial class HtmlElement

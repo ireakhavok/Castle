@@ -8,6 +8,7 @@ using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.Rendering.Renderers;
 using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.Core.Terrain;
 using SiegeEngine.PlayerSystem;
