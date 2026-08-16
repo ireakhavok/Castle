@@ -9,8 +9,8 @@ using SiegeEngine.Core.Rendering.ContextManagement;
 namespace SiegeEngine.Core.Rendering.Compute
 {
     /// <summary>
-    /// Packs simplified Static collision proxies (OBB only) into a GPU SSBO
-    /// for acoustic multipath ray tracing.
+    /// Packs simplified Static collision proxies (OBB only) + a coarse heightmap proxy
+    /// into a GPU SSBO for acoustic multipath ray tracing.
     /// Full TriangleMeshShape meshes are never uploaded.
     /// </summary>
     public unsafe class AcousticGeometry : IDisposable
@@ -39,14 +39,18 @@ namespace SiegeEngine.Core.Rendering.Compute
         }
 
         /// <summary>
-        /// Rebuild from entities. Only Static bodies. OBB from Size only — never full mesh.
+        /// Rebuild from entities + optional heightmap.
+        /// Only Static bodies → OBB from Size.
+        /// Heightmap is tessellated at low resolution so ground bounce is possible
+        /// without repeating the previous 238 k-triangle stall.
         /// </summary>
-        public void Rebuild(IReadOnlyList<Entity> entities)
+        public void Rebuild(IReadOnlyList<Entity> entities, IHeightProvider heightProvider = null)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(AcousticGeometry));
             _cpuTris.Clear();
             if (entities == null) return;
 
+            // ── Static OBB path (unchanged) ──────────────────────────────────
             for (int i = 0; i < entities.Count; i++)
             {
                 var entity = entities[i];
@@ -61,6 +65,48 @@ namespace SiegeEngine.Core.Rendering.Compute
                     density = Math.Max(0.1f, physics.Mass / volume);
 
                 TessellateObb(physics.Position, physics.Rotation, physics.Size * 0.5f, density);
+            }
+
+            // ── Coarse heightmap proxy (X/Y horizontal, Z = height) ───────────
+            // Matches the coordinate convention used by HeightfieldShape.
+            if (heightProvider != null && heightProvider.Width > 1 && heightProvider.Height > 1)
+            {
+                const int maxCells = 48; // ~2 × 48 × 48 ≈ 4600 triangles worst-case
+                int stepX = Math.Max(1, heightProvider.Width / maxCells);
+                int stepY = Math.Max(1, heightProvider.Height / maxCells);
+
+                float sx = 1f, sy = 1f;
+                if (heightProvider is HeightmapAdapter ha)
+                {
+                    sx = ha.WorldScaleX;
+                    sy = ha.WorldScaleZ;
+                }
+
+                const float groundDensity = 1.8f;
+
+                for (int ix = 0; ix < heightProvider.Width - stepX; ix += stepX)
+                {
+                    for (int iy = 0; iy < heightProvider.Height - stepY; iy += stepY)
+                    {
+                        float x0 = ix * sx;
+                        float y0 = iy * sy;
+                        float x1 = (ix + stepX) * sx;
+                        float y1 = (iy + stepY) * sy;
+
+                        float h00 = heightProvider.GetInterpolatedHeight(x0, y0);
+                        float h10 = heightProvider.GetInterpolatedHeight(x1, y0);
+                        float h01 = heightProvider.GetInterpolatedHeight(x0, y1);
+                        float h11 = heightProvider.GetInterpolatedHeight(x1, y1);
+
+                        Vector3 p00 = new Vector3(x0, y0, h00);
+                        Vector3 p10 = new Vector3(x1, y0, h10);
+                        Vector3 p01 = new Vector3(x0, y1, h01);
+                        Vector3 p11 = new Vector3(x1, y1, h11);
+
+                        AddTri(p00, p10, p11, groundDensity);
+                        AddTri(p00, p11, p01, groundDensity);
+                    }
+                }
             }
 
             Upload();

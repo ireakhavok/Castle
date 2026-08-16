@@ -8,6 +8,8 @@ using SiegeEngine.Audio;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Networking;
+using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.Rendering.Compute;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.PlayerSystem;
@@ -21,8 +23,8 @@ namespace SiegeEngine.Systems
         private readonly ISoundValidator _validationSystem;
         private readonly Random _random = new Random();
         private const float SpatialRefDistance = 5.0f;
-        private const float SpatialMaxDistance = 250f;
-        private const float MinAudibleVolume = 0.03f;
+        private const float SpatialMaxDistance = 300f;
+        private const float MinAudibleVolume = 0.01f;
         private const int OcclusionUpdateIntervalFrames = 6;
         private Vector3 _listenerPosition;
         private Vector3 _listenerForward = new Vector3(0, 1, 0);
@@ -41,6 +43,7 @@ namespace SiegeEngine.Systems
         private AcousticGeometry _acousticGeometry;
         private AcousticRayTracer _acousticRayTracer;
         private bool _gpuOcclusionReady;
+        private IHeightProvider _heightProvider;
         private readonly Dictionary<string, MonoPcmClip> _soundBank =
             new Dictionary<string, MonoPcmClip>(StringComparer.OrdinalIgnoreCase);
 
@@ -105,12 +108,26 @@ namespace SiegeEngine.Systems
             }
         }
 
+        public void SetHeightProvider(IHeightProvider provider)
+        {
+            _heightProvider = provider;
+        }
+
         public void RebuildAcousticGeometry()
         {
             if (!_gpuOcclusionReady || _acousticGeometry == null || _server == null) return;
-            _acousticGeometry.Rebuild(_server.GetEntities());
+
+            if (_heightProvider == null &&
+                _server is ClientGameServerProxy proxy &&
+                proxy.PhysicsWorld != null)
+            {
+                _heightProvider = proxy.PhysicsWorld.HeightProvider;
+            }
+
+            _acousticGeometry.Rebuild(_server.GetEntities(), _heightProvider);
             _geometryUploaded = true;
-            Console.WriteLine($"AudioSystem: Acoustic geometry rebuilt – {_acousticGeometry.TriangleCount} triangles.");
+            Console.WriteLine($"AudioSystem: Acoustic geometry rebuilt – {_acousticGeometry.TriangleCount} triangles" +
+                              (_heightProvider != null ? " (with heightmap)" : " (OBBs only)"));
         }
 
         public string CurrentTitle => _currentTitle;
@@ -165,6 +182,14 @@ namespace SiegeEngine.Systems
 
                 if (_gpuOcclusionReady && !_geometryUploaded && _server != null && _server.GetEntities().Count > 0)
                     RebuildAcousticGeometry();
+
+                if (_gpuOcclusionReady && _geometryUploaded && _heightProvider == null &&
+                    _acousticGeometry != null && _acousticGeometry.TriangleCount <= 60 &&
+                    _server is ClientGameServerProxy p && p.PhysicsWorld?.HeightProvider != null)
+                {
+                    _heightProvider = p.PhysicsWorld.HeightProvider;
+                    RebuildAcousticGeometry();
+                }
 
                 if (_listenerValid)
                     TickAutoPlayRegistrations();
@@ -254,19 +279,19 @@ namespace SiegeEngine.Systems
 
                     if (doOcclusionUpdate)
                     {
+                        SoundRayTraceResult losResult = PrimaryLosRay(reg.Source);
+                        SoundRayTraceResult gpuResult = null;
+
                         if (_gpuOcclusionReady && _acousticRayTracer != null && _geometryUploaded &&
                             _acousticGeometry != null && _acousticGeometry.TriangleCount > 0)
                         {
-                            var gpuResult = _acousticRayTracer.ReadCompletedResult();
-                            if (gpuResult != null && gpuResult.Intensity < 0.99f)
-                                reg.LastRayResult = gpuResult;
-                            else
-                                reg.LastRayResult = PrimaryLosRay(reg.Source);
+                            gpuResult = _acousticRayTracer.ReadCompletedResult();
                         }
+
+                        if (gpuResult != null && gpuResult.Intensity > losResult.Intensity)
+                            reg.LastRayResult = gpuResult;
                         else
-                        {
-                            reg.LastRayResult = PrimaryLosRay(reg.Source);
-                        }
+                            reg.LastRayResult = losResult;
                     }
 
                     ApplySpatialToPlayer(player, reg.Source, reg.LastRayResult);
@@ -278,32 +303,39 @@ namespace SiegeEngine.Systems
         {
             Vector3 toSource;
             if (rayResult != null && rayResult.ApparentDirection.LengthSquared() > 0.0001f)
-            {
-                // Multipath found an alternate route — pan toward the arrival direction (door/opening).
                 toSource = rayResult.ApparentDirection;
-            }
             else
-            {
                 toSource = source.Position - _listenerPosition;
-            }
 
             float distance = Vector3.Distance(source.Position, _listenerPosition);
+
+            // Free-field point source (physics):
+            //   intensity  ∝ 1/r²
+            //   pressure   ∝ 1/r
+            //   level (dB) = 20 · log10(r_ref / r)   → −6 dB per distance doubling
+            // WaveOutPlayer multiplies PCM samples (amplitude = pressure),
+            // therefore the linear gain must be the 1/r form.
             float geometric;
             if (!_listenerValid || distance <= SpatialRefDistance)
+            {
                 geometric = 1f;
+            }
             else if (distance >= SpatialMaxDistance)
+            {
                 geometric = MinAudibleVolume;
+            }
             else
             {
-                float ratio = SpatialRefDistance / distance;
-                geometric = Math.Max(MinAudibleVolume, ratio * ratio);
+                float gainDb = -20f * MathF.Log10(distance / SpatialRefDistance);
+                geometric = MathF.Pow(10f, gainDb / 20f);          // ≡ SpatialRefDistance / distance
+                geometric = Math.Max(MinAudibleVolume, geometric);
             }
 
             float occlusion = 1f;
             float lowPass = 0f;
             if (rayResult != null)
             {
-                occlusion = Math.Clamp(rayResult.Intensity, 0.20f, 1f);
+                occlusion = Math.Clamp(rayResult.Intensity, 0.001f, 1f);
                 if (rayResult.LowPassCutoff > 0f)
                     lowPass = rayResult.LowPassCutoff;
             }
@@ -757,8 +789,9 @@ namespace SiegeEngine.Systems
                 };
             }
             float dens = result.Material != null ? Math.Max(0.1f, result.Material.Density) : 1.0f;
-            float intensity = Math.Clamp(0.55f / dens, 0.25f, 0.55f);
-            float lowPass = 1200f + 3000f / dens;
+            float intensity = MathF.Exp(-0.8f * dens);
+            intensity = Math.Clamp(intensity, 0.001f, 0.95f);
+            float lowPass = 800f + 4000f / dens;
             return new SoundRayTraceResult
             {
                 Intensity = intensity,
