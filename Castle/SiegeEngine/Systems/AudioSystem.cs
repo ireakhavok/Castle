@@ -28,11 +28,13 @@ namespace SiegeEngine.Systems
         private const float SpatialRefDistance = 5.0f;
         private const float SpatialMaxDistance = 300f;
         private const float MinAudibleVolume = 0.01f;
-        private const int OcclusionUpdateIntervalFrames = 6;
 
-        // Stronger temporal smoothing (lower rate = longer time constant)
-        private const float IntensitySmoothRate = 2.8f;
-        private const float DirectionSmoothRate = 3.5f;
+        // Modest throttle for expensive ray work (keeps FPS high)
+        private const int OcclusionUpdateIntervalFrames = 4;
+
+        // Strong continuous smoothing of the applied result
+        private const float IntensitySmoothRate = 12.0f;
+        private const float DirectionSmoothRate = 14.0f;
 
         private Vector3 _listenerPosition;
         private Vector3 _listenerForward = new Vector3(0, 1, 0);
@@ -85,6 +87,7 @@ namespace SiegeEngine.Systems
 
             public float SmoothedIntensity = 1f;
             public Vector3 SmoothedDirection = Vector3.Zero;
+            public float SmoothedLowPass = 12000f;
             public bool HasSmoothedState;
         }
         public AudioSystem(IGameServer server, EventBus eventBus, bool isServer,
@@ -112,7 +115,7 @@ namespace SiegeEngine.Systems
                 _acousticRayTracer = new AcousticRayTracer(renderContext, _acousticGeometry);
                 _gpuOcclusionReady = true;
                 _geometryUploaded = false;
-                Console.WriteLine("AudioSystem: GPU occlusion infrastructure ready (double-buffered continuous path).");
+                Console.WriteLine("AudioSystem: GPU occlusion infrastructure ready (currently disabled for performance).");
             }
             catch (Exception ex)
             {
@@ -241,6 +244,7 @@ namespace SiegeEngine.Systems
         private void TickAutoPlayRegistrations(float deltaTime)
         {
             bool doOcclusionUpdate = (_frameCounter % OcclusionUpdateIntervalFrames) == 0;
+
             for (int i = 0; i < _autoPlayRegs.Count; i++)
             {
                 var reg = _autoPlayRegs[i];
@@ -264,6 +268,9 @@ namespace SiegeEngine.Systems
                         reg.SmoothedDirection = reg.LastRayResult?.ApparentDirection.LengthSquared() > 0.0001f
                             ? reg.LastRayResult.ApparentDirection
                             : (reg.Source.Position - _listenerPosition);
+                        reg.SmoothedLowPass = reg.LastRayResult?.LowPassCutoff > 0f
+                            ? reg.LastRayResult.LowPassCutoff
+                            : 12000f;
                         reg.HasSmoothedState = true;
                     }
                     continue;
@@ -272,19 +279,11 @@ namespace SiegeEngine.Systems
                 {
                     if (doOcclusionUpdate)
                     {
+                        // Cheap PrimaryLos only (GPU path disabled)
                         SoundRayTraceResult losResult = PrimaryLosRay(reg.Source);
                         SoundRayTraceResult target = losResult;
 
-                        if (_gpuOcclusionReady && _acousticRayTracer != null && _geometryUploaded &&
-                            _acousticGeometry != null && _acousticGeometry.TriangleCount > 0)
-                        {
-                            _acousticRayTracer.KickContinuousTrace(reg.Source.Position, _listenerPosition);
-                            SoundRayTraceResult gpuResult = _acousticRayTracer.ReadCompletedResult();
-                            if (gpuResult != null && gpuResult.Intensity > target.Intensity &&
-                                gpuResult.ApparentDirection.LengthSquared() > 0.0001f)
-                                target = gpuResult;
-                        }
-
+                        // Prefer background probe when it has higher intensity
                         if (reg.HasProbeResult && reg.ProbeResult != null &&
                             reg.ProbeResult.Intensity > target.Intensity)
                         {
@@ -293,6 +292,7 @@ namespace SiegeEngine.Systems
 
                         reg.LastRayResult = target;
 
+                        // Schedule background diffraction probe when blocked
                         if (losResult.Intensity < 0.95f && !_probeBusy)
                         {
                             Vector3 srcPos = reg.Source.Position;
@@ -315,24 +315,34 @@ namespace SiegeEngine.Systems
                         }
                     }
 
+                    // Continuous strong smoothing every frame toward the current target
                     SoundRayTraceResult targetResult = reg.LastRayResult ?? new SoundRayTraceResult { Intensity = 1f };
                     float targetIntensity = Math.Clamp(targetResult.Intensity, 0.001f, 1f);
                     Vector3 targetDir = targetResult.ApparentDirection.LengthSquared() > 0.0001f
                         ? Vector3.Normalize(targetResult.ApparentDirection)
                         : Vector3.Normalize(reg.Source.Position - _listenerPosition);
 
+                    float targetLowPass;
+                    if (targetResult.ApparentDirection.LengthSquared() < 0.0001f)
+                        targetLowPass = 700f + 900f * targetIntensity;
+                    else
+                        targetLowPass = 2800f + 3200f * targetIntensity;
+
                     if (!reg.HasSmoothedState)
                     {
                         reg.SmoothedIntensity = targetIntensity;
                         reg.SmoothedDirection = targetDir;
+                        reg.SmoothedLowPass = targetLowPass;
                         reg.HasSmoothedState = true;
                     }
                     else
                     {
                         float aInt = 1f - MathF.Exp(-IntensitySmoothRate * deltaTime);
                         float aDir = 1f - MathF.Exp(-DirectionSmoothRate * deltaTime);
+                        float aLp = 1f - MathF.Exp(-IntensitySmoothRate * deltaTime);
 
                         reg.SmoothedIntensity += (targetIntensity - reg.SmoothedIntensity) * aInt;
+                        reg.SmoothedLowPass += (targetLowPass - reg.SmoothedLowPass) * aLp;
 
                         float dot = Math.Clamp(Vector3.Dot(reg.SmoothedDirection, targetDir), -1f, 1f);
                         if (dot > 0.9995f)
@@ -355,7 +365,7 @@ namespace SiegeEngine.Systems
                     {
                         Intensity = reg.SmoothedIntensity,
                         Delay = targetResult.Delay,
-                        LowPassCutoff = targetResult.LowPassCutoff,
+                        LowPassCutoff = reg.SmoothedLowPass,
                         ApparentDirection = reg.SmoothedDirection
                     };
 
@@ -450,7 +460,7 @@ namespace SiegeEngine.Systems
                 {
                     Intensity = Math.Clamp(bestIntensity, 0.08f, 0.95f),
                     Delay = bestTotalDist / 34300f,
-                    LowPassCutoff = 3500f + 2500f * bestIntensity,
+                    LowPassCutoff = 3200f + 2800f * bestIntensity,
                     ApparentDirection = bestArrival
                 };
             }
@@ -917,7 +927,7 @@ namespace SiegeEngine.Systems
             float dens = result.Material != null ? Math.Max(0.1f, result.Material.Density) : 1.0f;
             float intensity = MathF.Exp(-0.8f * dens);
             intensity = Math.Clamp(intensity, 0.001f, 0.95f);
-            float lowPass = 800f + 4000f / dens;
+            float lowPass = 600f + 800f / dens;
             return new SoundRayTraceResult
             {
                 Intensity = intensity,
