@@ -56,7 +56,7 @@ namespace SiegeEngine.Core.Rendering.Compute
 
         /// <summary>
         /// Map the entire buffer for reading or writing.
-        /// Caller must call Unmap when finished.
+        /// Prefer MapRange for SSBO readback after compute.
         /// </summary>
         public void* Map(int access)
         {

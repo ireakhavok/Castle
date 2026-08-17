@@ -1,11 +1,12 @@
-﻿using System;
+﻿// Folder: SiegeEngine/Core/Rendering/Compute
+// File: AcousticGeometry.cs
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.Rendering.ContextManagement;
-
 namespace SiegeEngine.Core.Rendering.Compute
 {
     /// <summary>
@@ -22,22 +23,20 @@ namespace SiegeEngine.Core.Rendering.Compute
             public Vector4 B;
             public Vector4 C; // .w = material density
         }
-
         private readonly IRenderContext _renderContext;
         private readonly ShaderStorageBuffer _ssbo;
         private readonly List<GpuTriangle> _cpuTris = new List<GpuTriangle>(1024);
         private bool _disposed;
         private int _lastTriangleCount;
-
+        private volatile uint _geometryVersion;
         public int TriangleCount => _lastTriangleCount;
         public ShaderStorageBuffer Buffer => _ssbo;
-
+        public uint GeometryVersion => _geometryVersion;
         public AcousticGeometry(IRenderContext renderContext)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _ssbo = new ShaderStorageBuffer(_renderContext);
         }
-
         /// <summary>
         /// Rebuild from entities + optional heightmap.
         /// Only Static bodies → OBB from Size.
@@ -49,7 +48,6 @@ namespace SiegeEngine.Core.Rendering.Compute
             if (_disposed) throw new ObjectDisposedException(nameof(AcousticGeometry));
             _cpuTris.Clear();
             if (entities == null) return;
-
             // ── Static OBB path (unchanged) ──────────────────────────────────
             for (int i = 0; i < entities.Count; i++)
             {
@@ -58,15 +56,12 @@ namespace SiegeEngine.Core.Rendering.Compute
                 var physics = entity.GetComponent<PhysicsComponent>();
                 if (physics == null || !physics.CollisionEnabled) continue;
                 if (physics.BodyType != BodyType.Static) continue;
-
                 float density = 1.0f;
                 float volume = physics.Size.X * physics.Size.Y * physics.Size.Z;
                 if (volume > 1e-6f)
                     density = Math.Max(0.1f, physics.Mass / volume);
-
                 TessellateObb(physics.Position, physics.Rotation, physics.Size * 0.5f, density);
             }
-
             // ── Coarse heightmap proxy (X/Y horizontal, Z = height) ───────────
             // Matches the coordinate convention used by HeightfieldShape.
             if (heightProvider != null && heightProvider.Width > 1 && heightProvider.Height > 1)
@@ -74,16 +69,13 @@ namespace SiegeEngine.Core.Rendering.Compute
                 const int maxCells = 48; // ~2 × 48 × 48 ≈ 4600 triangles worst-case
                 int stepX = Math.Max(1, heightProvider.Width / maxCells);
                 int stepY = Math.Max(1, heightProvider.Height / maxCells);
-
                 float sx = 1f, sy = 1f;
                 if (heightProvider is HeightmapAdapter ha)
                 {
                     sx = ha.WorldScaleX;
                     sy = ha.WorldScaleZ;
                 }
-
                 const float groundDensity = 1.8f;
-
                 for (int ix = 0; ix < heightProvider.Width - stepX; ix += stepX)
                 {
                     for (int iy = 0; iy < heightProvider.Height - stepY; iy += stepY)
@@ -92,26 +84,21 @@ namespace SiegeEngine.Core.Rendering.Compute
                         float y0 = iy * sy;
                         float x1 = (ix + stepX) * sx;
                         float y1 = (iy + stepY) * sy;
-
                         float h00 = heightProvider.GetInterpolatedHeight(x0, y0);
                         float h10 = heightProvider.GetInterpolatedHeight(x1, y0);
                         float h01 = heightProvider.GetInterpolatedHeight(x0, y1);
                         float h11 = heightProvider.GetInterpolatedHeight(x1, y1);
-
                         Vector3 p00 = new Vector3(x0, y0, h00);
                         Vector3 p10 = new Vector3(x1, y0, h10);
                         Vector3 p01 = new Vector3(x0, y1, h01);
                         Vector3 p11 = new Vector3(x1, y1, h11);
-
                         AddTri(p00, p10, p11, groundDensity);
                         AddTri(p00, p11, p01, groundDensity);
                     }
                 }
             }
-
             Upload();
         }
-
         private void TessellateObb(Vector3 position, Quaternion rotation, Vector3 halfExtents, float density)
         {
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
@@ -119,7 +106,6 @@ namespace SiegeEngine.Core.Rendering.Compute
             Vector3 hx = Vector3.Transform(new Vector3(halfExtents.X, 0, 0), rot);
             Vector3 hy = Vector3.Transform(new Vector3(0, halfExtents.Y, 0), rot);
             Vector3 hz = Vector3.Transform(new Vector3(0, 0, halfExtents.Z), rot);
-
             Vector3[] c = new Vector3[8];
             c[0] = centre - hx - hy - hz;
             c[1] = centre + hx - hy - hz;
@@ -129,7 +115,6 @@ namespace SiegeEngine.Core.Rendering.Compute
             c[5] = centre + hx - hy + hz;
             c[6] = centre + hx + hy + hz;
             c[7] = centre - hx + hy + hz;
-
             AddTri(c[0], c[1], c[2], density);
             AddTri(c[0], c[2], c[3], density);
             AddTri(c[5], c[4], c[7], density);
@@ -143,7 +128,6 @@ namespace SiegeEngine.Core.Rendering.Compute
             AddTri(c[4], c[5], c[1], density);
             AddTri(c[4], c[1], c[0], density);
         }
-
         private void AddTri(Vector3 a, Vector3 b, Vector3 c, float density)
         {
             _cpuTris.Add(new GpuTriangle
@@ -153,7 +137,6 @@ namespace SiegeEngine.Core.Rendering.Compute
                 C = new Vector4(c, density)
             });
         }
-
         private void Upload()
         {
             _lastTriangleCount = _cpuTris.Count;
@@ -162,14 +145,13 @@ namespace SiegeEngine.Core.Rendering.Compute
                 _cpuTris.Add(new GpuTriangle());
                 _lastTriangleCount = 0;
             }
-
             int byteSize = _cpuTris.Count * sizeof(GpuTriangle);
             fixed (GpuTriangle* ptr = _cpuTris.ToArray())
             {
                 _ssbo.SetData((uint)byteSize, ptr, _renderContext.Enums.DynamicDraw);
             }
+            _geometryVersion++;
         }
-
         public void Dispose()
         {
             if (!_disposed)

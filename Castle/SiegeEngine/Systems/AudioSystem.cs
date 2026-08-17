@@ -55,6 +55,8 @@ namespace SiegeEngine.Systems
         private Thread _audioWorker;
         private volatile bool _workerRunning;
         private readonly object _rayLock = new object(); // protects RequestRayTrace
+        // Round-robin index for throttled GPU kicks (main thread only)
+        private int _gpuKickRoundRobin;
         private class MonoPcmClip
         {
             public short[] Samples;
@@ -83,6 +85,12 @@ namespace SiegeEngine.Systems
             public Vector3 SmoothedDirection = Vector3.Zero;
             public float SmoothedLowPass = 12000f;
             public bool HasSmoothedState;
+            // GPU residual slot – written exclusively by main, read by worker (zero-alloc, versioned)
+            public float GpuResidualIntensity;
+            public float GpuLowPass;
+            public Vector3 GpuApparentDirection;
+            public volatile uint GpuVersion;
+            public volatile bool HasGpuResult;
         }
         public AudioSystem(IGameServer server, EventBus eventBus, bool isServer,
             ISoundValidator validationSystem = null, IRenderContext renderContext = null)
@@ -194,7 +202,7 @@ namespace SiegeEngine.Systems
                             }
                             Vector3 srcPos = reg.Source.Position;
                             // Continuous energy-weighted multi-path (no hard switches, no lag gates)
-                            SoundRayTraceResult result = ComputeContinuousResult(srcPos, listenerPos);
+                            SoundRayTraceResult result = ComputeContinuousResult(srcPos, listenerPos, reg);
                             // Mutate pre-allocated slot (zero allocation)
                             reg.WorkerResult.Intensity = result.Intensity;
                             reg.WorkerResult.Delay = result.Delay;
@@ -215,14 +223,37 @@ namespace SiegeEngine.Systems
         }
         // Pure continuous energy-weighted combination of PrimaryLos + all successful diffraction probes.
         // No intensity membership gates that cause lag or sticky behaviour.
-        private SoundRayTraceResult ComputeContinuousResult(Vector3 sourcePos, Vector3 listenerPos)
+        // GPU residual is used ONLY when Primary LOS is blocked and a matching versioned result exists.
+        private SoundRayTraceResult ComputeContinuousResult(Vector3 sourcePos, Vector3 listenerPos, AutoPlayRegistration reg)
         {
             SoundRayTraceResult los = PrimaryLosRayInternal(sourcePos, listenerPos);
             Vector3 toListener = listenerPos - sourcePos;
             float dist = toListener.Length();
             if (dist < 0.01f)
                 return los;
-            // LOS contribution
+            // Primary is clear → pure Primary, ignore residual
+            if (los.Intensity >= 0.95f)
+                return los;
+            // Primary blocked → prefer version-matched GPU residual if available
+            if (reg != null && reg.HasGpuResult &&
+                _acousticGeometry != null &&
+                reg.GpuVersion == _acousticGeometry.GeometryVersion)
+            {
+                float residualIntensity = Math.Clamp(reg.GpuResidualIntensity, 0.001f, 0.85f);
+                float residualMax = Math.Max(los.Intensity, residualIntensity);
+                Vector3 residualArrival = reg.GpuApparentDirection.LengthSquared() > 0.0001f
+                    ? Vector3.Normalize(reg.GpuApparentDirection)
+                    : Vector3.Zero;
+                float residualLowPass = reg.GpuLowPass > 0f ? reg.GpuLowPass : (2800f + 3200f * residualMax);
+                return new SoundRayTraceResult
+                {
+                    Intensity = Math.Clamp(residualMax, 0.001f, 1f),
+                    Delay = dist / 34300f,
+                    LowPassCutoff = residualLowPass,
+                    ApparentDirection = residualArrival
+                };
+            }
+            // Fallback: existing CPU continuous multi-probe diffraction
             float totalEnergy = 0f;
             Vector3 weightedDir = Vector3.Zero;
             float maxIntensity = 0f;
@@ -354,6 +385,40 @@ namespace SiegeEngine.Systems
             lock (_regsLock)
             {
                 snapshot = new List<AutoPlayRegistration>(_autoPlayRegs);
+            }
+            // Throttled GPU residual update (main/render thread only, 1 source per frame)
+            if (_gpuOcclusionReady && _geometryUploaded && _acousticRayTracer != null && snapshot.Count > 0)
+            {
+                int startedCount = 0;
+                for (int i = 0; i < snapshot.Count; i++)
+                    if (snapshot[i].Started) startedCount++;
+                if (startedCount > 0)
+                {
+                    int target = _gpuKickRoundRobin % startedCount;
+                    int seen = 0;
+                    for (int i = 0; i < snapshot.Count; i++)
+                    {
+                        var reg = snapshot[i];
+                        if (!reg.Started) continue;
+                        if (seen == target)
+                        {
+                            _acousticRayTracer.KickContinuousTrace(reg.Source.Position, _listenerPosition);
+                            var gpu = _acousticRayTracer.ReadCompletedResult();
+                            // Scale residual into Primary mathematical range
+                            float residual = Math.Clamp(gpu.Intensity * 0.85f, 0.001f, 0.85f);
+                            reg.GpuResidualIntensity = residual;
+                            reg.GpuLowPass = gpu.LowPassCutoff > 0f ? gpu.LowPassCutoff : (2800f + 3200f * residual);
+                            reg.GpuApparentDirection = gpu.ApparentDirection.LengthSquared() > 0.0001f
+                                ? Vector3.Normalize(gpu.ApparentDirection)
+                                : Vector3.Zero;
+                            reg.GpuVersion = _acousticGeometry != null ? _acousticGeometry.GeometryVersion : 0u;
+                            reg.HasGpuResult = true;
+                            break;
+                        }
+                        seen++;
+                    }
+                    _gpuKickRoundRobin++;
+                }
             }
             foreach (var reg in snapshot)
             {
