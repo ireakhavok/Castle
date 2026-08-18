@@ -2,11 +2,11 @@
 // File: AcousticRayTracer.cs
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Shaders;
 
 namespace SiegeEngine.Core.GPU.Compute
 {
@@ -39,7 +39,8 @@ namespace SiegeEngine.Core.GPU.Compute
         }
 
         private readonly IRenderContext _renderContext;
-        private readonly ComputeProgram _program;
+        private readonly ComputeProgram _debugProgram;
+        private readonly ComputeProgram _residualProgram;
         private readonly ShaderStorageBuffer[] _resultSsbo = new ShaderStorageBuffer[2];
         private readonly ShaderStorageBuffer[] _debugSsbo = new ShaderStorageBuffer[2];
         private readonly AcousticGeometry _geometry;
@@ -59,8 +60,12 @@ namespace SiegeEngine.Core.GPU.Compute
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _geometry = geometry ?? throw new ArgumentNullException(nameof(geometry));
 
-            string shaderSource = LoadComputeShaderSource();
-            _program = new ComputeProgram(_renderContext, shaderSource);
+            string common = AcousticCommon.Source;
+            string debugSrc = common + AcousticDebugShader.Source;
+            string residualSrc = common + AcousticResidualShader.Source;
+
+            _debugProgram = new ComputeProgram(_renderContext, debugSrc);
+            _residualProgram = new ComputeProgram(_renderContext, residualSrc);
 
             int resultBytes = MaxRays * sizeof(GpuRayResult);
             int debugBytes = MaxDebugSegments * sizeof(GpuDebugSegment);
@@ -74,40 +79,6 @@ namespace SiegeEngine.Core.GPU.Compute
             }
         }
 
-        private static string LoadComputeShaderSource()
-        {
-            string[] candidates =
-            {
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SiegeEngine", "Core", "GPU", "Shaders", "AcousticRayTracer.comp"),
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Shaders", "AcousticRayTracer.comp"),
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AcousticRayTracer.comp"),
-                Path.Combine(Directory.GetCurrentDirectory(), "SiegeEngine", "Core", "GPU", "Shaders", "AcousticRayTracer.comp"),
-                Path.Combine(Directory.GetCurrentDirectory(), "Shaders", "AcousticRayTracer.comp"),
-                @"C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\AcousticRayTracer.comp"
-            };
-
-            foreach (var path in candidates)
-            {
-                try
-                {
-                    if (File.Exists(path))
-                    {
-                        string src = File.ReadAllText(path);
-                        if (!string.IsNullOrWhiteSpace(src) && src.Contains("#version"))
-                        {
-                            Console.WriteLine($"AcousticRayTracer: loaded compute shader from {path}");
-                            return src;
-                        }
-                    }
-                }
-                catch { }
-            }
-
-            throw new FileNotFoundException(
-                "AcousticRayTracer.comp not found. Place the file at SiegeEngine/Core/GPU/Shaders/AcousticRayTracer.comp " +
-                "or in the application base directory.");
-        }
-
         public void KickContinuousTrace(Vector3 sourcePos, Vector3 listenerPos)
         {
             if (_disposed || _geometry.TriangleCount <= 0) return;
@@ -116,19 +87,19 @@ namespace SiegeEngine.Core.GPU.Compute
             _resultSsbo[_writeIdx].BindBase(1);
             _debugSsbo[_writeIdx].BindBase(2);
 
-            _program.Use();
-            _program.SetUniform("uSourcePos", sourcePos.X, sourcePos.Y, sourcePos.Z);
-            _program.SetUniform("uListenerPos", listenerPos.X, listenerPos.Y, listenerPos.Z);
-            _program.SetUniform("uTriangleCount", _geometry.TriangleCount);
-            _program.SetUniform("uRayCount", ContinuousRays);
-            _program.SetUniform("uMaxBounces", ContinuousBounces);
-            _program.SetUniform("uListenerRadius", 5.0f);
-            _program.SetUniform("uMaxDistance", 350.0f);
-            _program.SetUniform("uDebugMode", 0);
-            _program.SetUniform("uSourceCount", 1);
+            _residualProgram.Use();
+            _residualProgram.SetUniform("uSourcePos", sourcePos.X, sourcePos.Y, sourcePos.Z);
+            _residualProgram.SetUniform("uListenerPos", listenerPos.X, listenerPos.Y, listenerPos.Z);
+            _residualProgram.SetUniform("uTriangleCount", _geometry.TriangleCount);
+            _residualProgram.SetUniform("uRayCount", ContinuousRays);
+            _residualProgram.SetUniform("uMaxBounces", ContinuousBounces);
+            _residualProgram.SetUniform("uListenerRadius", 5.0f);
+            _residualProgram.SetUniform("uMaxDistance", 350.0f);
+            _residualProgram.SetUniform("uDebugMode", 0);
+            _residualProgram.SetUniform("uSourceCount", 1);
 
             uint groups = (uint)((ContinuousRays + 63) / 64);
-            _program.Dispatch(groups, 1, 1);
+            _residualProgram.Dispatch(groups, 1, 1);
 
             _readIdx = _writeIdx;
             _writeIdx = 1 - _writeIdx;
@@ -207,20 +178,20 @@ namespace SiegeEngine.Core.GPU.Compute
             _resultSsbo[_writeIdx].BindBase(1);
             _debugSsbo[_writeIdx].BindBase(2);
 
-            _program.Use();
-            _program.SetUniform("uSourcePos", primarySource.X, primarySource.Y, primarySource.Z);
-            _program.SetUniform("uListenerPos", listenerPos.X, listenerPos.Y, listenerPos.Z);
-            _program.SetUniform("uTriangleCount", _geometry.TriangleCount);
-            _program.SetUniform("uRayCount", ContinuousRays);
-            _program.SetUniform("uMaxBounces", ContinuousBounces);
-            _program.SetUniform("uListenerRadius", 5.0f);
-            _program.SetUniform("uMaxDistance", 350.0f);
-            _program.SetUniform("uDebugMode", 1);
-            _program.SetUniform("uSourceCount", sources != null ? Math.Min(sources.Count, 8) : 0);
+            _debugProgram.Use();
+            _debugProgram.SetUniform("uSourcePos", primarySource.X, primarySource.Y, primarySource.Z);
+            _debugProgram.SetUniform("uListenerPos", listenerPos.X, listenerPos.Y, listenerPos.Z);
+            _debugProgram.SetUniform("uTriangleCount", _geometry.TriangleCount);
+            _debugProgram.SetUniform("uRayCount", ContinuousRays);
+            _debugProgram.SetUniform("uMaxBounces", ContinuousBounces);
+            _debugProgram.SetUniform("uListenerRadius", 5.0f);
+            _debugProgram.SetUniform("uMaxDistance", 350.0f);
+            _debugProgram.SetUniform("uDebugMode", 1);
+            _debugProgram.SetUniform("uSourceCount", sources != null ? Math.Min(sources.Count, 8) : 0);
 
             uint groups = (uint)((ContinuousRays + 63) / 64);
-            _program.Dispatch(groups, 1, 1);
-            _program.Barrier();
+            _debugProgram.Dispatch(groups, 1, 1);
+            _debugProgram.Barrier();
 
             ReadDebugSegmentsFromBuffer(_writeIdx, diagnosticOnce);
 
@@ -282,7 +253,7 @@ namespace SiegeEngine.Core.GPU.Compute
                 };
             }
 
-            _program.Barrier();
+            _residualProgram.Barrier();
             uint byteSize = (uint)(ContinuousRays * sizeof(GpuRayResult));
             GpuRayResult* results = (GpuRayResult*)_resultSsbo[_readIdx].MapRange(0, byteSize, _renderContext.Enums.MapReadBit);
             if (results == null)
@@ -361,7 +332,8 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             if (!_disposed)
             {
-                _program?.Dispose();
+                _debugProgram?.Dispose();
+                _residualProgram?.Dispose();
                 for (int i = 0; i < 2; i++)
                 {
                     _resultSsbo[i]?.Dispose();
