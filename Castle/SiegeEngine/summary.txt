@@ -2950,10 +2950,14 @@ Folder: Systems
       - SoundSource Source
       - int Handle
       - bool Started
+      - SoundRayTraceResult WorkerResult
       - float SmoothedIntensity
       - Vector3 SmoothedDirection
       - float SmoothedLowPass
       - bool HasSmoothedState
+      - float GpuResidualIntensity
+      - float GpuLowPass
+      - Vector3 GpuApparentDirection
 - File: ClientPredictionSystem.cs
   - Class: ClientPredictionSystem (Namespace: SiegeEngine.Systems)
     - Inherits: GameSystem

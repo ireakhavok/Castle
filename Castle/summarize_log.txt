@@ -1152,7 +1152,7 @@ Found: ..
 Found: WaveOutPlayer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Audio\WaveOutPlayer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Audio\WaveOutPlayer.cs
-Read 12925 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Audio\WaveOutPlayer.cs
+Read 12877 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Audio\WaveOutPlayer.cs
 Namespace: SiegeEngine.Audio
 Found 3 dependencies
 Found: Definitions
@@ -1743,13 +1743,13 @@ Found: ..
 Found: AcousticGeometry.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticGeometry.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticGeometry.cs
-Read 7294 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticGeometry.cs
+Read 7483 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticGeometry.cs
 Namespace: SiegeEngine.Core.Rendering.Compute
 Found 7 dependencies
 Found: AcousticRayTracer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticRayTracer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticRayTracer.cs
-Read 11774 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticRayTracer.cs
+Read 13469 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\AcousticRayTracer.cs
 Namespace: SiegeEngine.Core.Rendering.Compute
 Found 6 dependencies
 Found: ComputeProgram.cs
@@ -1761,7 +1761,7 @@ Found 4 dependencies
 Found: ShaderStorageBuffer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\ShaderStorageBuffer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\ShaderStorageBuffer.cs
-Read 3733 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\ShaderStorageBuffer.cs
+Read 3744 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Compute\ShaderStorageBuffer.cs
 Namespace: SiegeEngine.Core.Rendering.Compute
 Found 2 dependencies
 Found: ContextManagement
@@ -2476,7 +2476,7 @@ Found 6 dependencies
 Found: AudioSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
-Read 43025 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
+Read 47777 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Namespace: SiegeEngine.Systems
 Found 16 dependencies
 Found: ClientPredictionSystem.cs
