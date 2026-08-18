@@ -60,11 +60,11 @@ namespace SiegeEngine.Core.GPU.Compute
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _geometry = geometry ?? throw new ArgumentNullException(nameof(geometry));
 
-            string common = AcousticCommon.Source;
-            string debugSrc = common + AcousticDebugShader.Source;
-            string residualSrc = common + AcousticResidualShader.Source;
+            // Debug program is fully self-contained
+            _debugProgram = new ComputeProgram(_renderContext, AcousticDebugShader.Source);
 
-            _debugProgram = new ComputeProgram(_renderContext, debugSrc);
+            // Residual still uses Common + Residual
+            string residualSrc = AcousticCommon.Source + AcousticResidualShader.Source;
             _residualProgram = new ComputeProgram(_renderContext, residualSrc);
 
             int resultBytes = MaxRays * sizeof(GpuRayResult);
