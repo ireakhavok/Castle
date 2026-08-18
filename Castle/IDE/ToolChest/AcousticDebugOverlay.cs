@@ -20,6 +20,7 @@ namespace ToolChest
         private readonly Func<IReadOnlyList<Entity>> _getEntities;
         private readonly Func<Vector3> _getListenerPos;
         private readonly Func<IReadOnlyList<Vector3>> _getSourcePositions;
+        private readonly Func<IHeightProvider> _getHeightProvider;
 
         private VertexBuffer _dynamicBuffer;
         private ShaderProgram _shader;
@@ -46,12 +47,14 @@ namespace ToolChest
             IRenderContext renderContext,
             Func<IReadOnlyList<Entity>> getEntities,
             Func<Vector3> getListenerPos,
-            Func<IReadOnlyList<Vector3>> getSourcePositions)
+            Func<IReadOnlyList<Vector3>> getSourcePositions,
+            Func<IHeightProvider> getHeightProvider = null)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _getEntities = getEntities ?? throw new ArgumentNullException(nameof(getEntities));
             _getListenerPos = getListenerPos ?? (() => Vector3.Zero);
             _getSourcePositions = getSourcePositions ?? (() => Array.Empty<Vector3>());
+            _getHeightProvider = getHeightProvider ?? (() => null);
         }
 
         public void Draw(UIQuadRenderer quadRenderer, float panelWidth, float panelHeight) { }
@@ -85,15 +88,7 @@ namespace ToolChest
             if (_geometryDirty)
             {
                 IHeightProvider height = null;
-                try
-                {
-                    foreach (var e in entities)
-                    {
-                        var p = e.GetComponent<PhysicsComponent>();
-                        if (p?.Shape is HeightfieldShape) { }
-                    }
-                }
-                catch { }
+                try { height = _getHeightProvider(); } catch { }
                 _geometry.Rebuild(entities, height);
                 _geometryDirty = false;
             }
@@ -101,14 +96,12 @@ namespace ToolChest
             Vector3 listener = _getListenerPos();
             var sources = _getSourcePositions() ?? Array.Empty<Vector3>();
 
-            // Always draw visible markers so the toggle is never silent
             _dynVerts.Clear();
             _dynIndices.Clear();
             AddCross(_dynVerts, _dynIndices, listener, 1.5f, ListenerColor);
             for (int s = 0; s < sources.Count; s++)
                 AddCross(_dynVerts, _dynIndices, sources[s], 1.2f, SourceColor);
 
-            // GPU bidirectional free-segment + meeting results
             if (_geometry.TriangleCount > 0)
             {
                 _tracer.KickDebugBidirectional(listener, sources, !_loggedThisEnable);
@@ -116,7 +109,7 @@ namespace ToolChest
 
                 if (!_loggedThisEnable)
                 {
-                    Console.WriteLine($"[AcousticDebug] Listener resolved = ({listener.X:F3},{listener.Y:F3},{listener.Z:F3})  (Camera-first then PreferredSpawnPointIds → Physics.Position; zero = unresolved)");
+                    Console.WriteLine($"[AcousticDebug] Listener resolved = ({listener.X:F3},{listener.Y:F3},{listener.Z:F3})  (Camera-first then PreferredSpawnPointIds → Physics.Position + 1.8 eye offset; zero = unresolved)");
                     if (sources.Count == 0)
                         Console.WriteLine("[AcousticDebug] Sources: none");
                     else
@@ -150,8 +143,6 @@ namespace ToolChest
                     _loggedThisEnable = true;
                 }
 
-                // Force-draw every accepted segment on the diagnostic frame and all subsequent frames
-                // (ignore Show* toggles and length cull so the full set of rays is visible)
                 if (segments != null)
                 {
                     for (int i = 0; i < segments.Count; i++)
