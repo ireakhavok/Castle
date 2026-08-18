@@ -2,11 +2,11 @@
 // File: AcousticRayTracer.cs
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.GPU.ContextManagement;
-using SiegeEngine.Core.GPU.Shaders;
 
 namespace SiegeEngine.Core.GPU.Compute
 {
@@ -58,7 +58,9 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _geometry = geometry ?? throw new ArgumentNullException(nameof(geometry));
-            _program = new ComputeProgram(_renderContext, AcousticComputeShader.Source);
+
+            string shaderSource = LoadComputeShaderSource();
+            _program = new ComputeProgram(_renderContext, shaderSource);
 
             int resultBytes = MaxRays * sizeof(GpuRayResult);
             int debugBytes = MaxDebugSegments * sizeof(GpuDebugSegment);
@@ -70,6 +72,40 @@ namespace SiegeEngine.Core.GPU.Compute
                 _debugSsbo[i] = new ShaderStorageBuffer(_renderContext);
                 _debugSsbo[i].SetData((uint)debugBytes, null, _renderContext.Enums.DynamicCopy);
             }
+        }
+
+        private static string LoadComputeShaderSource()
+        {
+            string[] candidates =
+            {
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SiegeEngine", "Core", "GPU", "Shaders", "AcousticRayTracer.comp"),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Shaders", "AcousticRayTracer.comp"),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AcousticRayTracer.comp"),
+                Path.Combine(Directory.GetCurrentDirectory(), "SiegeEngine", "Core", "GPU", "Shaders", "AcousticRayTracer.comp"),
+                Path.Combine(Directory.GetCurrentDirectory(), "Shaders", "AcousticRayTracer.comp"),
+                @"C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\AcousticRayTracer.comp"
+            };
+
+            foreach (var path in candidates)
+            {
+                try
+                {
+                    if (File.Exists(path))
+                    {
+                        string src = File.ReadAllText(path);
+                        if (!string.IsNullOrWhiteSpace(src) && src.Contains("#version"))
+                        {
+                            Console.WriteLine($"AcousticRayTracer: loaded compute shader from {path}");
+                            return src;
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            throw new FileNotFoundException(
+                "AcousticRayTracer.comp not found. Place the file at SiegeEngine/Core/GPU/Shaders/AcousticRayTracer.comp " +
+                "or in the application base directory.");
         }
 
         public void KickContinuousTrace(Vector3 sourcePos, Vector3 listenerPos)

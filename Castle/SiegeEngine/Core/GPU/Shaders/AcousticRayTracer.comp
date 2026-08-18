@@ -1,12 +1,5 @@
-﻿// Folder: SiegeEngine/Core/GPU/Shaders
-// File: AcousticComputeShader.cs
-using System;
-
-namespace SiegeEngine.Core.GPU.Shaders
-{
-    public static class AcousticComputeShader
-    {
-        public static readonly string Source = @"
+// Folder: SiegeEngine/Core/GPU/Shaders
+// File: AcousticRayTracer.comp
 #version 430
 layout(local_size_x = 64) in;
 
@@ -78,14 +71,62 @@ bool closestHit(vec3 pos, vec3 dir, out float tHit, out vec3 nHit, out float den
     return hit;
 }
 
+bool refineFreePath(vec3 origin, vec3 coarseDir, vec3 target, float maxAngRad, out vec3 bestDir, out vec3 bestFreeEnd)
+{
+    bestDir = coarseDir;
+    bestFreeEnd = origin + coarseDir * 10.0;
+    float bestLen = 1e9;
+    bool found = false;
+
+    for (int s = 0; s < 5; s++)
+    {
+        float offset = (float(s) - 2.0) * (maxAngRad * 0.4);
+        vec3 axis = normalize(cross(coarseDir, vec3(0.0, 0.0, 1.0)));
+        if (length(axis) < 0.1) axis = normalize(cross(coarseDir, vec3(0.0, 1.0, 0.0)));
+        float c = cos(offset);
+        float si = sin(offset);
+        vec3 sampleDir = normalize(coarseDir * c + cross(axis, coarseDir) * si + axis * dot(axis, coarseDir) * (1.0 - c));
+
+        float tHit;
+        vec3 nHit;
+        float dens;
+        bool hit = closestHit(origin, sampleDir, tHit, nHit, dens);
+
+        vec3 freeEnd;
+        if (hit && tHit < uMaxDistance)
+            freeEnd = origin + sampleDir * tHit;
+        else
+            freeEnd = origin + sampleDir * min(uMaxDistance * 0.55, 70.0);
+
+        vec3 connect = target - freeEnd;
+        float cLen = length(connect);
+        if (cLen < 0.5 || cLen > 120.0) continue;
+
+        vec3 cDir = connect / cLen;
+        float tC;
+        vec3 nC;
+        float dC;
+        bool blocked = closestHit(freeEnd, cDir, tC, nC, dC);
+
+        float clearDist = blocked ? tC : cLen;
+        float totalPath = length(freeEnd - origin) + clearDist;
+
+        if (clearDist >= cLen * 0.65 && totalPath < bestLen)
+        {
+            bestLen = totalPath;
+            bestDir = sampleDir;
+            bestFreeEnd = freeEnd;
+            found = true;
+        }
+    }
+    return found;
+}
+
 void main()
 {
     uint idx = gl_GlobalInvocationID.x;
     if (idx >= uint(uRayCount)) return;
 
-    // ============================================================
-    // DEBUG MODE
-    // ============================================================
     if (uDebugMode != 0)
     {
         const uint slotsPerRay = 8u;
@@ -129,39 +170,45 @@ void main()
                 written++;
             }
 
+            float angLimit = (iter == 0) ? 0.4363 : 0.3491;
             vec3 connect = opposite - freeEnd;
             float cLen = length(connect);
-            if (cLen > 0.8 && cLen < 90.0)
+            if (cLen > 0.8 && cLen < 100.0)
             {
                 vec3 cDir = connect / cLen;
                 float cosAng = clamp(dot(normalize(curDir), cDir), -1.0, 1.0);
                 float ang = acos(cosAng);
 
-                if (ang <= 0.174533)
+                if (ang <= angLimit)
                 {
-                    float tC;
-                    vec3 nC;
-                    float dC;
-                    bool blocked = closestHit(freeEnd, cDir, tC, nC, dC);
-
-                    if (!blocked || tC >= cLen - 0.25)
+                    vec3 refinedDir;
+                    vec3 refinedFreeEnd;
+                    if (refineFreePath(pos, curDir, opposite, angLimit, refinedDir, refinedFreeEnd))
                     {
                         if (base + written < 1024u)
                         {
-                            debugSegs[base + written].A = vec4(freeEnd - vec3(0.55, 0.0, 0.0), 0.0);
-                            debugSegs[base + written].B = vec4(freeEnd + vec3(0.55, 0.0, 0.0), 2.0);
+                            debugSegs[base + written].A = vec4(pos, 0.0);
+                            debugSegs[base + written].B = vec4(refinedFreeEnd, float(originKind));
+                            written++;
+                        }
+
+                        if (base + written < 1024u)
+                        {
+                            debugSegs[base + written].A = vec4(refinedFreeEnd - vec3(0.55, 0.0, 0.0), 0.0);
+                            debugSegs[base + written].B = vec4(refinedFreeEnd + vec3(0.55, 0.0, 0.0), 2.0);
                             written++;
                         }
                         if (base + written < 1024u)
                         {
-                            debugSegs[base + written].A = vec4(freeEnd - vec3(0.0, 0.55, 0.0), 0.0);
-                            debugSegs[base + written].B = vec4(freeEnd + vec3(0.0, 0.55, 0.0), 2.0);
+                            debugSegs[base + written].A = vec4(refinedFreeEnd - vec3(0.0, 0.55, 0.0), 0.0);
+                            debugSegs[base + written].B = vec4(refinedFreeEnd + vec3(0.0, 0.55, 0.0), 2.0);
                             written++;
                         }
                         if (base + written < 1024u)
                         {
-                            debugSegs[base + written].A = vec4(freeEnd, 0.0);
-                            debugSegs[base + written].B = vec4(freeEnd + cDir * min(cLen * 0.45, 12.0), 2.0);
+                            vec3 mid = refinedFreeEnd + normalize(opposite - refinedFreeEnd) * min(length(opposite - refinedFreeEnd) * 0.4, 10.0);
+                            debugSegs[base + written].A = vec4(refinedFreeEnd, 0.0);
+                            debugSegs[base + written].B = vec4(mid, 2.0);
                             written++;
                         }
                         break;
@@ -180,9 +227,7 @@ void main()
         return;
     }
 
-    // ============================================================
-    // RESIDUAL / CONTINUOUS MODE (unchanged)
-    // ============================================================
+    // Residual path
     bool fromListener = (idx % 2u) == 0u;
     vec3 origin = fromListener ? uListenerPos : uSourcePos;
     vec3 target = fromListener ? uSourcePos : uListenerPos;
@@ -301,8 +346,5 @@ void main()
         results[idx].LowPass = 0.0;
         results[idx].ArrivalDir = vec4(0.0);
         results[idx].Pad = 0.0;
-    }
-}
-";
     }
 }
