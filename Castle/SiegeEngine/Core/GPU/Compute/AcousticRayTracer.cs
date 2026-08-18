@@ -319,6 +319,7 @@ uniform int uDebugMode;
 uniform int uSourceCount;
 
 float hash(float n) { return fract(sin(n) * 43758.5453); }
+
 vec3 randomUnit(float seed)
 {
     float z = hash(seed) * 2.0 - 1.0;
@@ -380,9 +381,8 @@ void main()
 
     // ============================================================
     // DEBUG MODE (uDebugMode != 0)
-    // Pure free-space stratified rays for visualization.
-    // Do NOT force the LOS connection; radiate in the random direction
-    // and stop at the first hit (or max distance).
+    // Pure free-space stratified rays radiating evenly around the
+    // origin (listener or source). No pointing at the opposite end.
     // ============================================================
     if (uDebugMode != 0)
     {
@@ -397,8 +397,7 @@ void main()
         debugSegs[idx].A = vec4(origin, 0.0);
         debugSegs[idx].B = vec4(freeEnd, fromListener ? 0.0 : 1.0);
 
-        // Meeting marker: if this free ray ends near the opposite endpoint
-        // (within a generous connection radius) write a short purple segment.
+        // Simple meeting marker: freeEnd near the opposite endpoint
         float distToOpposite = length(freeEnd - target);
         if (distToOpposite < 8.0 && (idx + 256u) < 512u)
         {
@@ -410,7 +409,6 @@ void main()
 
     // ============================================================
     // RESIDUAL / CONTINUOUS MODE (uDebugMode == 0)
-    // Full multipath energy aggregation used by AudioSystem.
     // ============================================================
     float green = 0.0, blue = 0.0, orange = 0.0, yellow = 0.0;
     float distanceTravelled = 0.0, lowPass = 18000.0;
