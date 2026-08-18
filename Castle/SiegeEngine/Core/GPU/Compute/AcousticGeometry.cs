@@ -11,9 +11,12 @@ using SiegeEngine.Core.GPU.ContextManagement;
 namespace SiegeEngine.Core.GPU.Compute
 {
     /// <summary>
-    /// Packs low-triangle acoustic proxies (stratified sampling of TriangleMeshShape ≤192 tris
-    /// per body, OBB for non-mesh bodies, coarse heightmap) into a GPU SSBO for multipath ray tracing.
-    /// Full TriangleMeshShape representation is left untouched for physics.
+    /// Packs low-triangle acoustic proxies into a GPU SSBO.
+    /// - TriangleMeshShape: stratified sample of original faces (≤192).
+    /// - Analytic / non-mesh static bodies: oriented 20-face icosahedron (d20)
+    ///   scaled to the body's half-extents. Gives more surface normals and
+    ///   better blocking than a 6-face OBB while staying extremely cheap.
+    /// Dynamic bodies are ignored (physics remains authoritative).
     /// </summary>
     public unsafe class AcousticGeometry : IDisposable
     {
@@ -34,6 +37,41 @@ namespace SiegeEngine.Core.GPU.Compute
         private bool _disposed;
         private int _lastTriangleCount;
         private volatile uint _geometryVersion;
+
+        // Pre-computed unit icosahedron (regular, 12 vertices, 20 faces)
+        private static readonly Vector3[] IcoVerts;
+        private static readonly int[,] IcoFaces;
+
+        static AcousticGeometry()
+        {
+            const float t = 1.6180339887f; // golden ratio
+            IcoVerts = new Vector3[]
+            {
+                new Vector3(-1,  t,  0),
+                new Vector3( 1,  t,  0),
+                new Vector3(-1, -t,  0),
+                new Vector3( 1, -t,  0),
+                new Vector3( 0, -1,  t),
+                new Vector3( 0,  1,  t),
+                new Vector3( 0, -1, -t),
+                new Vector3( 0,  1, -t),
+                new Vector3( t,  0, -1),
+                new Vector3( t,  0,  1),
+                new Vector3(-t,  0, -1),
+                new Vector3(-t,  0,  1)
+            };
+            // Normalise to unit radius
+            for (int i = 0; i < IcoVerts.Length; i++)
+                IcoVerts[i] = Vector3.Normalize(IcoVerts[i]);
+
+            IcoFaces = new int[20, 3]
+            {
+                {0,11,5}, {0,5,1}, {0,1,7}, {0,7,10}, {0,10,11},
+                {1,5,9}, {5,11,4}, {11,10,2}, {10,7,6}, {7,1,8},
+                {3,9,4}, {3,4,2}, {3,2,6}, {3,6,8}, {3,8,9},
+                {4,9,5}, {2,4,11}, {6,2,10}, {8,6,7}, {9,8,1}
+            };
+        }
 
         public int TriangleCount => _lastTriangleCount;
         public ShaderStorageBuffer Buffer => _ssbo;
@@ -70,7 +108,8 @@ namespace SiegeEngine.Core.GPU.Compute
                 }
                 else
                 {
-                    TessellateObb(physics.Position, physics.Rotation, physics.Size * 0.5f, density);
+                    // Oriented 20-face icosahedron scaled to half-extents
+                    TessellateIcosahedron(physics.Position, physics.Rotation, physics.Size * 0.5f, density);
                 }
             }
 
@@ -128,7 +167,7 @@ namespace SiegeEngine.Core.GPU.Compute
                 return;
             }
 
-            // Uniform stratified sample (step through the triangle list)
+            // Uniform stratified sample
             float step = (float)triCount / maxTris;
             for (int i = 0; i < maxTris; i++)
             {
@@ -137,34 +176,37 @@ namespace SiegeEngine.Core.GPU.Compute
             }
         }
 
-        private void TessellateObb(Vector3 position, Quaternion rotation, Vector3 halfExtents, float density)
+        /// <summary>
+        /// Oriented 20-face regular icosahedron (d20) scaled by half-extents.
+        /// Far better surface coverage and normal diversity than a 6-face OBB
+        /// while remaining only 20 triangles.
+        /// </summary>
+        private void TessellateIcosahedron(Vector3 position, Quaternion rotation, Vector3 halfExtents, float density)
         {
+            // Tiny acoustic expansion so thin walls are less likely to be missed
+            const float eps = 0.08f;
+            Vector3 he = halfExtents + new Vector3(eps);
+
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
-            Vector3 centre = position;
-            Vector3 hx = Vector3.Transform(new Vector3(halfExtents.X, 0, 0), rot);
-            Vector3 hy = Vector3.Transform(new Vector3(0, halfExtents.Y, 0), rot);
-            Vector3 hz = Vector3.Transform(new Vector3(0, 0, halfExtents.Z), rot);
-            Vector3[] c = new Vector3[8];
-            c[0] = centre - hx - hy - hz;
-            c[1] = centre + hx - hy - hz;
-            c[2] = centre + hx + hy - hz;
-            c[3] = centre - hx + hy - hz;
-            c[4] = centre - hx - hy + hz;
-            c[5] = centre + hx - hy + hz;
-            c[6] = centre + hx + hy + hz;
-            c[7] = centre - hx + hy + hz;
-            AddTri(c[0], c[1], c[2], density);
-            AddTri(c[0], c[2], c[3], density);
-            AddTri(c[5], c[4], c[7], density);
-            AddTri(c[5], c[7], c[6], density);
-            AddTri(c[4], c[0], c[3], density);
-            AddTri(c[4], c[3], c[7], density);
-            AddTri(c[1], c[5], c[6], density);
-            AddTri(c[1], c[6], c[2], density);
-            AddTri(c[3], c[2], c[6], density);
-            AddTri(c[3], c[6], c[7], density);
-            AddTri(c[4], c[5], c[1], density);
-            AddTri(c[4], c[1], c[0], density);
+
+            // Transform the 12 unit vertices into the oriented box
+            Vector3[] world = new Vector3[12];
+            for (int i = 0; i < 12; i++)
+            {
+                Vector3 local = new Vector3(
+                    IcoVerts[i].X * he.X,
+                    IcoVerts[i].Y * he.Y,
+                    IcoVerts[i].Z * he.Z);
+                world[i] = position + Vector3.Transform(local, rot);
+            }
+
+            for (int f = 0; f < 20; f++)
+            {
+                int i0 = IcoFaces[f, 0];
+                int i1 = IcoFaces[f, 1];
+                int i2 = IcoFaces[f, 2];
+                AddTri(world[i0], world[i1], world[i2], density);
+            }
         }
 
         private void AddTri(Vector3 a, Vector3 b, Vector3 c, float density)
