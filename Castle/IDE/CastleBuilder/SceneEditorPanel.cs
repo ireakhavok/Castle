@@ -15,6 +15,7 @@ using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
 using SiegeEngine.Scenes;
+using SiegeEngine.PlayerSystem;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -112,18 +113,7 @@ namespace CastleBuilder
             CustomOverlays.Add(_transformGizmo);
             _physicsDebug = new PhysicsDebugOverlay(
                 renderContext,
-                () =>
-                {
-                    var ents = _editorScene.GetEntities();
-                    if (ents != null && ents.Count > 0) return ents;
-                    var serverField = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance);
-                    if (serverField != null)
-                    {
-                        var server = serverField.GetValue(_editorScene) as IGameServer;
-                        return server?.GetEntities() ?? (IReadOnlyList<Entity>)Array.Empty<Entity>();
-                    }
-                    return Array.Empty<Entity>();
-                },
+                () => GetLiveEntities(),
                 () =>
                 {
                     try
@@ -163,38 +153,17 @@ namespace CastleBuilder
 
             _acousticDebug = new AcousticDebugOverlay(
                 renderContext,
-                () =>
-                {
-                    var ents = _editorScene.GetEntities();
-                    if (ents != null && ents.Count > 0) return ents;
-                    var serverField = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance);
-                    if (serverField != null)
-                    {
-                        var server = serverField.GetValue(_editorScene) as IGameServer;
-                        return server?.GetEntities() ?? (IReadOnlyList<Entity>)Array.Empty<Entity>();
-                    }
-                    return Array.Empty<Entity>();
-                },
-                () =>
-                {
-                    var active = _editorScene.GetActiveGameScene() as TerrainCreatorScene;
-                    if (active != null)
-                    {
-                        var flyField = active.GetType().GetField("_flyCamera", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
-                        var fly = flyField?.GetValue(active) as FlyCameraController;
-                        if (fly != null) return fly.Position;
-                    }
-                    return new Vector3(0, 0, 50);
-                },
+                () => GetLiveEntities(),
+                () => GetAcousticListenerPosition(),
                 () =>
                 {
                     var list = new List<Vector3>();
-                    var ents = _editorScene.GetEntities();
+                    var ents = GetLiveEntities();
                     if (ents == null) return list;
                     foreach (var e in ents)
                     {
                         var sc = e.GetComponent<SoundComponent>();
-                        if (sc == null || !sc.AutoPlay) continue;
+                        if (sc == null) continue;
                         var p = e.GetComponent<PhysicsComponent>();
                         if (p != null) list.Add(p.Position);
                     }
@@ -202,6 +171,88 @@ namespace CastleBuilder
                 }
             );
             CustomOverlays.Add(_acousticDebug);
+        }
+
+        /// <summary>
+        /// Exact same sources AudioSystem and RuntimeGameplayScene already trust.
+        /// 1. Live Player.Camera.Position (AudioSystem.Update path)
+        /// 2. PreferredSpawnPointIds → entity PhysicsComponent.Position (RuntimeGameplayScene path)
+        /// Never uses fly camera or invented coordinates.
+        /// </summary>
+        private Vector3 GetAcousticListenerPosition()
+        {
+            var ents = GetLiveEntities();
+
+            // 1. Identical to AudioSystem.Update – live Player + CameraController
+            if (ents != null)
+            {
+                foreach (var e in ents)
+                {
+                    var player = e.GetComponent<Player>();
+                    if (player?.Camera != null)
+                        return player.Camera.Position;
+                }
+            }
+
+            // 2. Identical to RuntimeGameplayScene preferred-spawn application
+            SceneSettings settings = ResolveCurrentSceneSettings();
+            if (settings?.PreferredSpawnPointIds != null && ents != null)
+            {
+                foreach (int id in settings.PreferredSpawnPointIds)
+                {
+                    var spawnEntity = ents.FirstOrDefault(e => e.Id == id);
+                    if (spawnEntity == null) continue;
+                    var spawnPhysics = spawnEntity.GetComponent<PhysicsComponent>();
+                    if (spawnPhysics != null)
+                        return spawnPhysics.Position;
+                }
+            }
+
+            return Vector3.Zero;
+        }
+
+        private SceneSettings ResolveCurrentSceneSettings()
+        {
+            try
+            {
+                var ps = ProjectSettings.Current;
+                if (ps == null) return null;
+
+                // Common property shapes used across the codebase
+                object sceneData = null;
+                var type = ps.GetType();
+                sceneData = type.GetProperty("CurrentSceneData")?.GetValue(ps)
+                         ?? type.GetProperty("SceneData")?.GetValue(ps)
+                         ?? type.GetField("CurrentSceneData", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(ps);
+
+                if (sceneData != null)
+                {
+                    var settingsProp = sceneData.GetType().GetProperty("Settings")
+                                    ?? sceneData.GetType().GetProperty("settings");
+                    if (settingsProp?.GetValue(sceneData) is SceneSettings s)
+                        return s;
+                }
+
+                // Direct PreferredSpawnPointIds on ProjectSettings (some builds)
+                var direct = type.GetProperty("PreferredSpawnPointIds")?.GetValue(ps) as List<int>;
+                if (direct != null)
+                    return new SceneSettings { PreferredSpawnPointIds = direct };
+            }
+            catch { }
+            return null;
+        }
+
+        private IReadOnlyList<Entity> GetLiveEntities()
+        {
+            var ents = _editorScene.GetEntities();
+            if (ents != null && ents.Count > 0) return ents;
+            var serverField = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (serverField != null)
+            {
+                var server = serverField.GetValue(_editorScene) as IGameServer;
+                return server?.GetEntities() ?? (IReadOnlyList<Entity>)Array.Empty<Entity>();
+            }
+            return Array.Empty<Entity>();
         }
 
         public string ContentType => "SceneEditor";
@@ -706,16 +757,7 @@ namespace CastleBuilder
                 _modelRenderer = new ModelRenderer(_renderContext);
                 _modelRenderer.Initialize();
             }
-            var entities = _editorScene.GetEntities();
-            if (entities == null || entities.Count == 0)
-            {
-                var serverField = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance);
-                if (serverField != null)
-                {
-                    var server = serverField.GetValue(_editorScene) as IGameServer;
-                    entities = server?.GetEntities();
-                }
-            }
+            var entities = GetLiveEntities();
             if (entities == null || entities.Count == 0) return;
             var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
             var active = activeField?.GetValue(_editorScene) as TerrainCreatorScene;
@@ -846,7 +888,7 @@ namespace CastleBuilder
             nodes.Add(levelInfo);
             var entitiesParent = new OutlinerNode { Id = "entities", Label = "Entities", Icon = "🧱", ParentId = "root" };
             nodes.Add(entitiesParent);
-            var entities = _editorScene.GetEntities();
+            var entities = GetLiveEntities();
             foreach (var entity in entities)
             {
                 bool selected = _selectedEntityIds.Contains(entity.Id);
@@ -870,7 +912,7 @@ namespace CastleBuilder
             {
                 if (int.TryParse(nodeId.Substring(7), out int id))
                 {
-                    var entities = _editorScene.GetEntities();
+                    var entities = GetLiveEntities();
                     return entities.FirstOrDefault(e => e.Id == id);
                 }
             }

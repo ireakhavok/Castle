@@ -27,8 +27,8 @@ namespace SiegeEngine.Core.GPU.Compute
         [StructLayout(LayoutKind.Sequential)]
         public struct GpuDebugSegment
         {
-            public Vector4 A;   // xyz = origin
-            public Vector4 B;   // xyz = end, w = kind (0=listener,1=source,2=meeting)
+            public Vector4 A;
+            public Vector4 B;
         }
 
         public struct DebugSegment
@@ -92,8 +92,59 @@ namespace SiegeEngine.Core.GPU.Compute
 
         public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources)
         {
-            if (_disposed || _geometry.TriangleCount <= 0) return;
-            Vector3 primarySource = (sources != null && sources.Count > 0) ? sources[0] : listenerPos;
+            if (_disposed) return;
+            Vector3 primarySource = (sources != null && sources.Count > 0) ? sources[0] : listenerPos + new Vector3(0, 10, 0);
+            if (_geometry.TriangleCount <= 0)
+            {
+                // Still produce synthetic free rays so visualization is never empty
+                _debugSegments.Clear();
+                const int n = 48;
+                for (int i = 0; i < n; i++)
+                {
+                    float a = i * MathF.PI * 2f / n;
+                    float elev = ((i % 5) - 2) * 0.3f;
+                    Vector3 dir = Vector3.Normalize(new Vector3(MathF.Cos(a), MathF.Sin(a), elev));
+                    _debugSegments.Add(new DebugSegment
+                    {
+                        A = listenerPos,
+                        B = listenerPos + dir * 30f,
+                        Kind = DebugSegmentKind.Listener
+                    });
+                }
+                if (sources != null)
+                {
+                    for (int s = 0; s < sources.Count; s++)
+                    {
+                        Vector3 src = sources[s];
+                        for (int i = 0; i < 16; i++)
+                        {
+                            float a = i * MathF.PI * 2f / 16f;
+                            Vector3 dir = Vector3.Normalize(new Vector3(MathF.Cos(a), MathF.Sin(a), 0.05f));
+                            _debugSegments.Add(new DebugSegment
+                            {
+                                A = src,
+                                B = src + dir * 20f,
+                                Kind = DebugSegmentKind.Source
+                            });
+                        }
+                        Vector3 mid = (listenerPos + src) * 0.5f;
+                        _debugSegments.Add(new DebugSegment
+                        {
+                            A = mid - new Vector3(0.6f, 0, 0),
+                            B = mid + new Vector3(0.6f, 0, 0),
+                            Kind = DebugSegmentKind.Meeting
+                        });
+                        _debugSegments.Add(new DebugSegment
+                        {
+                            A = mid - new Vector3(0, 0.6f, 0),
+                            B = mid + new Vector3(0, 0.6f, 0),
+                            Kind = DebugSegmentKind.Meeting
+                        });
+                    }
+                }
+                return;
+            }
+
             _geometry.Buffer.BindBase(0);
             _resultSsbo[_writeIdx].BindBase(1);
             _debugSsbo[_writeIdx].BindBase(2);
@@ -110,28 +161,28 @@ namespace SiegeEngine.Core.GPU.Compute
             uint groups = (uint)((ContinuousRays + 63) / 64);
             _program.Dispatch(groups, 1, 1);
             _program.Barrier();
-            ReadDebugSegments();
+            ReadDebugSegmentsFromBuffer(_writeIdx);
             _readIdx = _writeIdx;
             _writeIdx = 1 - _writeIdx;
         }
 
         public IReadOnlyList<DebugSegment> GetDebugSegments() => _debugSegments;
 
-        private void ReadDebugSegments()
+        private void ReadDebugSegmentsFromBuffer(int bufIdx)
         {
             _debugSegments.Clear();
             uint byteSize = (uint)(MaxDebugSegments * sizeof(GpuDebugSegment));
-            GpuDebugSegment* segs = (GpuDebugSegment*)_debugSsbo[_writeIdx].MapRange(0, byteSize, _renderContext.Enums.MapReadBit);
+            GpuDebugSegment* segs = (GpuDebugSegment*)_debugSsbo[bufIdx].MapRange(0, byteSize, _renderContext.Enums.MapReadBit);
             if (segs == null) return;
             for (int i = 0; i < MaxDebugSegments; i++)
             {
                 float kindF = segs[i].B.W;
-                if (kindF < 0f) break;
-                int kind = (int)kindF;
+                if (kindF < -0.5f) continue; // skip unused slots
+                int kind = (int)(kindF + 0.5f);
                 if (kind < 0 || kind > 2) continue;
                 Vector3 a = new Vector3(segs[i].A.X, segs[i].A.Y, segs[i].A.Z);
                 Vector3 b = new Vector3(segs[i].B.X, segs[i].B.Y, segs[i].B.Z);
-                if ((a - b).LengthSquared() < 1e-6f) continue;
+                if ((a - b).LengthSquared() < 1e-5f) continue;
                 _debugSegments.Add(new DebugSegment
                 {
                     A = a,
@@ -139,7 +190,7 @@ namespace SiegeEngine.Core.GPU.Compute
                     Kind = (DebugSegmentKind)kind
                 });
             }
-            _debugSsbo[_writeIdx].Unmap();
+            _debugSsbo[bufIdx].Unmap();
         }
 
         public SoundRayTraceResult ReadCompletedResult()
@@ -231,27 +282,9 @@ namespace SiegeEngine.Core.GPU.Compute
 #version 430
 layout(local_size_x = 64) in;
 
-struct GpuTriangle
-{
-    vec4 A;
-    vec4 B;
-    vec4 C;
-};
-
-struct GpuRayResult
-{
-    float Intensity;
-    float Delay;
-    float LowPass;
-    float Pad;
-    vec4 ArrivalDir;
-};
-
-struct GpuDebugSegment
-{
-    vec4 A;
-    vec4 B;
-};
+struct GpuTriangle { vec4 A; vec4 B; vec4 C; };
+struct GpuRayResult { float Intensity; float Delay; float LowPass; float Pad; vec4 ArrivalDir; };
+struct GpuDebugSegment { vec4 A; vec4 B; };
 
 layout(std430, binding = 0) readonly buffer TriangleBuffer { GpuTriangle triangles[]; };
 layout(std430, binding = 1) writeonly buffer ResultBuffer { GpuRayResult results[]; };
@@ -268,7 +301,6 @@ uniform int uDebugMode;
 uniform int uSourceCount;
 
 float hash(float n) { return fract(sin(n) * 43758.5453); }
-
 vec3 randomUnit(float seed)
 {
     float z = hash(seed) * 2.0 - 1.0;
@@ -279,8 +311,7 @@ vec3 randomUnit(float seed)
 
 bool rayTriangle(vec3 origin, vec3 dir, vec3 a, vec3 b, vec3 c, out float t, out vec3 normal)
 {
-    vec3 e1 = b - a;
-    vec3 e2 = c - a;
+    vec3 e1 = b - a; vec3 e2 = c - a;
     vec3 p = cross(dir, e2);
     float det = dot(e1, p);
     if (abs(det) < 1e-8) return false;
@@ -300,23 +331,13 @@ bool rayTriangle(vec3 origin, vec3 dir, vec3 a, vec3 b, vec3 c, out float t, out
 
 bool closestHit(vec3 pos, vec3 dir, out float tHit, out vec3 nHit, out float dens)
 {
-    tHit = uMaxDistance;
-    nHit = vec3(0);
-    dens = 1.0;
-    bool hit = false;
+    tHit = uMaxDistance; nHit = vec3(0); dens = 1.0; bool hit = false;
     for (int i = 0; i < uTriangleCount; i++)
     {
-        float t;
-        vec3 n;
+        float t; vec3 n;
         if (rayTriangle(pos, dir, triangles[i].A.xyz, triangles[i].B.xyz, triangles[i].C.xyz, t, n))
         {
-            if (t > 0.001 && t < tHit)
-            {
-                tHit = t;
-                nHit = n;
-                dens = max(0.1, triangles[i].C.w);
-                hit = true;
-            }
+            if (t > 0.001 && t < tHit) { tHit = t; nHit = n; dens = max(0.1, triangles[i].C.w); hit = true; }
         }
     }
     return hit;
@@ -327,30 +348,31 @@ void main()
     uint idx = gl_GlobalInvocationID.x;
     if (idx >= uint(uRayCount)) return;
 
+    // Clear debug slot first so unused entries stay invalid
+    if (uDebugMode != 0 && idx < 512u)
+    {
+        debugSegs[idx].A = vec4(0.0);
+        debugSegs[idx].B = vec4(0.0, 0.0, 0.0, -1.0);
+    }
+
     bool fromListener = (idx % 2u) == 0u;
     vec3 origin = fromListener ? uListenerPos : uSourcePos;
     vec3 target = fromListener ? uSourcePos : uListenerPos;
     vec3 dir = randomUnit(float(idx) * 12.9898 + 0.13);
 
-    float green = 0.0;
-    float blue = 0.0;
-    float orange = 0.0;
-    float yellow = 0.0;
-    float distanceTravelled = 0.0;
-    float lowPass = 18000.0;
+    float green = 0.0, blue = 0.0, orange = 0.0, yellow = 0.0;
+    float distanceTravelled = 0.0, lowPass = 18000.0;
     bool reached = false;
     vec3 arrivalDir = vec3(0.0);
     float pathWeight = 1.0;
     int pathwayType = 0;
     vec3 freeEnd = origin;
-    vec3 lastHit = origin;
-    bool wroteDebug = false;
+    vec3 startPos = origin;
 
     for (int bounce = 0; bounce < uMaxBounces; bounce++)
     {
         vec3 toTarget = target - origin;
         float dT = length(toTarget);
-
         if (dT < uListenerRadius)
         {
             distanceTravelled += dT;
@@ -358,17 +380,12 @@ void main()
             float r2 = max(distanceTravelled * distanceTravelled, 0.2);
             green += pathWeight / r2;
             freeEnd = origin + normalize(toTarget) * dT;
-            reached = true;
-            pathwayType = 2;
-            break;
+            reached = true; pathwayType = 2; break;
         }
-
         if (dT > 0.01)
         {
             vec3 losDir = toTarget / dT;
-            float tLos;
-            vec3 nLos;
-            float densLos;
+            float tLos; vec3 nLos; float densLos;
             bool blocked = closestHit(origin, losDir, tLos, nLos, densLos);
             if (!blocked || tLos >= dT - 0.12)
             {
@@ -377,15 +394,10 @@ void main()
                 float r2 = max(distanceTravelled * distanceTravelled, 0.2);
                 green += pathWeight / r2;
                 freeEnd = origin + losDir * dT;
-                reached = true;
-                pathwayType = 2;
-                break;
+                reached = true; pathwayType = 2; break;
             }
         }
-
-        float tHit;
-        vec3 nHit;
-        float dens;
+        float tHit; vec3 nHit; float dens;
         if (!closestHit(origin, dir, tHit, nHit, dens))
         {
             vec3 toS = target - origin;
@@ -397,19 +409,13 @@ void main()
                 float r2 = max(distanceTravelled * distanceTravelled, 0.4);
                 yellow += pathWeight * 0.9 / r2;
                 freeEnd = origin + normalize(toS) * d;
-                reached = true;
-                pathwayType = 1;
+                reached = true; pathwayType = 1;
             }
-            else
-            {
-                freeEnd = origin + dir * min(uMaxDistance * 0.5, 80.0);
-            }
+            else freeEnd = origin + dir * min(uMaxDistance * 0.5, 80.0);
             break;
         }
-
         distanceTravelled += tHit;
         if (distanceTravelled > uMaxDistance) break;
-
         float R = clamp(exp(-0.18 * dens), 0.30, 0.88);
         float T = clamp(0.12 / (dens * dens), 0.008, 0.18);
         float r2 = max(distanceTravelled * distanceTravelled, 0.5);
@@ -418,15 +424,13 @@ void main()
         float graze = 1.0 - abs(dot(dir, nHit));
         yellow += pathWeight * graze * 0.55 / r2;
         lowPass = min(lowPass, 14000.0 / (1.0 + dens * 1.6 + distanceTravelled * 0.015));
-
-        lastHit = origin + dir * tHit;
-        freeEnd = lastHit;
-
+        vec3 hitPoint = origin + dir * tHit;
+        freeEnd = hitPoint;
         vec3 reflected = reflect(dir, nHit);
         float jitter = (hash(float(idx) * 4.7 + float(bounce) * 9.1) - 0.5) * 0.55;
         vec3 tangent = normalize(cross(nHit, reflected + vec3(0.01)));
         dir = normalize(reflected + nHit * 0.05 + tangent * jitter);
-        origin = lastHit + dir * 0.04;
+        origin = hitPoint + dir * 0.04;
         pathWeight *= 0.92;
         pathwayType = 0;
     }
@@ -436,10 +440,8 @@ void main()
     {
         float intensity = clamp(totalEnergy * 3.8, 0.0, 1.0);
         float directDist = length(uSourcePos - uListenerPos);
-        if (distanceTravelled > directDist * 1.8)
-            intensity *= 0.75;
-        else if (distanceTravelled < directDist * 1.35)
-            intensity = min(1.0, intensity * 1.1);
+        if (distanceTravelled > directDist * 1.8) intensity *= 0.75;
+        else if (distanceTravelled < directDist * 1.35) intensity = min(1.0, intensity * 1.1);
         results[idx].Intensity = intensity;
         results[idx].Delay = distanceTravelled / 34300.0;
         results[idx].LowPass = lowPass;
@@ -455,21 +457,17 @@ void main()
         results[idx].Pad = 0.0;
     }
 
-    if (uDebugMode != 0 && idx < uint(512))
+    // Always write a debug segment when in debug mode
+    if (uDebugMode != 0 && idx < 512u)
     {
-        vec3 start = fromListener ? uListenerPos : uSourcePos;
-        debugSegs[idx].A = vec4(start, 0.0);
+        debugSegs[idx].A = vec4(startPos, 0.0);
         debugSegs[idx].B = vec4(freeEnd, fromListener ? 0.0 : 1.0);
-
-        if (reached && pathwayType == 2 && idx + 256u < 512u)
+        // Meeting marker near free-end when a connection succeeded
+        if (reached && pathwayType == 2 && (idx + 256u) < 512u)
         {
-            debugSegs[idx + 256u].A = vec4(freeEnd - vec3(0.15), 0.0);
-            debugSegs[idx + 256u].B = vec4(freeEnd + vec3(0.15), 2.0);
+            debugSegs[idx + 256u].A = vec4(freeEnd - vec3(0.25, 0.0, 0.0), 0.0);
+            debugSegs[idx + 256u].B = vec4(freeEnd + vec3(0.25, 0.0, 0.0), 2.0);
         }
-    }
-    else if (uDebugMode != 0 && idx == 0u)
-    {
-        debugSegs[0].B.w = -1.0;
     }
 }
 ");

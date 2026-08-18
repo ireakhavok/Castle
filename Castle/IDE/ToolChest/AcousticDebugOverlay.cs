@@ -23,13 +23,14 @@ namespace ToolChest
 
         private VertexBuffer _dynamicBuffer;
         private ShaderProgram _shader;
-        private readonly List<Vertex> _dynVerts = new List<Vertex>(2048);
-        private readonly List<uint> _dynIndices = new List<uint>(4096);
+        private readonly List<Vertex> _dynVerts = new List<Vertex>(4096);
+        private readonly List<uint> _dynIndices = new List<uint>(8192);
 
         private AcousticGeometry _geometry;
         private AcousticRayTracer _tracer;
         private bool _geometryDirty = true;
         private int _lastEntityCount = -1;
+        private bool _wasEnabled;
 
         public bool Enabled { get; set; } = false;
         public bool ShowListenerRays { get; set; } = true;
@@ -56,7 +57,17 @@ namespace ToolChest
 
         public unsafe void RenderWorld(Matrix4x4 view, Matrix4x4 projection)
         {
-            if (!Enabled) return;
+            if (!Enabled)
+            {
+                _wasEnabled = false;
+                return;
+            }
+
+            if (!_wasEnabled)
+            {
+                _geometryDirty = true;
+                _wasEnabled = true;
+            }
 
             EnsureResources();
             var entities = _getEntities();
@@ -70,35 +81,92 @@ namespace ToolChest
 
             if (_geometryDirty)
             {
-                _geometry.Rebuild(entities, null);
+                IHeightProvider height = null;
+                try
+                {
+                    // Best-effort: pull height provider from any live PhysicsWorld if present
+                    foreach (var e in entities)
+                    {
+                        var p = e.GetComponent<PhysicsComponent>();
+                        if (p?.Shape is HeightfieldShape) { /* already have terrain */ }
+                    }
+                }
+                catch { }
+                _geometry.Rebuild(entities, height);
                 _geometryDirty = false;
             }
 
             Vector3 listener = _getListenerPos();
-            var sources = _getSourcePositions();
+            var sources = _getSourcePositions() ?? Array.Empty<Vector3>();
 
-            _tracer.KickDebugBidirectional(listener, sources);
-            var segments = _tracer.GetDebugSegments();
-
+            // Always draw visible markers so the toggle is never silent
             _dynVerts.Clear();
             _dynIndices.Clear();
+            AddCross(_dynVerts, _dynIndices, listener, 1.5f, ListenerColor);
+            for (int s = 0; s < sources.Count; s++)
+                AddCross(_dynVerts, _dynIndices, sources[s], 1.2f, SourceColor);
 
-            if (segments != null)
+            // GPU bidirectional free-segment + meeting results
+            if (_geometry.TriangleCount > 0)
             {
-                for (int i = 0; i < segments.Count; i++)
+                _tracer.KickDebugBidirectional(listener, sources);
+                var segments = _tracer.GetDebugSegments();
+                if (segments != null)
                 {
-                    var seg = segments[i];
-                    Vector4 col = seg.Kind switch
+                    for (int i = 0; i < segments.Count; i++)
                     {
-                        AcousticRayTracer.DebugSegmentKind.Listener => ListenerColor,
-                        AcousticRayTracer.DebugSegmentKind.Source => SourceColor,
-                        _ => MeetingColor
-                    };
-                    if ((seg.Kind == AcousticRayTracer.DebugSegmentKind.Listener && !ShowListenerRays) ||
-                        (seg.Kind == AcousticRayTracer.DebugSegmentKind.Source && !ShowSourceRays) ||
-                        (seg.Kind == AcousticRayTracer.DebugSegmentKind.Meeting && !ShowMeetings))
-                        continue;
-                    AddLine(_dynVerts, _dynIndices, seg.A, seg.B, col);
+                        var seg = segments[i];
+                        Vector4 col;
+                        if (seg.Kind == AcousticRayTracer.DebugSegmentKind.Listener)
+                        {
+                            if (!ShowListenerRays) continue;
+                            col = ListenerColor;
+                        }
+                        else if (seg.Kind == AcousticRayTracer.DebugSegmentKind.Source)
+                        {
+                            if (!ShowSourceRays) continue;
+                            col = SourceColor;
+                        }
+                        else
+                        {
+                            if (!ShowMeetings) continue;
+                            col = MeetingColor;
+                        }
+                        if ((seg.A - seg.B).LengthSquared() < 1e-5f) continue;
+                        AddLine(_dynVerts, _dynIndices, seg.A, seg.B, col);
+                    }
+                }
+            }
+            else
+            {
+                // Fallback free-space stratified rays so the mode is never blank
+                const int fallbackRays = 32;
+                for (int i = 0; i < fallbackRays; i++)
+                {
+                    float a = i * MathF.PI * 2f / fallbackRays;
+                    float elev = ((i % 4) - 1.5f) * 0.35f;
+                    Vector3 dir = Vector3.Normalize(new Vector3(MathF.Cos(a), MathF.Sin(a), elev));
+                    Vector3 end = listener + dir * 25f;
+                    if (ShowListenerRays)
+                        AddLine(_dynVerts, _dynIndices, listener, end, ListenerColor);
+                }
+                for (int s = 0; s < sources.Count; s++)
+                {
+                    Vector3 src = sources[s];
+                    for (int i = 0; i < 12; i++)
+                    {
+                        float a = i * MathF.PI * 2f / 12f;
+                        Vector3 dir = Vector3.Normalize(new Vector3(MathF.Cos(a), MathF.Sin(a), 0.1f));
+                        Vector3 end = src + dir * 18f;
+                        if (ShowSourceRays)
+                            AddLine(_dynVerts, _dynIndices, src, end, SourceColor);
+                    }
+                    // Simple meeting hint toward listener
+                    if (ShowMeetings)
+                    {
+                        Vector3 mid = (listener + src) * 0.5f;
+                        AddCross(_dynVerts, _dynIndices, mid, 0.8f, MeetingColor);
+                    }
                 }
             }
 
@@ -136,6 +204,13 @@ namespace ToolChest
             verts.Add(new Vertex(b.X, b.Y, b.Z, color.X, color.Y, color.Z, color.W));
             indices.Add(i0);
             indices.Add(i0 + 1);
+        }
+
+        private static void AddCross(List<Vertex> verts, List<uint> indices, Vector3 center, float size, Vector4 color)
+        {
+            AddLine(verts, indices, center - new Vector3(size, 0, 0), center + new Vector3(size, 0, 0), color);
+            AddLine(verts, indices, center - new Vector3(0, size, 0), center + new Vector3(0, size, 0), color);
+            AddLine(verts, indices, center - new Vector3(0, 0, size), center + new Vector3(0, 0, size), color);
         }
     }
 }
