@@ -31,6 +31,7 @@ namespace ToolChest
         private bool _geometryDirty = true;
         private int _lastEntityCount = -1;
         private bool _wasEnabled;
+        private bool _loggedThisEnable;
 
         public bool Enabled { get; set; } = false;
         public bool ShowListenerRays { get; set; } = true;
@@ -60,6 +61,7 @@ namespace ToolChest
             if (!Enabled)
             {
                 _wasEnabled = false;
+                _loggedThisEnable = false;
                 return;
             }
 
@@ -67,6 +69,7 @@ namespace ToolChest
             {
                 _geometryDirty = true;
                 _wasEnabled = true;
+                _loggedThisEnable = false;
             }
 
             EnsureResources();
@@ -84,11 +87,10 @@ namespace ToolChest
                 IHeightProvider height = null;
                 try
                 {
-                    // Best-effort: pull height provider from any live PhysicsWorld if present
                     foreach (var e in entities)
                     {
                         var p = e.GetComponent<PhysicsComponent>();
-                        if (p?.Shape is HeightfieldShape) { /* already have terrain */ }
+                        if (p?.Shape is HeightfieldShape) { }
                     }
                 }
                 catch { }
@@ -109,8 +111,47 @@ namespace ToolChest
             // GPU bidirectional free-segment + meeting results
             if (_geometry.TriangleCount > 0)
             {
-                _tracer.KickDebugBidirectional(listener, sources);
+                _tracer.KickDebugBidirectional(listener, sources, !_loggedThisEnable);
                 var segments = _tracer.GetDebugSegments();
+
+                if (!_loggedThisEnable)
+                {
+                    Console.WriteLine($"[AcousticDebug] Listener resolved = ({listener.X:F3},{listener.Y:F3},{listener.Z:F3})  (Camera-first then PreferredSpawnPointIds → Physics.Position; zero = unresolved)");
+                    if (sources.Count == 0)
+                        Console.WriteLine("[AcousticDebug] Sources: none");
+                    else
+                    {
+                        for (int s = 0; s < sources.Count; s++)
+                            Console.WriteLine($"[AcousticDebug] Source[{s}] = ({sources[s].X:F3},{sources[s].Y:F3},{sources[s].Z:F3})");
+                    }
+                    Console.WriteLine($"[AcousticDebug] Geometry after Rebuild: TriangleCount={_geometry.TriangleCount} GeometryVersion={_geometry.GeometryVersion}");
+
+                    int count = segments != null ? segments.Count : 0;
+                    Console.WriteLine($"[AcousticDebug] GetDebugSegments returned {count} segments");
+
+                    int listenerCnt = 0, sourceCnt = 0, meetingCnt = 0;
+                    if (segments != null)
+                    {
+                        for (int i = 0; i < segments.Count; i++)
+                        {
+                            if (segments[i].Kind == AcousticRayTracer.DebugSegmentKind.Listener) listenerCnt++;
+                            else if (segments[i].Kind == AcousticRayTracer.DebugSegmentKind.Source) sourceCnt++;
+                            else meetingCnt++;
+                        }
+                        Console.WriteLine($"[AcousticDebug] Kind histogram: Listener={listenerCnt} Source={sourceCnt} Meeting={meetingCnt}");
+
+                        int sample = Math.Min(12, segments.Count);
+                        for (int i = 0; i < sample; i++)
+                        {
+                            var seg = segments[i];
+                            Console.WriteLine($"[AcousticDebug]   seg[{i}] Kind={seg.Kind} A=({seg.A.X:F2},{seg.A.Y:F2},{seg.A.Z:F2}) B=({seg.B.X:F2},{seg.B.Y:F2},{seg.B.Z:F2})");
+                        }
+                    }
+                    _loggedThisEnable = true;
+                }
+
+                // Force-draw every accepted segment on the diagnostic frame and all subsequent frames
+                // (ignore Show* toggles and length cull so the full set of rays is visible)
                 if (segments != null)
                 {
                     for (int i = 0; i < segments.Count; i++)
@@ -118,28 +159,22 @@ namespace ToolChest
                         var seg = segments[i];
                         Vector4 col;
                         if (seg.Kind == AcousticRayTracer.DebugSegmentKind.Listener)
-                        {
-                            if (!ShowListenerRays) continue;
                             col = ListenerColor;
-                        }
                         else if (seg.Kind == AcousticRayTracer.DebugSegmentKind.Source)
-                        {
-                            if (!ShowSourceRays) continue;
                             col = SourceColor;
-                        }
                         else
-                        {
-                            if (!ShowMeetings) continue;
                             col = MeetingColor;
-                        }
-                        if ((seg.A - seg.B).LengthSquared() < 1e-5f) continue;
                         AddLine(_dynVerts, _dynIndices, seg.A, seg.B, col);
                     }
                 }
             }
             else
             {
-                // Fallback free-space stratified rays so the mode is never blank
+                if (!_loggedThisEnable)
+                {
+                    Console.WriteLine("[AcousticDebug] TriangleCount==0 → synthetic free-space fallback path");
+                    _loggedThisEnable = true;
+                }
                 const int fallbackRays = 32;
                 for (int i = 0; i < fallbackRays; i++)
                 {
@@ -147,8 +182,7 @@ namespace ToolChest
                     float elev = ((i % 4) - 1.5f) * 0.35f;
                     Vector3 dir = Vector3.Normalize(new Vector3(MathF.Cos(a), MathF.Sin(a), elev));
                     Vector3 end = listener + dir * 25f;
-                    if (ShowListenerRays)
-                        AddLine(_dynVerts, _dynIndices, listener, end, ListenerColor);
+                    AddLine(_dynVerts, _dynIndices, listener, end, ListenerColor);
                 }
                 for (int s = 0; s < sources.Count; s++)
                 {
@@ -158,15 +192,10 @@ namespace ToolChest
                         float a = i * MathF.PI * 2f / 12f;
                         Vector3 dir = Vector3.Normalize(new Vector3(MathF.Cos(a), MathF.Sin(a), 0.1f));
                         Vector3 end = src + dir * 18f;
-                        if (ShowSourceRays)
-                            AddLine(_dynVerts, _dynIndices, src, end, SourceColor);
+                        AddLine(_dynVerts, _dynIndices, src, end, SourceColor);
                     }
-                    // Simple meeting hint toward listener
-                    if (ShowMeetings)
-                    {
-                        Vector3 mid = (listener + src) * 0.5f;
-                        AddCross(_dynVerts, _dynIndices, mid, 0.8f, MeetingColor);
-                    }
+                    Vector3 mid = (listener + src) * 0.5f;
+                    AddCross(_dynVerts, _dynIndices, mid, 0.8f, MeetingColor);
                 }
             }
 

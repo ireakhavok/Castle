@@ -90,13 +90,19 @@ namespace SiegeEngine.Core.GPU.Compute
             _writeIdx = 1 - _writeIdx;
         }
 
-        public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources)
+        public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources, bool diagnosticOnce = false)
         {
-            if (_disposed) return;
+            if (_disposed)
+            {
+                if (diagnosticOnce)
+                    Console.WriteLine("[AcousticRayTracer.KickDebugBidirectional] early-out: disposed");
+                return;
+            }
             Vector3 primarySource = (sources != null && sources.Count > 0) ? sources[0] : listenerPos + new Vector3(0, 10, 0);
             if (_geometry.TriangleCount <= 0)
             {
-                // Still produce synthetic free rays so visualization is never empty
+                if (diagnosticOnce)
+                    Console.WriteLine("[AcousticRayTracer.KickDebugBidirectional] early-out: TriangleCount<=0 → synthetic free segments");
                 _debugSegments.Clear();
                 const int n = 48;
                 for (int i = 0; i < n; i++)
@@ -145,6 +151,9 @@ namespace SiegeEngine.Core.GPU.Compute
                 return;
             }
 
+            if (diagnosticOnce)
+                Console.WriteLine($"[AcousticRayTracer.KickDebugBidirectional] dispatch GPU path listener=({listenerPos.X:F2},{listenerPos.Y:F2},{listenerPos.Z:F2}) primarySource=({primarySource.X:F2},{primarySource.Y:F2},{primarySource.Z:F2}) triangles={_geometry.TriangleCount}");
+
             _geometry.Buffer.BindBase(0);
             _resultSsbo[_writeIdx].BindBase(1);
             _debugSsbo[_writeIdx].BindBase(2);
@@ -161,23 +170,29 @@ namespace SiegeEngine.Core.GPU.Compute
             uint groups = (uint)((ContinuousRays + 63) / 64);
             _program.Dispatch(groups, 1, 1);
             _program.Barrier();
-            ReadDebugSegmentsFromBuffer(_writeIdx);
+            ReadDebugSegmentsFromBuffer(_writeIdx, diagnosticOnce);
             _readIdx = _writeIdx;
             _writeIdx = 1 - _writeIdx;
         }
 
         public IReadOnlyList<DebugSegment> GetDebugSegments() => _debugSegments;
 
-        private void ReadDebugSegmentsFromBuffer(int bufIdx)
+        private void ReadDebugSegmentsFromBuffer(int bufIdx, bool diagnosticOnce = false)
         {
             _debugSegments.Clear();
             uint byteSize = (uint)(MaxDebugSegments * sizeof(GpuDebugSegment));
             GpuDebugSegment* segs = (GpuDebugSegment*)_debugSsbo[bufIdx].MapRange(0, byteSize, _renderContext.Enums.MapReadBit);
-            if (segs == null) return;
+            if (segs == null)
+            {
+                if (diagnosticOnce)
+                    Console.WriteLine("[AcousticRayTracer.ReadDebugSegmentsFromBuffer] MapRange returned null");
+                return;
+            }
+            int accepted = 0;
             for (int i = 0; i < MaxDebugSegments; i++)
             {
                 float kindF = segs[i].B.W;
-                if (kindF < -0.5f) continue; // skip unused slots
+                if (kindF < -0.5f) continue;
                 int kind = (int)(kindF + 0.5f);
                 if (kind < 0 || kind > 2) continue;
                 Vector3 a = new Vector3(segs[i].A.X, segs[i].A.Y, segs[i].A.Z);
@@ -189,8 +204,11 @@ namespace SiegeEngine.Core.GPU.Compute
                     B = b,
                     Kind = (DebugSegmentKind)kind
                 });
+                accepted++;
             }
             _debugSsbo[bufIdx].Unmap();
+            if (diagnosticOnce)
+                Console.WriteLine($"[AcousticRayTracer.ReadDebugSegmentsFromBuffer] accepted {accepted} segments from SSBO (filtered length/kind)");
         }
 
         public SoundRayTraceResult ReadCompletedResult()
@@ -348,7 +366,7 @@ void main()
     uint idx = gl_GlobalInvocationID.x;
     if (idx >= uint(uRayCount)) return;
 
-    // Clear debug slot first so unused entries stay invalid
+    // Clear debug slot
     if (uDebugMode != 0 && idx < 512u)
     {
         debugSegs[idx].A = vec4(0.0);
@@ -360,6 +378,40 @@ void main()
     vec3 target = fromListener ? uSourcePos : uListenerPos;
     vec3 dir = randomUnit(float(idx) * 12.9898 + 0.13);
 
+    // ============================================================
+    // DEBUG MODE (uDebugMode != 0)
+    // Pure free-space stratified rays for visualization.
+    // Do NOT force the LOS connection; radiate in the random direction
+    // and stop at the first hit (or max distance).
+    // ============================================================
+    if (uDebugMode != 0)
+    {
+        float tHit; vec3 nHit; float dens;
+        bool hit = closestHit(origin, dir, tHit, nHit, dens);
+        vec3 freeEnd;
+        if (hit && tHit < uMaxDistance)
+            freeEnd = origin + dir * tHit;
+        else
+            freeEnd = origin + dir * min(uMaxDistance * 0.6, 80.0);
+
+        debugSegs[idx].A = vec4(origin, 0.0);
+        debugSegs[idx].B = vec4(freeEnd, fromListener ? 0.0 : 1.0);
+
+        // Meeting marker: if this free ray ends near the opposite endpoint
+        // (within a generous connection radius) write a short purple segment.
+        float distToOpposite = length(freeEnd - target);
+        if (distToOpposite < 8.0 && (idx + 256u) < 512u)
+        {
+            debugSegs[idx + 256u].A = vec4(freeEnd - vec3(0.4, 0.0, 0.0), 0.0);
+            debugSegs[idx + 256u].B = vec4(freeEnd + vec3(0.4, 0.0, 0.0), 2.0);
+        }
+        return;
+    }
+
+    // ============================================================
+    // RESIDUAL / CONTINUOUS MODE (uDebugMode == 0)
+    // Full multipath energy aggregation used by AudioSystem.
+    // ============================================================
     float green = 0.0, blue = 0.0, orange = 0.0, yellow = 0.0;
     float distanceTravelled = 0.0, lowPass = 18000.0;
     bool reached = false;
@@ -455,19 +507,6 @@ void main()
         results[idx].LowPass = 0.0;
         results[idx].ArrivalDir = vec4(0.0);
         results[idx].Pad = 0.0;
-    }
-
-    // Always write a debug segment when in debug mode
-    if (uDebugMode != 0 && idx < 512u)
-    {
-        debugSegs[idx].A = vec4(startPos, 0.0);
-        debugSegs[idx].B = vec4(freeEnd, fromListener ? 0.0 : 1.0);
-        // Meeting marker near free-end when a connection succeeded
-        if (reached && pathwayType == 2 && (idx + 256u) < 512u)
-        {
-            debugSegs[idx + 256u].A = vec4(freeEnd - vec3(0.25, 0.0, 0.0), 0.0);
-            debugSegs[idx + 256u].B = vec4(freeEnd + vec3(0.25, 0.0, 0.0), 2.0);
-        }
     }
 }
 ");
