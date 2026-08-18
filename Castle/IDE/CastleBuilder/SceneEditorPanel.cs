@@ -24,6 +24,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using ToolChest;
+
 namespace CastleBuilder
 {
     public class SceneEditorPanel : BasePanel, IDataAwarePanel, IOutlinerProvider
@@ -43,6 +44,7 @@ namespace CastleBuilder
                 _parent.HandleDataHook(hook);
             }
         }
+
         private class SelectionBoxOverlay : ICustomOverlay
         {
             private readonly SceneEditorPanel _parent;
@@ -65,6 +67,7 @@ namespace CastleBuilder
                 quadRenderer.DrawLine(x + w, y + headerHeight, x + w, y + headerHeight + h, 2f, borderColor, panelWidth, panelHeight);
             }
         }
+
         private EditorScene _editorScene;
         private bool _cameraMode = false;
         private ModelManager _modelManager;
@@ -78,7 +81,9 @@ namespace CastleBuilder
         private const float MinDragDistance = 5f;
         private TransformGizmoOverlay _transformGizmo;
         private PhysicsDebugOverlay _physicsDebug;
+        private AcousticDebugOverlay _acousticDebug;
         private bool _fileSelectedSubscribed = false;
+
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
@@ -126,10 +131,8 @@ namespace CastleBuilder
                         var serverField = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance);
                         if (serverField == null) return Array.Empty<ContactManifold>();
                         var server = serverField.GetValue(_editorScene);
-                        // Editor path – ClientGameServerProxy owns the live PhysicsWorld
                         if (server is ClientGameServerProxy proxy)
                             return proxy.CurrentManifolds;
-                        // Play-mode / full GameServer path
                         if (server != null)
                         {
                             var physSysField = server.GetType().GetField("_physicsSystem", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -157,12 +160,57 @@ namespace CastleBuilder
                 () => _selectedEntityIds
             );
             CustomOverlays.Add(_physicsDebug);
+
+            _acousticDebug = new AcousticDebugOverlay(
+                renderContext,
+                () =>
+                {
+                    var ents = _editorScene.GetEntities();
+                    if (ents != null && ents.Count > 0) return ents;
+                    var serverField = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (serverField != null)
+                    {
+                        var server = serverField.GetValue(_editorScene) as IGameServer;
+                        return server?.GetEntities() ?? (IReadOnlyList<Entity>)Array.Empty<Entity>();
+                    }
+                    return Array.Empty<Entity>();
+                },
+                () =>
+                {
+                    var active = _editorScene.GetActiveGameScene() as TerrainCreatorScene;
+                    if (active != null)
+                    {
+                        var flyField = active.GetType().GetField("_flyCamera", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+                        var fly = flyField?.GetValue(active) as FlyCameraController;
+                        if (fly != null) return fly.Position;
+                    }
+                    return new Vector3(0, 0, 50);
+                },
+                () =>
+                {
+                    var list = new List<Vector3>();
+                    var ents = _editorScene.GetEntities();
+                    if (ents == null) return list;
+                    foreach (var e in ents)
+                    {
+                        var sc = e.GetComponent<SoundComponent>();
+                        if (sc == null || !sc.AutoPlay) continue;
+                        var p = e.GetComponent<PhysicsComponent>();
+                        if (p != null) list.Add(p.Position);
+                    }
+                    return list;
+                }
+            );
+            CustomOverlays.Add(_acousticDebug);
         }
+
         public string ContentType => "SceneEditor";
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new SceneEditorUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
         public override void Init()
         {
             base.Init();
@@ -180,6 +228,7 @@ namespace CastleBuilder
             _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
         }
+
         private void OnGenericEvent(GenericEvent e)
         {
             if (e.Hook == "SkyboxSet" && e.Data != null && e.Data.ContainsKey("skybox"))
@@ -211,9 +260,6 @@ namespace CastleBuilder
             }
             else if (e.Hook == "OutlinerSelectionChanged")
             {
-                // Selection originated from Outliner / Properties.
-                // Update local state + gizmo directly. Do NOT re-publish EntitySelectedEvent
-                // (that would re-enter NotifySelectionChanged and cause infinite recursion).
                 string nodeId = e.Data != null && e.Data.ContainsKey("nodeId") ? e.Data["nodeId"]?.ToString() ?? "" : "";
                 if (nodeId.StartsWith("entity-") && int.TryParse(nodeId.Substring(7), out int entityId))
                 {
@@ -244,6 +290,7 @@ namespace CastleBuilder
                 NotifyHierarchyChanged();
             }
         }
+
         private void OnEntitySelected(EntitySelectedEvent e)
         {
             if (e.Additive)
@@ -282,10 +329,12 @@ namespace CastleBuilder
             }
             NotifyHierarchyChanged();
         }
+
         public void RefreshSceneList()
         {
             UpdateSceneSelectorUI();
         }
+
         private void UpdateSceneSelectorUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SceneEditorUI.html");
@@ -310,6 +359,7 @@ namespace CastleBuilder
             string finalHtml = baseHtml.Replace("<!-- Populated dynamically -->", options.ToString());
             _uiOverlay.LoadUI(finalHtml);
         }
+
         private void HandleDataHook(string hook)
         {
             if (hook == "SceneSelected")
@@ -344,6 +394,11 @@ namespace CastleBuilder
             {
                 if (_physicsDebug != null)
                     _physicsDebug.Enabled = !_physicsDebug.Enabled;
+            }
+            else if (hook == "ToggleAcousticDebug")
+            {
+                if (_acousticDebug != null)
+                    _acousticDebug.Enabled = !_acousticDebug.Enabled;
             }
             else if (hook == "PlaceSoundSource")
             {
@@ -381,6 +436,7 @@ namespace CastleBuilder
                 NotifyHierarchyChanged();
             }
         }
+
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
         {
             if (e.UserData?.ToString() != "PlaceEntity" || string.IsNullOrEmpty(e.Path)) return;
@@ -434,9 +490,11 @@ namespace CastleBuilder
             Console.WriteLine($"[SceneEditorPanel.OnFileSelectedForPlacement] Placed entity ID={entity.Id} AssetPackKey='{packId}' at {placePos}");
             _editorScene.SyncCurrentLevelToRuntimeServer();
         }
+
         public void HandleUIClick(HtmlElement elem)
         {
         }
+
         public override void ToggleCameraMode()
         {
             _cameraMode = !_cameraMode;
@@ -445,6 +503,7 @@ namespace CastleBuilder
             if (_cameraMode)
                 _transformGizmo.ClearSelection();
         }
+
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (_pendingSceneSelectorUpdate)
@@ -527,7 +586,6 @@ namespace CastleBuilder
                 float contentW = Size.X;
                 float contentH = Size.Y - headerHeight;
                 _transformGizmo.HandleMouseInput(contentMouse, contentW, contentH, mouseDown, mousePressed, mouseReleased);
-                // Camera-relative keyboard: arrows = translation, WASD = rotation
                 if (_selectedEntityIds.Count == 1)
                 {
                     var entity = _editorScene.GetEntityById(_selectedEntityIds[0]);
@@ -536,7 +594,6 @@ namespace CastleBuilder
                         var physics = entity.GetComponent<PhysicsComponent>();
                         if (physics != null)
                         {
-                            // Extract camera-relative axes from the view matrix already computed above
                             Vector3 camForward = new Vector3(-view.M13, -view.M23, -view.M33);
                             Vector3 camRight = new Vector3(view.M11, view.M21, view.M31);
                             Vector3 camUp = new Vector3(view.M12, view.M22, view.M32);
@@ -547,8 +604,7 @@ namespace CastleBuilder
                             if (lenF > 1e-5f) camForward /= lenF;
                             if (lenR > 1e-5f) camRight /= lenR;
                             const float translateSpeed = 5.0f;
-                            const float rotateSpeed = 90.0f * (MathF.PI / 180f); // rad/s
-                            // Arrows → camera-relative translation
+                            const float rotateSpeed = 90.0f * (MathF.PI / 180f);
                             Vector3 delta = Vector3.Zero;
                             if (_controlContext.GetKey(_window, Key.Up) == InputAction.Press) delta += camForward;
                             if (_controlContext.GetKey(_window, Key.Down) == InputAction.Press) delta -= camForward;
@@ -561,7 +617,6 @@ namespace CastleBuilder
                                 physics.Position += delta;
                                 moved = true;
                             }
-                            // WASD → camera-relative rotation
                             float yawDelta = 0f;
                             float pitchDelta = 0f;
                             if (_controlContext.GetKey(_window, Key.A) == InputAction.Press) yawDelta += rotateSpeed * deltaTime;
@@ -624,6 +679,7 @@ namespace CastleBuilder
                 _editorScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
             }
         }
+
         private void PerformBoxSelection(bool additive)
         {
             float header = HasTitleBar ? HeaderHeight : 0f;
@@ -641,6 +697,7 @@ namespace CastleBuilder
             var evt = new EntitySelectedEvent { SelectedEntityIds = selected, Additive = additive };
             _eventBus.Publish(evt);
         }
+
         protected override void RenderInnerContent()
         {
             _editorScene.Render(null);
@@ -703,7 +760,6 @@ namespace CastleBuilder
                     {
                         Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
                         Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.Position);
-                        // Per-model unit conversion: Blender (metres) uses 1.0, Unity/Unreal (cm) uses 0.01.
                         float unitScale = fbxModel.UnitToMeters;
                         Matrix4x4 scaleMat = Matrix4x4.CreateScale(unitScale * physics.Scale);
                         Matrix4x4 modelMatrix = scaleMat * rotation * translation;
@@ -719,12 +775,18 @@ namespace CastleBuilder
             {
                 _physicsDebug.RenderWorld(view, projection);
             }
+            if (_acousticDebug != null)
+            {
+                _acousticDebug.RenderWorld(view, projection);
+            }
         }
+
         public override void OnLiveResize(float w, float h)
         {
             _editorScene.Resize((int)w, (int)h);
             base.OnLiveResize(w, h);
         }
+
         public override void Dispose()
         {
             if (_fileSelectedSubscribed)
@@ -736,12 +798,14 @@ namespace CastleBuilder
             _editorScene?.Dispose();
             base.Dispose();
         }
+
         public string DataKey => "SceneEditorPanel";
         public JsonElement SavePanelState()
         {
             var state = new Dictionary<string, string> { ["currentSceneName"] = _editorScene?.CurrentGameScene ?? "Main" };
             return JsonSerializer.SerializeToElement(state);
         }
+
         public void LoadPanelState(JsonElement state)
         {
             if (state.TryGetProperty("currentSceneName", out JsonElement sceneNameElem))
@@ -754,10 +818,12 @@ namespace CastleBuilder
                 }
             }
         }
+
         public override void OnContentFocusGained()
         {
             OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);
         }
+
         public List<OutlinerNode> GetCurrentHierarchy()
         {
             var nodes = new List<OutlinerNode>();
@@ -797,6 +863,7 @@ namespace CastleBuilder
             Console.WriteLine($"[SceneEditorPanel.GetCurrentHierarchy] Returned {nodes.Count} nodes (root + {entities.Count} entities)");
             return nodes;
         }
+
         public object GetObjectForNode(string nodeId)
         {
             if (nodeId.StartsWith("entity-"))
@@ -813,6 +880,7 @@ namespace CastleBuilder
             }
             return null;
         }
+
         public void NotifyHierarchyChanged()
         {
             OutlinerCoordinator.Instance.NotifyHierarchyChanged();

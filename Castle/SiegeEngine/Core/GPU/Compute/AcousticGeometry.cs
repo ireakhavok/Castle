@@ -7,12 +7,13 @@ using System.Runtime.InteropServices;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.GPU.ContextManagement;
+
 namespace SiegeEngine.Core.GPU.Compute
 {
     /// <summary>
-    /// Packs simplified Static collision proxies (OBB only) + a coarse heightmap proxy
-    /// into a GPU SSBO for acoustic multipath ray tracing.
-    /// Full TriangleMeshShape meshes are never uploaded.
+    /// Packs low-triangle acoustic proxies (stratified sampling of TriangleMeshShape ≤192 tris
+    /// per body, OBB for non-mesh bodies, coarse heightmap) into a GPU SSBO for multipath ray tracing.
+    /// Full TriangleMeshShape representation is left untouched for physics.
     /// </summary>
     public unsafe class AcousticGeometry : IDisposable
     {
@@ -23,32 +24,33 @@ namespace SiegeEngine.Core.GPU.Compute
             public Vector4 B;
             public Vector4 C; // .w = material density
         }
+
         private readonly IRenderContext _renderContext;
         private readonly ShaderStorageBuffer _ssbo;
-        private readonly List<GpuTriangle> _cpuTris = new List<GpuTriangle>(1024);
+        private readonly List<GpuTriangle> _cpuTris = new List<GpuTriangle>(2048);
+        private readonly List<Vector3> _tmpA = new List<Vector3>(4096);
+        private readonly List<Vector3> _tmpB = new List<Vector3>(4096);
+        private readonly List<Vector3> _tmpC = new List<Vector3>(4096);
         private bool _disposed;
         private int _lastTriangleCount;
         private volatile uint _geometryVersion;
+
         public int TriangleCount => _lastTriangleCount;
         public ShaderStorageBuffer Buffer => _ssbo;
         public uint GeometryVersion => _geometryVersion;
+
         public AcousticGeometry(IRenderContext renderContext)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _ssbo = new ShaderStorageBuffer(_renderContext);
         }
-        /// <summary>
-        /// Rebuild from entities + optional heightmap.
-        /// Only Static bodies → OBB from Size.
-        /// Heightmap is tessellated at low resolution so ground bounce is possible
-        /// without repeating the previous 238 k-triangle stall.
-        /// </summary>
+
         public void Rebuild(IReadOnlyList<Entity> entities, IHeightProvider heightProvider = null)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(AcousticGeometry));
             _cpuTris.Clear();
             if (entities == null) return;
-            // ── Static OBB path (unchanged) ──────────────────────────────────
+
             for (int i = 0; i < entities.Count; i++)
             {
                 var entity = entities[i];
@@ -56,17 +58,25 @@ namespace SiegeEngine.Core.GPU.Compute
                 var physics = entity.GetComponent<PhysicsComponent>();
                 if (physics == null || !physics.CollisionEnabled) continue;
                 if (physics.BodyType != BodyType.Static) continue;
+
                 float density = 1.0f;
                 float volume = physics.Size.X * physics.Size.Y * physics.Size.Z;
                 if (volume > 1e-6f)
                     density = Math.Max(0.1f, physics.Mass / volume);
-                TessellateObb(physics.Position, physics.Rotation, physics.Size * 0.5f, density);
+
+                if (physics.Shape is TriangleMeshShape mesh)
+                {
+                    TessellateMeshProxy(mesh, physics.Position, physics.Rotation, density);
+                }
+                else
+                {
+                    TessellateObb(physics.Position, physics.Rotation, physics.Size * 0.5f, density);
+                }
             }
-            // ── Coarse heightmap proxy (X/Y horizontal, Z = height) ───────────
-            // Matches the coordinate convention used by HeightfieldShape.
+
             if (heightProvider != null && heightProvider.Width > 1 && heightProvider.Height > 1)
             {
-                const int maxCells = 48; // ~2 × 48 × 48 ≈ 4600 triangles worst-case
+                const int maxCells = 48;
                 int stepX = Math.Max(1, heightProvider.Width / maxCells);
                 int stepY = Math.Max(1, heightProvider.Height / maxCells);
                 float sx = 1f, sy = 1f;
@@ -97,8 +107,36 @@ namespace SiegeEngine.Core.GPU.Compute
                     }
                 }
             }
+
             Upload();
         }
+
+        private void TessellateMeshProxy(TriangleMeshShape mesh, Vector3 position, Quaternion rotation, float density)
+        {
+            _tmpA.Clear();
+            _tmpB.Clear();
+            _tmpC.Clear();
+            mesh.GetWorldTriangles(position, rotation, _tmpA, _tmpB, _tmpC);
+            int triCount = _tmpA.Count;
+            if (triCount == 0) return;
+
+            const int maxTris = 192;
+            if (triCount <= maxTris)
+            {
+                for (int t = 0; t < triCount; t++)
+                    AddTri(_tmpA[t], _tmpB[t], _tmpC[t], density);
+                return;
+            }
+
+            // Uniform stratified sample (step through the triangle list)
+            float step = (float)triCount / maxTris;
+            for (int i = 0; i < maxTris; i++)
+            {
+                int t = Math.Min((int)(i * step), triCount - 1);
+                AddTri(_tmpA[t], _tmpB[t], _tmpC[t], density);
+            }
+        }
+
         private void TessellateObb(Vector3 position, Quaternion rotation, Vector3 halfExtents, float density)
         {
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
@@ -128,6 +166,7 @@ namespace SiegeEngine.Core.GPU.Compute
             AddTri(c[4], c[5], c[1], density);
             AddTri(c[4], c[1], c[0], density);
         }
+
         private void AddTri(Vector3 a, Vector3 b, Vector3 c, float density)
         {
             _cpuTris.Add(new GpuTriangle
@@ -137,6 +176,7 @@ namespace SiegeEngine.Core.GPU.Compute
                 C = new Vector4(c, density)
             });
         }
+
         private void Upload()
         {
             _lastTriangleCount = _cpuTris.Count;
@@ -152,6 +192,7 @@ namespace SiegeEngine.Core.GPU.Compute
             }
             _geometryVersion++;
         }
+
         public void Dispose()
         {
             if (!_disposed)
