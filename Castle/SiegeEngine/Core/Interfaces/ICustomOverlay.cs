@@ -1,6 +1,6 @@
 ﻿// Folder: SiegeEngine.Core.Interfaces
 // File: ICustomOverlay.cs
-using SiegeEngine.Core.Rendering.Renderers;
+using SiegeEngine.Core.GPU.Renderers;
 
 namespace SiegeEngine.Core.Interfaces
 {

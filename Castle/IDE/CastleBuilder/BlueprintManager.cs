@@ -7,7 +7,7 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
-using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.Terrain;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;

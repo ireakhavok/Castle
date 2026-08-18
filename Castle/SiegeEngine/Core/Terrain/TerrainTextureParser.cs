@@ -1,7 +1,7 @@
 ﻿// Folder: SiegeEngine/Core/Terrain
 // File: TerrainTextureParser.cs
-using SiegeEngine.Core.Rendering;
-using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.GPU;
+using SiegeEngine.Core.GPU.ContextManagement;
 using System;
 using System.Drawing;
 using System.IO;

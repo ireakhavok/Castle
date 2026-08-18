@@ -2,8 +2,8 @@
 // File: OptionElement.cs
 using System;
 using System.Numerics;
-using SiegeEngine.Core.Rendering.ContextManagement;
-using SiegeEngine.Core.Rendering.Renderers;
+using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Renderers;
 
 namespace SiegeEngine.Core.UI.Elements
 {

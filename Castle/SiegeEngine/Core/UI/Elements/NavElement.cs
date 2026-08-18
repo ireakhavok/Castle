@@ -1,7 +1,7 @@
 ﻿// Folder: SiegeEngine.Core.UI
 // File: NavElement.cs
-using SiegeEngine.Core.Rendering.ContextManagement;
-using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU;
 using System;
 using System.Numerics;
 using System.Linq;

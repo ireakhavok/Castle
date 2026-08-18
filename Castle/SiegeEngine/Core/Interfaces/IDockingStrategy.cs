@@ -2,8 +2,8 @@
 // File: IDockingStrategy.cs
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.Rendering;
-using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.GPU;
+using SiegeEngine.Core.GPU.ContextManagement;
 using System.Numerics;
 
 namespace SiegeEngine.Core.Managers

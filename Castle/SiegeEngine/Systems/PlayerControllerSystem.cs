@@ -6,7 +6,7 @@ using SiegeEngine.Core.Events;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Definitions;
-using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.GPU.ContextManagement;
 
 namespace SiegeEngine.Systems
 {

@@ -1,5 +1,5 @@
 ﻿using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.Rendering.Renderers;
+using SiegeEngine.Core.GPU.Renderers;
 using System;
 using System.Numerics;
 

@@ -2,14 +2,14 @@
 // File: NewProjectPanel.cs
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
 using SiegeEngine.Core.Managers;
 using System;
 using System.IO;
 using System.Numerics;
-using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.GPU.ContextManagement;
 
 namespace CastleBuilder
 {

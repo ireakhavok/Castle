@@ -2,7 +2,7 @@
 // File: CaptureManager.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.GPU.ContextManagement;
 using System.Numerics;
 
 namespace SiegeEngine.Core.Managers

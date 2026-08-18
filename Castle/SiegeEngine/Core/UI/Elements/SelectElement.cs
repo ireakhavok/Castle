@@ -1,7 +1,7 @@
 ﻿// Folder: SiegeEngine.Core.UI.Elements
 // File: SelectElement.cs
-using SiegeEngine.Core.Rendering.ContextManagement;
-using SiegeEngine.Core.Rendering.Renderers;
+using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Renderers;
 using System;
 using System.Collections.Generic;
 using System.Linq;

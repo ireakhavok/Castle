@@ -5,8 +5,8 @@ using System.IO;
 using System.Reflection;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.Rendering;
-using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.GPU;
+using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.UI;
 namespace SiegeEngine.Core.UI
 {

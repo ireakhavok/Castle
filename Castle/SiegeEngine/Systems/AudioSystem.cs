@@ -13,8 +13,8 @@ using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.Physics;
-using SiegeEngine.Core.Rendering.Compute;
-using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.GPU.Compute;
+using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.PlayerSystem;
 namespace SiegeEngine.Systems
 {

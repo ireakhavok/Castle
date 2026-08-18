@@ -1,7 +1,7 @@
 ﻿// Folder: SiegeEngine/Core/Managers
 // File: PanelInputRouter.cs
 using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;

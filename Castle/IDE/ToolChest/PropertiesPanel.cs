@@ -2,7 +2,7 @@
 // File: PropertiesPanel.cs
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
@@ -15,7 +15,7 @@ using System.Text.Json;
 using Keystone;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
-using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.UI.Elements;
 using SiegeEngine.Core.Physics;
 namespace ToolChest

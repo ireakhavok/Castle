@@ -4,8 +4,8 @@ using SiegeEngine.Core.Definitions; // Needed for Key enum
 using System;
 using System.Numerics;
 using System.Globalization;
-using SiegeEngine.Core.Rendering.ContextManagement;
-using SiegeEngine.Core.Rendering.Renderers;
+using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Renderers;
 namespace SiegeEngine.Core.UI.Elements
 {
     public class InputElement : HtmlElement
