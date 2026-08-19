@@ -122,7 +122,7 @@ void main() {
     vec3 dir = vec3(r * cos(az), r * sin(az), z);
 
     float energy = 1.0;
-    const float MAX_FREE = 40.0;
+    const float MAX_FREE = 120.0;
 
     float tHit;
     vec3 nHit;

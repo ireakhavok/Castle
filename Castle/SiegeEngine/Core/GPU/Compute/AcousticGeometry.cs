@@ -13,8 +13,8 @@ namespace SiegeEngine.Core.GPU.Compute
     /// Packs low-triangle acoustic proxies into a GPU SSBO.
     /// - TriangleMeshShape: stratified sample of original faces (≤192) with normal expansion.
     /// - Analytic / non-mesh static bodies: oriented 20-face icosahedron (d20)
-    ///   scaled to the body's half-extents + conservative expansion (sealed volume).
-    ///   Extreme thin bodies receive a dual-shell so linear ray-triangle cannot tunnel.
+    /// scaled to the body's half-extents + conservative expansion (sealed volume).
+    /// Extreme thin bodies receive a dual-shell so linear ray-triangle cannot tunnel.
     /// Dynamic bodies are ignored (physics remains authoritative).
     /// </summary>
     public unsafe class AcousticGeometry : IDisposable
@@ -43,12 +43,12 @@ namespace SiegeEngine.Core.GPU.Compute
             const float t = 1.6180339887f; // golden ratio
             IcoVerts = new Vector3[]
             {
-                new Vector3(-1,  t,  0), new Vector3( 1,  t,  0),
-                new Vector3(-1, -t,  0), new Vector3( 1, -t,  0),
-                new Vector3( 0, -1,  t), new Vector3( 0,  1,  t),
-                new Vector3( 0, -1, -t), new Vector3( 0,  1, -t),
-                new Vector3( t,  0, -1), new Vector3( t,  0,  1),
-                new Vector3(-t,  0, -1), new Vector3(-t,  0,  1)
+                new Vector3(-1, t, 0), new Vector3( 1, t, 0),
+                new Vector3(-1, -t, 0), new Vector3( 1, -t, 0),
+                new Vector3( 0, -1, t), new Vector3( 0, 1, t),
+                new Vector3( 0, -1, -t), new Vector3( 0, 1, -t),
+                new Vector3( t, 0, -1), new Vector3( t, 0, 1),
+                new Vector3(-t, 0, -1), new Vector3(-t, 0, 1)
             };
             // Normalise to unit radius
             for (int i = 0; i < IcoVerts.Length; i++)
@@ -172,12 +172,10 @@ namespace SiegeEngine.Core.GPU.Compute
             float eps = Math.Max(0.22f, 0.10f * Math.Clamp(density, 0.5f, 4f));
             Vector3 he = halfExtents + new Vector3(eps);
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
-
             // Detect extreme thin bodies (walls)
             float minAxis = Math.Min(halfExtents.X, Math.Min(halfExtents.Y, halfExtents.Z));
             float maxAxis = Math.Max(halfExtents.X, Math.Max(halfExtents.Y, halfExtents.Z));
             bool thin = (maxAxis > 1e-4f) && (minAxis / maxAxis < 0.30f);
-
             // Transform the 12 unit vertices into the oriented box
             Vector3[] world = new Vector3[12];
             for (int i = 0; i < 12; i++)
@@ -195,7 +193,6 @@ namespace SiegeEngine.Core.GPU.Compute
                 int i2 = IcoFaces[f, 2];
                 AddTri(world[i0], world[i1], world[i2], density);
             }
-
             // Dual-shell for thin walls: outer shell at 1.5*eps closes the volume
             if (thin)
             {
@@ -240,6 +237,61 @@ namespace SiegeEngine.Core.GPU.Compute
                 _ssbo.SetData((uint)byteSize, ptr, _renderContext.Enums.DynamicDraw);
             }
             _geometryVersion++;
+        }
+        /// <summary>
+        /// CPU-side closest-hit query against the last uploaded acoustic proxies.
+        /// Used for direct LOS tests and debug path solving. Matches GPU closestHit logic.
+        /// </summary>
+        public bool TryClosestHit(Vector3 origin, Vector3 dir, out float tHit, out Vector3 nHit, out float dens)
+        {
+            tHit = float.MaxValue;
+            nHit = Vector3.Zero;
+            dens = 1.0f;
+            if (_cpuTris.Count == 0) return false;
+            float dirLen = dir.Length();
+            if (dirLen < 1e-6f) return false;
+            Vector3 d = dir / dirLen;
+            bool hit = false;
+            for (int i = 0; i < _cpuTris.Count; i++)
+            {
+                var tri = _cpuTris[i];
+                Vector3 a = new Vector3(tri.A.X, tri.A.Y, tri.A.Z);
+                Vector3 b = new Vector3(tri.B.X, tri.B.Y, tri.B.Z);
+                Vector3 c = new Vector3(tri.C.X, tri.C.Y, tri.C.Z);
+                if (RayTriangle(origin, d, a, b, c, out float t, out Vector3 n))
+                {
+                    if (t > 0.001f && t < tHit)
+                    {
+                        tHit = t;
+                        nHit = n;
+                        dens = Math.Max(0.1f, tri.C.W);
+                        hit = true;
+                    }
+                }
+            }
+            return hit;
+        }
+        private static bool RayTriangle(Vector3 o, Vector3 d, Vector3 a, Vector3 b, Vector3 c, out float t, out Vector3 n)
+        {
+            t = 0f;
+            n = Vector3.Zero;
+            Vector3 e1 = b - a;
+            Vector3 e2 = c - a;
+            Vector3 p = Vector3.Cross(d, e2);
+            float det = Vector3.Dot(e1, p);
+            if (Math.Abs(det) < 1e-8f) return false;
+            float inv = 1.0f / det;
+            Vector3 tv = o - a;
+            float u = Vector3.Dot(tv, p) * inv;
+            if (u < 0.0f || u > 1.0f) return false;
+            Vector3 q = Vector3.Cross(tv, e1);
+            float v = Vector3.Dot(d, q) * inv;
+            if (v < 0.0f || u + v > 1.0f) return false;
+            t = Vector3.Dot(e2, q) * inv;
+            if (t < 0.0f) return false;
+            n = Vector3.Normalize(Vector3.Cross(e1, e2));
+            if (Vector3.Dot(n, d) > 0.0f) n = -n;
+            return true;
         }
         public void Dispose()
         {

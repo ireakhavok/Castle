@@ -30,16 +30,14 @@ namespace ToolChest
         private int _lastEntityCount = -1;
         private bool _wasEnabled;
         private bool _loggedThisEnable;
-
         public bool Enabled { get; set; } = false;
         public bool ShowListenerRays { get; set; } = true;
         public bool ShowSourceRays { get; set; } = true;
         public bool ShowMeetings { get; set; } = true;
-
         private static readonly Vector4 ListenerFreeColor = new Vector4(0.20f, 0.55f, 1.00f, 1.0f);
         private static readonly Vector4 SourceFreeColor = new Vector4(1.00f, 0.25f, 0.20f, 1.0f);
         private static readonly Vector4 BounceColor = new Vector4(0.20f, 0.90f, 0.40f, 0.90f);
-
+        private static readonly Vector4 DiffractedColor = new Vector4(0.10f, 0.95f, 1.00f, 1.0f); // cyan solved path
         public AcousticDebugOverlay(
             IRenderContext renderContext,
             Func<IReadOnlyList<Entity>> getEntities,
@@ -53,9 +51,9 @@ namespace ToolChest
             _getSourcePositions = getSourcePositions ?? (() => Array.Empty<Vector3>());
             _getHeightProvider = getHeightProvider ?? (() => null);
         }
-
-        public void Draw(UIQuadRenderer quadRenderer, float panelWidth, float panelHeight) { }
-
+        public void Draw(UIQuadRenderer quadRenderer, float panelWidth, float panelHeight)
+        {
+        }
         public unsafe void RenderWorld(Matrix4x4 view, Matrix4x4 projection)
         {
             if (!Enabled)
@@ -89,23 +87,19 @@ namespace ToolChest
             var sources = _getSourcePositions() ?? Array.Empty<Vector3>();
             _dynVerts.Clear();
             _dynIndices.Clear();
-
             AddCross(_dynVerts, _dynIndices, listener, 1.5f, ListenerFreeColor);
             for (int s = 0; s < sources.Count; s++)
                 AddCross(_dynVerts, _dynIndices, sources[s], 1.2f, SourceFreeColor);
-
             if (_geometry.TriangleCount > 0)
             {
                 bool doLog = !_loggedThisEnable;
                 _tracer.KickDebugBidirectional(listener, sources, doLog);
                 var segments = _tracer.GetDebugSegments();
-
                 if (doLog)
                 {
                     Console.WriteLine($"[AcousticDebug] Overlay received {segments.Count} segments");
                     _loggedThisEnable = true;
                 }
-
                 if (segments != null)
                 {
                     for (int i = 0; i < segments.Count; i++)
@@ -127,15 +121,16 @@ namespace ToolChest
                             case AcousticRayTracer.DebugSegmentKind.Splat: // 3 – larger outlined marker
                                 float iVal = Math.Clamp(seg.Intensity, 0.05f, 1.0f);
                                 Vector4 splatCol = new Vector4(iVal, iVal * 0.5f, 0.05f, 0.95f);
-                                float size = 0.45f + iVal * 0.9f; // much larger
+                                float size = 0.45f + iVal * 0.9f;
                                 AddOutlinedSplat(_dynVerts, _dynIndices, seg.A, size, splatCol);
                                 break;
-                                // Kind 4 (Diffracted) intentionally not drawn
+                            case AcousticRayTracer.DebugSegmentKind.Diffracted: // 4 – solved route (cyan)
+                                AddLine(_dynVerts, _dynIndices, seg.A, seg.B, DiffractedColor);
+                                break;
                         }
                     }
                 }
             }
-
             if (_dynVerts.Count == 0) return;
             if (_dynamicBuffer == null)
                 _dynamicBuffer = new VertexBuffer(_renderContext);
@@ -150,7 +145,6 @@ namespace ToolChest
             _renderContext.DrawElements(_renderContext.Enums.Lines, _dynamicBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
-
         private void EnsureResources()
         {
             if (_shader == null)
@@ -160,7 +154,6 @@ namespace ToolChest
             if (_tracer == null)
                 _tracer = new AcousticRayTracer(_renderContext, _geometry);
         }
-
         private static void AddLine(List<Vertex> verts, List<uint> indices, Vector3 a, Vector3 b, Vector4 color)
         {
             uint i0 = (uint)verts.Count;
@@ -169,14 +162,12 @@ namespace ToolChest
             indices.Add(i0);
             indices.Add(i0 + 1);
         }
-
         private static void AddCross(List<Vertex> verts, List<uint> indices, Vector3 center, float size, Vector4 color)
         {
             AddLine(verts, indices, center - new Vector3(size, 0, 0), center + new Vector3(size, 0, 0), color);
             AddLine(verts, indices, center - new Vector3(0, size, 0), center + new Vector3(0, size, 0), color);
             AddLine(verts, indices, center - new Vector3(0, 0, size), center + new Vector3(0, 0, size), color);
         }
-
         // Larger outlined splat so the hit area is visible
         private static void AddOutlinedSplat(List<Vertex> verts, List<uint> indices, Vector3 center, float size, Vector4 color)
         {
