@@ -42,10 +42,9 @@ Folder: IDE
       - int _lastEntityCount
       - bool _wasEnabled
       - bool _loggedThisEnable
-      - Vector4 ListenerColor
-      - Vector4 SourceColor
-      - Vector4 MeetingColor
-      - int fallbackRays
+      - Vector4 ListenerFreeColor
+      - Vector4 SourceFreeColor
+      - Vector4 BounceColor
     - Methods:
       - constructor AcousticDebugOverlay(
             Func<IHeightProvider> getHeightProvider = null, 
@@ -55,12 +54,18 @@ Folder: IDE
             IRenderContext renderContext)
       - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: AddCross, AddLine, Console.WriteLine, EnsureResources, VertexBuffer, _dynIndices.Clear, _dynVerts.Clear, _dynamicBuffer.Bind, _dynamicBuffer.UpdateCustom, _geometry.Rebuild, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _tracer.KickDebugBidirectional
+        - Calls: AddCross, AddLine, AddOutlinedSplat, Console.WriteLine, EnsureResources, VertexBuffer, _dynIndices.Clear, _dynVerts.Clear, _dynamicBuffer.Bind, _dynamicBuffer.UpdateCustom, _geometry.Rebuild, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _tracer.KickDebugBidirectional
+      - 2 AddLine()
+        - Calls: AcousticGeometry, AcousticRayTracer, ShaderProgram
+      - larger AddOutlinedSplat()
+        - Calls: AcousticGeometry, AcousticRayTracer, ShaderProgram
       - void EnsureResources()
         - Calls: AcousticGeometry, AcousticRayTracer, ShaderProgram
       - void AddLine( List<uint> indices,  Vector3 a,  Vector3 b,  Vector4 color, List<Vertex> verts)
         - Calls: Vertex, indices.Add, verts.Add
       - void AddCross( List<uint> indices,  Vector3 center,  Vector4 color,  float size, List<Vertex> verts)
+        - Calls: AddLine
+      - void AddOutlinedSplat( List<uint> indices,  Vector3 center,  Vector4 color,  float size, List<Vertex> verts)
         - Calls: AddLine
 - File: AddSkyboxPanel.cs
   - Class: AddSkyboxUIOverlay (Namespace: ToolChest)
@@ -991,8 +996,6 @@ Folder: SiegeEngine
     - Dependencies: System
 - File: AcousticCommon.cs
   - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
-- File: AcousticDebugShader.cs
-  - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: AcousticFreeRayShader.cs
   - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: AcousticGeometry.cs
@@ -1002,8 +1005,6 @@ Folder: SiegeEngine
       - Vector4 A
       - Vector4 B
       - Vector4 C
-- File: AcousticMeetingShader.cs
-  - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: AcousticRayTracer.cs
   - Class: DebugSegment (Namespace: SiegeEngine.Core.GPU.Compute)
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices
@@ -1011,6 +1012,7 @@ Folder: SiegeEngine
       - Vector3 A
       - Vector3 B
       - DebugSegmentKind Kind
+      - float Intensity
 - File: AcousticResidualShader.cs
   - Class: AcousticResidualShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:

@@ -4,8 +4,6 @@ Folder: Core
     - Dependencies: System
 - File: AcousticCommon.cs
   - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
-- File: AcousticDebugShader.cs
-  - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: AcousticFreeRayShader.cs
   - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: AcousticGeometry.cs
@@ -15,8 +13,6 @@ Folder: Core
       - Vector4 A
       - Vector4 B
       - Vector4 C
-- File: AcousticMeetingShader.cs
-  - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: AcousticRayTracer.cs
   - Class: DebugSegment (Namespace: SiegeEngine.Core.GPU.Compute)
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices
@@ -24,6 +20,7 @@ Folder: Core
       - Vector3 A
       - Vector3 B
       - DebugSegmentKind Kind
+      - float Intensity
 - File: AcousticResidualShader.cs
   - Class: AcousticResidualShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
