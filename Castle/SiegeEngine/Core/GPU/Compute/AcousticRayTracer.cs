@@ -39,7 +39,8 @@ namespace SiegeEngine.Core.GPU.Compute
         }
 
         private readonly IRenderContext _renderContext;
-        private readonly ComputeProgram _debugProgram;
+        private readonly ComputeProgram _freeRayProgram;
+        private readonly ComputeProgram _meetingProgram;
         private readonly ComputeProgram _residualProgram;
         private readonly ShaderStorageBuffer[] _resultSsbo = new ShaderStorageBuffer[2];
         private readonly ShaderStorageBuffer[] _debugSsbo = new ShaderStorageBuffer[2];
@@ -60,10 +61,9 @@ namespace SiegeEngine.Core.GPU.Compute
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _geometry = geometry ?? throw new ArgumentNullException(nameof(geometry));
 
-            // Debug program is fully self-contained
-            _debugProgram = new ComputeProgram(_renderContext, AcousticDebugShader.Source);
+            _freeRayProgram = new ComputeProgram(_renderContext, AcousticFreeRayShader.Source);
+            _meetingProgram = new ComputeProgram(_renderContext, AcousticMeetingShader.Source);
 
-            // Residual still uses Common + Residual
             string residualSrc = AcousticCommon.Source + AcousticResidualShader.Source;
             _residualProgram = new ComputeProgram(_renderContext, residualSrc);
 
@@ -178,20 +178,37 @@ namespace SiegeEngine.Core.GPU.Compute
             _resultSsbo[_writeIdx].BindBase(1);
             _debugSsbo[_writeIdx].BindBase(2);
 
-            _debugProgram.Use();
-            _debugProgram.SetUniform("uSourcePos", primarySource.X, primarySource.Y, primarySource.Z);
-            _debugProgram.SetUniform("uListenerPos", listenerPos.X, listenerPos.Y, listenerPos.Z);
-            _debugProgram.SetUniform("uTriangleCount", _geometry.TriangleCount);
-            _debugProgram.SetUniform("uRayCount", ContinuousRays);
-            _debugProgram.SetUniform("uMaxBounces", ContinuousBounces);
-            _debugProgram.SetUniform("uListenerRadius", 5.0f);
-            _debugProgram.SetUniform("uMaxDistance", 350.0f);
-            _debugProgram.SetUniform("uDebugMode", 1);
-            _debugProgram.SetUniform("uSourceCount", sources != null ? Math.Min(sources.Count, 8) : 0);
+            // Pass 1 – free rays
+            _freeRayProgram.Use();
+            _freeRayProgram.SetUniform("uSourcePos", primarySource.X, primarySource.Y, primarySource.Z);
+            _freeRayProgram.SetUniform("uListenerPos", listenerPos.X, listenerPos.Y, listenerPos.Z);
+            _freeRayProgram.SetUniform("uTriangleCount", _geometry.TriangleCount);
+            _freeRayProgram.SetUniform("uRayCount", ContinuousRays);
+            _freeRayProgram.SetUniform("uMaxBounces", ContinuousBounces);
+            _freeRayProgram.SetUniform("uListenerRadius", 5.0f);
+            _freeRayProgram.SetUniform("uMaxDistance", 350.0f);
+            _freeRayProgram.SetUniform("uDebugMode", 1);
+            _freeRayProgram.SetUniform("uSourceCount", sources != null ? Math.Min(sources.Count, 8) : 0);
 
             uint groups = (uint)((ContinuousRays + 63) / 64);
-            _debugProgram.Dispatch(groups, 1, 1);
-            _debugProgram.Barrier();
+            _freeRayProgram.Dispatch(groups, 1, 1);
+            _freeRayProgram.Barrier();
+
+            // Pass 2 – free-end ↔ free-end meetings
+            _meetingProgram.Use();
+            _meetingProgram.SetUniform("uSourcePos", primarySource.X, primarySource.Y, primarySource.Z);
+            _meetingProgram.SetUniform("uListenerPos", listenerPos.X, listenerPos.Y, listenerPos.Z);
+            _meetingProgram.SetUniform("uTriangleCount", _geometry.TriangleCount);
+            _meetingProgram.SetUniform("uRayCount", ContinuousRays);
+            _meetingProgram.SetUniform("uMaxBounces", ContinuousBounces);
+            _meetingProgram.SetUniform("uListenerRadius", 5.0f);
+            _meetingProgram.SetUniform("uMaxDistance", 350.0f);
+            _meetingProgram.SetUniform("uDebugMode", 1);
+            _meetingProgram.SetUniform("uSourceCount", sources != null ? Math.Min(sources.Count, 8) : 0);
+
+            uint meetGroups = (uint)((ContinuousRays / 2 + 63) / 64);
+            _meetingProgram.Dispatch(meetGroups, 1, 1);
+            _meetingProgram.Barrier();
 
             ReadDebugSegmentsFromBuffer(_writeIdx, diagnosticOnce);
 
@@ -332,7 +349,8 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             if (!_disposed)
             {
-                _debugProgram?.Dispose();
+                _freeRayProgram?.Dispose();
+                _meetingProgram?.Dispose();
                 _residualProgram?.Dispose();
                 for (int i = 0; i < 2; i++)
                 {

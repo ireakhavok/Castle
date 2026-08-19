@@ -31,6 +31,7 @@ Folder: IDE
       - Func<IReadOnlyList<Entity>> _getEntities
       - Func<Vector3> _getListenerPos
       - Func<IReadOnlyList<Vector3>> _getSourcePositions
+      - Func<IHeightProvider> _getHeightProvider
       - VertexBuffer _dynamicBuffer
       - ShaderProgram _shader
       - List<Vertex> _dynVerts
@@ -40,18 +41,21 @@ Folder: IDE
       - bool _geometryDirty
       - int _lastEntityCount
       - bool _wasEnabled
+      - bool _loggedThisEnable
       - Vector4 ListenerColor
       - Vector4 SourceColor
       - Vector4 MeetingColor
+      - int fallbackRays
     - Methods:
       - constructor AcousticDebugOverlay(
+            Func<IHeightProvider> getHeightProvider = null, 
             Func<IReadOnlyList<Entity>> getEntities, 
             Func<IReadOnlyList<Vector3>> getSourcePositions, 
             Func<Vector3> getListenerPos, 
             IRenderContext renderContext)
       - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: AddCross, AddLine, EnsureResources, VertexBuffer, _dynIndices.Clear, _dynVerts.Clear, _dynamicBuffer.Bind, _dynamicBuffer.UpdateCustom, _geometry.Rebuild, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _tracer.KickDebugBidirectional
+        - Calls: AddCross, AddLine, Console.WriteLine, EnsureResources, VertexBuffer, _dynIndices.Clear, _dynVerts.Clear, _dynamicBuffer.Bind, _dynamicBuffer.UpdateCustom, _geometry.Rebuild, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _tracer.KickDebugBidirectional
       - void EnsureResources()
         - Calls: AcousticGeometry, AcousticRayTracer, ShaderProgram
       - void AddLine( List<uint> indices,  Vector3 a,  Vector3 b,  Vector4 color, List<Vertex> verts)
@@ -985,6 +989,12 @@ Folder: SiegeEngine
 - File: AbstractRenderEnums.cs
   - Class: AbstractRenderEnums (Namespace: SiegeEngine.Core.GPU.ContextManagement)
     - Dependencies: System
+- File: AcousticCommon.cs
+  - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
+- File: AcousticDebugShader.cs
+  - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
+- File: AcousticFreeRayShader.cs
+  - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: AcousticGeometry.cs
   - Class: GpuTriangle (Namespace: SiegeEngine.Core.GPU.Compute)
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Physics, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices
@@ -992,9 +1002,22 @@ Folder: SiegeEngine
       - Vector4 A
       - Vector4 B
       - Vector4 C
+- File: AcousticMeetingShader.cs
+  - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: AcousticRayTracer.cs
-  - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Compute)
-    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices, System.Text
+  - Class: DebugSegment (Namespace: SiegeEngine.Core.GPU.Compute)
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices
+    - Fields:
+      - Vector3 A
+      - Vector3 B
+      - DebugSegmentKind Kind
+- File: AcousticResidualShader.cs
+  - Class: AcousticResidualShader (Namespace: SiegeEngine.Core.GPU.Shaders)
+    - Fields:
+      - string Source
+    - Methods:
+      - void main()
+        - Calls: closestHit, hash, randomUnit
 - File: AngledOrthoCamera.cs
   - Class: AngledOrthoCamera (Namespace: SiegeEngine.PlayerSystem)
     - Inherits: CameraController
@@ -4142,7 +4165,7 @@ SiegeEngine.Core.Events.SoundRayTraceResult
 SiegeEngine.Core.Events.TimeOfDayChangedEvent
 SiegeEngine.Core.Events.WeatherChangedEvent
 SiegeEngine.Core.GPU.Compute.ComputeProgram
-SiegeEngine.Core.GPU.Compute.GpuDebugSegment
+SiegeEngine.Core.GPU.Compute.DebugSegment
 SiegeEngine.Core.GPU.Compute.GpuTriangle
 SiegeEngine.Core.GPU.Compute.ShaderStorageBuffer
 SiegeEngine.Core.GPU.ContextManagement.AbstractRenderEnums
@@ -4172,9 +4195,11 @@ SiegeEngine.Core.GPU.Renderers.ModelRenderer
 SiegeEngine.Core.GPU.Renderers.SkyboxRenderer
 SiegeEngine.Core.GPU.Renderers.TerrainRenderer
 SiegeEngine.Core.GPU.Renderers.UIQuadRenderer
+SiegeEngine.Core.GPU.Shaders.AcousticResidualShader
 SiegeEngine.Core.GPU.Shaders.AnimationShader
 SiegeEngine.Core.GPU.Shaders.AssetShader
 SiegeEngine.Core.GPU.Shaders.EditorSceneShader
+SiegeEngine.Core.GPU.Shaders.GpuDebugSegment
 SiegeEngine.Core.GPU.Shaders.ModelShader
 SiegeEngine.Core.GPU.Shaders.PointShader
 SiegeEngine.Core.GPU.Shaders.SceneShader
