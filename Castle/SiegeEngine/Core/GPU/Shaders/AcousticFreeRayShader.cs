@@ -96,8 +96,8 @@ void main() {
     uint idx = gl_GlobalInvocationID.x;
     if (idx >= uint(uRayCount)) return;
 
-    uint base = idx * 4u;
-    for (uint s = 0u; s < 4u; s++) {
+    uint base = idx * 2u;
+    for (uint s = 0u; s < 2u; s++) {
         if (base + s < 1024u) {
             debugSegs[base + s].A = vec4(0.0);
             debugSegs[base + s].B = vec4(0.0, 0.0, 0.0, -1.0);
@@ -108,11 +108,10 @@ void main() {
     vec3 origin = fromListener ? uListenerPos : uSourcePos;
     float freeKind = fromListener ? 0.0 : 1.0;
 
-    // Evenly-spaced full-sphere stratified equal-area (8×8 latitude rings)
-    // Covers terrain (negative elev), horizon and upper hemisphere uniformly
+    // Evenly-spaced full-sphere stratified equal-area (16×8)
     uint rayHalf = uint(uRayCount / 2);
     uint local = idx % rayHalf;
-    uint nAz = 8u;
+    uint nAz = 16u;
     uint nEl = 8u;
     uint iAz = local % nAz;
     uint iEl = local / nAz;
@@ -134,6 +133,12 @@ void main() {
 
     vec3 endPos = origin + dir * tHit;
 
+    // Exact solid-angle footprint of this stratified cell projected onto the surface
+    float solidAngle = (6.28318530718 / float(nAz)) * (2.0 / float(nEl));
+    float halfAngle = sqrt(solidAngle / 3.14159265);
+    float cosInc = max(0.15, abs(dot(nHit, dir)));
+    float footprintR = tHit * tan(halfAngle) / cosInc;
+
     if (base < 1024u) {
         debugSegs[base].A = vec4(origin, 0.0);
         debugSegs[base].B = vec4(endPos, freeKind);
@@ -141,7 +146,9 @@ void main() {
 
     if (base + 1u < 1024u) {
         float splatI = clamp(energy * (1.0 / (1.0 + dens * 0.3)), 0.1, 0.99);
-        debugSegs[base + 1u].A = vec4(endPos, 0.0);
+        // A.xyz = hit position, A.w = exact projected cone radius
+        // B.xyz = surface normal * scale, B.w = Kind 3 + intensity
+        debugSegs[base + 1u].A = vec4(endPos, footprintR);
         debugSegs[base + 1u].B = vec4(nHit * 0.35, 3.0 + splatI);
     }
 }

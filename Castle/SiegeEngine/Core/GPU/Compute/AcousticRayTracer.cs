@@ -40,6 +40,7 @@ namespace SiegeEngine.Core.GPU.Compute
             public Vector3 B;
             public DebugSegmentKind Kind;
             public float Intensity;
+            public float Radius; // exact solid-angle footprint radius for Kind=Splat
         }
         private readonly IRenderContext _renderContext;
         private readonly ComputeProgram _freeRayProgram;
@@ -50,8 +51,9 @@ namespace SiegeEngine.Core.GPU.Compute
         private bool _disposed;
         private int _writeIdx;
         private int _readIdx = 1;
-        private const int MaxRays = 128;
+        private const int MaxRays = 256;
         private const int ContinuousRays = 128;
+        private const int DebugRayCount = 256;
         private const int ContinuousBounces = 6;
         private const int MaxDebugSegments = 1024;
         private readonly List<DebugSegment> _debugSegments = new List<DebugSegment>(MaxDebugSegments);
@@ -121,13 +123,13 @@ namespace SiegeEngine.Core.GPU.Compute
             _freeRayProgram.SetUniform("uSourcePos", primarySource.X, primarySource.Y, primarySource.Z);
             _freeRayProgram.SetUniform("uListenerPos", listenerPos.X, listenerPos.Y, listenerPos.Z);
             _freeRayProgram.SetUniform("uTriangleCount", _geometry.TriangleCount);
-            _freeRayProgram.SetUniform("uRayCount", ContinuousRays);
+            _freeRayProgram.SetUniform("uRayCount", DebugRayCount);
             _freeRayProgram.SetUniform("uMaxBounces", 1);
             _freeRayProgram.SetUniform("uListenerRadius", 5.0f);
             _freeRayProgram.SetUniform("uMaxDistance", 350.0f);
             _freeRayProgram.SetUniform("uDebugMode", 1);
             _freeRayProgram.SetUniform("uSourceCount", sources != null ? Math.Min(sources.Count, 8) : 0);
-            uint groups = (uint)((ContinuousRays + 63) / 64);
+            uint groups = (uint)((DebugRayCount + 63) / 64);
             _freeRayProgram.Dispatch(groups, 1, 1);
             _freeRayProgram.Barrier();
             ReadDebugSegmentsFromBuffer(_writeIdx, diagnosticOnce);
@@ -158,10 +160,13 @@ namespace SiegeEngine.Core.GPU.Compute
                 Vector3 a = new Vector3(segs[i].A.X, segs[i].A.Y, segs[i].A.Z);
                 Vector3 b = new Vector3(segs[i].B.X, segs[i].B.Y, segs[i].B.Z);
                 float intensity = 1.0f;
+                float radius = 0.0f;
                 if (kind == 3)
                 {
                     intensity = Math.Clamp(kindF - 3.0f, 0.05f, 1.0f);
                     kind = 3;
+                    radius = segs[i].A.W;
+                    if (radius < 0.05f) radius = 0.55f;
                     b = a + new Vector3(0.2f, 0, 0);
                 }
                 if ((a - b).LengthSquared() < 1e-6f && kind != 3) continue;
@@ -170,7 +175,8 @@ namespace SiegeEngine.Core.GPU.Compute
                     A = a,
                     B = b,
                     Kind = (DebugSegmentKind)kind,
-                    Intensity = intensity
+                    Intensity = intensity,
+                    Radius = radius
                 });
                 if (kind >= 0 && kind <= 4) kindCount[kind]++;
                 accepted++;
@@ -188,7 +194,7 @@ namespace SiegeEngine.Core.GPU.Compute
                 for (int i = 0; i < sample; i++)
                 {
                     var s = _debugSegments[i];
-                    Console.WriteLine($" seg[{i}] Kind={s.Kind} Int={s.Intensity:F2} A=({s.A.X:F1},{s.A.Y:F1},{s.A.Z:F1}) B=({s.B.X:F1},{s.B.Y:F1},{s.B.Z:F1})");
+                    Console.WriteLine($" seg[{i}] Kind={s.Kind} Int={s.Intensity:F2} R={s.Radius:F2} A=({s.A.X:F1},{s.A.Y:F1},{s.A.Z:F1}) B=({s.B.X:F1},{s.B.Y:F1},{s.B.Z:F1})");
                 }
             }
         }
@@ -215,85 +221,102 @@ namespace SiegeEngine.Core.GPU.Compute
                     A = listenerPos,
                     B = sourcePos,
                     Kind = DebugSegmentKind.Diffracted,
-                    Intensity = 1.0f
+                    Intensity = 1.0f,
+                    Radius = 0.0f
                 });
                 if (diagnosticOnce)
                     Console.WriteLine("[AcousticRayTracer] Solved route: DIRECT LOS");
                 return;
             }
-            var listenerEnds = new List<Vector3>(64);
-            var sourceEnds = new List<Vector3>(64);
+            // Collect solid-angle footprints (center + exact radius) for both origins
+            var listenerFootprints = new List<(Vector3 center, float radius)>(128);
+            var sourceFootprints = new List<(Vector3 center, float radius)>(128);
             for (int i = 0; i < _debugSegments.Count; i++)
             {
                 var seg = _debugSegments[i];
-                if (seg.Kind == DebugSegmentKind.FreeLeg)
-                    listenerEnds.Add(seg.B);
-                else if (seg.Kind == DebugSegmentKind.SourceFree)
-                    sourceEnds.Add(seg.B);
-                else if (seg.Kind == DebugSegmentKind.Splat)
+                if (seg.Kind == DebugSegmentKind.Splat)
                 {
-                    // Prefer splat centers (more accurate hit location)
-                    // Heuristic: if closer to listener than source, treat as listener-side
                     float dL = (seg.A - listenerPos).LengthSquared();
                     float dS = (seg.A - sourcePos).LengthSquared();
                     if (dL <= dS)
-                        listenerEnds.Add(seg.A);
+                        listenerFootprints.Add((seg.A, Math.Max(0.05f, seg.Radius)));
                     else
-                        sourceEnds.Add(seg.A);
+                        sourceFootprints.Add((seg.A, Math.Max(0.05f, seg.Radius)));
+                }
+                else if (seg.Kind == DebugSegmentKind.FreeLeg)
+                {
+                    listenerFootprints.Add((seg.B, 0.4f));
+                }
+                else if (seg.Kind == DebugSegmentKind.SourceFree)
+                {
+                    sourceFootprints.Add((seg.B, 0.4f));
                 }
             }
-            if (listenerEnds.Count == 0 || sourceEnds.Count == 0)
+            if (listenerFootprints.Count == 0 || sourceFootprints.Count == 0)
             {
                 if (diagnosticOnce)
-                    Console.WriteLine("[AcousticRayTracer] No free-ends available for pairing");
+                    Console.WriteLine("[AcousticRayTracer] No footprints available for overlap test");
                 return;
             }
-            float bestDist = float.MaxValue;
+            // Accept a pair ONLY if the solid-angle footprints overlap at all
+            float bestTotal = float.MaxValue;
             Vector3 bestL = Vector3.Zero;
             Vector3 bestS = Vector3.Zero;
-            for (int i = 0; i < listenerEnds.Count; i++)
+            bool found = false;
+            for (int i = 0; i < listenerFootprints.Count; i++)
             {
-                for (int j = 0; j < sourceEnds.Count; j++)
+                var (cL, rL) = listenerFootprints[i];
+                for (int j = 0; j < sourceFootprints.Count; j++)
                 {
-                    float d = (listenerEnds[i] - sourceEnds[j]).Length();
-                    if (d < bestDist)
+                    var (cS, rS) = sourceFootprints[j];
+                    float midDist = (cL - cS).Length();
+                    if (midDist < (rL + rS))
                     {
-                        bestDist = d;
-                        bestL = listenerEnds[i];
-                        bestS = sourceEnds[j];
+                        // Overlap exists — compute total path length
+                        float total = (cL - listenerPos).Length() + midDist + (cS - sourcePos).Length();
+                        if (total < bestTotal)
+                        {
+                            bestTotal = total;
+                            bestL = cL;
+                            bestS = cS;
+                            found = true;
+                        }
                     }
                 }
             }
-            if (bestDist > 80.0f)
+            if (!found)
             {
                 if (diagnosticOnce)
-                    Console.WriteLine($"[AcousticRayTracer] Best free-end pair too far ({bestDist:F1}m), skipping");
+                    Console.WriteLine("[AcousticRayTracer] No overlapping footprints — no solved route");
                 return;
             }
-            // Inject full solved path in cyan (Kind 4) so the route is clearly visible
+            // Inject the validated overlapping path
             _debugSegments.Add(new DebugSegment
             {
                 A = listenerPos,
                 B = bestL,
                 Kind = DebugSegmentKind.Diffracted,
-                Intensity = 0.95f
+                Intensity = 0.95f,
+                Radius = 0.0f
             });
             _debugSegments.Add(new DebugSegment
             {
                 A = bestL,
                 B = bestS,
                 Kind = DebugSegmentKind.Diffracted,
-                Intensity = 1.0f
+                Intensity = 1.0f,
+                Radius = 0.0f
             });
             _debugSegments.Add(new DebugSegment
             {
                 A = bestS,
                 B = sourcePos,
                 Kind = DebugSegmentKind.Diffracted,
-                Intensity = 0.95f
+                Intensity = 0.95f,
+                Radius = 0.0f
             });
             if (diagnosticOnce)
-                Console.WriteLine($"[AcousticRayTracer] Solved route: free-end pair dist={bestDist:F1}m");
+                Console.WriteLine($"[AcousticRayTracer] Solved route: overlapping footprints, total={bestTotal:F1}m");
         }
         public SoundRayTraceResult ReadCompletedResult()
         {

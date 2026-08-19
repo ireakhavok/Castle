@@ -37,7 +37,7 @@ namespace ToolChest
         private static readonly Vector4 ListenerFreeColor = new Vector4(0.20f, 0.55f, 1.00f, 1.0f);
         private static readonly Vector4 SourceFreeColor = new Vector4(1.00f, 0.25f, 0.20f, 1.0f);
         private static readonly Vector4 BounceColor = new Vector4(0.20f, 0.90f, 0.40f, 0.90f);
-        private static readonly Vector4 DiffractedColor = new Vector4(0.10f, 0.95f, 1.00f, 1.0f); // cyan solved path
+        private static readonly Vector4 DiffractedColor = new Vector4(0.10f, 0.95f, 1.00f, 1.0f);
         public AcousticDebugOverlay(
             IRenderContext renderContext,
             Func<IReadOnlyList<Entity>> getEntities,
@@ -107,24 +107,25 @@ namespace ToolChest
                         var seg = segments[i];
                         switch (seg.Kind)
                         {
-                            case AcousticRayTracer.DebugSegmentKind.FreeLeg: // 0
+                            case AcousticRayTracer.DebugSegmentKind.FreeLeg:
                                 if (ShowListenerRays)
                                     AddLine(_dynVerts, _dynIndices, seg.A, seg.B, ListenerFreeColor);
                                 break;
-                            case AcousticRayTracer.DebugSegmentKind.SourceFree: // 1
+                            case AcousticRayTracer.DebugSegmentKind.SourceFree:
                                 if (ShowSourceRays)
                                     AddLine(_dynVerts, _dynIndices, seg.A, seg.B, SourceFreeColor);
                                 break;
-                            case AcousticRayTracer.DebugSegmentKind.BounceLeg: // 2
+                            case AcousticRayTracer.DebugSegmentKind.BounceLeg:
                                 AddLine(_dynVerts, _dynIndices, seg.A, seg.B, BounceColor);
                                 break;
-                            case AcousticRayTracer.DebugSegmentKind.Splat: // 3 – larger outlined marker
+                            case AcousticRayTracer.DebugSegmentKind.Splat:
                                 float iVal = Math.Clamp(seg.Intensity, 0.05f, 1.0f);
                                 Vector4 splatCol = new Vector4(iVal, iVal * 0.5f, 0.05f, 0.95f);
-                                float size = 0.45f + iVal * 0.9f;
+                                // Exact solid-angle footprint radius written by the kernel
+                                float size = Math.Max(0.15f, seg.Radius);
                                 AddOutlinedSplat(_dynVerts, _dynIndices, seg.A, size, splatCol);
                                 break;
-                            case AcousticRayTracer.DebugSegmentKind.Diffracted: // 4 – solved route (cyan)
+                            case AcousticRayTracer.DebugSegmentKind.Diffracted:
                                 AddLine(_dynVerts, _dynIndices, seg.A, seg.B, DiffractedColor);
                                 break;
                         }
@@ -168,17 +169,14 @@ namespace ToolChest
             AddLine(verts, indices, center - new Vector3(0, size, 0), center + new Vector3(0, size, 0), color);
             AddLine(verts, indices, center - new Vector3(0, 0, size), center + new Vector3(0, 0, size), color);
         }
-        // Larger outlined splat so the hit area is visible
         private static void AddOutlinedSplat(List<Vertex> verts, List<uint> indices, Vector3 center, float size, Vector4 color)
         {
-            // Outer square outline
             Vector3 dx = new Vector3(size, 0, 0);
             Vector3 dy = new Vector3(0, size, 0);
             AddLine(verts, indices, center - dx - dy, center + dx - dy, color);
             AddLine(verts, indices, center + dx - dy, center + dx + dy, color);
             AddLine(verts, indices, center + dx + dy, center - dx + dy, color);
             AddLine(verts, indices, center - dx + dy, center - dx - dy, color);
-            // Inner cross for intensity
             float inner = size * 0.4f;
             AddLine(verts, indices, center - new Vector3(inner, 0, 0), center + new Vector3(inner, 0, 0), color);
             AddLine(verts, indices, center - new Vector3(0, inner, 0), center + new Vector3(0, inner, 0), color);
