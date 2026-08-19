@@ -11,7 +11,6 @@ using SiegeEngine.Core.GPU.Compute;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace ToolChest
 {
     public class AcousticDebugOverlay : ICustomOverlay
@@ -21,12 +20,10 @@ namespace ToolChest
         private readonly Func<Vector3> _getListenerPos;
         private readonly Func<IReadOnlyList<Vector3>> _getSourcePositions;
         private readonly Func<IHeightProvider> _getHeightProvider;
-
         private VertexBuffer _dynamicBuffer;
         private ShaderProgram _shader;
         private readonly List<Vertex> _dynVerts = new List<Vertex>(4096);
         private readonly List<uint> _dynIndices = new List<uint>(8192);
-
         private AcousticGeometry _geometry;
         private AcousticRayTracer _tracer;
         private bool _geometryDirty = true;
@@ -39,9 +36,9 @@ namespace ToolChest
         public bool ShowSourceRays { get; set; } = true;
         public bool ShowMeetings { get; set; } = true;
 
-        private static readonly Vector4 ListenerColor = new Vector4(0.20f, 0.55f, 1.00f, 1.0f);
-        private static readonly Vector4 SourceColor = new Vector4(1.00f, 0.25f, 0.20f, 1.0f);
-        private static readonly Vector4 MeetingColor = new Vector4(0.85f, 0.20f, 1.00f, 1.0f);
+        private static readonly Vector4 ListenerFreeColor = new Vector4(0.20f, 0.55f, 1.00f, 1.0f);
+        private static readonly Vector4 SourceFreeColor = new Vector4(1.00f, 0.25f, 0.20f, 1.0f);
+        private static readonly Vector4 BounceColor = new Vector4(0.20f, 0.90f, 0.40f, 0.90f);
 
         public AcousticDebugOverlay(
             IRenderContext renderContext,
@@ -67,24 +64,20 @@ namespace ToolChest
                 _loggedThisEnable = false;
                 return;
             }
-
             if (!_wasEnabled)
             {
                 _geometryDirty = true;
                 _wasEnabled = true;
                 _loggedThisEnable = false;
             }
-
             EnsureResources();
             var entities = _getEntities();
             if (entities == null) return;
-
             if (entities.Count != _lastEntityCount)
             {
                 _geometryDirty = true;
                 _lastEntityCount = entities.Count;
             }
-
             if (_geometryDirty)
             {
                 IHeightProvider height = null;
@@ -92,54 +85,24 @@ namespace ToolChest
                 _geometry.Rebuild(entities, height);
                 _geometryDirty = false;
             }
-
             Vector3 listener = _getListenerPos();
             var sources = _getSourcePositions() ?? Array.Empty<Vector3>();
-
             _dynVerts.Clear();
             _dynIndices.Clear();
-            AddCross(_dynVerts, _dynIndices, listener, 1.5f, ListenerColor);
+
+            AddCross(_dynVerts, _dynIndices, listener, 1.5f, ListenerFreeColor);
             for (int s = 0; s < sources.Count; s++)
-                AddCross(_dynVerts, _dynIndices, sources[s], 1.2f, SourceColor);
+                AddCross(_dynVerts, _dynIndices, sources[s], 1.2f, SourceFreeColor);
 
             if (_geometry.TriangleCount > 0)
             {
-                _tracer.KickDebugBidirectional(listener, sources, !_loggedThisEnable);
+                bool doLog = !_loggedThisEnable;
+                _tracer.KickDebugBidirectional(listener, sources, doLog);
                 var segments = _tracer.GetDebugSegments();
 
-                if (!_loggedThisEnable)
+                if (doLog)
                 {
-                    Console.WriteLine($"[AcousticDebug] Listener resolved = ({listener.X:F3},{listener.Y:F3},{listener.Z:F3})  (Camera-first then PreferredSpawnPointIds → Physics.Position + 1.8 eye offset; zero = unresolved)");
-                    if (sources.Count == 0)
-                        Console.WriteLine("[AcousticDebug] Sources: none");
-                    else
-                    {
-                        for (int s = 0; s < sources.Count; s++)
-                            Console.WriteLine($"[AcousticDebug] Source[{s}] = ({sources[s].X:F3},{sources[s].Y:F3},{sources[s].Z:F3})");
-                    }
-                    Console.WriteLine($"[AcousticDebug] Geometry after Rebuild: TriangleCount={_geometry.TriangleCount} GeometryVersion={_geometry.GeometryVersion}");
-
-                    int count = segments != null ? segments.Count : 0;
-                    Console.WriteLine($"[AcousticDebug] GetDebugSegments returned {count} segments");
-
-                    int listenerCnt = 0, sourceCnt = 0, meetingCnt = 0;
-                    if (segments != null)
-                    {
-                        for (int i = 0; i < segments.Count; i++)
-                        {
-                            if (segments[i].Kind == AcousticRayTracer.DebugSegmentKind.Listener) listenerCnt++;
-                            else if (segments[i].Kind == AcousticRayTracer.DebugSegmentKind.Source) sourceCnt++;
-                            else meetingCnt++;
-                        }
-                        Console.WriteLine($"[AcousticDebug] Kind histogram: Listener={listenerCnt} Source={sourceCnt} Meeting={meetingCnt}");
-
-                        int sample = Math.Min(12, segments.Count);
-                        for (int i = 0; i < sample; i++)
-                        {
-                            var seg = segments[i];
-                            Console.WriteLine($"[AcousticDebug]   seg[{i}] Kind={seg.Kind} A=({seg.A.X:F2},{seg.A.Y:F2},{seg.A.Z:F2}) B=({seg.B.X:F2},{seg.B.Y:F2},{seg.B.Z:F2})");
-                        }
-                    }
+                    Console.WriteLine($"[AcousticDebug] Overlay received {segments.Count} segments");
                     _loggedThisEnable = true;
                 }
 
@@ -148,54 +111,35 @@ namespace ToolChest
                     for (int i = 0; i < segments.Count; i++)
                     {
                         var seg = segments[i];
-                        Vector4 col;
-                        if (seg.Kind == AcousticRayTracer.DebugSegmentKind.Listener)
-                            col = ListenerColor;
-                        else if (seg.Kind == AcousticRayTracer.DebugSegmentKind.Source)
-                            col = SourceColor;
-                        else
-                            col = MeetingColor;
-                        AddLine(_dynVerts, _dynIndices, seg.A, seg.B, col);
+                        switch (seg.Kind)
+                        {
+                            case AcousticRayTracer.DebugSegmentKind.FreeLeg: // 0
+                                if (ShowListenerRays)
+                                    AddLine(_dynVerts, _dynIndices, seg.A, seg.B, ListenerFreeColor);
+                                break;
+                            case AcousticRayTracer.DebugSegmentKind.SourceFree: // 1
+                                if (ShowSourceRays)
+                                    AddLine(_dynVerts, _dynIndices, seg.A, seg.B, SourceFreeColor);
+                                break;
+                            case AcousticRayTracer.DebugSegmentKind.BounceLeg: // 2
+                                AddLine(_dynVerts, _dynIndices, seg.A, seg.B, BounceColor);
+                                break;
+                            case AcousticRayTracer.DebugSegmentKind.Splat: // 3 – larger outlined marker
+                                float iVal = Math.Clamp(seg.Intensity, 0.05f, 1.0f);
+                                Vector4 splatCol = new Vector4(iVal, iVal * 0.5f, 0.05f, 0.95f);
+                                float size = 0.45f + iVal * 0.9f; // much larger
+                                AddOutlinedSplat(_dynVerts, _dynIndices, seg.A, size, splatCol);
+                                break;
+                                // Kind 4 (Diffracted) intentionally not drawn
+                        }
                     }
-                }
-            }
-            else
-            {
-                if (!_loggedThisEnable)
-                {
-                    Console.WriteLine("[AcousticDebug] TriangleCount==0 → synthetic free-space fallback path");
-                    _loggedThisEnable = true;
-                }
-                const int fallbackRays = 32;
-                for (int i = 0; i < fallbackRays; i++)
-                {
-                    float a = i * MathF.PI * 2f / fallbackRays;
-                    float elev = ((i % 4) - 1.5f) * 0.35f;
-                    Vector3 dir = Vector3.Normalize(new Vector3(MathF.Cos(a), MathF.Sin(a), elev));
-                    Vector3 end = listener + dir * 25f;
-                    AddLine(_dynVerts, _dynIndices, listener, end, ListenerColor);
-                }
-                for (int s = 0; s < sources.Count; s++)
-                {
-                    Vector3 src = sources[s];
-                    for (int i = 0; i < 12; i++)
-                    {
-                        float a = i * MathF.PI * 2f / 12f;
-                        Vector3 dir = Vector3.Normalize(new Vector3(MathF.Cos(a), MathF.Sin(a), 0.1f));
-                        Vector3 end = src + dir * 18f;
-                        AddLine(_dynVerts, _dynIndices, src, end, SourceColor);
-                    }
-                    Vector3 mid = (listener + src) * 0.5f;
-                    AddCross(_dynVerts, _dynIndices, mid, 0.8f, MeetingColor);
                 }
             }
 
             if (_dynVerts.Count == 0) return;
-
             if (_dynamicBuffer == null)
                 _dynamicBuffer = new VertexBuffer(_renderContext);
             _dynamicBuffer.UpdateCustom(_dynVerts, _dynIndices);
-
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _shader.Use();
             _shader.SetMatrix4("uView", view);
@@ -231,6 +175,22 @@ namespace ToolChest
             AddLine(verts, indices, center - new Vector3(size, 0, 0), center + new Vector3(size, 0, 0), color);
             AddLine(verts, indices, center - new Vector3(0, size, 0), center + new Vector3(0, size, 0), color);
             AddLine(verts, indices, center - new Vector3(0, 0, size), center + new Vector3(0, 0, size), color);
+        }
+
+        // Larger outlined splat so the hit area is visible
+        private static void AddOutlinedSplat(List<Vertex> verts, List<uint> indices, Vector3 center, float size, Vector4 color)
+        {
+            // Outer square outline
+            Vector3 dx = new Vector3(size, 0, 0);
+            Vector3 dy = new Vector3(0, size, 0);
+            AddLine(verts, indices, center - dx - dy, center + dx - dy, color);
+            AddLine(verts, indices, center + dx - dy, center + dx + dy, color);
+            AddLine(verts, indices, center + dx + dy, center - dx + dy, color);
+            AddLine(verts, indices, center - dx + dy, center - dx - dy, color);
+            // Inner cross for intensity
+            float inner = size * 0.4f;
+            AddLine(verts, indices, center - new Vector3(inner, 0, 0), center + new Vector3(inner, 0, 0), color);
+            AddLine(verts, indices, center - new Vector3(0, inner, 0), center + new Vector3(0, inner, 0), color);
         }
     }
 }
