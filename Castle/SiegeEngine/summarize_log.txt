@@ -534,13 +534,13 @@ Found: ..
 Found: AcousticGeometry.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticGeometry.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticGeometry.cs
-Read 11406 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticGeometry.cs
+Read 13303 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticGeometry.cs
 Namespace: SiegeEngine.Core.GPU.Compute
 Found 7 dependencies
 Found: AcousticRayTracer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
-Read 12547 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
+Read 15857 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
 Namespace: SiegeEngine.Core.GPU.Compute
 Found 7 dependencies
 Found: ComputeProgram.cs
@@ -736,13 +736,19 @@ Found 0 dependencies
 Found: AcousticFreeRayShader.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\AcousticFreeRayShader.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\AcousticFreeRayShader.cs
-Read 3811 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\AcousticFreeRayShader.cs
+Read 4260 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\AcousticFreeRayShader.cs
 Namespace: SiegeEngine.Core.GPU.Shaders
 Found 0 dependencies
 Found: AcousticResidualShader.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\AcousticResidualShader.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\AcousticResidualShader.cs
 Read 3260 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\AcousticResidualShader.cs
+Namespace: SiegeEngine.Core.GPU.Shaders
+Found 0 dependencies
+Found: AcousticVisibilityShader.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\AcousticVisibilityShader.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\AcousticVisibilityShader.cs
+Read 3241 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\AcousticVisibilityShader.cs
 Namespace: SiegeEngine.Core.GPU.Shaders
 Found 0 dependencies
 Found: AnimationShader.cs

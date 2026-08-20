@@ -108,10 +108,12 @@ namespace ToolChest
                         switch (seg.Kind)
                         {
                             case AcousticRayTracer.DebugSegmentKind.FreeLeg:
+                                // Continuous viewport coloring: listener-visible surface edges (blue)
                                 if (ShowListenerRays)
                                     AddLine(_dynVerts, _dynIndices, seg.A, seg.B, ListenerFreeColor);
                                 break;
                             case AcousticRayTracer.DebugSegmentKind.SourceFree:
+                                // Continuous viewport coloring: source-visible surface edges (red)
                                 if (ShowSourceRays)
                                     AddLine(_dynVerts, _dynIndices, seg.A, seg.B, SourceFreeColor);
                                 break;
@@ -119,13 +121,10 @@ namespace ToolChest
                                 AddLine(_dynVerts, _dynIndices, seg.A, seg.B, BounceColor);
                                 break;
                             case AcousticRayTracer.DebugSegmentKind.Splat:
-                                float iVal = Math.Clamp(seg.Intensity, 0.05f, 1.0f);
-                                Vector4 splatCol = new Vector4(iVal, iVal * 0.5f, 0.05f, 0.95f);
-                                // Exact solid-angle footprint radius written by the kernel
-                                float size = Math.Max(0.15f, seg.Radius);
-                                AddOutlinedSplat(_dynVerts, _dynIndices, seg.A, size, splatCol);
+                                // Completely removed — no squares, no discrete footprints
                                 break;
                             case AcousticRayTracer.DebugSegmentKind.Diffracted:
+                                // Mutual visibility / overlap (cyan) + direct LOS if clear
                                 AddLine(_dynVerts, _dynIndices, seg.A, seg.B, DiffractedColor);
                                 break;
                         }
@@ -168,18 +167,6 @@ namespace ToolChest
             AddLine(verts, indices, center - new Vector3(size, 0, 0), center + new Vector3(size, 0, 0), color);
             AddLine(verts, indices, center - new Vector3(0, size, 0), center + new Vector3(0, size, 0), color);
             AddLine(verts, indices, center - new Vector3(0, 0, size), center + new Vector3(0, 0, size), color);
-        }
-        private static void AddOutlinedSplat(List<Vertex> verts, List<uint> indices, Vector3 center, float size, Vector4 color)
-        {
-            Vector3 dx = new Vector3(size, 0, 0);
-            Vector3 dy = new Vector3(0, size, 0);
-            AddLine(verts, indices, center - dx - dy, center + dx - dy, color);
-            AddLine(verts, indices, center + dx - dy, center + dx + dy, color);
-            AddLine(verts, indices, center + dx + dy, center - dx + dy, color);
-            AddLine(verts, indices, center - dx + dy, center - dx - dy, color);
-            float inner = size * 0.4f;
-            AddLine(verts, indices, center - new Vector3(inner, 0, 0), center + new Vector3(inner, 0, 0), color);
-            AddLine(verts, indices, center - new Vector3(0, inner, 0), center + new Vector3(0, inner, 0), color);
         }
     }
 }

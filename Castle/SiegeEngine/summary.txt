@@ -21,6 +21,9 @@ Folder: Core
       - Vector3 B
       - DebugSegmentKind Kind
       - float Intensity
+      - float Radius
+      - Vector3 Normal
+      - int TriangleIndex
 - File: AcousticResidualShader.cs
   - Class: AcousticResidualShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
@@ -28,6 +31,8 @@ Folder: Core
     - Methods:
       - void main()
         - Calls: closestHit, hash, randomUnit
+- File: AcousticVisibilityShader.cs
+  - Class: GpuVisibility (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: Animation.cs
   - Class: Animation (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic
@@ -3167,6 +3172,7 @@ SiegeEngine.Core.GPU.Shaders.AnimationShader
 SiegeEngine.Core.GPU.Shaders.AssetShader
 SiegeEngine.Core.GPU.Shaders.EditorSceneShader
 SiegeEngine.Core.GPU.Shaders.GpuDebugSegment
+SiegeEngine.Core.GPU.Shaders.GpuVisibility
 SiegeEngine.Core.GPU.Shaders.ModelShader
 SiegeEngine.Core.GPU.Shaders.PointShader
 SiegeEngine.Core.GPU.Shaders.SceneShader

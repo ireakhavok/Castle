@@ -9,14 +9,6 @@ using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.GPU.ContextManagement;
 namespace SiegeEngine.Core.GPU.Compute
 {
-    /// <summary>
-    /// Packs low-triangle acoustic proxies into a GPU SSBO.
-    /// - TriangleMeshShape: stratified sample of original faces (≤192) with normal expansion.
-    /// - Analytic / non-mesh static bodies: oriented 20-face icosahedron (d20)
-    /// scaled to the body's half-extents + conservative expansion (sealed volume).
-    /// Extreme thin bodies receive a dual-shell so linear ray-triangle cannot tunnel.
-    /// Dynamic bodies are ignored (physics remains authoritative).
-    /// </summary>
     public unsafe class AcousticGeometry : IDisposable
     {
         [StructLayout(LayoutKind.Sequential)]
@@ -28,19 +20,18 @@ namespace SiegeEngine.Core.GPU.Compute
         }
         private readonly IRenderContext _renderContext;
         private readonly ShaderStorageBuffer _ssbo;
-        private readonly List<GpuTriangle> _cpuTris = new List<GpuTriangle>(2048);
-        private readonly List<Vector3> _tmpA = new List<Vector3>(4096);
-        private readonly List<Vector3> _tmpB = new List<Vector3>(4096);
-        private readonly List<Vector3> _tmpC = new List<Vector3>(4096);
+        private readonly List<GpuTriangle> _cpuTris = new List<GpuTriangle>(8192);
+        private readonly List<Vector3> _tmpA = new List<Vector3>(8192);
+        private readonly List<Vector3> _tmpB = new List<Vector3>(8192);
+        private readonly List<Vector3> _tmpC = new List<Vector3>(8192);
         private bool _disposed;
         private int _lastTriangleCount;
         private volatile uint _geometryVersion;
-        // Pre-computed unit icosahedron (regular, 12 vertices, 20 faces)
         private static readonly Vector3[] IcoVerts;
         private static readonly int[,] IcoFaces;
         static AcousticGeometry()
         {
-            const float t = 1.6180339887f; // golden ratio
+            const float t = 1.6180339887f;
             IcoVerts = new Vector3[]
             {
                 new Vector3(-1, t, 0), new Vector3( 1, t, 0),
@@ -50,7 +41,6 @@ namespace SiegeEngine.Core.GPU.Compute
                 new Vector3( t, 0, -1), new Vector3( t, 0, 1),
                 new Vector3(-t, 0, -1), new Vector3(-t, 0, 1)
             };
-            // Normalise to unit radius
             for (int i = 0; i < IcoVerts.Length; i++)
                 IcoVerts[i] = Vector3.Normalize(IcoVerts[i]);
             IcoFaces = new int[20, 3]
@@ -91,15 +81,23 @@ namespace SiegeEngine.Core.GPU.Compute
                 }
                 else
                 {
-                    // Oriented 20-face icosahedron scaled to half-extents (OBB in the shape of an icosahedron)
+                    // Keep icosahedron shapes for analytic models — unchanged
                     TessellateIcosahedron(physics.Position, physics.Rotation, physics.Size * 0.5f, density);
                 }
             }
             if (heightProvider != null && heightProvider.Width > 1 && heightProvider.Height > 1)
             {
-                const int maxCells = 48;
-                int stepX = Math.Max(1, heightProvider.Width / maxCells);
-                int stepY = Math.Max(1, heightProvider.Height / maxCells);
+                // REMOVE ALL LIMITS on terrain. Use full resolution (or very fine step).
+                // Previous maxCells=48 produced huge coarse triangles that free rays could never cover continuously.
+                int stepX = 1;
+                int stepY = 1;
+                // Safety: if the heightmap is enormous, still allow a modest step so we don't explode memory,
+                // but the previous hard 48-cell limit is gone.
+                if (heightProvider.Width > 256 || heightProvider.Height > 256)
+                {
+                    stepX = Math.Max(1, heightProvider.Width / 128);
+                    stepY = Math.Max(1, heightProvider.Height / 128);
+                }
                 float sx = 1f, sy = 1f;
                 if (heightProvider is HeightmapAdapter ha)
                 {
@@ -138,9 +136,9 @@ namespace SiegeEngine.Core.GPU.Compute
             mesh.GetWorldTriangles(position, rotation, _tmpA, _tmpB, _tmpC);
             int triCount = _tmpA.Count;
             if (triCount == 0) return;
-            // Conservative expansion so stratified samples seal
             float eps = Math.Max(0.18f, 0.08f * Math.Clamp(density, 0.5f, 3f));
-            const int maxTris = 192;
+            // Remove the previous hard maxTris = 192 limit. Use the full mesh (or a much higher ceiling).
+            const int maxTris = 2048;
             if (triCount <= maxTris)
             {
                 for (int t = 0; t < triCount; t++)
@@ -151,7 +149,7 @@ namespace SiegeEngine.Core.GPU.Compute
                 }
                 return;
             }
-            // Uniform stratified sample + expansion
+            // Only subsample if the mesh is extremely dense
             float step = (float)triCount / maxTris;
             for (int i = 0; i < maxTris; i++)
             {
@@ -161,22 +159,15 @@ namespace SiegeEngine.Core.GPU.Compute
                 AddTri(a + n * eps, b + n * eps, c + n * eps, density);
             }
         }
-        /// <summary>
-        /// Oriented 20-face regular icosahedron (d20) scaled by half-extents.
-        /// Larger conservative expansion + dual-shell for extreme thin walls
-        /// so linear closestHit cannot tunnel through high-density geometry.
-        /// </summary>
         private void TessellateIcosahedron(Vector3 position, Quaternion rotation, Vector3 halfExtents, float density)
         {
-            // Density-aware expansion so high-density walls form a solid volume
+            // Unchanged — leave icosahedron shapes for the models
             float eps = Math.Max(0.22f, 0.10f * Math.Clamp(density, 0.5f, 4f));
             Vector3 he = halfExtents + new Vector3(eps);
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
-            // Detect extreme thin bodies (walls)
             float minAxis = Math.Min(halfExtents.X, Math.Min(halfExtents.Y, halfExtents.Z));
             float maxAxis = Math.Max(halfExtents.X, Math.Max(halfExtents.Y, halfExtents.Z));
             bool thin = (maxAxis > 1e-4f) && (minAxis / maxAxis < 0.30f);
-            // Transform the 12 unit vertices into the oriented box
             Vector3[] world = new Vector3[12];
             for (int i = 0; i < 12; i++)
             {
@@ -193,7 +184,6 @@ namespace SiegeEngine.Core.GPU.Compute
                 int i2 = IcoFaces[f, 2];
                 AddTri(world[i0], world[i1], world[i2], density);
             }
-            // Dual-shell for thin walls: outer shell at 1.5*eps closes the volume
             if (thin)
             {
                 Vector3 heOuter = halfExtents + new Vector3(eps * 1.5f);
@@ -238,10 +228,6 @@ namespace SiegeEngine.Core.GPU.Compute
             }
             _geometryVersion++;
         }
-        /// <summary>
-        /// CPU-side closest-hit query against the last uploaded acoustic proxies.
-        /// Used for direct LOS tests and debug path solving. Matches GPU closestHit logic.
-        /// </summary>
         public bool TryClosestHit(Vector3 origin, Vector3 dir, out float tHit, out Vector3 nHit, out float dens)
         {
             tHit = float.MaxValue;
@@ -270,6 +256,16 @@ namespace SiegeEngine.Core.GPU.Compute
                 }
             }
             return hit;
+        }
+        public bool GetTriangle(int index, out Vector3 a, out Vector3 b, out Vector3 c)
+        {
+            a = b = c = Vector3.Zero;
+            if (index < 0 || index >= _cpuTris.Count) return false;
+            var tri = _cpuTris[index];
+            a = new Vector3(tri.A.X, tri.A.Y, tri.A.Z);
+            b = new Vector3(tri.B.X, tri.B.Y, tri.B.Z);
+            c = new Vector3(tri.C.X, tri.C.Y, tri.C.Z);
+            return true;
         }
         private static bool RayTriangle(Vector3 o, Vector3 d, Vector3 a, Vector3 b, Vector3 c, out float t, out Vector3 n)
         {

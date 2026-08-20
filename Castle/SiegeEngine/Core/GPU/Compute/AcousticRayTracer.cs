@@ -13,12 +13,13 @@ namespace SiegeEngine.Core.GPU.Compute
     {
         public enum DebugSegmentKind : int
         {
-            FreeLeg = 0, // listener free
-            SourceFree = 1, // source free
+            FreeLeg = 0,      // listener-visible surface edges (blue)
+            SourceFree = 1,   // source-visible surface edges (red)
             BounceLeg = 2,
-            Splat = 3,
-            Diffracted = 4
+            Splat = 3,        // unused
+            Diffracted = 4    // mutual visibility (cyan)
         }
+
         [StructLayout(LayoutKind.Sequential)]
         public struct GpuRayResult
         {
@@ -28,45 +29,66 @@ namespace SiegeEngine.Core.GPU.Compute
             public float Pad;
             public Vector4 ArrivalDir;
         }
+
         [StructLayout(LayoutKind.Sequential)]
         public struct GpuDebugSegment
         {
             public Vector4 A;
             public Vector4 B;
         }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct GpuVisibility
+        {
+            public float ListenerVisible;
+            public float SourceVisible;
+            public float Pad0;
+            public float Pad1;
+        }
+
         public struct DebugSegment
         {
             public Vector3 A;
             public Vector3 B;
             public DebugSegmentKind Kind;
             public float Intensity;
-            public float Radius; // exact solid-angle footprint radius for Kind=Splat
+            public float Radius;
+            public Vector3 Normal;
+            public int TriangleIndex;
         }
+
         private readonly IRenderContext _renderContext;
         private readonly ComputeProgram _freeRayProgram;
         private readonly ComputeProgram _residualProgram;
+        private readonly ComputeProgram _visibilityProgram;
         private readonly ShaderStorageBuffer[] _resultSsbo = new ShaderStorageBuffer[2];
         private readonly ShaderStorageBuffer[] _debugSsbo = new ShaderStorageBuffer[2];
+        private readonly ShaderStorageBuffer _visibilitySsbo;
         private readonly AcousticGeometry _geometry;
         private bool _disposed;
         private int _writeIdx;
         private int _readIdx = 1;
         private const int MaxRays = 256;
         private const int ContinuousRays = 128;
-        private const int DebugRayCount = 256;
         private const int ContinuousBounces = 6;
         private const int MaxDebugSegments = 1024;
+        private const int MaxVisibilityTris = 8192;
         private readonly List<DebugSegment> _debugSegments = new List<DebugSegment>(MaxDebugSegments);
         private Vector3 _lastListenerPos;
         private Vector3 _lastPrimarySource;
+
         public AcousticRayTracer(IRenderContext renderContext, AcousticGeometry geometry)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _geometry = geometry ?? throw new ArgumentNullException(nameof(geometry));
             _freeRayProgram = new ComputeProgram(_renderContext, AcousticFreeRayShader.Source);
             _residualProgram = new ComputeProgram(_renderContext, AcousticCommon.Source + AcousticResidualShader.Source);
+            _visibilityProgram = new ComputeProgram(_renderContext, AcousticVisibilityShader.Source);
+
             int resultBytes = MaxRays * sizeof(GpuRayResult);
             int debugBytes = MaxDebugSegments * sizeof(GpuDebugSegment);
+            int visBytes = MaxVisibilityTris * sizeof(GpuVisibility);
+
             for (int i = 0; i < 2; i++)
             {
                 _resultSsbo[i] = new ShaderStorageBuffer(_renderContext);
@@ -74,7 +96,10 @@ namespace SiegeEngine.Core.GPU.Compute
                 _debugSsbo[i] = new ShaderStorageBuffer(_renderContext);
                 _debugSsbo[i].SetData((uint)debugBytes, null, _renderContext.Enums.DynamicCopy);
             }
+            _visibilitySsbo = new ShaderStorageBuffer(_renderContext);
+            _visibilitySsbo.SetData((uint)visBytes, null, _renderContext.Enums.DynamicCopy);
         }
+
         public void KickContinuousTrace(Vector3 sourcePos, Vector3 listenerPos)
         {
             if (_disposed || _geometry.TriangleCount <= 0) return;
@@ -96,12 +121,14 @@ namespace SiegeEngine.Core.GPU.Compute
             _readIdx = _writeIdx;
             _writeIdx = 1 - _writeIdx;
         }
+
         public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources, bool diagnosticOnce = false)
         {
             if (_disposed) return;
             Vector3 primarySource = (sources != null && sources.Count > 0) ? sources[0] : listenerPos + new Vector3(0, 10, 0);
             _lastListenerPos = listenerPos;
             _lastPrimarySource = primarySource;
+
             if (_geometry.TriangleCount <= 0)
             {
                 _debugSegments.Clear();
@@ -109,215 +136,133 @@ namespace SiegeEngine.Core.GPU.Compute
                     Console.WriteLine("[AcousticRayTracer] TriangleCount == 0, no dispatch");
                 return;
             }
+
             if (diagnosticOnce)
             {
-                Console.WriteLine($"[AcousticRayTracer] === KickDebug ===");
+                Console.WriteLine($"[AcousticRayTracer] === KickDebug (GPU viewport) ===");
                 Console.WriteLine($" Listener = ({listenerPos.X:F2},{listenerPos.Y:F2},{listenerPos.Z:F2})");
                 Console.WriteLine($" Source = ({primarySource.X:F2},{primarySource.Y:F2},{primarySource.Z:F2})");
                 Console.WriteLine($" TriangleCount = {_geometry.TriangleCount}");
             }
+
+            // GPU parallel per-triangle viewport visibility
+            int triCount = Math.Min(_geometry.TriangleCount, MaxVisibilityTris);
             _geometry.Buffer.BindBase(0);
-            _resultSsbo[_writeIdx].BindBase(1);
-            _debugSsbo[_writeIdx].BindBase(2);
-            _freeRayProgram.Use();
-            _freeRayProgram.SetUniform("uSourcePos", primarySource.X, primarySource.Y, primarySource.Z);
-            _freeRayProgram.SetUniform("uListenerPos", listenerPos.X, listenerPos.Y, listenerPos.Z);
-            _freeRayProgram.SetUniform("uTriangleCount", _geometry.TriangleCount);
-            _freeRayProgram.SetUniform("uRayCount", DebugRayCount);
-            _freeRayProgram.SetUniform("uMaxBounces", 1);
-            _freeRayProgram.SetUniform("uListenerRadius", 5.0f);
-            _freeRayProgram.SetUniform("uMaxDistance", 350.0f);
-            _freeRayProgram.SetUniform("uDebugMode", 1);
-            _freeRayProgram.SetUniform("uSourceCount", sources != null ? Math.Min(sources.Count, 8) : 0);
-            uint groups = (uint)((DebugRayCount + 63) / 64);
-            _freeRayProgram.Dispatch(groups, 1, 1);
-            _freeRayProgram.Barrier();
-            ReadDebugSegmentsFromBuffer(_writeIdx, diagnosticOnce);
-            SolveAndInjectRoute(listenerPos, primarySource, diagnosticOnce);
-            _readIdx = _writeIdx;
-            _writeIdx = 1 - _writeIdx;
-        }
-        public IReadOnlyList<DebugSegment> GetDebugSegments() => _debugSegments;
-        private void ReadDebugSegmentsFromBuffer(int bufIdx, bool diagnosticOnce = false)
-        {
+            _visibilitySsbo.BindBase(1);
+
+            _visibilityProgram.Use();
+            _visibilityProgram.SetUniform("uListenerPos", listenerPos.X, listenerPos.Y, listenerPos.Z);
+            _visibilityProgram.SetUniform("uSourcePos", primarySource.X, primarySource.Y, primarySource.Z);
+            _visibilityProgram.SetUniform("uTriangleCount", triCount);
+            _visibilityProgram.SetUniform("uMaxDistance", 350.0f);
+
+            uint groups = (uint)((triCount + 63) / 64);
+            _visibilityProgram.Dispatch(groups, 1, 1);
+            _visibilityProgram.Barrier();
+
+            // Read results and paint continuous surface edges
             _debugSegments.Clear();
-            uint byteSize = (uint)(MaxDebugSegments * sizeof(GpuDebugSegment));
-            GpuDebugSegment* segs = (GpuDebugSegment*)_debugSsbo[bufIdx].MapRange(0, byteSize, _renderContext.Enums.MapReadBit);
-            if (segs == null)
-            {
-                if (diagnosticOnce)
-                    Console.WriteLine("[AcousticRayTracer] MapRange returned null");
-                return;
-            }
-            int[] kindCount = new int[5];
-            int accepted = 0;
-            for (int i = 0; i < MaxDebugSegments; i++)
-            {
-                float kindF = segs[i].B.W;
-                if (kindF < -0.5f) continue;
-                int kind = (int)kindF;
-                if (kind < 0 || kind > 4) continue;
-                Vector3 a = new Vector3(segs[i].A.X, segs[i].A.Y, segs[i].A.Z);
-                Vector3 b = new Vector3(segs[i].B.X, segs[i].B.Y, segs[i].B.Z);
-                float intensity = 1.0f;
-                float radius = 0.0f;
-                if (kind == 3)
-                {
-                    intensity = Math.Clamp(kindF - 3.0f, 0.05f, 1.0f);
-                    kind = 3;
-                    radius = segs[i].A.W;
-                    if (radius < 0.05f) radius = 0.55f;
-                    b = a + new Vector3(0.2f, 0, 0);
-                }
-                if ((a - b).LengthSquared() < 1e-6f && kind != 3) continue;
-                _debugSegments.Add(new DebugSegment
-                {
-                    A = a,
-                    B = b,
-                    Kind = (DebugSegmentKind)kind,
-                    Intensity = intensity,
-                    Radius = radius
-                });
-                if (kind >= 0 && kind <= 4) kindCount[kind]++;
-                accepted++;
-            }
-            _debugSsbo[bufIdx].Unmap();
-            if (diagnosticOnce)
-            {
-                Console.WriteLine($"[AcousticRayTracer] ReadDebugSegments accepted={accepted}");
-                Console.WriteLine($" Kind 0 (ListenerFree) = {kindCount[0]}");
-                Console.WriteLine($" Kind 1 (SourceFree) = {kindCount[1]}");
-                Console.WriteLine($" Kind 2 (Bounce) = {kindCount[2]}");
-                Console.WriteLine($" Kind 3 (Splat) = {kindCount[3]}");
-                Console.WriteLine($" Kind 4 (Diffracted) = {kindCount[4]}");
-                int sample = Math.Min(16, _debugSegments.Count);
-                for (int i = 0; i < sample; i++)
-                {
-                    var s = _debugSegments[i];
-                    Console.WriteLine($" seg[{i}] Kind={s.Kind} Int={s.Intensity:F2} R={s.Radius:F2} A=({s.A.X:F1},{s.A.Y:F1},{s.A.Z:F1}) B=({s.B.X:F1},{s.B.Y:F1},{s.B.Z:F1})");
-                }
-            }
-        }
-        private void SolveAndInjectRoute(Vector3 listenerPos, Vector3 sourcePos, bool diagnosticOnce)
-        {
-            Vector3 toSource = sourcePos - listenerPos;
+            ReadVisibilityAndPaint(triCount, diagnosticOnce);
+
+            // Direct LOS still shown if clear
+            Vector3 toSource = primarySource - listenerPos;
             float dist = toSource.Length();
-            if (dist < 1e-4f) return;
-            Vector3 dir = toSource / dist;
-            bool losClear = false;
-            if (_geometry.TryClosestHit(listenerPos, dir, out float tHit, out Vector3 nHit, out float dens))
+            if (dist > 1e-4f)
             {
-                if (tHit >= dist * 0.98f)
-                    losClear = true;
-            }
-            else
-            {
-                losClear = true;
-            }
-            if (losClear)
-            {
-                _debugSegments.Add(new DebugSegment
+                Vector3 dir = toSource / dist;
+                bool losClear = false;
+                if (_geometry.TryClosestHit(listenerPos, dir, out float tHit, out _, out _))
                 {
-                    A = listenerPos,
-                    B = sourcePos,
-                    Kind = DebugSegmentKind.Diffracted,
-                    Intensity = 1.0f,
-                    Radius = 0.0f
-                });
-                if (diagnosticOnce)
-                    Console.WriteLine("[AcousticRayTracer] Solved route: DIRECT LOS");
-                return;
-            }
-            // Collect solid-angle footprints (center + exact radius) for both origins
-            var listenerFootprints = new List<(Vector3 center, float radius)>(128);
-            var sourceFootprints = new List<(Vector3 center, float radius)>(128);
-            for (int i = 0; i < _debugSegments.Count; i++)
-            {
-                var seg = _debugSegments[i];
-                if (seg.Kind == DebugSegmentKind.Splat)
-                {
-                    float dL = (seg.A - listenerPos).LengthSquared();
-                    float dS = (seg.A - sourcePos).LengthSquared();
-                    if (dL <= dS)
-                        listenerFootprints.Add((seg.A, Math.Max(0.05f, seg.Radius)));
-                    else
-                        sourceFootprints.Add((seg.A, Math.Max(0.05f, seg.Radius)));
+                    if (tHit >= dist * 0.98f) losClear = true;
                 }
-                else if (seg.Kind == DebugSegmentKind.FreeLeg)
+                else losClear = true;
+
+                if (losClear)
                 {
-                    listenerFootprints.Add((seg.B, 0.4f));
-                }
-                else if (seg.Kind == DebugSegmentKind.SourceFree)
-                {
-                    sourceFootprints.Add((seg.B, 0.4f));
-                }
-            }
-            if (listenerFootprints.Count == 0 || sourceFootprints.Count == 0)
-            {
-                if (diagnosticOnce)
-                    Console.WriteLine("[AcousticRayTracer] No footprints available for overlap test");
-                return;
-            }
-            // Accept a pair ONLY if the solid-angle footprints overlap at all
-            float bestTotal = float.MaxValue;
-            Vector3 bestL = Vector3.Zero;
-            Vector3 bestS = Vector3.Zero;
-            bool found = false;
-            for (int i = 0; i < listenerFootprints.Count; i++)
-            {
-                var (cL, rL) = listenerFootprints[i];
-                for (int j = 0; j < sourceFootprints.Count; j++)
-                {
-                    var (cS, rS) = sourceFootprints[j];
-                    float midDist = (cL - cS).Length();
-                    if (midDist < (rL + rS))
+                    _debugSegments.Add(new DebugSegment
                     {
-                        // Overlap exists — compute total path length
-                        float total = (cL - listenerPos).Length() + midDist + (cS - sourcePos).Length();
-                        if (total < bestTotal)
-                        {
-                            bestTotal = total;
-                            bestL = cL;
-                            bestS = cS;
-                            found = true;
-                        }
-                    }
+                        A = listenerPos,
+                        B = primarySource,
+                        Kind = DebugSegmentKind.Diffracted,
+                        Intensity = 1.0f,
+                        Radius = 0,
+                        Normal = Vector3.UnitZ,
+                        TriangleIndex = -1
+                    });
                 }
             }
-            if (!found)
+        }
+
+        private void ReadVisibilityAndPaint(int triCount, bool diagnosticOnce)
+        {
+            uint byteSize = (uint)(triCount * sizeof(GpuVisibility));
+            GpuVisibility* vis = (GpuVisibility*)_visibilitySsbo.MapRange(0, byteSize, _renderContext.Enums.MapReadBit);
+            if (vis == null)
             {
                 if (diagnosticOnce)
-                    Console.WriteLine("[AcousticRayTracer] No overlapping footprints — no solved route");
+                    Console.WriteLine("[AcousticRayTracer] Visibility MapRange returned null");
                 return;
             }
-            // Inject the validated overlapping path
-            _debugSegments.Add(new DebugSegment
+
+            var listenerVisible = new List<int>(512);
+            var sourceVisible = new List<int>(512);
+            var mutual = new List<int>(256);
+
+            for (int t = 0; t < triCount; t++)
             {
-                A = listenerPos,
-                B = bestL,
-                Kind = DebugSegmentKind.Diffracted,
-                Intensity = 0.95f,
-                Radius = 0.0f
-            });
-            _debugSegments.Add(new DebugSegment
+                bool lVis = vis[t].ListenerVisible > 0.5f;
+                bool sVis = vis[t].SourceVisible > 0.5f;
+                if (lVis) listenerVisible.Add(t);
+                if (sVis) sourceVisible.Add(t);
+                if (lVis && sVis) mutual.Add(t);
+            }
+            _visibilitySsbo.Unmap();
+
+            // Prefer mutual (cyan) first, then listener (blue), then source (red)
+            // Soft cap so we stay inside MaxDebugSegments
+            int injected = 0;
+            const int maxInject = 300; // 300 triangles * 3 edges ≈ 900 segments
+
+            foreach (int t in mutual)
             {
-                A = bestL,
-                B = bestS,
-                Kind = DebugSegmentKind.Diffracted,
-                Intensity = 1.0f,
-                Radius = 0.0f
-            });
-            _debugSegments.Add(new DebugSegment
+                if (injected >= maxInject) break;
+                if (!_geometry.GetTriangle(t, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
+                _debugSegments.Add(new DebugSegment { A = a, B = b, Kind = DebugSegmentKind.Diffracted, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
+                _debugSegments.Add(new DebugSegment { A = b, B = c, Kind = DebugSegmentKind.Diffracted, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
+                _debugSegments.Add(new DebugSegment { A = c, B = a, Kind = DebugSegmentKind.Diffracted, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
+                injected++;
+            }
+
+            foreach (int t in listenerVisible)
             {
-                A = bestS,
-                B = sourcePos,
-                Kind = DebugSegmentKind.Diffracted,
-                Intensity = 0.95f,
-                Radius = 0.0f
-            });
+                if (injected >= maxInject) break;
+                if (mutual.Contains(t)) continue; // already drawn cyan
+                if (!_geometry.GetTriangle(t, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
+                _debugSegments.Add(new DebugSegment { A = a, B = b, Kind = DebugSegmentKind.FreeLeg, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
+                _debugSegments.Add(new DebugSegment { A = b, B = c, Kind = DebugSegmentKind.FreeLeg, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
+                _debugSegments.Add(new DebugSegment { A = c, B = a, Kind = DebugSegmentKind.FreeLeg, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
+                injected++;
+            }
+
+            foreach (int t in sourceVisible)
+            {
+                if (injected >= maxInject) break;
+                if (mutual.Contains(t)) continue;
+                if (!_geometry.GetTriangle(t, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
+                _debugSegments.Add(new DebugSegment { A = a, B = b, Kind = DebugSegmentKind.SourceFree, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
+                _debugSegments.Add(new DebugSegment { A = b, B = c, Kind = DebugSegmentKind.SourceFree, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
+                _debugSegments.Add(new DebugSegment { A = c, B = a, Kind = DebugSegmentKind.SourceFree, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
+                injected++;
+            }
+
             if (diagnosticOnce)
-                Console.WriteLine($"[AcousticRayTracer] Solved route: overlapping footprints, total={bestTotal:F1}m");
+            {
+                Console.WriteLine($"[AcousticRayTracer] GPU viewport: listener={listenerVisible.Count} source={sourceVisible.Count} mutual={mutual.Count} injected={injected}");
+            }
         }
+
+        public IReadOnlyList<DebugSegment> GetDebugSegments() => _debugSegments;
+
         public SoundRayTraceResult ReadCompletedResult()
         {
             if (_disposed || _geometry.TriangleCount <= 0)
@@ -389,17 +334,20 @@ namespace SiegeEngine.Core.GPU.Compute
                 ApparentDirection = arrival
             };
         }
+
         public void Dispose()
         {
             if (!_disposed)
             {
                 _freeRayProgram?.Dispose();
                 _residualProgram?.Dispose();
+                _visibilityProgram?.Dispose();
                 for (int i = 0; i < 2; i++)
                 {
                     _resultSsbo[i]?.Dispose();
                     _debugSsbo[i]?.Dispose();
                 }
+                _visibilitySsbo?.Dispose();
                 _disposed = true;
             }
             GC.SuppressFinalize(this);

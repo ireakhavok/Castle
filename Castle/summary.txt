@@ -45,6 +45,7 @@ Folder: IDE
       - Vector4 ListenerFreeColor
       - Vector4 SourceFreeColor
       - Vector4 BounceColor
+      - Vector4 DiffractedColor
     - Methods:
       - constructor AcousticDebugOverlay(
             Func<IHeightProvider> getHeightProvider = null, 
@@ -54,18 +55,14 @@ Folder: IDE
             IRenderContext renderContext)
       - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: AddCross, AddLine, AddOutlinedSplat, Console.WriteLine, EnsureResources, VertexBuffer, _dynIndices.Clear, _dynVerts.Clear, _dynamicBuffer.Bind, _dynamicBuffer.UpdateCustom, _geometry.Rebuild, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _tracer.KickDebugBidirectional
-      - 2 AddLine()
-        - Calls: AcousticGeometry, AcousticRayTracer, ShaderProgram
-      - larger AddOutlinedSplat()
+        - Calls: AddCross, AddLine, Console.WriteLine, EnsureResources, VertexBuffer, _dynIndices.Clear, _dynVerts.Clear, _dynamicBuffer.Bind, _dynamicBuffer.UpdateCustom, _geometry.Rebuild, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _tracer.KickDebugBidirectional
+      - clear AddLine()
         - Calls: AcousticGeometry, AcousticRayTracer, ShaderProgram
       - void EnsureResources()
         - Calls: AcousticGeometry, AcousticRayTracer, ShaderProgram
       - void AddLine( List<uint> indices,  Vector3 a,  Vector3 b,  Vector4 color, List<Vertex> verts)
         - Calls: Vertex, indices.Add, verts.Add
       - void AddCross( List<uint> indices,  Vector3 center,  Vector4 color,  float size, List<Vertex> verts)
-        - Calls: AddLine
-      - void AddOutlinedSplat( List<uint> indices,  Vector3 center,  Vector4 color,  float size, List<Vertex> verts)
         - Calls: AddLine
 - File: AddSkyboxPanel.cs
   - Class: AddSkyboxUIOverlay (Namespace: ToolChest)
@@ -1013,6 +1010,9 @@ Folder: SiegeEngine
       - Vector3 B
       - DebugSegmentKind Kind
       - float Intensity
+      - float Radius
+      - Vector3 Normal
+      - int TriangleIndex
 - File: AcousticResidualShader.cs
   - Class: AcousticResidualShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
@@ -1020,6 +1020,8 @@ Folder: SiegeEngine
     - Methods:
       - void main()
         - Calls: closestHit, hash, randomUnit
+- File: AcousticVisibilityShader.cs
+  - Class: GpuVisibility (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: AngledOrthoCamera.cs
   - Class: AngledOrthoCamera (Namespace: SiegeEngine.PlayerSystem)
     - Inherits: CameraController
@@ -4202,6 +4204,7 @@ SiegeEngine.Core.GPU.Shaders.AnimationShader
 SiegeEngine.Core.GPU.Shaders.AssetShader
 SiegeEngine.Core.GPU.Shaders.EditorSceneShader
 SiegeEngine.Core.GPU.Shaders.GpuDebugSegment
+SiegeEngine.Core.GPU.Shaders.GpuVisibility
 SiegeEngine.Core.GPU.Shaders.ModelShader
 SiegeEngine.Core.GPU.Shaders.PointShader
 SiegeEngine.Core.GPU.Shaders.SceneShader

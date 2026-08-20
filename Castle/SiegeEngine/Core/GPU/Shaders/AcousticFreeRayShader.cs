@@ -72,10 +72,11 @@ bool rayTriangle(vec3 o, vec3 d, vec3 a, vec3 b, vec3 c, out float t, out vec3 n
     return true;
 }
 
-bool closestHit(vec3 pos, vec3 dir, out float tHit, out vec3 nHit, out float dens) {
+bool closestHit(vec3 pos, vec3 dir, out float tHit, out vec3 nHit, out float dens, out int triIndex) {
     tHit = uMaxDistance;
     nHit = vec3(0.0);
     dens = 1.0;
+    triIndex = -1;
     bool hit = false;
     for (int i = 0; i < uTriangleCount; i++) {
         float t;
@@ -85,6 +86,7 @@ bool closestHit(vec3 pos, vec3 dir, out float tHit, out vec3 nHit, out float den
                 tHit = t;
                 nHit = n;
                 dens = max(0.1, triangles[i].C.w);
+                triIndex = i;
                 hit = true;
             }
         }
@@ -108,7 +110,6 @@ void main() {
     vec3 origin = fromListener ? uListenerPos : uSourcePos;
     float freeKind = fromListener ? 0.0 : 1.0;
 
-    // Evenly-spaced full-sphere stratified equal-area (16×8)
     uint rayHalf = uint(uRayCount / 2);
     uint local = idx % rayHalf;
     uint nAz = 16u;
@@ -126,28 +127,27 @@ void main() {
     float tHit;
     vec3 nHit;
     float dens;
-    bool hit = closestHit(origin, dir, tHit, nHit, dens);
+    int triIndex;
+    bool hit = closestHit(origin, dir, tHit, nHit, dens, triIndex);
 
-    // Only write free leg + splat when we actually hit something
     if (!hit || tHit >= MAX_FREE) return;
 
     vec3 endPos = origin + dir * tHit;
 
-    // Exact solid-angle footprint of this stratified cell projected onto the surface
     float solidAngle = (6.28318530718 / float(nAz)) * (2.0 / float(nEl));
     float halfAngle = sqrt(solidAngle / 3.14159265);
     float cosInc = max(0.15, abs(dot(nHit, dir)));
     float footprintR = tHit * tan(halfAngle) / cosInc;
 
     if (base < 1024u) {
-        debugSegs[base].A = vec4(origin, 0.0);
+        // Free leg: A = origin, B = end + freeKind, and store triangle index in A.w
+        debugSegs[base].A = vec4(origin, float(triIndex));
         debugSegs[base].B = vec4(endPos, freeKind);
     }
 
     if (base + 1u < 1024u) {
         float splatI = clamp(energy * (1.0 / (1.0 + dens * 0.3)), 0.1, 0.99);
-        // A.xyz = hit position, A.w = exact projected cone radius
-        // B.xyz = surface normal * scale, B.w = Kind 3 + intensity
+        // Splat: A = endPos + footprintR, B = normal + Kind/intensity, triangle index already in free-leg
         debugSegs[base + 1u].A = vec4(endPos, footprintR);
         debugSegs[base + 1u].B = vec4(nHit * 0.35, 3.0 + splatI);
     }
