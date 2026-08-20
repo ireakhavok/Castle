@@ -64,9 +64,24 @@ namespace SiegeEngine.Core.GPU.Compute
         private const int ContinuousBounces = 6;
         private const int MaxDebugSegments = 65536;
         private const int IdBufferSize = 96;
+
+        // Movement threshold (metres). Only re-raster when an origin moves farther than this
+        // or when geometry version changes. Prevents main-thread ReadPixels stall every frame.
+        private const float VisibilityMoveThreshold = 0.75f;
+
         private readonly List<DebugSegment> _debugSegments = new List<DebugSegment>(MaxDebugSegments);
         private Vector3 _lastListenerPos;
         private Vector3 _lastPrimarySource;
+
+        // Cached continuous visibility results so we do not re-run the 12× ReadPixels path
+        // unless the listener / source actually moved or geometry changed.
+        private readonly HashSet<int> _cachedListenerVisible = new HashSet<int>();
+        private readonly HashSet<int> _cachedSourceVisible = new HashSet<int>();
+        private readonly HashSet<int> _cachedMutual = new HashSet<int>();
+        private Vector3 _cachedListenerPos;
+        private Vector3 _cachedSourcePos;
+        private uint _cachedGeometryVersion;
+        private bool _visibilityCacheValid;
 
         private uint _fbo;
         private uint _idTexture;
@@ -177,6 +192,7 @@ namespace SiegeEngine.Core.GPU.Compute
             if (_geometry.TriangleCount <= 0 || !_fboReady)
             {
                 _debugSegments.Clear();
+                _visibilityCacheValid = false;
                 if (diagnosticOnce)
                     Console.WriteLine("[AcousticRayTracer] TriangleCount == 0 or FBO not ready");
                 return;
@@ -190,20 +206,37 @@ namespace SiegeEngine.Core.GPU.Compute
                 Console.WriteLine($" TriangleCount = {_geometry.TriangleCount}");
             }
 
-            var listenerVisible = new HashSet<int>();
-            var sourceVisible = new HashSet<int>();
+            // Only re-run the expensive 12× ReadPixels path when an origin moved
+            // farther than the threshold or the acoustic geometry itself changed.
+            bool needRecompute =
+                !_visibilityCacheValid ||
+                _geometry.GeometryVersion != _cachedGeometryVersion ||
+                Vector3.DistanceSquared(listenerPos, _cachedListenerPos) > VisibilityMoveThreshold * VisibilityMoveThreshold ||
+                Vector3.DistanceSquared(primarySource, _cachedSourcePos) > VisibilityMoveThreshold * VisibilityMoveThreshold;
 
-            RasterSphericalVisibility(listenerPos, listenerVisible);
-            RasterSphericalVisibility(primarySource, sourceVisible);
+            if (needRecompute)
+            {
+                _cachedListenerVisible.Clear();
+                _cachedSourceVisible.Clear();
+                _cachedMutual.Clear();
 
-            var mutual = new HashSet<int>();
-            foreach (int tri in listenerVisible)
-                if (sourceVisible.Contains(tri))
-                    mutual.Add(tri);
+                RasterSphericalVisibility(listenerPos, _cachedListenerVisible);
+                RasterSphericalVisibility(primarySource, _cachedSourceVisible);
+
+                foreach (int tri in _cachedListenerVisible)
+                    if (_cachedSourceVisible.Contains(tri))
+                        _cachedMutual.Add(tri);
+
+                _cachedListenerPos = listenerPos;
+                _cachedSourcePos = primarySource;
+                _cachedGeometryVersion = _geometry.GeometryVersion;
+                _visibilityCacheValid = true;
+            }
 
             _debugSegments.Clear();
-            PaintContinuousSurfaces(listenerVisible, sourceVisible, mutual, diagnosticOnce);
+            PaintContinuousSurfaces(_cachedListenerVisible, _cachedSourceVisible, _cachedMutual, diagnosticOnce);
 
+            // Direct LOS line (cheap, always current)
             Vector3 toSource = primarySource - listenerPos;
             float dist = toSource.Length();
             if (dist > 1e-4f)
