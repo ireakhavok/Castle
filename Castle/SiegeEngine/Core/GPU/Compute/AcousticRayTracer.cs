@@ -63,18 +63,16 @@ namespace SiegeEngine.Core.GPU.Compute
         private const int ContinuousRays = 128;
         private const int ContinuousBounces = 6;
         private const int MaxDebugSegments = 65536;
-        private const int IdBufferSize = 96;
 
-        // Movement threshold (metres). Only re-raster when an origin moves farther than this
-        // or when geometry version changes. Prevents main-thread ReadPixels stall every frame.
+        // Raised hard so thin real meshes can occlude the floor under the listener.
+        private const int IdBufferSize = 512;
+
         private const float VisibilityMoveThreshold = 0.75f;
 
         private readonly List<DebugSegment> _debugSegments = new List<DebugSegment>(MaxDebugSegments);
         private Vector3 _lastListenerPos;
         private Vector3 _lastPrimarySource;
 
-        // Cached continuous visibility results so we do not re-run the 12× ReadPixels path
-        // unless the listener / source actually moved or geometry changed.
         private readonly HashSet<int> _cachedListenerVisible = new HashSet<int>();
         private readonly HashSet<int> _cachedSourceVisible = new HashSet<int>();
         private readonly HashSet<int> _cachedMutual = new HashSet<int>();
@@ -206,8 +204,6 @@ namespace SiegeEngine.Core.GPU.Compute
                 Console.WriteLine($" TriangleCount = {_geometry.TriangleCount}");
             }
 
-            // Only re-run the expensive 12× ReadPixels path when an origin moved
-            // farther than the threshold or the acoustic geometry itself changed.
             bool needRecompute =
                 !_visibilityCacheValid ||
                 _geometry.GeometryVersion != _cachedGeometryVersion ||
@@ -236,7 +232,6 @@ namespace SiegeEngine.Core.GPU.Compute
             _debugSegments.Clear();
             PaintContinuousSurfaces(_cachedListenerVisible, _cachedSourceVisible, _cachedMutual, diagnosticOnce);
 
-            // Direct LOS line (cheap, always current)
             Vector3 toSource = primarySource - listenerPos;
             float dist = toSource.Length();
             if (dist > 1e-4f)
@@ -321,8 +316,6 @@ namespace SiegeEngine.Core.GPU.Compute
 
         private void PaintContinuousSurfaces(HashSet<int> listenerVisible, HashSet<int> sourceVisible, HashSet<int> mutual, bool diagnosticOnce)
         {
-            // No soft-cap. Every continuous surface that the spherical cameras found is painted.
-
             foreach (int tri in mutual)
             {
                 if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;

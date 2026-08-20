@@ -30,6 +30,9 @@ namespace SiegeEngine.Core.GPU.Compute
         private readonly IRenderContext _renderContext;
         private readonly ShaderStorageBuffer _ssbo;
         private readonly List<GpuTriangle> _cpuTris = new List<GpuTriangle>(8192);
+        private readonly List<Vector3> _tmpA = new List<Vector3>(8192);
+        private readonly List<Vector3> _tmpB = new List<Vector3>(8192);
+        private readonly List<Vector3> _tmpC = new List<Vector3>(8192);
         private readonly List<DrawVertex> _drawVerts = new List<DrawVertex>(24576);
         private readonly List<uint> _drawIndices = new List<uint>(24576);
 
@@ -93,15 +96,23 @@ namespace SiegeEngine.Core.GPU.Compute
                     continue;
                 }
 
-                var local = new List<GpuTriangle>(48);
+                var local = new List<GpuTriangle>(256);
                 float density = 1.0f;
                 float volume = physics.Size.X * physics.Size.Y * physics.Size.Z;
                 if (volume > 1e-6f)
                     density = Math.Max(0.1f, physics.Mass / volume);
 
-                // Correct centre + half-extents that respect mesh origin vs geometric centre.
-                GetWorldObb(physics, out Vector3 worldCentre, out Vector3 halfExtents, out Quaternion rotation);
-                EmitObbShell(worldCentre, rotation, halfExtents, density, local);
+                if (physics.Shape is TriangleMeshShape mesh)
+                {
+                    // Real mesh geometry – no forced OBB.
+                    EmitOriginalMesh(mesh, physics.Position, physics.Rotation, density, local);
+                }
+                else
+                {
+                    // Analytic / Size-based bodies only – use correct centre + half-extents.
+                    GetWorldObb(physics, out Vector3 worldCentre, out Vector3 halfExtents, out Quaternion rotation);
+                    EmitObbShell(worldCentre, rotation, halfExtents, density, local);
+                }
 
                 _proxyCache[id] = local;
                 _cpuTris.AddRange(local);
@@ -119,7 +130,7 @@ namespace SiegeEngine.Core.GPU.Compute
                     _proxyCache.Remove(toRemove[r]);
             }
 
-            // Heightmap contribution (stepped, cheap).
+            // Heightmap is required for continuous free-visibility (common line-of-sight surfaces).
             if (heightProvider != null && heightProvider.Width > 1 && heightProvider.Height > 1)
             {
                 int stepX = 1;
@@ -166,10 +177,23 @@ namespace SiegeEngine.Core.GPU.Compute
         }
 
         /// <summary>
-        /// Builds the correct world-space centre and half-extents for a static body.
-        /// Respects ObbShape.CenterOffset and LocalBounds so the proxy sits on the
-        /// visual geometry even when the FBX origin is at the feet / corner.
+        /// Emit the exact original mesh triangles. No forced OBB, no invented thickness.
         /// </summary>
+        private void EmitOriginalMesh(TriangleMeshShape mesh, Vector3 position, Quaternion rotation, float density, List<GpuTriangle> target)
+        {
+            _tmpA.Clear();
+            _tmpB.Clear();
+            _tmpC.Clear();
+            mesh.GetWorldTriangles(position, rotation, _tmpA, _tmpB, _tmpC);
+
+            int limit = Math.Min(_tmpA.Count, 4096);
+            for (int t = 0; t < limit; t++)
+            {
+                Vector3 a = _tmpA[t], b = _tmpB[t], c = _tmpC[t];
+                AddTriTo(target, a, b, c, density);
+            }
+        }
+
         private static void GetWorldObb(PhysicsComponent physics, out Vector3 worldCentre, out Vector3 halfExtents, out Quaternion rotation)
         {
             rotation = physics.Rotation;
@@ -192,7 +216,6 @@ namespace SiegeEngine.Core.GPU.Compute
                 centerOffset = Vector3.Zero;
             }
 
-            // Position is the mesh origin; CenterOffset moves us to the geometric centre.
             worldCentre = physics.Position + Vector3.Transform(centerOffset, rotation);
         }
 
@@ -205,15 +228,9 @@ namespace SiegeEngine.Core.GPU.Compute
                 && !float.IsNaN(physics.LocalBoundsMinCm.X) && !float.IsNaN(physics.LocalBoundsMaxCm.X);
         }
 
-        /// <summary>
-        /// Closed dual-shell OBB centred at the true geometric centre.
-        /// Sides stay flat; triangle count stays tiny (24 per body).
-        /// </summary>
         private void EmitObbShell(Vector3 worldCentre, Quaternion rotation, Vector3 halfExtents, float density, List<GpuTriangle> target)
         {
-            // Tiny numerical expansion so the 96×96 ID depth buffer does not leak
-            // on the exact surface. Does not change the overall flat silhouette.
-            float eps = 0.12f;
+            float eps = 0.10f;
             Vector3 he = halfExtents + new Vector3(eps);
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
 
@@ -227,7 +244,6 @@ namespace SiegeEngine.Core.GPU.Compute
             c[6] = worldCentre + Vector3.Transform(new Vector3(he.X, he.Y, he.Z), rot);
             c[7] = worldCentre + Vector3.Transform(new Vector3(-he.X, he.Y, he.Z), rot);
 
-            // Outer shell – 12 triangles
             AddTriTo(target, c[0], c[1], c[2], density);
             AddTriTo(target, c[0], c[2], c[3], density);
             AddTriTo(target, c[4], c[6], c[5], density);
@@ -241,8 +257,7 @@ namespace SiegeEngine.Core.GPU.Compute
             AddTriTo(target, c[1], c[5], c[6], density);
             AddTriTo(target, c[1], c[6], c[2], density);
 
-            // Dual (slightly larger) shell for reliable occlusion on thin volumes
-            float outer = eps * 1.5f;
+            float outer = eps * 1.4f;
             Vector3 he2 = halfExtents + new Vector3(outer);
             c[0] = worldCentre + Vector3.Transform(new Vector3(-he2.X, -he2.Y, -he2.Z), rot);
             c[1] = worldCentre + Vector3.Transform(new Vector3(he2.X, -he2.Y, -he2.Z), rot);
