@@ -7,17 +7,18 @@ using System.Runtime.InteropServices;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
+
 namespace SiegeEngine.Core.GPU.Compute
 {
     public unsafe class AcousticRayTracer : IDisposable
     {
         public enum DebugSegmentKind : int
         {
-            FreeLeg = 0,      // listener-visible surface edges (blue)
-            SourceFree = 1,   // source-visible surface edges (red)
+            FreeLeg = 0,
+            SourceFree = 1,
             BounceLeg = 2,
-            Splat = 3,        // unused
-            Diffracted = 4    // mutual visibility (cyan)
+            Splat = 3,
+            Diffracted = 4
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -37,15 +38,6 @@ namespace SiegeEngine.Core.GPU.Compute
             public Vector4 B;
         }
 
-        [StructLayout(LayoutKind.Sequential)]
-        public struct GpuVisibility
-        {
-            public float ListenerVisible;
-            public float SourceVisible;
-            public float Pad0;
-            public float Pad1;
-        }
-
         public struct DebugSegment
         {
             public Vector3 A;
@@ -63,7 +55,7 @@ namespace SiegeEngine.Core.GPU.Compute
         private readonly ComputeProgram _visibilityProgram;
         private readonly ShaderStorageBuffer[] _resultSsbo = new ShaderStorageBuffer[2];
         private readonly ShaderStorageBuffer[] _debugSsbo = new ShaderStorageBuffer[2];
-        private readonly ShaderStorageBuffer _visibilitySsbo;
+        private readonly ShaderStorageBuffer _hitIdSsbo;
         private readonly AcousticGeometry _geometry;
         private bool _disposed;
         private int _writeIdx;
@@ -71,8 +63,9 @@ namespace SiegeEngine.Core.GPU.Compute
         private const int MaxRays = 256;
         private const int ContinuousRays = 128;
         private const int ContinuousBounces = 6;
-        private const int MaxDebugSegments = 1024;
-        private const int MaxVisibilityTris = 8192;
+        private const int MaxDebugSegments = 4096;
+        private const int ProjectiveGridRes = 48;
+        private const int MaxSamples = ProjectiveGridRes * ProjectiveGridRes;
         private readonly List<DebugSegment> _debugSegments = new List<DebugSegment>(MaxDebugSegments);
         private Vector3 _lastListenerPos;
         private Vector3 _lastPrimarySource;
@@ -87,7 +80,7 @@ namespace SiegeEngine.Core.GPU.Compute
 
             int resultBytes = MaxRays * sizeof(GpuRayResult);
             int debugBytes = MaxDebugSegments * sizeof(GpuDebugSegment);
-            int visBytes = MaxVisibilityTris * sizeof(GpuVisibility);
+            int hitIdBytes = MaxSamples * sizeof(int);
 
             for (int i = 0; i < 2; i++)
             {
@@ -96,8 +89,8 @@ namespace SiegeEngine.Core.GPU.Compute
                 _debugSsbo[i] = new ShaderStorageBuffer(_renderContext);
                 _debugSsbo[i].SetData((uint)debugBytes, null, _renderContext.Enums.DynamicCopy);
             }
-            _visibilitySsbo = new ShaderStorageBuffer(_renderContext);
-            _visibilitySsbo.SetData((uint)visBytes, null, _renderContext.Enums.DynamicCopy);
+            _hitIdSsbo = new ShaderStorageBuffer(_renderContext);
+            _hitIdSsbo.SetData((uint)hitIdBytes, null, _renderContext.Enums.DynamicCopy);
         }
 
         public void KickContinuousTrace(Vector3 sourcePos, Vector3 listenerPos)
@@ -139,32 +132,26 @@ namespace SiegeEngine.Core.GPU.Compute
 
             if (diagnosticOnce)
             {
-                Console.WriteLine($"[AcousticRayTracer] === KickDebug (GPU viewport) ===");
+                Console.WriteLine($"[AcousticRayTracer] === KickDebug (GPU projective camera) ===");
                 Console.WriteLine($" Listener = ({listenerPos.X:F2},{listenerPos.Y:F2},{listenerPos.Z:F2})");
                 Console.WriteLine($" Source = ({primarySource.X:F2},{primarySource.Y:F2},{primarySource.Z:F2})");
                 Console.WriteLine($" TriangleCount = {_geometry.TriangleCount}");
             }
 
-            // GPU parallel per-triangle viewport visibility
-            int triCount = Math.Min(_geometry.TriangleCount, MaxVisibilityTris);
-            _geometry.Buffer.BindBase(0);
-            _visibilitySsbo.BindBase(1);
+            var listenerVisible = new HashSet<int>();
+            var sourceVisible = new HashSet<int>();
 
-            _visibilityProgram.Use();
-            _visibilityProgram.SetUniform("uListenerPos", listenerPos.X, listenerPos.Y, listenerPos.Z);
-            _visibilityProgram.SetUniform("uSourcePos", primarySource.X, primarySource.Y, primarySource.Z);
-            _visibilityProgram.SetUniform("uTriangleCount", triCount);
-            _visibilityProgram.SetUniform("uMaxDistance", 350.0f);
+            DispatchProjectiveCamera(listenerPos, primarySource, listenerVisible);
+            DispatchProjectiveCamera(primarySource, listenerPos, sourceVisible);
 
-            uint groups = (uint)((triCount + 63) / 64);
-            _visibilityProgram.Dispatch(groups, 1, 1);
-            _visibilityProgram.Barrier();
+            var mutual = new HashSet<int>();
+            foreach (int tri in listenerVisible)
+                if (sourceVisible.Contains(tri))
+                    mutual.Add(tri);
 
-            // Read results and paint continuous surface edges
             _debugSegments.Clear();
-            ReadVisibilityAndPaint(triCount, diagnosticOnce);
+            PaintContinuousSurfaces(listenerVisible, sourceVisible, mutual, diagnosticOnce);
 
-            // Direct LOS still shown if clear
             Vector3 toSource = primarySource - listenerPos;
             float dist = toSource.Length();
             if (dist > 1e-4f)
@@ -193,72 +180,80 @@ namespace SiegeEngine.Core.GPU.Compute
             }
         }
 
-        private void ReadVisibilityAndPaint(int triCount, bool diagnosticOnce)
+        private void DispatchProjectiveCamera(Vector3 origin, Vector3 lookAt, HashSet<int> visibleSet)
         {
-            uint byteSize = (uint)(triCount * sizeof(GpuVisibility));
-            GpuVisibility* vis = (GpuVisibility*)_visibilitySsbo.MapRange(0, byteSize, _renderContext.Enums.MapReadBit);
-            if (vis == null)
+            int sampleCount = MaxSamples;
+            _geometry.Buffer.BindBase(0);
+            _hitIdSsbo.BindBase(1);
+
+            _visibilityProgram.Use();
+            _visibilityProgram.SetUniform("uOrigin", origin.X, origin.Y, origin.Z);
+            _visibilityProgram.SetUniform("uLookAt", lookAt.X, lookAt.Y, lookAt.Z);
+            _visibilityProgram.SetUniform("uTriangleCount", _geometry.TriangleCount);
+            _visibilityProgram.SetUniform("uMaxDistance", 350.0f);
+            _visibilityProgram.SetUniform("uGridRes", ProjectiveGridRes);
+            _visibilityProgram.SetUniform("uSampleCount", sampleCount);
+
+            uint groups = (uint)((sampleCount + 63) / 64);
+            _visibilityProgram.Dispatch(groups, 1, 1);
+            _visibilityProgram.Barrier();
+
+            // Read unique hit triangle indices
+            uint byteSize = (uint)(sampleCount * sizeof(int));
+            int* hits = (int*)_hitIdSsbo.MapRange(0, byteSize, _renderContext.Enums.MapReadBit);
+            if (hits == null) return;
+
+            for (int i = 0; i < sampleCount; i++)
             {
-                if (diagnosticOnce)
-                    Console.WriteLine("[AcousticRayTracer] Visibility MapRange returned null");
-                return;
+                int tri = hits[i];
+                if (tri >= 0 && tri < _geometry.TriangleCount)
+                    visibleSet.Add(tri);
             }
+            _hitIdSsbo.Unmap();
+        }
 
-            var listenerVisible = new List<int>(512);
-            var sourceVisible = new List<int>(512);
-            var mutual = new List<int>(256);
-
-            for (int t = 0; t < triCount; t++)
-            {
-                bool lVis = vis[t].ListenerVisible > 0.5f;
-                bool sVis = vis[t].SourceVisible > 0.5f;
-                if (lVis) listenerVisible.Add(t);
-                if (sVis) sourceVisible.Add(t);
-                if (lVis && sVis) mutual.Add(t);
-            }
-            _visibilitySsbo.Unmap();
-
-            // Prefer mutual (cyan) first, then listener (blue), then source (red)
-            // Soft cap so we stay inside MaxDebugSegments
+        private void PaintContinuousSurfaces(HashSet<int> listenerVisible, HashSet<int> sourceVisible, HashSet<int> mutual, bool diagnosticOnce)
+        {
             int injected = 0;
-            const int maxInject = 300; // 300 triangles * 3 edges ≈ 900 segments
+            const int maxInject = 800;
 
-            foreach (int t in mutual)
+            foreach (int tri in mutual)
             {
                 if (injected >= maxInject) break;
-                if (!_geometry.GetTriangle(t, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
-                _debugSegments.Add(new DebugSegment { A = a, B = b, Kind = DebugSegmentKind.Diffracted, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
-                _debugSegments.Add(new DebugSegment { A = b, B = c, Kind = DebugSegmentKind.Diffracted, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
-                _debugSegments.Add(new DebugSegment { A = c, B = a, Kind = DebugSegmentKind.Diffracted, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
+                if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
+                EmitFilledTriangle(a, b, c, DebugSegmentKind.Diffracted, tri);
                 injected++;
             }
 
-            foreach (int t in listenerVisible)
+            foreach (int tri in listenerVisible)
             {
                 if (injected >= maxInject) break;
-                if (mutual.Contains(t)) continue; // already drawn cyan
-                if (!_geometry.GetTriangle(t, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
-                _debugSegments.Add(new DebugSegment { A = a, B = b, Kind = DebugSegmentKind.FreeLeg, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
-                _debugSegments.Add(new DebugSegment { A = b, B = c, Kind = DebugSegmentKind.FreeLeg, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
-                _debugSegments.Add(new DebugSegment { A = c, B = a, Kind = DebugSegmentKind.FreeLeg, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
+                if (mutual.Contains(tri)) continue;
+                if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
+                EmitFilledTriangle(a, b, c, DebugSegmentKind.FreeLeg, tri);
                 injected++;
             }
 
-            foreach (int t in sourceVisible)
+            foreach (int tri in sourceVisible)
             {
                 if (injected >= maxInject) break;
-                if (mutual.Contains(t)) continue;
-                if (!_geometry.GetTriangle(t, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
-                _debugSegments.Add(new DebugSegment { A = a, B = b, Kind = DebugSegmentKind.SourceFree, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
-                _debugSegments.Add(new DebugSegment { A = b, B = c, Kind = DebugSegmentKind.SourceFree, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
-                _debugSegments.Add(new DebugSegment { A = c, B = a, Kind = DebugSegmentKind.SourceFree, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = t });
+                if (mutual.Contains(tri)) continue;
+                if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
+                EmitFilledTriangle(a, b, c, DebugSegmentKind.SourceFree, tri);
                 injected++;
             }
 
             if (diagnosticOnce)
             {
-                Console.WriteLine($"[AcousticRayTracer] GPU viewport: listener={listenerVisible.Count} source={sourceVisible.Count} mutual={mutual.Count} injected={injected}");
+                Console.WriteLine($"[AcousticRayTracer] GPU projective camera: listener={listenerVisible.Count} source={sourceVisible.Count} mutual={mutual.Count} injected={injected}");
             }
+        }
+
+        private void EmitFilledTriangle(Vector3 a, Vector3 b, Vector3 c, DebugSegmentKind kind, int triIndex)
+        {
+            _debugSegments.Add(new DebugSegment { A = a, B = b, Kind = kind, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = triIndex });
+            _debugSegments.Add(new DebugSegment { A = b, B = c, Kind = kind, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = triIndex });
+            _debugSegments.Add(new DebugSegment { A = c, B = a, Kind = kind, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = triIndex });
         }
 
         public IReadOnlyList<DebugSegment> GetDebugSegments() => _debugSegments;
@@ -347,7 +342,7 @@ namespace SiegeEngine.Core.GPU.Compute
                     _resultSsbo[i]?.Dispose();
                     _debugSsbo[i]?.Dispose();
                 }
-                _visibilitySsbo?.Dispose();
+                _hitIdSsbo?.Dispose();
                 _disposed = true;
             }
             GC.SuppressFinalize(this);

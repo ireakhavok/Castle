@@ -8,33 +8,33 @@ namespace SiegeEngine.Core.GPU.Shaders
 #version 430
 layout(local_size_x = 64) in;
 
-struct GpuTriangle {
+struct GpuTriangle
+{
     vec4 A;
     vec4 B;
     vec4 C;
 };
 
-struct GpuVisibility {
-    float ListenerVisible;
-    float SourceVisible;
-    float Pad0;
-    float Pad1;
-};
-
-layout(std430, binding = 0) readonly buffer TriangleBuffer {
+layout(std430, binding = 0) readonly buffer TriangleBuffer
+{
     GpuTriangle triangles[];
 };
 
-layout(std430, binding = 1) writeonly buffer VisibilityBuffer {
-    GpuVisibility visibility[];
+// One int per sample: the triangle index that was hit (-1 = miss)
+layout(std430, binding = 1) writeonly buffer HitIDBuffer
+{
+    int hitIDs[];
 };
 
-uniform vec3 uListenerPos;
-uniform vec3 uSourcePos;
+uniform vec3 uOrigin;
+uniform vec3 uLookAt;
 uniform int uTriangleCount;
 uniform float uMaxDistance;
+uniform int uGridRes;
+uniform int uSampleCount;
 
-bool rayTriangle(vec3 o, vec3 d, vec3 a, vec3 b, vec3 c, out float t, out vec3 n) {
+bool rayTriangle(vec3 o, vec3 d, vec3 a, vec3 b, vec3 c, out float t, out vec3 n)
+{
     vec3 e1 = b - a, e2 = c - a;
     vec3 p = cross(d, e2);
     float det = dot(e1, p);
@@ -53,15 +53,19 @@ bool rayTriangle(vec3 o, vec3 d, vec3 a, vec3 b, vec3 c, out float t, out vec3 n
     return true;
 }
 
-bool closestHit(vec3 pos, vec3 dir, out float tHit, out int hitIndex) {
+bool closestHit(vec3 pos, vec3 dir, out float tHit, out int hitIndex)
+{
     tHit = uMaxDistance;
     hitIndex = -1;
     bool hit = false;
-    for (int i = 0; i < uTriangleCount; i++) {
+    for (int i = 0; i < uTriangleCount; i++)
+    {
         float t;
         vec3 n;
-        if (rayTriangle(pos, dir, triangles[i].A.xyz, triangles[i].B.xyz, triangles[i].C.xyz, t, n)) {
-            if (t > 0.001 && t < tHit) {
+        if (rayTriangle(pos, dir, triangles[i].A.xyz, triangles[i].B.xyz, triangles[i].C.xyz, t, n))
+        {
+            if (t > 0.001 && t < tHit)
+            {
                 tHit = t;
                 hitIndex = i;
                 hit = true;
@@ -71,53 +75,32 @@ bool closestHit(vec3 pos, vec3 dir, out float tHit, out int hitIndex) {
     return hit;
 }
 
-void main() {
+void main()
+{
     uint idx = gl_GlobalInvocationID.x;
-    if (idx >= uint(uTriangleCount)) return;
+    if (idx >= uint(uSampleCount)) return;
 
-    vec3 a = triangles[idx].A.xyz;
-    vec3 b = triangles[idx].B.xyz;
-    vec3 c = triangles[idx].C.xyz;
-    // 'centroid' is a reserved GLSL keyword — use triCenter instead
-    vec3 triCenter = (a + b + c) * 0.33333333;
+    int gx = int(idx) % uGridRes;
+    int gy = int(idx) / uGridRes;
 
-    float listenerVis = 0.0;
-    float sourceVis = 0.0;
+    float ndcX = (float(gx) + 0.5) / float(uGridRes) * 2.0 - 1.0;
+    float ndcY = (float(gy) + 0.5) / float(uGridRes) * 2.0 - 1.0;
+    float fovScale = 1.7;
 
-    // Listener viewport
-    vec3 toL = triCenter - uListenerPos;
-    float distL = length(toL);
-    if (distL > 0.001) {
-        vec3 dirL = toL / distL;
-        float tHit;
-        int hitIdx;
-        if (closestHit(uListenerPos, dirL, tHit, hitIdx)) {
-            if (hitIdx == int(idx) || abs(tHit - distL) < 0.4)
-                listenerVis = 1.0;
-        } else if (distL < 120.0) {
-            listenerVis = 1.0;
-        }
-    }
+    vec3 forward = normalize(uLookAt - uOrigin);
+    if (length(forward) < 1e-6) forward = vec3(0.0, 1.0, 0.0);
+    vec3 up = abs(forward.z) < 0.99 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
+    vec3 right = normalize(cross(forward, up));
+    up = cross(right, forward);
 
-    // Source viewport
-    vec3 toS = triCenter - uSourcePos;
-    float distS = length(toS);
-    if (distS > 0.001) {
-        vec3 dirS = toS / distS;
-        float tHit;
-        int hitIdx;
-        if (closestHit(uSourcePos, dirS, tHit, hitIdx)) {
-            if (hitIdx == int(idx) || abs(tHit - distS) < 0.4)
-                sourceVis = 1.0;
-        } else if (distS < 120.0) {
-            sourceVis = 1.0;
-        }
-    }
+    vec3 dir = normalize(forward + right * (ndcX * fovScale) + up * (ndcY * fovScale));
 
-    visibility[idx].ListenerVisible = listenerVis;
-    visibility[idx].SourceVisible = sourceVis;
-    visibility[idx].Pad0 = 0.0;
-    visibility[idx].Pad1 = 0.0;
+    float tHit;
+    int hitIndex;
+    if (closestHit(uOrigin, dir, tHit, hitIndex))
+        hitIDs[idx] = hitIndex;
+    else
+        hitIDs[idx] = -1;
 }
 ";
     }
