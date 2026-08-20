@@ -62,8 +62,8 @@ namespace SiegeEngine.Core.GPU.Compute
         private const int MaxRays = 256;
         private const int ContinuousRays = 128;
         private const int ContinuousBounces = 6;
-        private const int MaxDebugSegments = 4096;
-        private const int IdBufferSize = 96; // slightly smaller so 6 faces stay cheap
+        private const int MaxDebugSegments = 65536;
+        private const int IdBufferSize = 96;
         private readonly List<DebugSegment> _debugSegments = new List<DebugSegment>(MaxDebugSegments);
         private Vector3 _lastListenerPos;
         private Vector3 _lastPrimarySource;
@@ -74,15 +74,14 @@ namespace SiegeEngine.Core.GPU.Compute
         private uint[] _idReadback;
         private bool _fboReady;
 
-        // Six cube-face directions (complete sphere)
         private static readonly Vector3[] CubeDirs =
         {
-            new Vector3( 1, 0, 0),  // +X
-            new Vector3(-1, 0, 0),  // -X
-            new Vector3( 0, 1, 0),  // +Y
-            new Vector3( 0,-1, 0),  // -Y
-            new Vector3( 0, 0, 1),  // +Z
-            new Vector3( 0, 0,-1)   // -Z
+            new Vector3( 1, 0, 0),
+            new Vector3(-1, 0, 0),
+            new Vector3( 0, 1, 0),
+            new Vector3( 0,-1, 0),
+            new Vector3( 0, 0, 1),
+            new Vector3( 0, 0,-1)
         };
 
         private static readonly Vector3[] CubeUps =
@@ -194,7 +193,6 @@ namespace SiegeEngine.Core.GPU.Compute
             var listenerVisible = new HashSet<int>();
             var sourceVisible = new HashSet<int>();
 
-            // Complete spherical coverage – 6 cube faces from each origin (independent)
             RasterSphericalVisibility(listenerPos, listenerVisible);
             RasterSphericalVisibility(primarySource, sourceVisible);
 
@@ -206,7 +204,6 @@ namespace SiegeEngine.Core.GPU.Compute
             _debugSegments.Clear();
             PaintContinuousSurfaces(listenerVisible, sourceVisible, mutual, diagnosticOnce);
 
-            // Direct LOS line if clear
             Vector3 toSource = primarySource - listenerPos;
             float dist = toSource.Length();
             if (dist > 1e-4f)
@@ -237,7 +234,6 @@ namespace SiegeEngine.Core.GPU.Compute
 
         private void RasterSphericalVisibility(Vector3 origin, HashSet<int> visibleSet)
         {
-            // Save UI-critical state
             int savedViewportW = _renderContext.ViewportWidth;
             int savedViewportH = _renderContext.ViewportHeight;
 
@@ -248,7 +244,6 @@ namespace SiegeEngine.Core.GPU.Compute
             _renderContext.Disable(_renderContext.Enums.Blend);
             _renderContext.Disable(_renderContext.Enums.CullFace);
 
-            // 90° FOV cube faces cover the full sphere with no gaps
             Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI * 0.5f, 1.0f, 0.3f, 400.0f);
 
             _idProgram.Use();
@@ -284,7 +279,6 @@ namespace SiegeEngine.Core.GPU.Compute
                 }
             }
 
-            // Restore UI state completely
             _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, 0);
             _renderContext.Viewport(0, 0, (uint)savedViewportW, (uint)savedViewportH);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
@@ -294,38 +288,31 @@ namespace SiegeEngine.Core.GPU.Compute
 
         private void PaintContinuousSurfaces(HashSet<int> listenerVisible, HashSet<int> sourceVisible, HashSet<int> mutual, bool diagnosticOnce)
         {
-            int injected = 0;
-            const int maxInject = 800;
+            // No soft-cap. Every continuous surface that the spherical cameras found is painted.
 
             foreach (int tri in mutual)
             {
-                if (injected >= maxInject) break;
                 if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
                 EmitFilledTriangle(a, b, c, DebugSegmentKind.Diffracted, tri);
-                injected++;
             }
 
             foreach (int tri in listenerVisible)
             {
-                if (injected >= maxInject) break;
                 if (mutual.Contains(tri)) continue;
                 if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
                 EmitFilledTriangle(a, b, c, DebugSegmentKind.FreeLeg, tri);
-                injected++;
             }
 
             foreach (int tri in sourceVisible)
             {
-                if (injected >= maxInject) break;
                 if (mutual.Contains(tri)) continue;
                 if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
                 EmitFilledTriangle(a, b, c, DebugSegmentKind.SourceFree, tri);
-                injected++;
             }
 
             if (diagnosticOnce)
             {
-                Console.WriteLine($"[AcousticRayTracer] Spherical ID: listener={listenerVisible.Count} source={sourceVisible.Count} mutual={mutual.Count} injected={injected}");
+                Console.WriteLine($"[AcousticRayTracer] Spherical ID (no cap): listener={listenerVisible.Count} source={sourceVisible.Count} mutual={mutual.Count} segments={_debugSegments.Count}");
             }
         }
 
