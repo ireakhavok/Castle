@@ -27,7 +27,6 @@ layout(std430, binding = 1) writeonly buffer HitIDBuffer
 };
 
 uniform vec3 uOrigin;
-uniform vec3 uLookAt;
 uniform int uTriangleCount;
 uniform float uMaxDistance;
 uniform int uGridRes;
@@ -75,25 +74,27 @@ bool closestHit(vec3 pos, vec3 dir, out float tHit, out int hitIndex)
     return hit;
 }
 
+// Independent hemisphere sample (source-agnostic). No look-at the other origin.
+vec3 hemisphereDir(int sampleIdx, int gridRes)
+{
+    int gx = sampleIdx % gridRes;
+    int gy = sampleIdx / gridRes;
+    // Uniform-ish hemisphere: z up, covering full upper + lower for continuous coverage
+    float u = (float(gx) + 0.5) / float(gridRes);
+    float v = (float(gy) + 0.5) / float(gridRes);
+    float phi = u * 6.28318530718;
+    // Full sphere for independent continuous visibility (not just upper hemisphere)
+    float cosTheta = 1.0 - 2.0 * v;
+    float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
+    return vec3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
+}
+
 void main()
 {
     uint idx = gl_GlobalInvocationID.x;
     if (idx >= uint(uSampleCount)) return;
 
-    int gx = int(idx) % uGridRes;
-    int gy = int(idx) / uGridRes;
-
-    float ndcX = (float(gx) + 0.5) / float(uGridRes) * 2.0 - 1.0;
-    float ndcY = (float(gy) + 0.5) / float(uGridRes) * 2.0 - 1.0;
-    float fovScale = 1.7;
-
-    vec3 forward = normalize(uLookAt - uOrigin);
-    if (length(forward) < 1e-6) forward = vec3(0.0, 1.0, 0.0);
-    vec3 up = abs(forward.z) < 0.99 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
-    vec3 right = normalize(cross(forward, up));
-    up = cross(right, forward);
-
-    vec3 dir = normalize(forward + right * (ndcX * fovScale) + up * (ndcY * fovScale));
+    vec3 dir = hemisphereDir(int(idx), uGridRes);
 
     float tHit;
     int hitIndex;

@@ -83,6 +83,18 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         void FrontFace(int mode);
         void LineWidth(float width);
 
+        // Framebuffer / Renderbuffer (required for continuous acoustic visibility)
+        void GenFramebuffers(uint n, out uint framebuffers);
+        void DeleteFramebuffers(uint n, uint* framebuffers);
+        void FramebufferTexture2D(int target, int attachment, int textarget, uint texture, int level);
+        void GenRenderbuffers(uint n, out uint renderbuffers);
+        void DeleteRenderbuffers(uint n, uint* renderbuffers);
+        void BindRenderbuffer(int target, uint renderbuffer);
+        void RenderbufferStorage(int target, int internalformat, uint width, uint height);
+        void FramebufferRenderbuffer(int target, int attachment, int renderbuffertarget, uint renderbuffer);
+        void ReadPixels(int x, int y, uint width, uint height, int format, int type, void* data);
+        void ClearBufferuiv(int buffer, int drawbuffer, uint* value);
+
         // Compute / SSBO support
         void DispatchCompute(uint numGroupsX, uint numGroupsY, uint numGroupsZ);
         void MemoryBarrier(int barriers);

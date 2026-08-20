@@ -52,10 +52,9 @@ namespace SiegeEngine.Core.GPU.Compute
         private readonly IRenderContext _renderContext;
         private readonly ComputeProgram _freeRayProgram;
         private readonly ComputeProgram _residualProgram;
-        private readonly ComputeProgram _visibilityProgram;
+        private readonly ShaderProgram _idProgram;
         private readonly ShaderStorageBuffer[] _resultSsbo = new ShaderStorageBuffer[2];
         private readonly ShaderStorageBuffer[] _debugSsbo = new ShaderStorageBuffer[2];
-        private readonly ShaderStorageBuffer _hitIdSsbo;
         private readonly AcousticGeometry _geometry;
         private bool _disposed;
         private int _writeIdx;
@@ -64,11 +63,37 @@ namespace SiegeEngine.Core.GPU.Compute
         private const int ContinuousRays = 128;
         private const int ContinuousBounces = 6;
         private const int MaxDebugSegments = 4096;
-        private const int ProjectiveGridRes = 48;
-        private const int MaxSamples = ProjectiveGridRes * ProjectiveGridRes;
+        private const int IdBufferSize = 96; // slightly smaller so 6 faces stay cheap
         private readonly List<DebugSegment> _debugSegments = new List<DebugSegment>(MaxDebugSegments);
         private Vector3 _lastListenerPos;
         private Vector3 _lastPrimarySource;
+
+        private uint _fbo;
+        private uint _idTexture;
+        private uint _depthRb;
+        private uint[] _idReadback;
+        private bool _fboReady;
+
+        // Six cube-face directions (complete sphere)
+        private static readonly Vector3[] CubeDirs =
+        {
+            new Vector3( 1, 0, 0),  // +X
+            new Vector3(-1, 0, 0),  // -X
+            new Vector3( 0, 1, 0),  // +Y
+            new Vector3( 0,-1, 0),  // -Y
+            new Vector3( 0, 0, 1),  // +Z
+            new Vector3( 0, 0,-1)   // -Z
+        };
+
+        private static readonly Vector3[] CubeUps =
+        {
+            new Vector3(0, 0, 1),
+            new Vector3(0, 0, 1),
+            new Vector3(0, 0, 1),
+            new Vector3(0, 0, 1),
+            new Vector3(0, 1, 0),
+            new Vector3(0, 1, 0)
+        };
 
         public AcousticRayTracer(IRenderContext renderContext, AcousticGeometry geometry)
         {
@@ -76,12 +101,10 @@ namespace SiegeEngine.Core.GPU.Compute
             _geometry = geometry ?? throw new ArgumentNullException(nameof(geometry));
             _freeRayProgram = new ComputeProgram(_renderContext, AcousticFreeRayShader.Source);
             _residualProgram = new ComputeProgram(_renderContext, AcousticCommon.Source + AcousticResidualShader.Source);
-            _visibilityProgram = new ComputeProgram(_renderContext, AcousticVisibilityShader.Source);
+            _idProgram = new ShaderProgram(_renderContext, AcousticIdShader.VertexSource, AcousticIdShader.FragmentSource);
 
             int resultBytes = MaxRays * sizeof(GpuRayResult);
             int debugBytes = MaxDebugSegments * sizeof(GpuDebugSegment);
-            int hitIdBytes = MaxSamples * sizeof(int);
-
             for (int i = 0; i < 2; i++)
             {
                 _resultSsbo[i] = new ShaderStorageBuffer(_renderContext);
@@ -89,8 +112,38 @@ namespace SiegeEngine.Core.GPU.Compute
                 _debugSsbo[i] = new ShaderStorageBuffer(_renderContext);
                 _debugSsbo[i].SetData((uint)debugBytes, null, _renderContext.Enums.DynamicCopy);
             }
-            _hitIdSsbo = new ShaderStorageBuffer(_renderContext);
-            _hitIdSsbo.SetData((uint)hitIdBytes, null, _renderContext.Enums.DynamicCopy);
+
+            _idReadback = new uint[IdBufferSize * IdBufferSize];
+            CreateIdFbo();
+        }
+
+        private void CreateIdFbo()
+        {
+            _renderContext.GenFramebuffers(1, out _fbo);
+            _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, _fbo);
+
+            _renderContext.GenTextures(1, out _idTexture);
+            _renderContext.BindTexture(_renderContext.Enums.Texture2D, _idTexture);
+            _renderContext.TexImage2D(_renderContext.Enums.Texture2D, 0, _renderContext.Enums.R32UI,
+                IdBufferSize, IdBufferSize, 0, _renderContext.Enums.RedInteger, _renderContext.Enums.UnsignedIntType, null);
+            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMinFilter, _renderContext.Enums.Nearest);
+            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMagFilter, _renderContext.Enums.Nearest);
+            _renderContext.FramebufferTexture2D(_renderContext.Enums.Framebuffer, _renderContext.Enums.ColorAttachment0,
+                _renderContext.Enums.Texture2D, _idTexture, 0);
+
+            _renderContext.GenRenderbuffers(1, out _depthRb);
+            _renderContext.BindRenderbuffer(_renderContext.Enums.Renderbuffer, _depthRb);
+            _renderContext.RenderbufferStorage(_renderContext.Enums.Renderbuffer, _renderContext.Enums.DepthComponent24,
+                IdBufferSize, IdBufferSize);
+            _renderContext.FramebufferRenderbuffer(_renderContext.Enums.Framebuffer, _renderContext.Enums.DepthAttachment,
+                _renderContext.Enums.Renderbuffer, _depthRb);
+
+            int status = _renderContext.CheckFramebufferStatus(_renderContext.Enums.Framebuffer);
+            _fboReady = (status == _renderContext.Enums.FramebufferComplete);
+            _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, 0);
+
+            if (!_fboReady)
+                Console.WriteLine($"[AcousticRayTracer] ID FBO incomplete, status={status}");
         }
 
         public void KickContinuousTrace(Vector3 sourcePos, Vector3 listenerPos)
@@ -122,17 +175,17 @@ namespace SiegeEngine.Core.GPU.Compute
             _lastListenerPos = listenerPos;
             _lastPrimarySource = primarySource;
 
-            if (_geometry.TriangleCount <= 0)
+            if (_geometry.TriangleCount <= 0 || !_fboReady)
             {
                 _debugSegments.Clear();
                 if (diagnosticOnce)
-                    Console.WriteLine("[AcousticRayTracer] TriangleCount == 0, no dispatch");
+                    Console.WriteLine("[AcousticRayTracer] TriangleCount == 0 or FBO not ready");
                 return;
             }
 
             if (diagnosticOnce)
             {
-                Console.WriteLine($"[AcousticRayTracer] === KickDebug (GPU projective camera) ===");
+                Console.WriteLine($"[AcousticRayTracer] === KickDebug (full spherical ID) ===");
                 Console.WriteLine($" Listener = ({listenerPos.X:F2},{listenerPos.Y:F2},{listenerPos.Z:F2})");
                 Console.WriteLine($" Source = ({primarySource.X:F2},{primarySource.Y:F2},{primarySource.Z:F2})");
                 Console.WriteLine($" TriangleCount = {_geometry.TriangleCount}");
@@ -141,8 +194,9 @@ namespace SiegeEngine.Core.GPU.Compute
             var listenerVisible = new HashSet<int>();
             var sourceVisible = new HashSet<int>();
 
-            DispatchProjectiveCamera(listenerPos, primarySource, listenerVisible);
-            DispatchProjectiveCamera(primarySource, listenerPos, sourceVisible);
+            // Complete spherical coverage – 6 cube faces from each origin (independent)
+            RasterSphericalVisibility(listenerPos, listenerVisible);
+            RasterSphericalVisibility(primarySource, sourceVisible);
 
             var mutual = new HashSet<int>();
             foreach (int tri in listenerVisible)
@@ -152,6 +206,7 @@ namespace SiegeEngine.Core.GPU.Compute
             _debugSegments.Clear();
             PaintContinuousSurfaces(listenerVisible, sourceVisible, mutual, diagnosticOnce);
 
+            // Direct LOS line if clear
             Vector3 toSource = primarySource - listenerPos;
             float dist = toSource.Length();
             if (dist > 1e-4f)
@@ -180,36 +235,61 @@ namespace SiegeEngine.Core.GPU.Compute
             }
         }
 
-        private void DispatchProjectiveCamera(Vector3 origin, Vector3 lookAt, HashSet<int> visibleSet)
+        private void RasterSphericalVisibility(Vector3 origin, HashSet<int> visibleSet)
         {
-            int sampleCount = MaxSamples;
-            _geometry.Buffer.BindBase(0);
-            _hitIdSsbo.BindBase(1);
+            // Save UI-critical state
+            int savedViewportW = _renderContext.ViewportWidth;
+            int savedViewportH = _renderContext.ViewportHeight;
 
-            _visibilityProgram.Use();
-            _visibilityProgram.SetUniform("uOrigin", origin.X, origin.Y, origin.Z);
-            _visibilityProgram.SetUniform("uLookAt", lookAt.X, lookAt.Y, lookAt.Z);
-            _visibilityProgram.SetUniform("uTriangleCount", _geometry.TriangleCount);
-            _visibilityProgram.SetUniform("uMaxDistance", 350.0f);
-            _visibilityProgram.SetUniform("uGridRes", ProjectiveGridRes);
-            _visibilityProgram.SetUniform("uSampleCount", sampleCount);
+            _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, _fbo);
+            _renderContext.Viewport(0, 0, IdBufferSize, IdBufferSize);
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
+            _renderContext.DepthFunc(_renderContext.Enums.Less);
+            _renderContext.Disable(_renderContext.Enums.Blend);
+            _renderContext.Disable(_renderContext.Enums.CullFace);
 
-            uint groups = (uint)((sampleCount + 63) / 64);
-            _visibilityProgram.Dispatch(groups, 1, 1);
-            _visibilityProgram.Barrier();
+            // 90° FOV cube faces cover the full sphere with no gaps
+            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI * 0.5f, 1.0f, 0.3f, 400.0f);
 
-            // Read unique hit triangle indices
-            uint byteSize = (uint)(sampleCount * sizeof(int));
-            int* hits = (int*)_hitIdSsbo.MapRange(0, byteSize, _renderContext.Enums.MapReadBit);
-            if (hits == null) return;
+            _idProgram.Use();
+            _idProgram.SetMatrix4("uProjection", proj);
 
-            for (int i = 0; i < sampleCount; i++)
+            int maxTri = _geometry.TriangleCount;
+
+            for (int face = 0; face < 6; face++)
             {
-                int tri = hits[i];
-                if (tri >= 0 && tri < _geometry.TriangleCount)
-                    visibleSet.Add(tri);
+                Vector3 target = origin + CubeDirs[face] * 10.0f;
+                Matrix4x4 view = Matrix4x4.CreateLookAt(origin, target, CubeUps[face]);
+                _idProgram.SetMatrix4("uView", view);
+
+                uint clearVal = 0;
+                _renderContext.ClearBufferuiv(_renderContext.Enums.ColorAttachment0, 0, &clearVal);
+                _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
+
+                _geometry.Draw();
+
+                fixed (uint* ptr = _idReadback)
+                {
+                    _renderContext.ReadPixels(0, 0, IdBufferSize, IdBufferSize,
+                        _renderContext.Enums.RedInteger, _renderContext.Enums.UnsignedIntType, ptr);
+                }
+
+                for (int i = 0; i < _idReadback.Length; i++)
+                {
+                    uint raw = _idReadback[i];
+                    if (raw == 0) continue;
+                    int tri = (int)raw - 1;
+                    if (tri >= 0 && tri < maxTri)
+                        visibleSet.Add(tri);
+                }
             }
-            _hitIdSsbo.Unmap();
+
+            // Restore UI state completely
+            _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, 0);
+            _renderContext.Viewport(0, 0, (uint)savedViewportW, (uint)savedViewportH);
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
+            _renderContext.Enable(_renderContext.Enums.Blend);
+            _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
         }
 
         private void PaintContinuousSurfaces(HashSet<int> listenerVisible, HashSet<int> sourceVisible, HashSet<int> mutual, bool diagnosticOnce)
@@ -245,7 +325,7 @@ namespace SiegeEngine.Core.GPU.Compute
 
             if (diagnosticOnce)
             {
-                Console.WriteLine($"[AcousticRayTracer] GPU projective camera: listener={listenerVisible.Count} source={sourceVisible.Count} mutual={mutual.Count} injected={injected}");
+                Console.WriteLine($"[AcousticRayTracer] Spherical ID: listener={listenerVisible.Count} source={sourceVisible.Count} mutual={mutual.Count} injected={injected}");
             }
         }
 
@@ -336,13 +416,23 @@ namespace SiegeEngine.Core.GPU.Compute
             {
                 _freeRayProgram?.Dispose();
                 _residualProgram?.Dispose();
-                _visibilityProgram?.Dispose();
+                _idProgram?.Dispose();
                 for (int i = 0; i < 2; i++)
                 {
                     _resultSsbo[i]?.Dispose();
                     _debugSsbo[i]?.Dispose();
                 }
-                _hitIdSsbo?.Dispose();
+                if (_fbo != 0)
+                {
+                    uint f = _fbo;
+                    _renderContext.DeleteFramebuffers(1, &f);
+                }
+                if (_idTexture != 0) _renderContext.DeleteTexture(_idTexture);
+                if (_depthRb != 0)
+                {
+                    uint r = _depthRb;
+                    _renderContext.DeleteRenderbuffers(1, &r);
+                }
                 _disposed = true;
             }
             GC.SuppressFinalize(this);

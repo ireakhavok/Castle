@@ -209,6 +209,40 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public void LineWidth(float width) => _gl.LineWidth(width);
 
         // ------------------------------------------------------------------
+        // Framebuffer / Renderbuffer
+        // ------------------------------------------------------------------
+
+        public void GenFramebuffers(uint n, out uint framebuffers) =>
+            _gl.GenFramebuffers(n, out framebuffers);
+
+        public void DeleteFramebuffers(uint n, uint* framebuffers) =>
+            _gl.DeleteFramebuffers(n, framebuffers);
+
+        public void FramebufferTexture2D(int target, int attachment, int textarget, uint texture, int level) =>
+            _gl.FramebufferTexture2D((FramebufferTarget)target, (FramebufferAttachment)attachment, (TextureTarget)textarget, texture, level);
+
+        public void GenRenderbuffers(uint n, out uint renderbuffers) =>
+            _gl.GenRenderbuffers(n, out renderbuffers);
+
+        public void DeleteRenderbuffers(uint n, uint* renderbuffers) =>
+            _gl.DeleteRenderbuffers(n, renderbuffers);
+
+        public void BindRenderbuffer(int target, uint renderbuffer) =>
+            _gl.BindRenderbuffer((RenderbufferTarget)target, renderbuffer);
+
+        public void RenderbufferStorage(int target, int internalformat, uint width, uint height) =>
+            _gl.RenderbufferStorage((RenderbufferTarget)target, (InternalFormat)internalformat, width, height);
+
+        public void FramebufferRenderbuffer(int target, int attachment, int renderbuffertarget, uint renderbuffer) =>
+            _gl.FramebufferRenderbuffer((FramebufferTarget)target, (FramebufferAttachment)attachment, (RenderbufferTarget)renderbuffertarget, renderbuffer);
+
+        public void ReadPixels(int x, int y, uint width, uint height, int format, int type, void* data) =>
+            _gl.ReadPixels(x, y, width, height, (PixelFormat)format, (PixelType)type, data);
+
+        public void ClearBufferuiv(int buffer, int drawbuffer, uint* value) =>
+            _gl.ClearBuffer((GLEnum)buffer, drawbuffer, value);
+
+        // ------------------------------------------------------------------
         // Compute / SSBO support
         // ------------------------------------------------------------------
 
@@ -241,7 +275,6 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         public void GetProgramInterface(uint program, int programInterface, int pname, out int param)
         {
-            // Silk.NET uses ProgramInterfacePName (not ProgramInterfaceParameterName).
             _gl.GetProgramInterface(program, (ProgramInterface)programInterface, (ProgramInterfacePName)pname, out param);
         }
 

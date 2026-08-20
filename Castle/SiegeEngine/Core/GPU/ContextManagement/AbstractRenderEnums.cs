@@ -53,6 +53,13 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public abstract int Framebuffer { get; }
         public abstract int FramebufferComplete { get; }
         public abstract int ColorAttachment0 { get; }
+        public abstract int DepthAttachment { get; }
+        public abstract int Renderbuffer { get; }
+        public abstract int DepthComponent { get; }
+        public abstract int DepthComponent24 { get; }
+        public abstract int R32UI { get; }
+        public abstract int RedInteger { get; }
+        public abstract int UnsignedIntType { get; }
         public abstract int Less { get; }
         public abstract int NoError { get; }
         public abstract int Rgba { get; }

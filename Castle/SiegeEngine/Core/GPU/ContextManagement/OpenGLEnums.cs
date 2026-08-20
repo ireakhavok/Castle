@@ -53,6 +53,13 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public override int Framebuffer => (int)GLEnum.Framebuffer;
         public override int FramebufferComplete => (int)GLEnum.FramebufferComplete;
         public override int ColorAttachment0 => (int)GLEnum.ColorAttachment0;
+        public override int DepthAttachment => (int)GLEnum.DepthAttachment;
+        public override int Renderbuffer => (int)GLEnum.Renderbuffer;
+        public override int DepthComponent => (int)GLEnum.DepthComponent;
+        public override int DepthComponent24 => (int)GLEnum.DepthComponent24;
+        public override int R32UI => (int)GLEnum.R32ui;
+        public override int RedInteger => (int)GLEnum.RedInteger;
+        public override int UnsignedIntType => (int)GLEnum.UnsignedInt;
         public override int Less => (int)GLEnum.Less;
         public override int NoError => (int)GLEnum.NoError;
         public override int Rgba => (int)GLEnum.Rgba;

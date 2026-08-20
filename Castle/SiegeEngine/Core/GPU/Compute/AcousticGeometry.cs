@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.GPU.ContextManagement;
+
 namespace SiegeEngine.Core.GPU.Compute
 {
     public unsafe class AcousticGeometry : IDisposable
@@ -18,17 +19,33 @@ namespace SiegeEngine.Core.GPU.Compute
             public Vector4 B;
             public Vector4 C; // .w = material density
         }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct DrawVertex
+        {
+            public Vector3 Position;
+            public int TriangleIndex;
+        }
+
         private readonly IRenderContext _renderContext;
         private readonly ShaderStorageBuffer _ssbo;
         private readonly List<GpuTriangle> _cpuTris = new List<GpuTriangle>(8192);
         private readonly List<Vector3> _tmpA = new List<Vector3>(8192);
         private readonly List<Vector3> _tmpB = new List<Vector3>(8192);
         private readonly List<Vector3> _tmpC = new List<Vector3>(8192);
+        private readonly List<DrawVertex> _drawVerts = new List<DrawVertex>(24576);
+        private readonly List<uint> _drawIndices = new List<uint>(24576);
+        private uint _drawVao;
+        private uint _drawVbo;
+        private uint _drawIbo;
+        private int _drawIndexCount;
         private bool _disposed;
         private int _lastTriangleCount;
         private volatile uint _geometryVersion;
+
         private static readonly Vector3[] IcoVerts;
         private static readonly int[,] IcoFaces;
+
         static AcousticGeometry()
         {
             const float t = 1.6180339887f;
@@ -51,19 +68,27 @@ namespace SiegeEngine.Core.GPU.Compute
                 {4,9,5}, {2,4,11}, {6,2,10}, {8,6,7}, {9,8,1}
             };
         }
+
         public int TriangleCount => _lastTriangleCount;
         public ShaderStorageBuffer Buffer => _ssbo;
         public uint GeometryVersion => _geometryVersion;
+        public int DrawIndexCount => _drawIndexCount;
+
         public AcousticGeometry(IRenderContext renderContext)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _ssbo = new ShaderStorageBuffer(_renderContext);
+            _drawVao = _renderContext.GenVertexArray();
+            _drawVbo = _renderContext.GenBuffer();
+            _drawIbo = _renderContext.GenBuffer();
         }
+
         public void Rebuild(IReadOnlyList<Entity> entities, IHeightProvider heightProvider = null)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(AcousticGeometry));
             _cpuTris.Clear();
             if (entities == null) return;
+
             for (int i = 0; i < entities.Count; i++)
             {
                 var entity = entities[i];
@@ -71,39 +96,42 @@ namespace SiegeEngine.Core.GPU.Compute
                 var physics = entity.GetComponent<PhysicsComponent>();
                 if (physics == null || !physics.CollisionEnabled) continue;
                 if (physics.BodyType != BodyType.Static) continue;
+
                 float density = 1.0f;
                 float volume = physics.Size.X * physics.Size.Y * physics.Size.Z;
                 if (volume > 1e-6f)
                     density = Math.Max(0.1f, physics.Mass / volume);
+
                 if (physics.Shape is TriangleMeshShape mesh)
                 {
                     TessellateMeshProxy(mesh, physics.Position, physics.Rotation, density);
                 }
                 else
                 {
-                    // Keep icosahedron shapes for analytic models — unchanged
-                    TessellateIcosahedron(physics.Position, physics.Rotation, physics.Size * 0.5f, density);
+                    Vector3 halfExtents = physics.Size * 0.5f;
+                    if (physics.Shape is ObbShape obb)
+                        halfExtents = obb.HalfExtents;
+                    TessellateIcosahedron(physics.Position, physics.Rotation, halfExtents, density);
                 }
             }
+
             if (heightProvider != null && heightProvider.Width > 1 && heightProvider.Height > 1)
             {
-                // REMOVE ALL LIMITS on terrain. Use full resolution (or very fine step).
-                // Previous maxCells=48 produced huge coarse triangles that free rays could never cover continuously.
                 int stepX = 1;
                 int stepY = 1;
-                // Safety: if the heightmap is enormous, still allow a modest step so we don't explode memory,
-                // but the previous hard 48-cell limit is gone.
-                if (heightProvider.Width > 256 || heightProvider.Height > 256)
+                if (heightProvider.Width > 128 || heightProvider.Height > 128)
                 {
-                    stepX = Math.Max(1, heightProvider.Width / 128);
-                    stepY = Math.Max(1, heightProvider.Height / 128);
+                    stepX = Math.Max(1, heightProvider.Width / 96);
+                    stepY = Math.Max(1, heightProvider.Height / 96);
                 }
+
                 float sx = 1f, sy = 1f;
                 if (heightProvider is HeightmapAdapter ha)
                 {
                     sx = ha.WorldScaleX;
                     sy = ha.WorldScaleZ;
                 }
+
                 const float groundDensity = 1.8f;
                 for (int ix = 0; ix < heightProvider.Width - stepX; ix += stepX)
                 {
@@ -126,8 +154,11 @@ namespace SiegeEngine.Core.GPU.Compute
                     }
                 }
             }
+
             Upload();
+            BuildDrawBuffer();
         }
+
         private void TessellateMeshProxy(TriangleMeshShape mesh, Vector3 position, Quaternion rotation, float density)
         {
             _tmpA.Clear();
@@ -137,8 +168,7 @@ namespace SiegeEngine.Core.GPU.Compute
             int triCount = _tmpA.Count;
             if (triCount == 0) return;
             float eps = Math.Max(0.18f, 0.08f * Math.Clamp(density, 0.5f, 3f));
-            // Remove the previous hard maxTris = 192 limit. Use the full mesh (or a much higher ceiling).
-            const int maxTris = 2048;
+            const int maxTris = 1024;
             if (triCount <= maxTris)
             {
                 for (int t = 0; t < triCount; t++)
@@ -149,7 +179,6 @@ namespace SiegeEngine.Core.GPU.Compute
                 }
                 return;
             }
-            // Only subsample if the mesh is extremely dense
             float step = (float)triCount / maxTris;
             for (int i = 0; i < maxTris; i++)
             {
@@ -159,15 +188,16 @@ namespace SiegeEngine.Core.GPU.Compute
                 AddTri(a + n * eps, b + n * eps, c + n * eps, density);
             }
         }
+
         private void TessellateIcosahedron(Vector3 position, Quaternion rotation, Vector3 halfExtents, float density)
         {
-            // Unchanged — leave icosahedron shapes for the models
             float eps = Math.Max(0.22f, 0.10f * Math.Clamp(density, 0.5f, 4f));
             Vector3 he = halfExtents + new Vector3(eps);
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
             float minAxis = Math.Min(halfExtents.X, Math.Min(halfExtents.Y, halfExtents.Z));
             float maxAxis = Math.Max(halfExtents.X, Math.Max(halfExtents.Y, halfExtents.Z));
             bool thin = (maxAxis > 1e-4f) && (minAxis / maxAxis < 0.30f);
+
             Vector3[] world = new Vector3[12];
             for (int i = 0; i < 12; i++)
             {
@@ -184,6 +214,7 @@ namespace SiegeEngine.Core.GPU.Compute
                 int i2 = IcoFaces[f, 2];
                 AddTri(world[i0], world[i1], world[i2], density);
             }
+
             if (thin)
             {
                 Vector3 heOuter = halfExtents + new Vector3(eps * 1.5f);
@@ -204,6 +235,7 @@ namespace SiegeEngine.Core.GPU.Compute
                 }
             }
         }
+
         private void AddTri(Vector3 a, Vector3 b, Vector3 c, float density)
         {
             _cpuTris.Add(new GpuTriangle
@@ -213,6 +245,7 @@ namespace SiegeEngine.Core.GPU.Compute
                 C = new Vector4(c, density)
             });
         }
+
         private void Upload()
         {
             _lastTriangleCount = _cpuTris.Count;
@@ -228,6 +261,63 @@ namespace SiegeEngine.Core.GPU.Compute
             }
             _geometryVersion++;
         }
+
+        private void BuildDrawBuffer()
+        {
+            _drawVerts.Clear();
+            _drawIndices.Clear();
+            for (int t = 0; t < _lastTriangleCount; t++)
+            {
+                if (!GetTriangle(t, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
+                uint baseIdx = (uint)_drawVerts.Count;
+                _drawVerts.Add(new DrawVertex { Position = a, TriangleIndex = t });
+                _drawVerts.Add(new DrawVertex { Position = b, TriangleIndex = t });
+                _drawVerts.Add(new DrawVertex { Position = c, TriangleIndex = t });
+                _drawIndices.Add(baseIdx);
+                _drawIndices.Add(baseIdx + 1);
+                _drawIndices.Add(baseIdx + 2);
+            }
+            _drawIndexCount = _drawIndices.Count;
+
+            if (_drawIndexCount == 0) return;
+
+            _renderContext.BindVertexArray(_drawVao);
+
+            fixed (DrawVertex* vptr = _drawVerts.ToArray())
+            {
+                _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _drawVbo);
+                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer,
+                    (uint)(_drawVerts.Count * sizeof(DrawVertex)), vptr, _renderContext.Enums.DynamicDraw);
+            }
+
+            fixed (uint* iptr = _drawIndices.ToArray())
+            {
+                _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _drawIbo);
+                _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer,
+                    (uint)(_drawIndices.Count * sizeof(uint)), iptr, _renderContext.Enums.DynamicDraw);
+            }
+
+            // position
+            _renderContext.EnableVertexAttribArray(0);
+            _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false,
+                (uint)sizeof(DrawVertex), (void*)0);
+            // triangle index (integer)
+            _renderContext.EnableVertexAttribArray(1);
+            _renderContext.VertexAttribIPointer(1, 1, _renderContext.Enums.Int,
+                (uint)sizeof(DrawVertex), (void*)(3 * sizeof(float)));
+
+            _renderContext.BindVertexArray(0);
+        }
+
+        public void Draw()
+        {
+            if (_drawIndexCount == 0) return;
+            _renderContext.BindVertexArray(_drawVao);
+            _renderContext.DrawElements(_renderContext.Enums.Triangles, (uint)_drawIndexCount,
+                _renderContext.Enums.UnsignedInt, null);
+            _renderContext.BindVertexArray(0);
+        }
+
         public bool TryClosestHit(Vector3 origin, Vector3 dir, out float tHit, out Vector3 nHit, out float dens)
         {
             tHit = float.MaxValue;
@@ -257,6 +347,7 @@ namespace SiegeEngine.Core.GPU.Compute
             }
             return hit;
         }
+
         public bool GetTriangle(int index, out Vector3 a, out Vector3 b, out Vector3 c)
         {
             a = b = c = Vector3.Zero;
@@ -267,6 +358,7 @@ namespace SiegeEngine.Core.GPU.Compute
             c = new Vector3(tri.C.X, tri.C.Y, tri.C.Z);
             return true;
         }
+
         private static bool RayTriangle(Vector3 o, Vector3 d, Vector3 a, Vector3 b, Vector3 c, out float t, out Vector3 n)
         {
             t = 0f;
@@ -289,11 +381,15 @@ namespace SiegeEngine.Core.GPU.Compute
             if (Vector3.Dot(n, d) > 0.0f) n = -n;
             return true;
         }
+
         public void Dispose()
         {
             if (!_disposed)
             {
                 _ssbo?.Dispose();
+                if (_drawVao != 0) _renderContext.DeleteVertexArray(_drawVao);
+                if (_drawVbo != 0) _renderContext.DeleteBuffer(_drawVbo);
+                if (_drawIbo != 0) _renderContext.DeleteBuffer(_drawIbo);
                 _disposed = true;
             }
             GC.SuppressFinalize(this);
