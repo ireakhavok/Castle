@@ -503,10 +503,10 @@ Folder: ToolChest
             IRenderContext renderContext)
       - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: AddCross, AddLine, Console.WriteLine, EnsureResources, _dynIndices.Clear, _dynVerts.Clear
-      - clear AddLine()
+        - Calls: AddCross, AddFilledTriangle, AddLine, Console.WriteLine, EnsureResources, _dynIndices.Clear, _dynVerts.Clear
       - void EnsureResources()
       - void AddLine( List<uint> indices,  Vector3 a,  Vector3 b,  Vector4 color, List<Vertex> verts)
+      - void AddFilledTriangle( List<uint> indices,  Vector3 a,  Vector3 b,  Vector3 c,  Vector4 color, List<Vertex> verts)
       - void AddCross( List<uint> indices,  Vector3 center,  Vector4 color,  float size, List<Vertex> verts)
         - Calls: AddLine
 - File: AddSkyboxPanel.cs

@@ -55,12 +55,12 @@ Folder: IDE
             IRenderContext renderContext)
       - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: AddCross, AddLine, Console.WriteLine, EnsureResources, VertexBuffer, _dynIndices.Clear, _dynVerts.Clear, _dynamicBuffer.Bind, _dynamicBuffer.UpdateCustom, _geometry.Rebuild, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _tracer.KickDebugBidirectional
-      - clear AddLine()
-        - Calls: AcousticGeometry, AcousticRayTracer, ShaderProgram
+        - Calls: AddCross, AddFilledTriangle, AddLine, Console.WriteLine, EnsureResources, VertexBuffer, _dynIndices.Clear, _dynVerts.Clear, _dynamicBuffer.Bind, _dynamicBuffer.UpdateCustom, _geometry.GetTriangle, _geometry.Rebuild, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _tracer.KickDebugBidirectional, drawnTris.Add
       - void EnsureResources()
         - Calls: AcousticGeometry, AcousticRayTracer, ShaderProgram
       - void AddLine( List<uint> indices,  Vector3 a,  Vector3 b,  Vector4 color, List<Vertex> verts)
+        - Calls: Vertex, indices.Add, verts.Add
+      - void AddFilledTriangle( List<uint> indices,  Vector3 a,  Vector3 b,  Vector3 c,  Vector4 color, List<Vertex> verts)
         - Calls: Vertex, indices.Add, verts.Add
       - void AddCross( List<uint> indices,  Vector3 center,  Vector4 color,  float size, List<Vertex> verts)
         - Calls: AddLine
@@ -996,12 +996,19 @@ Folder: SiegeEngine
 - File: AcousticFreeRayShader.cs
   - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: AcousticGeometry.cs
-  - Class: GpuTriangle (Namespace: SiegeEngine.Core.GPU.Compute)
+  - Class: DrawVertex (Namespace: SiegeEngine.Core.GPU.Compute)
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Physics, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices
     - Fields:
-      - Vector4 A
-      - Vector4 B
-      - Vector4 C
+      - Vector3 Position
+      - int TriangleIndex
+- File: AcousticIdShader.cs
+  - Class: AcousticIdShader (Namespace: SiegeEngine.Core.GPU.Shaders)
+    - Fields:
+      - string VertexSource
+      - string FragmentSource
+    - Methods:
+      - void main()
+      - void main()
 - File: AcousticRayTracer.cs
   - Class: DebugSegment (Namespace: SiegeEngine.Core.GPU.Compute)
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices
@@ -1021,7 +1028,7 @@ Folder: SiegeEngine
       - void main()
         - Calls: closestHit, hash, randomUnit
 - File: AcousticVisibilityShader.cs
-  - Class: GpuVisibility (Namespace: SiegeEngine.Core.GPU.Shaders)
+  - Class: GpuTriangle (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: AngledOrthoCamera.cs
   - Class: AngledOrthoCamera (Namespace: SiegeEngine.PlayerSystem)
     - Inherits: CameraController
@@ -4170,7 +4177,7 @@ SiegeEngine.Core.Events.TimeOfDayChangedEvent
 SiegeEngine.Core.Events.WeatherChangedEvent
 SiegeEngine.Core.GPU.Compute.ComputeProgram
 SiegeEngine.Core.GPU.Compute.DebugSegment
-SiegeEngine.Core.GPU.Compute.GpuTriangle
+SiegeEngine.Core.GPU.Compute.DrawVertex
 SiegeEngine.Core.GPU.Compute.ShaderStorageBuffer
 SiegeEngine.Core.GPU.ContextManagement.AbstractRenderEnums
 SiegeEngine.Core.GPU.ContextManagement.ContextManager
@@ -4199,12 +4206,13 @@ SiegeEngine.Core.GPU.Renderers.ModelRenderer
 SiegeEngine.Core.GPU.Renderers.SkyboxRenderer
 SiegeEngine.Core.GPU.Renderers.TerrainRenderer
 SiegeEngine.Core.GPU.Renderers.UIQuadRenderer
+SiegeEngine.Core.GPU.Shaders.AcousticIdShader
 SiegeEngine.Core.GPU.Shaders.AcousticResidualShader
 SiegeEngine.Core.GPU.Shaders.AnimationShader
 SiegeEngine.Core.GPU.Shaders.AssetShader
 SiegeEngine.Core.GPU.Shaders.EditorSceneShader
 SiegeEngine.Core.GPU.Shaders.GpuDebugSegment
-SiegeEngine.Core.GPU.Shaders.GpuVisibility
+SiegeEngine.Core.GPU.Shaders.GpuTriangle
 SiegeEngine.Core.GPU.Shaders.ModelShader
 SiegeEngine.Core.GPU.Shaders.PointShader
 SiegeEngine.Core.GPU.Shaders.SceneShader

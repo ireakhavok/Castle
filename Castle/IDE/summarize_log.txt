@@ -255,7 +255,7 @@ Found: ..
 Found: AcousticDebugOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
-Read 8499 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
+Read 9487 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
 Namespace: ToolChest
 Found 11 dependencies
 Found: AddSkybox.html

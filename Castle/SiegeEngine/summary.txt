@@ -7,12 +7,19 @@ Folder: Core
 - File: AcousticFreeRayShader.cs
   - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: AcousticGeometry.cs
-  - Class: GpuTriangle (Namespace: SiegeEngine.Core.GPU.Compute)
+  - Class: DrawVertex (Namespace: SiegeEngine.Core.GPU.Compute)
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Physics, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices
     - Fields:
-      - Vector4 A
-      - Vector4 B
-      - Vector4 C
+      - Vector3 Position
+      - int TriangleIndex
+- File: AcousticIdShader.cs
+  - Class: AcousticIdShader (Namespace: SiegeEngine.Core.GPU.Shaders)
+    - Fields:
+      - string VertexSource
+      - string FragmentSource
+    - Methods:
+      - void main()
+      - void main()
 - File: AcousticRayTracer.cs
   - Class: DebugSegment (Namespace: SiegeEngine.Core.GPU.Compute)
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices
@@ -32,7 +39,7 @@ Folder: Core
       - void main()
         - Calls: closestHit, hash, randomUnit
 - File: AcousticVisibilityShader.cs
-  - Class: GpuVisibility (Namespace: SiegeEngine.Core.GPU.Shaders)
+  - Class: GpuTriangle (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: Animation.cs
   - Class: Animation (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic
@@ -3138,7 +3145,7 @@ SiegeEngine.Core.Events.TimeOfDayChangedEvent
 SiegeEngine.Core.Events.WeatherChangedEvent
 SiegeEngine.Core.GPU.Compute.ComputeProgram
 SiegeEngine.Core.GPU.Compute.DebugSegment
-SiegeEngine.Core.GPU.Compute.GpuTriangle
+SiegeEngine.Core.GPU.Compute.DrawVertex
 SiegeEngine.Core.GPU.Compute.ShaderStorageBuffer
 SiegeEngine.Core.GPU.ContextManagement.AbstractRenderEnums
 SiegeEngine.Core.GPU.ContextManagement.ContextManager
@@ -3167,12 +3174,13 @@ SiegeEngine.Core.GPU.Renderers.ModelRenderer
 SiegeEngine.Core.GPU.Renderers.SkyboxRenderer
 SiegeEngine.Core.GPU.Renderers.TerrainRenderer
 SiegeEngine.Core.GPU.Renderers.UIQuadRenderer
+SiegeEngine.Core.GPU.Shaders.AcousticIdShader
 SiegeEngine.Core.GPU.Shaders.AcousticResidualShader
 SiegeEngine.Core.GPU.Shaders.AnimationShader
 SiegeEngine.Core.GPU.Shaders.AssetShader
 SiegeEngine.Core.GPU.Shaders.EditorSceneShader
 SiegeEngine.Core.GPU.Shaders.GpuDebugSegment
-SiegeEngine.Core.GPU.Shaders.GpuVisibility
+SiegeEngine.Core.GPU.Shaders.GpuTriangle
 SiegeEngine.Core.GPU.Shaders.ModelShader
 SiegeEngine.Core.GPU.Shaders.PointShader
 SiegeEngine.Core.GPU.Shaders.SceneShader
