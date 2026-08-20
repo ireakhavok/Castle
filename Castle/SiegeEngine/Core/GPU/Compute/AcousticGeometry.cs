@@ -30,9 +30,6 @@ namespace SiegeEngine.Core.GPU.Compute
         private readonly IRenderContext _renderContext;
         private readonly ShaderStorageBuffer _ssbo;
         private readonly List<GpuTriangle> _cpuTris = new List<GpuTriangle>(8192);
-        private readonly List<Vector3> _tmpA = new List<Vector3>(8192);
-        private readonly List<Vector3> _tmpB = new List<Vector3>(8192);
-        private readonly List<Vector3> _tmpC = new List<Vector3>(8192);
         private readonly List<DrawVertex> _drawVerts = new List<DrawVertex>(24576);
         private readonly List<uint> _drawIndices = new List<uint>(24576);
 
@@ -96,24 +93,15 @@ namespace SiegeEngine.Core.GPU.Compute
                     continue;
                 }
 
-                // Generate once, cache, then add. No convex hull – keep it cheap.
-                var local = new List<GpuTriangle>(128);
+                var local = new List<GpuTriangle>(48);
                 float density = 1.0f;
                 float volume = physics.Size.X * physics.Size.Y * physics.Size.Z;
                 if (volume > 1e-6f)
                     density = Math.Max(0.1f, physics.Mass / volume);
 
-                if (physics.Shape is TriangleMeshShape mesh)
-                {
-                    EmitOriginalMesh(mesh, physics.Position, physics.Rotation, density, local);
-                }
-                else
-                {
-                    Vector3 halfExtents = physics.Size * 0.5f;
-                    if (physics.Shape is ObbShape obb)
-                        halfExtents = obb.HalfExtents;
-                    EmitObbShell(physics.Position, physics.Rotation, halfExtents, density, local);
-                }
+                // Correct centre + half-extents that respect mesh origin vs geometric centre.
+                GetWorldObb(physics, out Vector3 worldCentre, out Vector3 halfExtents, out Quaternion rotation);
+                EmitObbShell(worldCentre, rotation, halfExtents, density, local);
 
                 _proxyCache[id] = local;
                 _cpuTris.AddRange(local);
@@ -131,7 +119,7 @@ namespace SiegeEngine.Core.GPU.Compute
                     _proxyCache.Remove(toRemove[r]);
             }
 
-            // Heightmap contribution (already stepped down, cheap).
+            // Heightmap contribution (stepped, cheap).
             if (heightProvider != null && heightProvider.Width > 1 && heightProvider.Height > 1)
             {
                 int stepX = 1;
@@ -178,54 +166,68 @@ namespace SiegeEngine.Core.GPU.Compute
         }
 
         /// <summary>
-        /// Emit the original mesh triangles with a small dual-sided numerical offset.
-        /// No convex hull, no unique-vertex collection – stays cheap on the main thread.
+        /// Builds the correct world-space centre and half-extents for a static body.
+        /// Respects ObbShape.CenterOffset and LocalBounds so the proxy sits on the
+        /// visual geometry even when the FBX origin is at the feet / corner.
         /// </summary>
-        private void EmitOriginalMesh(TriangleMeshShape mesh, Vector3 position, Quaternion rotation, float density, List<GpuTriangle> target)
+        private static void GetWorldObb(PhysicsComponent physics, out Vector3 worldCentre, out Vector3 halfExtents, out Quaternion rotation)
         {
-            _tmpA.Clear();
-            _tmpB.Clear();
-            _tmpC.Clear();
-            mesh.GetWorldTriangles(position, rotation, _tmpA, _tmpB, _tmpC);
+            rotation = physics.Rotation;
+            Vector3 centerOffset = Vector3.Zero;
 
-            // Small numerical offset so the continuous ID depth buffer does not leak on thin walls.
-            // Does not change silhouette or force any new shape.
-            float eps = 0.30f;
-            int limit = Math.Min(_tmpA.Count, 2048); // hard cap to protect main thread
-            for (int t = 0; t < limit; t++)
+            if (physics.Shape is ObbShape obb)
             {
-                Vector3 a = _tmpA[t], b = _tmpB[t], c = _tmpC[t];
-                Vector3 faceN = Vector3.Normalize(Vector3.Cross(b - a, c - a));
-                if (faceN.LengthSquared() < 1e-12f) continue;
-
-                // Outer shell
-                AddTriTo(target, a + faceN * eps, b + faceN * eps, c + faceN * eps, density);
-                // Inner shell (dual-sided)
-                AddTriTo(target, a - faceN * eps, c - faceN * eps, b - faceN * eps, density);
+                halfExtents = obb.HalfExtents;
+                centerOffset = obb.CenterOffset;
             }
+            else if (HasValidLocalBounds(physics))
+            {
+                Vector3 sizeM = physics.LocalBoundsMaxCm - physics.LocalBoundsMinCm;
+                halfExtents = sizeM * 0.5f;
+                centerOffset = (physics.LocalBoundsMinCm + physics.LocalBoundsMaxCm) * 0.5f;
+            }
+            else
+            {
+                halfExtents = physics.Size * 0.5f;
+                centerOffset = Vector3.Zero;
+            }
+
+            // Position is the mesh origin; CenterOffset moves us to the geometric centre.
+            worldCentre = physics.Position + Vector3.Transform(centerOffset, rotation);
+        }
+
+        private static bool HasValidLocalBounds(PhysicsComponent physics)
+        {
+            return physics.LocalBoundsMinCm.X <= physics.LocalBoundsMaxCm.X
+                && physics.LocalBoundsMinCm.Y <= physics.LocalBoundsMaxCm.Y
+                && physics.LocalBoundsMinCm.Z <= physics.LocalBoundsMaxCm.Z
+                && !float.IsInfinity(physics.LocalBoundsMinCm.X) && !float.IsInfinity(physics.LocalBoundsMaxCm.X)
+                && !float.IsNaN(physics.LocalBoundsMinCm.X) && !float.IsNaN(physics.LocalBoundsMaxCm.X);
         }
 
         /// <summary>
-        /// Cheap closed OBB dual-shell for analytic / Size-based bodies.
+        /// Closed dual-shell OBB centred at the true geometric centre.
+        /// Sides stay flat; triangle count stays tiny (24 per body).
         /// </summary>
-        private void EmitObbShell(Vector3 position, Quaternion rotation, Vector3 halfExtents, float density, List<GpuTriangle> target)
+        private void EmitObbShell(Vector3 worldCentre, Quaternion rotation, Vector3 halfExtents, float density, List<GpuTriangle> target)
         {
-            float eps = 0.30f;
+            // Tiny numerical expansion so the 96×96 ID depth buffer does not leak
+            // on the exact surface. Does not change the overall flat silhouette.
+            float eps = 0.12f;
             Vector3 he = halfExtents + new Vector3(eps);
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
 
-            // 8 corners of the expanded box
             Vector3[] c = new Vector3[8];
-            c[0] = position + Vector3.Transform(new Vector3(-he.X, -he.Y, -he.Z), rot);
-            c[1] = position + Vector3.Transform(new Vector3(he.X, -he.Y, -he.Z), rot);
-            c[2] = position + Vector3.Transform(new Vector3(he.X, he.Y, -he.Z), rot);
-            c[3] = position + Vector3.Transform(new Vector3(-he.X, he.Y, -he.Z), rot);
-            c[4] = position + Vector3.Transform(new Vector3(-he.X, -he.Y, he.Z), rot);
-            c[5] = position + Vector3.Transform(new Vector3(he.X, -he.Y, he.Z), rot);
-            c[6] = position + Vector3.Transform(new Vector3(he.X, he.Y, he.Z), rot);
-            c[7] = position + Vector3.Transform(new Vector3(-he.X, he.Y, he.Z), rot);
+            c[0] = worldCentre + Vector3.Transform(new Vector3(-he.X, -he.Y, -he.Z), rot);
+            c[1] = worldCentre + Vector3.Transform(new Vector3(he.X, -he.Y, -he.Z), rot);
+            c[2] = worldCentre + Vector3.Transform(new Vector3(he.X, he.Y, -he.Z), rot);
+            c[3] = worldCentre + Vector3.Transform(new Vector3(-he.X, he.Y, -he.Z), rot);
+            c[4] = worldCentre + Vector3.Transform(new Vector3(-he.X, -he.Y, he.Z), rot);
+            c[5] = worldCentre + Vector3.Transform(new Vector3(he.X, -he.Y, he.Z), rot);
+            c[6] = worldCentre + Vector3.Transform(new Vector3(he.X, he.Y, he.Z), rot);
+            c[7] = worldCentre + Vector3.Transform(new Vector3(-he.X, he.Y, he.Z), rot);
 
-            // 12 triangles of the box (outer)
+            // Outer shell – 12 triangles
             AddTriTo(target, c[0], c[1], c[2], density);
             AddTriTo(target, c[0], c[2], c[3], density);
             AddTriTo(target, c[4], c[6], c[5], density);
@@ -239,17 +241,17 @@ namespace SiegeEngine.Core.GPU.Compute
             AddTriTo(target, c[1], c[5], c[6], density);
             AddTriTo(target, c[1], c[6], c[2], density);
 
-            // Dual (slightly larger) shell for thin-wall robustness
-            float outer = eps * 1.6f;
+            // Dual (slightly larger) shell for reliable occlusion on thin volumes
+            float outer = eps * 1.5f;
             Vector3 he2 = halfExtents + new Vector3(outer);
-            c[0] = position + Vector3.Transform(new Vector3(-he2.X, -he2.Y, -he2.Z), rot);
-            c[1] = position + Vector3.Transform(new Vector3(he2.X, -he2.Y, -he2.Z), rot);
-            c[2] = position + Vector3.Transform(new Vector3(he2.X, he2.Y, -he2.Z), rot);
-            c[3] = position + Vector3.Transform(new Vector3(-he2.X, he2.Y, -he2.Z), rot);
-            c[4] = position + Vector3.Transform(new Vector3(-he2.X, -he2.Y, he2.Z), rot);
-            c[5] = position + Vector3.Transform(new Vector3(he2.X, -he2.Y, he2.Z), rot);
-            c[6] = position + Vector3.Transform(new Vector3(he2.X, he2.Y, he2.Z), rot);
-            c[7] = position + Vector3.Transform(new Vector3(-he2.X, he2.Y, he2.Z), rot);
+            c[0] = worldCentre + Vector3.Transform(new Vector3(-he2.X, -he2.Y, -he2.Z), rot);
+            c[1] = worldCentre + Vector3.Transform(new Vector3(he2.X, -he2.Y, -he2.Z), rot);
+            c[2] = worldCentre + Vector3.Transform(new Vector3(he2.X, he2.Y, -he2.Z), rot);
+            c[3] = worldCentre + Vector3.Transform(new Vector3(-he2.X, he2.Y, -he2.Z), rot);
+            c[4] = worldCentre + Vector3.Transform(new Vector3(-he2.X, -he2.Y, he2.Z), rot);
+            c[5] = worldCentre + Vector3.Transform(new Vector3(he2.X, -he2.Y, he2.Z), rot);
+            c[6] = worldCentre + Vector3.Transform(new Vector3(he2.X, he2.Y, he2.Z), rot);
+            c[7] = worldCentre + Vector3.Transform(new Vector3(-he2.X, he2.Y, he2.Z), rot);
 
             AddTriTo(target, c[0], c[1], c[2], density);
             AddTriTo(target, c[0], c[2], c[3], density);
