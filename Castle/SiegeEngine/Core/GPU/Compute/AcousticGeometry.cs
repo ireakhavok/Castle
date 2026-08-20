@@ -33,6 +33,8 @@ namespace SiegeEngine.Core.GPU.Compute
         private readonly List<Vector3> _tmpA = new List<Vector3>(8192);
         private readonly List<Vector3> _tmpB = new List<Vector3>(8192);
         private readonly List<Vector3> _tmpC = new List<Vector3>(8192);
+        private readonly List<Vector3> _hullVerts = new List<Vector3>(512);
+        private readonly List<int> _hullFaces = new List<int>(1024);
         private readonly List<DrawVertex> _drawVerts = new List<DrawVertex>(24576);
         private readonly List<uint> _drawIndices = new List<uint>(24576);
         private uint _drawVao;
@@ -42,32 +44,6 @@ namespace SiegeEngine.Core.GPU.Compute
         private bool _disposed;
         private int _lastTriangleCount;
         private volatile uint _geometryVersion;
-
-        private static readonly Vector3[] IcoVerts;
-        private static readonly int[,] IcoFaces;
-
-        static AcousticGeometry()
-        {
-            const float t = 1.6180339887f;
-            IcoVerts = new Vector3[]
-            {
-                new Vector3(-1, t, 0), new Vector3( 1, t, 0),
-                new Vector3(-1, -t, 0), new Vector3( 1, -t, 0),
-                new Vector3( 0, -1, t), new Vector3( 0, 1, t),
-                new Vector3( 0, -1, -t), new Vector3( 0, 1, -t),
-                new Vector3( t, 0, -1), new Vector3( t, 0, 1),
-                new Vector3(-t, 0, -1), new Vector3(-t, 0, 1)
-            };
-            for (int i = 0; i < IcoVerts.Length; i++)
-                IcoVerts[i] = Vector3.Normalize(IcoVerts[i]);
-            IcoFaces = new int[20, 3]
-            {
-                {0,11,5}, {0,5,1}, {0,1,7}, {0,7,10}, {0,10,11},
-                {1,5,9}, {5,11,4}, {11,10,2}, {10,7,6}, {7,1,8},
-                {3,9,4}, {3,4,2}, {3,2,6}, {3,6,8}, {3,8,9},
-                {4,9,5}, {2,4,11}, {6,2,10}, {8,6,7}, {9,8,1}
-            };
-        }
 
         public int TriangleCount => _lastTriangleCount;
         public ShaderStorageBuffer Buffer => _ssbo;
@@ -104,14 +80,16 @@ namespace SiegeEngine.Core.GPU.Compute
 
                 if (physics.Shape is TriangleMeshShape mesh)
                 {
-                    TessellateMeshProxy(mesh, physics.Position, physics.Rotation, density);
+                    // Convex hull of the real mesh vertices – closed, tight, multi-sided, fewer tris
+                    TessellateConvexHullFromMesh(mesh, physics.Position, physics.Rotation, density);
                 }
                 else
                 {
                     Vector3 halfExtents = physics.Size * 0.5f;
                     if (physics.Shape is ObbShape obb)
                         halfExtents = obb.HalfExtents;
-                    TessellateIcosahedron(physics.Position, physics.Rotation, halfExtents, density);
+                    // Analytic shapes → convex hull of the oriented box corners (exact OBB volume)
+                    TessellateConvexHullFromObb(physics.Position, physics.Rotation, halfExtents, density);
                 }
             }
 
@@ -159,81 +137,211 @@ namespace SiegeEngine.Core.GPU.Compute
             BuildDrawBuffer();
         }
 
-        private void TessellateMeshProxy(TriangleMeshShape mesh, Vector3 position, Quaternion rotation, float density)
+        private void TessellateConvexHullFromMesh(TriangleMeshShape mesh, Vector3 position, Quaternion rotation, float density)
         {
             _tmpA.Clear();
             _tmpB.Clear();
             _tmpC.Clear();
             mesh.GetWorldTriangles(position, rotation, _tmpA, _tmpB, _tmpC);
-            int triCount = _tmpA.Count;
-            if (triCount == 0) return;
-            float eps = Math.Max(0.18f, 0.08f * Math.Clamp(density, 0.5f, 3f));
-            const int maxTris = 1024;
-            if (triCount <= maxTris)
+
+            _hullVerts.Clear();
+            var seen = new HashSet<long>();
+            void AddUnique(Vector3 v)
             {
-                for (int t = 0; t < triCount; t++)
+                long key = ((long)(v.X * 1000f)) ^ (((long)(v.Y * 1000f)) << 21) ^ (((long)(v.Z * 1000f)) << 42);
+                if (seen.Add(key))
+                    _hullVerts.Add(v);
+            }
+
+            for (int i = 0; i < _tmpA.Count; i++)
+            {
+                AddUnique(_tmpA[i]);
+                AddUnique(_tmpB[i]);
+                AddUnique(_tmpC[i]);
+            }
+
+            if (_hullVerts.Count < 4)
+            {
+                // Degenerate – fall back to dual-sided mesh
+                float eps = 0.35f;
+                for (int t = 0; t < _tmpA.Count && t < 512; t++)
                 {
                     Vector3 a = _tmpA[t], b = _tmpB[t], c = _tmpC[t];
                     Vector3 n = Vector3.Normalize(Vector3.Cross(b - a, c - a));
                     AddTri(a + n * eps, b + n * eps, c + n * eps, density);
+                    AddTri(a - n * eps, c - n * eps, b - n * eps, density);
                 }
                 return;
             }
-            float step = (float)triCount / maxTris;
-            for (int i = 0; i < maxTris; i++)
+
+            BuildAndEmitConvexHull(density);
+        }
+
+        private void TessellateConvexHullFromObb(Vector3 position, Quaternion rotation, Vector3 halfExtents, float density)
+        {
+            float eps = 0.30f;
+            Vector3 he = halfExtents + new Vector3(eps);
+            Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
+
+            _hullVerts.Clear();
+            _hullVerts.Add(position + Vector3.Transform(new Vector3(-he.X, -he.Y, -he.Z), rot));
+            _hullVerts.Add(position + Vector3.Transform(new Vector3(he.X, -he.Y, -he.Z), rot));
+            _hullVerts.Add(position + Vector3.Transform(new Vector3(he.X, he.Y, -he.Z), rot));
+            _hullVerts.Add(position + Vector3.Transform(new Vector3(-he.X, he.Y, -he.Z), rot));
+            _hullVerts.Add(position + Vector3.Transform(new Vector3(-he.X, -he.Y, he.Z), rot));
+            _hullVerts.Add(position + Vector3.Transform(new Vector3(he.X, -he.Y, he.Z), rot));
+            _hullVerts.Add(position + Vector3.Transform(new Vector3(he.X, he.Y, he.Z), rot));
+            _hullVerts.Add(position + Vector3.Transform(new Vector3(-he.X, he.Y, he.Z), rot));
+
+            BuildAndEmitConvexHull(density);
+        }
+
+        private void BuildAndEmitConvexHull(float density)
+        {
+            _hullFaces.Clear();
+            if (!ComputeConvexHull(_hullVerts, _hullFaces))
+                return;
+
+            // Emit hull faces with a small outward offset so the continuous ID depth is solid
+            float eps = Math.Max(0.25f, 0.08f * Math.Clamp(density, 0.5f, 4f));
+            for (int f = 0; f < _hullFaces.Count; f += 3)
             {
-                int t = Math.Min((int)(i * step), triCount - 1);
-                Vector3 a = _tmpA[t], b = _tmpB[t], c = _tmpC[t];
+                Vector3 a = _hullVerts[_hullFaces[f]];
+                Vector3 b = _hullVerts[_hullFaces[f + 1]];
+                Vector3 c = _hullVerts[_hullFaces[f + 2]];
                 Vector3 n = Vector3.Normalize(Vector3.Cross(b - a, c - a));
                 AddTri(a + n * eps, b + n * eps, c + n * eps, density);
             }
+
+            // Dual shell (outer) for reliable occlusion on thin shapes
+            float outerEps = eps * 1.8f;
+            for (int f = 0; f < _hullFaces.Count; f += 3)
+            {
+                Vector3 a = _hullVerts[_hullFaces[f]];
+                Vector3 b = _hullVerts[_hullFaces[f + 1]];
+                Vector3 c = _hullVerts[_hullFaces[f + 2]];
+                Vector3 n = Vector3.Normalize(Vector3.Cross(b - a, c - a));
+                AddTri(a + n * outerEps, b + n * outerEps, c + n * outerEps, density);
+            }
         }
 
-        private void TessellateIcosahedron(Vector3 position, Quaternion rotation, Vector3 halfExtents, float density)
+        /// <summary>
+        /// Lightweight incremental 3D convex hull.
+        /// Produces a closed solid that fully contains the input points.
+        /// </summary>
+        private static bool ComputeConvexHull(List<Vector3> points, List<int> outFaces)
         {
-            float eps = Math.Max(0.22f, 0.10f * Math.Clamp(density, 0.5f, 4f));
-            Vector3 he = halfExtents + new Vector3(eps);
-            Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
-            float minAxis = Math.Min(halfExtents.X, Math.Min(halfExtents.Y, halfExtents.Z));
-            float maxAxis = Math.Max(halfExtents.X, Math.Max(halfExtents.Y, halfExtents.Z));
-            bool thin = (maxAxis > 1e-4f) && (minAxis / maxAxis < 0.30f);
+            int n = points.Count;
+            if (n < 4) return false;
 
-            Vector3[] world = new Vector3[12];
-            for (int i = 0; i < 12; i++)
+            // Find initial tetrahedron (four non-coplanar points)
+            int i0 = 0, i1 = -1, i2 = -1, i3 = -1;
+            float best = 0f;
+            for (int i = 1; i < n; i++)
             {
-                Vector3 local = new Vector3(
-                    IcoVerts[i].X * he.X,
-                    IcoVerts[i].Y * he.Y,
-                    IcoVerts[i].Z * he.Z);
-                world[i] = position + Vector3.Transform(local, rot);
+                float d = Vector3.DistanceSquared(points[i0], points[i]);
+                if (d > best) { best = d; i1 = i; }
             }
-            for (int f = 0; f < 20; f++)
+            if (i1 < 0) return false;
+
+            best = 0f;
+            for (int i = 0; i < n; i++)
             {
-                int i0 = IcoFaces[f, 0];
-                int i1 = IcoFaces[f, 1];
-                int i2 = IcoFaces[f, 2];
-                AddTri(world[i0], world[i1], world[i2], density);
+                if (i == i0 || i == i1) continue;
+                Vector3 ab = points[i1] - points[i0];
+                Vector3 ac = points[i] - points[i0];
+                float area = Vector3.Cross(ab, ac).LengthSquared();
+                if (area > best) { best = area; i2 = i; }
+            }
+            if (i2 < 0) return false;
+
+            best = 0f;
+            Vector3 nrm = Vector3.Normalize(Vector3.Cross(points[i1] - points[i0], points[i2] - points[i0]));
+            for (int i = 0; i < n; i++)
+            {
+                if (i == i0 || i == i1 || i == i2) continue;
+                float d = Math.Abs(Vector3.Dot(points[i] - points[i0], nrm));
+                if (d > best) { best = d; i3 = i; }
+            }
+            if (i3 < 0 || best < 1e-8f) return false;
+
+            // Orient tetrahedron so faces have outward normals
+            Vector3 centroid = (points[i0] + points[i1] + points[i2] + points[i3]) * 0.25f;
+            void AddFace(int a, int b, int c)
+            {
+                Vector3 n = Vector3.Cross(points[b] - points[a], points[c] - points[a]);
+                if (Vector3.Dot(n, centroid - points[a]) > 0f)
+                    outFaces.AddRange(new[] { a, c, b });
+                else
+                    outFaces.AddRange(new[] { a, b, c });
             }
 
-            if (thin)
+            AddFace(i0, i1, i2);
+            AddFace(i0, i2, i3);
+            AddFace(i0, i3, i1);
+            AddFace(i1, i3, i2);
+
+            // Incremental insertion of remaining points
+            var visible = new List<int>(32);
+            var horizon = new List<(int, int)>(32);
+            var edgeCount = new Dictionary<(int, int), int>(64);
+
+            for (int p = 0; p < n; p++)
             {
-                Vector3 heOuter = halfExtents + new Vector3(eps * 1.5f);
-                for (int i = 0; i < 12; i++)
+                if (p == i0 || p == i1 || p == i2 || p == i3) continue;
+
+                visible.Clear();
+                for (int f = 0; f < outFaces.Count; f += 3)
                 {
-                    Vector3 local = new Vector3(
-                        IcoVerts[i].X * heOuter.X,
-                        IcoVerts[i].Y * heOuter.Y,
-                        IcoVerts[i].Z * heOuter.Z);
-                    world[i] = position + Vector3.Transform(local, rot);
+                    int a = outFaces[f], b = outFaces[f + 1], c = outFaces[f + 2];
+                    Vector3 n = Vector3.Cross(points[b] - points[a], points[c] - points[a]);
+                    if (Vector3.Dot(n, points[p] - points[a]) > 1e-6f)
+                        visible.Add(f);
                 }
-                for (int f = 0; f < 20; f++)
+                if (visible.Count == 0) continue;
+
+                // Build horizon edges
+                edgeCount.Clear();
+                horizon.Clear();
+                foreach (int f in visible)
                 {
-                    int i0 = IcoFaces[f, 0];
-                    int i1 = IcoFaces[f, 1];
-                    int i2 = IcoFaces[f, 2];
-                    AddTri(world[i0], world[i1], world[i2], density);
+                    void Edge(int u, int v)
+                    {
+                        var e = u < v ? (u, v) : (v, u);
+                        if (!edgeCount.ContainsKey(e)) edgeCount[e] = 0;
+                        edgeCount[e]++;
+                    }
+                    Edge(outFaces[f], outFaces[f + 1]);
+                    Edge(outFaces[f + 1], outFaces[f + 2]);
+                    Edge(outFaces[f + 2], outFaces[f]);
                 }
+                foreach (var kv in edgeCount)
+                    if (kv.Value == 1)
+                        horizon.Add(kv.Key);
+
+                // Remove visible faces (from back so indices stay valid)
+                visible.Sort();
+                for (int vi = visible.Count - 1; vi >= 0; vi--)
+                {
+                    int f = visible[vi];
+                    outFaces.RemoveRange(f, 3);
+                }
+
+                // Stitch new faces from horizon to the new point
+                foreach (var (u, v) in horizon)
+                {
+                    Vector3 n = Vector3.Cross(points[v] - points[u], points[p] - points[u]);
+                    if (Vector3.Dot(n, centroid - points[u]) > 0f)
+                        outFaces.AddRange(new[] { u, p, v });
+                    else
+                        outFaces.AddRange(new[] { u, v, p });
+                }
+
+                // Update centroid roughly
+                centroid = (centroid * (outFaces.Count / 3f) + points[p]) / (outFaces.Count / 3f + 1f);
             }
+
+            return outFaces.Count >= 12;
         }
 
         private void AddTri(Vector3 a, Vector3 b, Vector3 c, float density)
@@ -278,18 +386,15 @@ namespace SiegeEngine.Core.GPU.Compute
                 _drawIndices.Add(baseIdx + 2);
             }
             _drawIndexCount = _drawIndices.Count;
-
             if (_drawIndexCount == 0) return;
 
             _renderContext.BindVertexArray(_drawVao);
-
             fixed (DrawVertex* vptr = _drawVerts.ToArray())
             {
                 _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _drawVbo);
                 _renderContext.BufferData(_renderContext.Enums.ArrayBuffer,
                     (uint)(_drawVerts.Count * sizeof(DrawVertex)), vptr, _renderContext.Enums.DynamicDraw);
             }
-
             fixed (uint* iptr = _drawIndices.ToArray())
             {
                 _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _drawIbo);
@@ -297,15 +402,12 @@ namespace SiegeEngine.Core.GPU.Compute
                     (uint)(_drawIndices.Count * sizeof(uint)), iptr, _renderContext.Enums.DynamicDraw);
             }
 
-            // position
             _renderContext.EnableVertexAttribArray(0);
             _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false,
                 (uint)sizeof(DrawVertex), (void*)0);
-            // triangle index (integer)
             _renderContext.EnableVertexAttribArray(1);
             _renderContext.VertexAttribIPointer(1, 1, _renderContext.Enums.Int,
                 (uint)sizeof(DrawVertex), (void*)(3 * sizeof(float)));
-
             _renderContext.BindVertexArray(0);
         }
 
