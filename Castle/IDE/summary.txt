@@ -480,20 +480,29 @@ Folder: ToolChest
       - Func<Vector3> _getListenerPos
       - Func<IReadOnlyList<Vector3>> _getSourcePositions
       - Func<IHeightProvider> _getHeightProvider
-      - VertexBuffer _dynamicBuffer
+      - VertexBuffer _surfaceBuffer
+      - VertexBuffer _lineBuffer
       - ShaderProgram _shader
-      - List<Vertex> _dynVerts
-      - List<uint> _dynIndices
+      - List<Vertex> _surfaceVerts
+      - List<uint> _surfaceIndices
+      - List<Vertex> _lineVerts
+      - List<uint> _lineIndices
       - AcousticGeometry _geometry
       - AcousticRayTracer _tracer
       - bool _geometryDirty
       - int _lastEntityCount
       - bool _wasEnabled
-      - bool _loggedThisEnable
+      - uint _lastPaintedVisibilityVersion
+      - uint _lastPerceivedVersion
+      - Vector3 _lastPerceivedListener
+      - List<Vector3> _lastPerceivedSources
+      - float PerceivedMoveThreshold
+      - float SpeedOfSound
       - Vector4 ListenerFreeColor
       - Vector4 SourceFreeColor
-      - Vector4 BounceColor
       - Vector4 DiffractedColor
+      - Vector4 LosColor
+      - Vector4 PerceivedColor
     - Methods:
       - constructor AcousticDebugOverlay(
             Func<IHeightProvider> getHeightProvider = null, 
@@ -503,7 +512,13 @@ Folder: ToolChest
             IRenderContext renderContext)
       - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: AddCross, AddFilledTriangle, AddLine, Console.WriteLine, EnsureResources, _dynIndices.Clear, _dynVerts.Clear
+        - Calls: ComputePerceived, EnsureResources, RebuildLineMesh, RebuildSurfaceMesh, _lastPerceivedSources.Clear
+      - void RebuildSurfaceMesh()
+        - Calls: AddFilledTriangle, _surfaceIndices.Clear, _surfaceVerts.Clear
+      - void ComputePerceived( IReadOnlyList<Vector3> sources, Vector3 listener)
+        - Calls: _cachedPerceived.Clear
+      - void RebuildLineMesh( IReadOnlyList<Vector3> sources, Vector3 listener)
+        - Calls: AddCross, AddLine, _lineIndices.Clear, _lineVerts.Clear
       - void EnsureResources()
       - void AddLine( List<uint> indices,  Vector3 a,  Vector3 b,  Vector4 color, List<Vertex> verts)
       - void AddFilledTriangle( List<uint> indices,  Vector3 a,  Vector3 b,  Vector3 c,  Vector4 color, List<Vertex> verts)
