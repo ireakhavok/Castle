@@ -534,13 +534,13 @@ Found: ..
 Found: AcousticGeometry.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticGeometry.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticGeometry.cs
-Read 20827 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticGeometry.cs
+Read 19191 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticGeometry.cs
 Namespace: SiegeEngine.Core.GPU.Compute
 Found 7 dependencies
 Found: AcousticRayTracer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
-Read 18324 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
+Read 26060 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
 Namespace: SiegeEngine.Core.GPU.Compute
 Found 7 dependencies
 Found: ComputeProgram.cs
@@ -562,7 +562,7 @@ Found: ..
 Found: AbstractRenderEnums.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\AbstractRenderEnums.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\AbstractRenderEnums.cs
-Read 4474 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\AbstractRenderEnums.cs
+Read 4585 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\AbstractRenderEnums.cs
 Namespace: SiegeEngine.Core.GPU.ContextManagement
 Found 1 dependencies
 Found: ContextManager.cs
@@ -604,7 +604,7 @@ Found 3 dependencies
 Found: OpenGLEnums.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\OpenGLEnums.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\OpenGLEnums.cs
-Read 6147 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\OpenGLEnums.cs
+Read 6271 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\OpenGLEnums.cs
 Namespace: SiegeEngine.Core.GPU.ContextManagement
 Found 1 dependencies
 Found: OpenGLRenderContext.cs

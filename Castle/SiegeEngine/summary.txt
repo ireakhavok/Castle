@@ -21,16 +21,8 @@ Folder: Core
       - void main()
       - void main()
 - File: AcousticRayTracer.cs
-  - Class: DebugSegment (Namespace: SiegeEngine.Core.GPU.Compute)
+  - Class: made (Namespace: SiegeEngine.Core.GPU.Compute)
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices
-    - Fields:
-      - Vector3 A
-      - Vector3 B
-      - DebugSegmentKind Kind
-      - float Intensity
-      - float Radius
-      - Vector3 Normal
-      - int TriangleIndex
 - File: AcousticResidualShader.cs
   - Class: AcousticResidualShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
@@ -3144,9 +3136,9 @@ SiegeEngine.Core.Events.SoundRayTraceResult
 SiegeEngine.Core.Events.TimeOfDayChangedEvent
 SiegeEngine.Core.Events.WeatherChangedEvent
 SiegeEngine.Core.GPU.Compute.ComputeProgram
-SiegeEngine.Core.GPU.Compute.DebugSegment
 SiegeEngine.Core.GPU.Compute.DrawVertex
 SiegeEngine.Core.GPU.Compute.ShaderStorageBuffer
+SiegeEngine.Core.GPU.Compute.made
 SiegeEngine.Core.GPU.ContextManagement.AbstractRenderEnums
 SiegeEngine.Core.GPU.ContextManagement.ContextManager
 SiegeEngine.Core.GPU.ContextManagement.D3D12_COMMAND_SIGNATURE_DESC
