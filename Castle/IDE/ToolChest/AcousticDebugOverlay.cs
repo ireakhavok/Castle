@@ -99,7 +99,11 @@ namespace ToolChest
             var sources = _getSourcePositions() ?? Array.Empty<Vector3>();
             if (_geometry.TriangleCount > 0)
             {
+                // Zero-cost gate check only
                 _tracer.KickDebugBidirectional(listener, sources);
+                // Complete any pending raster after the current consumers have already
+                // used the previous completed state (true one-frame-behind).
+                _tracer.TryCompletePendingRaster();
                 if (_tracer.VisibilityVersion != _lastPaintedVisibilityVersion)
                 {
                     RebuildSurfaceMesh();

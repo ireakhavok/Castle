@@ -249,8 +249,9 @@ namespace SiegeEngine.Systems
             }
             if (_gpuOcclusionReady && !_geometryUploaded && _server != null && _server.GetEntities().Count > 0)
                 RebuildAcousticGeometry();
-            // Free-surface: call Kick every frame exactly as the debug overlay does.
-            // The internal 0.25 m / GeometryVersion gate inside Kick decides whether the raster runs.
+            // Free-surface: Kick is zero-cost (gate check only).
+            // TryCompletePendingRaster runs the expensive work only when a previous
+            // pending exists, giving true one-frame-behind production.
             if (_gpuOcclusionReady && _geometryUploaded && _acousticRayTracer != null && _listenerValid)
             {
                 List<AutoPlayRegistration> snapshot;
@@ -267,6 +268,7 @@ namespace SiegeEngine.Systems
                 if (sources.Count == 0)
                     sources.Add(_listenerPosition + new Vector3(0, 10, 0));
                 _acousticRayTracer.KickDebugBidirectional(_listenerPosition, sources);
+                _acousticRayTracer.TryCompletePendingRaster();
             }
             if (_listenerValid)
                 TickMainThread(deltaTime);

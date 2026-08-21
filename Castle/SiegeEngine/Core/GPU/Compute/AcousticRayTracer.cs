@@ -66,6 +66,11 @@ namespace SiegeEngine.Core.GPU.Compute
         private int _fsWrite = 0;
         private int _fsRead = 1;
         private uint _visibilityVersion;
+        // Pending raster (true one-frame-behind production)
+        private bool _pendingRaster;
+        private Vector3 _pendingListener;
+        private Vector3 _pendingSource;
+        private uint _pendingGeometryVersion;
         private uint _fbo;
         private uint _idTexture;
         private uint _depthRb;
@@ -127,6 +132,11 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             // Residual multi-bounce path removed entirely for this stage.
         }
+        /// <summary>
+        /// Zero-cost gate check. If a recompute is required, records pending positions
+        /// and returns immediately. The expensive RasterSphericalVisibility runs only
+        /// inside TryCompletePendingRaster (true one-frame-behind production).
+        /// </summary>
         public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources)
         {
             if (_disposed) return;
@@ -146,32 +156,50 @@ namespace SiegeEngine.Core.GPU.Compute
                 Vector3.DistanceSquared(primarySource, _fsSourcePos[read]) > VisibilityMoveThreshold * VisibilityMoveThreshold;
             if (needRecompute)
             {
-                int write = _fsWrite;
-                _listenerVisible[write].Clear();
-                _sourceVisible[write].Clear();
-                _mutual[write].Clear();
-                RasterSphericalVisibility(listenerPos, _listenerVisible[write]);
-                RasterSphericalVisibility(primarySource, _sourceVisible[write]);
-                foreach (int tri in _listenerVisible[write])
-                    if (_sourceVisible[write].Contains(tri))
-                        _mutual[write].Add(tri);
-                _fsListenerPos[write] = listenerPos;
-                _fsSourcePos[write] = primarySource;
-                _fsGeometryVersion[write] = _geometry.GeometryVersion;
-                _fsValid[write] = true;
-                // Swap so consumers always see the previous completed state
-                _fsRead = write;
-                _fsWrite = 1 - write;
-                _visibilityVersion++;
+                _pendingListener = listenerPos;
+                _pendingSource = primarySource;
+                _pendingGeometryVersion = _geometry.GeometryVersion;
+                _pendingRaster = true;
             }
+            // Hot path ends here. No Raster, no TryClosestHit, no HashSet mutation.
+        }
+        /// <summary>
+        /// Performs the expensive spherical ID raster into the write side and swaps
+        /// only after a full successful recompute. Consumers always see the previous
+        /// completed result. Call after the current frame has already consumed the
+        /// previous state (true one-frame-behind).
+        /// </summary>
+        public bool TryCompletePendingRaster()
+        {
+            if (_disposed || !_pendingRaster || _geometry.TriangleCount <= 0 || !_fboReady)
+                return false;
+            int write = _fsWrite;
+            _listenerVisible[write].Clear();
+            _sourceVisible[write].Clear();
+            _mutual[write].Clear();
+            RasterSphericalVisibility(_pendingListener, _listenerVisible[write]);
+            RasterSphericalVisibility(_pendingSource, _sourceVisible[write]);
+            foreach (int tri in _listenerVisible[write])
+                if (_sourceVisible[write].Contains(tri))
+                    _mutual[write].Add(tri);
+            _fsListenerPos[write] = _pendingListener;
+            _fsSourcePos[write] = _pendingSource;
+            _fsGeometryVersion[write] = _pendingGeometryVersion;
+            _fsValid[write] = true;
+            // Swap so consumers always see the previous completed state
+            _fsRead = write;
+            _fsWrite = 1 - write;
+            _visibilityVersion++;
+            _pendingRaster = false;
+            // Rebuild lightweight debug LOS segment only after the expensive work
             _debugSegments.Clear();
-            Vector3 toSource = primarySource - listenerPos;
+            Vector3 toSource = _pendingSource - _pendingListener;
             float dist = toSource.Length();
             if (dist > 1e-4f)
             {
                 Vector3 dir = toSource / dist;
                 bool losClear = false;
-                if (_geometry.TryClosestHit(listenerPos, dir, out float tHit, out _, out _))
+                if (_geometry.TryClosestHit(_pendingListener, dir, out float tHit, out _, out _))
                 {
                     if (tHit >= dist * 0.98f) losClear = true;
                 }
@@ -180,8 +208,8 @@ namespace SiegeEngine.Core.GPU.Compute
                 {
                     _debugSegments.Add(new DebugSegment
                     {
-                        A = listenerPos,
-                        B = primarySource,
+                        A = _pendingListener,
+                        B = _pendingSource,
                         Kind = DebugSegmentKind.Diffracted,
                         Intensity = 1.0f,
                         Radius = 0,
@@ -190,6 +218,7 @@ namespace SiegeEngine.Core.GPU.Compute
                     });
                 }
             }
+            return true;
         }
         /// <summary>
         /// Exact free-surface perceived result used by the debug overlay orange ray.
