@@ -45,7 +45,6 @@ namespace SiegeEngine.Core.GPU.Compute
             public int TriangleIndex;
         }
         private readonly IRenderContext _renderContext;
-        private readonly ComputeProgram _freeRayProgram;
         private readonly ComputeProgram _residualProgram;
         private readonly ShaderProgram _idProgram;
         private readonly ShaderStorageBuffer[] _resultSsbo = new ShaderStorageBuffer[2];
@@ -58,7 +57,6 @@ namespace SiegeEngine.Core.GPU.Compute
         private const int ContinuousRays = 128;
         private const int ContinuousBounces = 6;
         private const int MaxDebugSegments = 65536;
-        // Raised hard so thin real meshes can occlude the floor under the listener.
         private const int IdBufferSize = 512;
         private const float VisibilityMoveThreshold = 0.75f;
         private readonly List<DebugSegment> _debugSegments = new List<DebugSegment>(MaxDebugSegments);
@@ -71,13 +69,12 @@ namespace SiegeEngine.Core.GPU.Compute
         private Vector3 _cachedSourcePos;
         private uint _cachedGeometryVersion;
         private bool _visibilityCacheValid;
+        private uint _visibilityVersion;
         private uint _fbo;
         private uint _idTexture;
         private uint _depthRb;
         private uint[] _idReadback;
         private bool _fboReady;
-        // Diagnostic: records the first face+pixel that wrote each triangle ID during the source raster.
-        private readonly Dictionary<int, (int face, int px, int py)> _sourceLeakInfo = new Dictionary<int, (int, int, int)>();
         private static readonly Vector3[] CubeDirs =
         {
             new Vector3( 1, 0, 0),
@@ -96,11 +93,11 @@ namespace SiegeEngine.Core.GPU.Compute
             new Vector3(0, 1, 0),
             new Vector3(0, 1, 0)
         };
+        public uint VisibilityVersion => _visibilityVersion;
         public AcousticRayTracer(IRenderContext renderContext, AcousticGeometry geometry)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _geometry = geometry ?? throw new ArgumentNullException(nameof(geometry));
-            _freeRayProgram = new ComputeProgram(_renderContext, AcousticFreeRayShader.Source);
             _residualProgram = new ComputeProgram(_renderContext, AcousticCommon.Source + AcousticResidualShader.Source);
             _idProgram = new ShaderProgram(_renderContext, AcousticIdShader.VertexSource, AcousticIdShader.FragmentSource);
             int resultBytes = MaxRays * sizeof(GpuRayResult);
@@ -160,7 +157,7 @@ namespace SiegeEngine.Core.GPU.Compute
             _readIdx = _writeIdx;
             _writeIdx = 1 - _writeIdx;
         }
-        public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources, bool diagnosticOnce = false)
+        public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources)
         {
             if (_disposed) return;
             Vector3 primarySource = (sources != null && sources.Count > 0) ? sources[0] : listenerPos + new Vector3(0, 10, 0);
@@ -170,16 +167,7 @@ namespace SiegeEngine.Core.GPU.Compute
             {
                 _debugSegments.Clear();
                 _visibilityCacheValid = false;
-                if (diagnosticOnce)
-                    Console.WriteLine("[AcousticRayTracer] TriangleCount == 0 or FBO not ready");
                 return;
-            }
-            if (diagnosticOnce)
-            {
-                Console.WriteLine($"[AcousticRayTracer] === KickDebug (full spherical ID) ===");
-                Console.WriteLine($" Listener = ({listenerPos.X:F2},{listenerPos.Y:F2},{listenerPos.Z:F2})");
-                Console.WriteLine($" Source = ({primarySource.X:F2},{primarySource.Y:F2},{primarySource.Z:F2})");
-                Console.WriteLine($" TriangleCount = {_geometry.TriangleCount}");
             }
             bool needRecompute =
                 !_visibilityCacheValid ||
@@ -191,9 +179,8 @@ namespace SiegeEngine.Core.GPU.Compute
                 _cachedListenerVisible.Clear();
                 _cachedSourceVisible.Clear();
                 _cachedMutual.Clear();
-                _sourceLeakInfo.Clear();
-                RasterSphericalVisibility(listenerPos, _cachedListenerVisible, diagnosticOnce, isSource: false);
-                RasterSphericalVisibility(primarySource, _cachedSourceVisible, diagnosticOnce, isSource: true);
+                RasterSphericalVisibility(listenerPos, _cachedListenerVisible);
+                RasterSphericalVisibility(primarySource, _cachedSourceVisible);
                 foreach (int tri in _cachedListenerVisible)
                     if (_cachedSourceVisible.Contains(tri))
                         _cachedMutual.Add(tri);
@@ -201,9 +188,9 @@ namespace SiegeEngine.Core.GPU.Compute
                 _cachedSourcePos = primarySource;
                 _cachedGeometryVersion = _geometry.GeometryVersion;
                 _visibilityCacheValid = true;
+                _visibilityVersion++;
             }
             _debugSegments.Clear();
-            PaintContinuousSurfaces(_cachedListenerVisible, _cachedSourceVisible, _cachedMutual, diagnosticOnce, listenerPos, primarySource);
             Vector3 toSource = primarySource - listenerPos;
             float dist = toSource.Length();
             if (dist > 1e-4f)
@@ -230,7 +217,7 @@ namespace SiegeEngine.Core.GPU.Compute
                 }
             }
         }
-        private void RasterSphericalVisibility(Vector3 origin, HashSet<int> visibleSet, bool diagnosticOnce, bool isSource)
+        private void RasterSphericalVisibility(Vector3 origin, HashSet<int> visibleSet)
         {
             int savedViewportW = _renderContext.ViewportWidth;
             int savedViewportH = _renderContext.ViewportHeight;
@@ -249,16 +236,9 @@ namespace SiegeEngine.Core.GPU.Compute
                 Vector3 target = origin + CubeDirs[face] * 10.0f;
                 Matrix4x4 view = Matrix4x4.CreateLookAt(origin, target, CubeUps[face]);
                 _idProgram.SetMatrix4("uView", view);
-
-                // FIX: ClearBufferuiv must be called with GL_COLOR (Enums.Color),
-                // NOT ColorAttachment0. ColorAttachment0 is only valid for
-                // FramebufferTexture2D. Passing the wrong enum made the clear
-                // a no-op, leaving listener floor IDs in the texture that then
-                // contaminated the source pass → false teal under the feet.
                 uint clearVal = 0;
                 _renderContext.ClearBufferuiv(_renderContext.Enums.Color, 0, &clearVal);
                 _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
-
                 _geometry.Draw();
                 fixed (uint* ptr = _idReadback)
                 {
@@ -271,15 +251,7 @@ namespace SiegeEngine.Core.GPU.Compute
                     if (raw == 0) continue;
                     int tri = (int)raw - 1;
                     if (tri >= 0 && tri < maxTri)
-                    {
                         visibleSet.Add(tri);
-                        if (diagnosticOnce && isSource && !_sourceLeakInfo.ContainsKey(tri))
-                        {
-                            int px = i % IdBufferSize;
-                            int py = i / IdBufferSize;
-                            _sourceLeakInfo[tri] = (face, px, py);
-                        }
-                    }
                 }
             }
             _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, 0);
@@ -288,125 +260,10 @@ namespace SiegeEngine.Core.GPU.Compute
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
         }
-        private void PaintContinuousSurfaces(HashSet<int> listenerVisible, HashSet<int> sourceVisible, HashSet<int> mutual, bool diagnosticOnce, Vector3 listenerPos, Vector3 sourcePos)
-        {
-            if (diagnosticOnce)
-            {
-                int near2 = 0, near5 = 0, near10 = 0;
-                int logged = 0;
-                int occludedCount = 0;
-                int clearCount = 0;
-                foreach (int tri in mutual)
-                {
-                    if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
-                    Vector3 centroid = (a + b + c) * (1f / 3f);
-                    float dist = Vector3.Distance(centroid, listenerPos);
-                    if (dist <= 2.0f) near2++;
-                    if (dist <= 5.0f) near5++;
-                    if (dist <= 10.0f) near10++;
-                    // Only heightmap-style (large) near-listener mutuals get the raycast proof
-                    Vector3 ab = b - a;
-                    Vector3 ac = c - a;
-                    float edgeAB = ab.Length();
-                    float edgeAC = ac.Length();
-                    float edgeBC = Vector3.Distance(b, c);
-                    float maxEdge = MathF.Max(edgeAB, MathF.Max(edgeAC, edgeBC));
-                    if (dist <= 5.0f && maxEdge > 1.0f && logged < 20)
-                    {
-                        Vector3 n = Vector3.Cross(ab, ac);
-                        float nLen = n.Length();
-                        float planeDist = 0f;
-                        float nZ = 0f;
-                        if (nLen > 1e-8f)
-                        {
-                            n /= nLen;
-                            nZ = n.Z;
-                            planeDist = MathF.Abs(Vector3.Dot(listenerPos - a, n));
-                        }
-                        float minZ = MathF.Min(a.Z, MathF.Min(b.Z, c.Z));
-                        float maxZ = MathF.Max(a.Z, MathF.Max(b.Z, c.Z));
-                        // Raycast from SOURCE toward the floor centroid to prove occlusion
-                        Vector3 toCent = centroid - sourcePos;
-                        float distToCent = toCent.Length();
-                        bool occluded = false;
-                        float tHit = float.MaxValue;
-                        if (distToCent > 1e-4f)
-                        {
-                            Vector3 dir = toCent / distToCent;
-                            if (_geometry.TryClosestHit(sourcePos, dir, out tHit, out _, out _))
-                            {
-                                if (tHit < distToCent * 0.98f)
-                                    occluded = true;
-                            }
-                        }
-                        if (occluded) occludedCount++;
-                        else clearCount++;
-
-                        string leakStr = "";
-                        if (_sourceLeakInfo.TryGetValue(tri, out var leak))
-                        {
-                            float u = (leak.px + 0.5f) / IdBufferSize * 2f - 1f;
-                            float v = (leak.py + 0.5f) / IdBufferSize * 2f - 1f;
-                            Vector3 faceDir = CubeDirs[leak.face];
-                            Vector3 up = CubeUps[leak.face];
-                            Vector3 right = Vector3.Normalize(Vector3.Cross(up, faceDir));
-                            up = Vector3.Normalize(Vector3.Cross(faceDir, right));
-                            Vector3 sampleDir = Vector3.Normalize(faceDir + right * u + up * v);
-
-                            float sampleT = float.MaxValue;
-                            Vector3 sampleN = Vector3.Zero;
-                            float sampleDens = 0f;
-                            bool sampleHit = _geometry.TryClosestHit(sourcePos, sampleDir, out sampleT, out sampleN, out sampleDens);
-                            string continuousResult;
-                            if (!sampleHit)
-                                continuousResult = "MISS";
-                            else
-                            {
-                                Vector3 hitPoint = sourcePos + sampleDir * sampleT;
-                                float distToFloorCentroid = Vector3.Distance(hitPoint, centroid);
-                                if (distToFloorCentroid < 1.5f)
-                                    continuousResult = $"FLOOR t={sampleT:F2}";
-                                else
-                                    continuousResult = $"WALL/OTHER t={sampleT:F2} hit=({hitPoint.X:F1},{hitPoint.Y:F1},{hitPoint.Z:F1})";
-                            }
-
-                            leakStr = $" | LEAK face={leak.face} px={leak.px},{leak.py} sampleDir=({sampleDir.X:F3},{sampleDir.Y:F3},{sampleDir.Z:F3}) CONTINUOUS_ON_SAMPLE={continuousResult}";
-                        }
-                        Console.WriteLine($"[AcousticRayTracer] NEAR-MUTUAL tri={tri} centroid=({centroid.X:F2},{centroid.Y:F2},{centroid.Z:F2}) distL={dist:F2} planeDist={planeDist:F3} nZ={nZ:F3} minZ={minZ:F2} maxZ={maxZ:F2} maxEdge={maxEdge:F2} | FROM-SOURCE distToCent={distToCent:F2} tHit={tHit:F2} OCCLUDED={occluded}{leakStr}");
-                        logged++;
-                    }
-                }
-                Console.WriteLine($"[AcousticRayTracer] Mutual near-listener counts: <=2.0={near2} <=5.0={near5} <=10.0={near10} (total mutual={mutual.Count})");
-                Console.WriteLine($"[AcousticRayTracer] Heightmap-style near-mutual raycast proof: occluded={occludedCount} clear={clearCount} (logged {logged})");
-            }
-            foreach (int tri in mutual)
-            {
-                if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
-                EmitFilledTriangle(a, b, c, DebugSegmentKind.Diffracted, tri);
-            }
-            foreach (int tri in listenerVisible)
-            {
-                if (mutual.Contains(tri)) continue;
-                if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
-                EmitFilledTriangle(a, b, c, DebugSegmentKind.FreeLeg, tri);
-            }
-            foreach (int tri in sourceVisible)
-            {
-                if (mutual.Contains(tri)) continue;
-                if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
-                EmitFilledTriangle(a, b, c, DebugSegmentKind.SourceFree, tri);
-            }
-            if (diagnosticOnce)
-            {
-                Console.WriteLine($"[AcousticRayTracer] Spherical ID (no cap): listener={listenerVisible.Count} source={sourceVisible.Count} mutual={mutual.Count} segments={_debugSegments.Count}");
-            }
-        }
-        private void EmitFilledTriangle(Vector3 a, Vector3 b, Vector3 c, DebugSegmentKind kind, int triIndex)
-        {
-            _debugSegments.Add(new DebugSegment { A = a, B = b, Kind = kind, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = triIndex });
-            _debugSegments.Add(new DebugSegment { A = b, B = c, Kind = kind, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = triIndex });
-            _debugSegments.Add(new DebugSegment { A = c, B = a, Kind = kind, Intensity = 1f, Radius = 0, Normal = Vector3.UnitZ, TriangleIndex = triIndex });
-        }
+        public IReadOnlyCollection<int> GetListenerFree() => _cachedListenerVisible;
+        public IReadOnlyCollection<int> GetSourceFree() => _cachedSourceVisible;
+        public IReadOnlyCollection<int> GetMutualFree() => _cachedMutual;
+        public bool VisibilityCacheValid => _visibilityCacheValid;
         public IReadOnlyList<DebugSegment> GetDebugSegments() => _debugSegments;
         public SoundRayTraceResult ReadCompletedResult()
         {
@@ -483,7 +340,6 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             if (!_disposed)
             {
-                _freeRayProgram?.Dispose();
                 _residualProgram?.Dispose();
                 _idProgram?.Dispose();
                 for (int i = 0; i < 2; i++)
