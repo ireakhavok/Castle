@@ -33,16 +33,21 @@ namespace ToolChest
         private int _lastEntityCount = -1;
         private bool _wasEnabled;
         private uint _lastPaintedVisibilityVersion = uint.MaxValue;
+        private uint _lastPerceivedVersion = uint.MaxValue;
+        private Vector3 _lastPerceivedListener;
+        private readonly List<Vector3> _lastPerceivedSources = new List<Vector3>();
+        private readonly List<(bool losClear, Vector3 perceivedDir, float intensity, float pathLength)> _cachedPerceived = new List<(bool, Vector3, float, float)>();
+        private const float PerceivedMoveThreshold = 0.75f;
+        private const float SpeedOfSound = 34300f;
         public bool Enabled { get; set; } = false;
         public bool ShowListenerRays { get; set; } = true;
         public bool ShowSourceRays { get; set; } = true;
         public bool ShowMeetings { get; set; } = true;
         private static readonly Vector4 ListenerFreeColor = new Vector4(0.20f, 0.55f, 1.00f, 0.55f);
         private static readonly Vector4 SourceFreeColor = new Vector4(1.00f, 0.25f, 0.20f, 0.55f);
-        private static readonly Vector4 BounceColor = new Vector4(0.20f, 0.90f, 0.40f, 0.90f);
         private static readonly Vector4 DiffractedColor = new Vector4(0.10f, 0.95f, 1.00f, 0.70f);
         private static readonly Vector4 LosColor = new Vector4(1.00f, 0.95f, 0.20f, 0.95f);
-        private static readonly Vector4 PerceivedColor = new Vector4(1.00f, 0.55f, 0.10f, 0.90f);
+        private static readonly Vector4 PerceivedColor = new Vector4(1.00f, 0.55f, 0.10f, 0.95f);
         public AcousticDebugOverlay(
             IRenderContext renderContext,
             Func<IReadOnlyList<Entity>> getEntities,
@@ -71,6 +76,7 @@ namespace ToolChest
                 _geometryDirty = true;
                 _wasEnabled = true;
                 _lastPaintedVisibilityVersion = uint.MaxValue;
+                _lastPerceivedVersion = uint.MaxValue;
             }
             EnsureResources();
             var entities = _getEntities();
@@ -87,6 +93,7 @@ namespace ToolChest
                 _geometry.Rebuild(entities, height);
                 _geometryDirty = false;
                 _lastPaintedVisibilityVersion = uint.MaxValue;
+                _lastPerceivedVersion = uint.MaxValue;
             }
             Vector3 listener = _getListenerPos();
             var sources = _getSourcePositions() ?? Array.Empty<Vector3>();
@@ -98,6 +105,31 @@ namespace ToolChest
                     RebuildSurfaceMesh();
                     _lastPaintedVisibilityVersion = _tracer.VisibilityVersion;
                 }
+            }
+            bool needPerceived =
+                _tracer.VisibilityVersion != _lastPerceivedVersion ||
+                Vector3.DistanceSquared(listener, _lastPerceivedListener) > PerceivedMoveThreshold * PerceivedMoveThreshold ||
+                sources.Count != _lastPerceivedSources.Count;
+            if (!needPerceived)
+            {
+                for (int i = 0; i < sources.Count; i++)
+                {
+                    if (i >= _lastPerceivedSources.Count ||
+                        Vector3.DistanceSquared(sources[i], _lastPerceivedSources[i]) > PerceivedMoveThreshold * PerceivedMoveThreshold)
+                    {
+                        needPerceived = true;
+                        break;
+                    }
+                }
+            }
+            if (needPerceived)
+            {
+                ComputePerceived(listener, sources);
+                _lastPerceivedVersion = _tracer.VisibilityVersion;
+                _lastPerceivedListener = listener;
+                _lastPerceivedSources.Clear();
+                for (int i = 0; i < sources.Count; i++)
+                    _lastPerceivedSources.Add(sources[i]);
             }
             RebuildLineMesh(listener, sources);
             _shader.Use();
@@ -125,6 +157,7 @@ namespace ToolChest
         {
             _surfaceVerts.Clear();
             _surfaceIndices.Clear();
+            // Only mutual (teal) filled surfaces — blue and red removed per request.
             if (ShowMeetings)
             {
                 foreach (int tri in _tracer.GetMutualFree())
@@ -133,28 +166,91 @@ namespace ToolChest
                     AddFilledTriangle(_surfaceVerts, _surfaceIndices, a, b, c, DiffractedColor);
                 }
             }
-            if (ShowListenerRays)
-            {
-                foreach (int tri in _tracer.GetListenerFree())
-                {
-                    if (_tracer.GetMutualFree().Contains(tri)) continue;
-                    if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
-                    AddFilledTriangle(_surfaceVerts, _surfaceIndices, a, b, c, ListenerFreeColor);
-                }
-            }
-            if (ShowSourceRays)
-            {
-                foreach (int tri in _tracer.GetSourceFree())
-                {
-                    if (_tracer.GetMutualFree().Contains(tri)) continue;
-                    if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
-                    AddFilledTriangle(_surfaceVerts, _surfaceIndices, a, b, c, SourceFreeColor);
-                }
-            }
             if (_surfaceBuffer == null)
                 _surfaceBuffer = new VertexBuffer(_renderContext);
             if (_surfaceVerts.Count > 0)
                 _surfaceBuffer.UpdateCustom(_surfaceVerts, _surfaceIndices);
+        }
+        private void ComputePerceived(Vector3 listener, IReadOnlyList<Vector3> sources)
+        {
+            _cachedPerceived.Clear();
+            if (_geometry.TriangleCount <= 0 || sources.Count == 0)
+                return;
+            var mutual = _tracer.GetMutualFree();
+            for (int s = 0; s < sources.Count; s++)
+            {
+                Vector3 source = sources[s];
+                Vector3 toSource = source - listener;
+                float dist = toSource.Length();
+                bool losClear = false;
+                if (dist > 1e-4f)
+                {
+                    Vector3 dir = toSource / dist;
+                    if (_geometry.TryClosestHit(listener, dir, out float tHit, out _, out _))
+                    {
+                        if (tHit >= dist * 0.98f) losClear = true;
+                    }
+                    else losClear = true;
+                }
+                // Physics: free-surface path intensity = inverse-square on total path length.
+                // energy = sum of contributions from every mutual free triangle.
+                // perceived direction = energy-weighted average of arrival directions
+                // (listener ← free surface). Strongest path length is retained for delay.
+                float energy = 0f;
+                Vector3 weightedArrival = Vector3.Zero;
+                float maxContrib = 0f;
+                Vector3 strongestDir = Vector3.Zero;
+                float strongestPath = dist;
+                foreach (int tri in mutual)
+                {
+                    if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
+                    Vector3 centroid = (a + b + c) * (1f / 3f);
+                    float rL = Vector3.Distance(centroid, listener);
+                    float rS = Vector3.Distance(centroid, source);
+                    if (rL < 0.05f || rS < 0.05f) continue;
+                    float pathLength = rL + rS;
+                    float contrib = 1.0f / (pathLength * pathLength);
+                    energy += contrib;
+                    Vector3 arrival = centroid - listener;
+                    float arrivalLen = arrival.Length();
+                    if (arrivalLen < 1e-5f) continue;
+                    Vector3 arrivalDir = arrival / arrivalLen;
+                    weightedArrival += arrivalDir * contrib;
+                    if (contrib > maxContrib)
+                    {
+                        maxContrib = contrib;
+                        strongestDir = arrivalDir;
+                        strongestPath = pathLength;
+                    }
+                }
+                Vector3 perceivedDir = Vector3.Zero;
+                float intensity = 0f;
+                float pathLen = dist;
+                if (mutual.Count > 0 && energy > 0f)
+                {
+                    // Always produce a visible ray when mutual free surfaces exist.
+                    perceivedDir = weightedArrival.LengthSquared() > 1e-12f
+                        ? Vector3.Normalize(weightedArrival)
+                        : strongestDir;
+                    // Intensity relative to free-field at the same path length.
+                    // Floor guarantees the ray is drawn.
+                    float freeField = 1.0f / (pathLen * pathLen);
+                    intensity = Math.Clamp(energy / Math.Max(freeField, 1e-8f), 0.15f, 1.0f);
+                    pathLen = strongestPath;
+                }
+                else if (!losClear)
+                {
+                    _tracer.KickContinuousTrace(source, listener);
+                    var residual = _tracer.ReadCompletedResult();
+                    if (residual.ApparentDirection.LengthSquared() > 1e-6f && residual.Intensity > 0.01f)
+                    {
+                        perceivedDir = Vector3.Normalize(residual.ApparentDirection);
+                        intensity = residual.Intensity;
+                        pathLen = residual.Delay * SpeedOfSound;
+                    }
+                }
+                _cachedPerceived.Add((losClear, perceivedDir, intensity, pathLen));
+            }
         }
         private void RebuildLineMesh(Vector3 listener, IReadOnlyList<Vector3> sources)
         {
@@ -163,79 +259,21 @@ namespace ToolChest
             AddCross(_lineVerts, _lineIndices, listener, 1.5f, ListenerFreeColor);
             for (int s = 0; s < sources.Count; s++)
                 AddCross(_lineVerts, _lineIndices, sources[s], 1.2f, SourceFreeColor);
-            if (_geometry.TriangleCount <= 0 || sources.Count == 0)
-            {
-                if (_lineBuffer == null)
-                    _lineBuffer = new VertexBuffer(_renderContext);
-                if (_lineVerts.Count > 0)
-                    _lineBuffer.UpdateCustom(_lineVerts, _lineIndices);
-                return;
-            }
-            var mutual = _tracer.GetMutualFree();
-            for (int s = 0; s < sources.Count; s++)
+            for (int s = 0; s < sources.Count && s < _cachedPerceived.Count; s++)
             {
                 Vector3 source = sources[s];
-                Vector3 toSource = source - listener;
-                float dist = toSource.Length();
-                if (dist < 1e-4f) continue;
-                Vector3 dir = toSource / dist;
-                bool losClear = false;
-                if (_geometry.TryClosestHit(listener, dir, out float tHit, out _, out _))
-                {
-                    if (tHit >= dist * 0.98f) losClear = true;
-                }
-                else losClear = true;
+                var (losClear, perceivedDir, intensity, pathLen) = _cachedPerceived[s];
+                float dist = Vector3.Distance(listener, source);
                 if (losClear)
                 {
                     AddLine(_lineVerts, _lineIndices, listener, source, LosColor);
                 }
-                float energy = 0f;
-                Vector3 weighted = Vector3.Zero;
-                float maxContrib = 0f;
-                Vector3 strongestDir = Vector3.Zero;
-                foreach (int tri in mutual)
+                if (perceivedDir.LengthSquared() > 1e-6f && intensity > 0.01f)
                 {
-                    if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
-                    Vector3 centroid = (a + b + c) * (1f / 3f);
-                    float rL = Vector3.Distance(centroid, listener);
-                    float rS = Vector3.Distance(centroid, source);
-                    if (rL < 0.05f || rS < 0.05f) continue;
-                    float contrib = 1.0f / (rL * rL * rS * rS);
-                    energy += contrib;
-                    Vector3 toCent = centroid - listener;
-                    float len = toCent.Length();
-                    if (len < 1e-5f) continue;
-                    Vector3 d = toCent / len;
-                    weighted += d * contrib;
-                    if (contrib > maxContrib)
-                    {
-                        maxContrib = contrib;
-                        strongestDir = d;
-                    }
-                }
-                if (energy > 1e-12f)
-                {
-                    Vector3 perceived = weighted.LengthSquared() > 1e-12f ? Vector3.Normalize(weighted) : strongestDir;
-                    float logIntensity = MathF.Log(1.0f + energy * 50.0f);
-                    float intensity = Math.Clamp(logIntensity / MathF.Log(1.0f + 50.0f), 0.05f, 1.0f);
-                    float rayLen = Math.Min(dist * 0.85f, 25.0f) * (0.35f + 0.65f * intensity);
-                    Vector3 end = listener + perceived * rayLen;
-                    Vector4 col = new Vector4(PerceivedColor.X, PerceivedColor.Y, PerceivedColor.Z, PerceivedColor.W * intensity);
+                    float rayLen = Math.Min(Math.Max(pathLen * 0.6f, dist * 0.4f), 30.0f) * (0.4f + 0.6f * intensity);
+                    Vector3 end = listener + perceivedDir * rayLen;
+                    Vector4 col = new Vector4(PerceivedColor.X, PerceivedColor.Y, PerceivedColor.Z, PerceivedColor.W * Math.Clamp(intensity, 0.35f, 1.0f));
                     AddLine(_lineVerts, _lineIndices, listener, end, col);
-                }
-                else if (!losClear)
-                {
-                    // fallback residual for visual completeness when no mutual free surfaces
-                    _tracer.KickContinuousTrace(source, listener);
-                    var residual = _tracer.ReadCompletedResult();
-                    if (residual.ApparentDirection.LengthSquared() > 1e-6f && residual.Intensity > 0.01f)
-                    {
-                        Vector3 pdir = Vector3.Normalize(residual.ApparentDirection);
-                        float rayLen = Math.Min(dist * 0.7f, 20.0f) * (0.3f + 0.7f * residual.Intensity);
-                        Vector3 end = listener + pdir * rayLen;
-                        Vector4 col = new Vector4(PerceivedColor.X, PerceivedColor.Y, PerceivedColor.Z, PerceivedColor.W * residual.Intensity);
-                        AddLine(_lineVerts, _lineIndices, listener, end, col);
-                    }
                 }
             }
             if (_lineBuffer == null)

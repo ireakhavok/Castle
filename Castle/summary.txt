@@ -32,20 +32,29 @@ Folder: IDE
       - Func<Vector3> _getListenerPos
       - Func<IReadOnlyList<Vector3>> _getSourcePositions
       - Func<IHeightProvider> _getHeightProvider
-      - VertexBuffer _dynamicBuffer
+      - VertexBuffer _surfaceBuffer
+      - VertexBuffer _lineBuffer
       - ShaderProgram _shader
-      - List<Vertex> _dynVerts
-      - List<uint> _dynIndices
+      - List<Vertex> _surfaceVerts
+      - List<uint> _surfaceIndices
+      - List<Vertex> _lineVerts
+      - List<uint> _lineIndices
       - AcousticGeometry _geometry
       - AcousticRayTracer _tracer
       - bool _geometryDirty
       - int _lastEntityCount
       - bool _wasEnabled
-      - bool _loggedThisEnable
+      - uint _lastPaintedVisibilityVersion
+      - uint _lastPerceivedVersion
+      - Vector3 _lastPerceivedListener
+      - List<Vector3> _lastPerceivedSources
+      - float PerceivedMoveThreshold
+      - float SpeedOfSound
       - Vector4 ListenerFreeColor
       - Vector4 SourceFreeColor
-      - Vector4 BounceColor
       - Vector4 DiffractedColor
+      - Vector4 LosColor
+      - Vector4 PerceivedColor
     - Methods:
       - constructor AcousticDebugOverlay(
             Func<IHeightProvider> getHeightProvider = null, 
@@ -55,7 +64,13 @@ Folder: IDE
             IRenderContext renderContext)
       - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: AddCross, AddFilledTriangle, AddLine, Console.WriteLine, EnsureResources, VertexBuffer, _dynIndices.Clear, _dynVerts.Clear, _dynamicBuffer.Bind, _dynamicBuffer.UpdateCustom, _geometry.GetTriangle, _geometry.Rebuild, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _tracer.KickDebugBidirectional, drawnTris.Add
+        - Calls: ComputePerceived, EnsureResources, RebuildLineMesh, RebuildSurfaceMesh, _geometry.Rebuild, _lastPerceivedSources.Add, _lastPerceivedSources.Clear, _lineBuffer.Bind, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _surfaceBuffer.Bind, _tracer.KickDebugBidirectional
+      - void RebuildSurfaceMesh()
+        - Calls: AddFilledTriangle, VertexBuffer, _geometry.GetTriangle, _surfaceBuffer.UpdateCustom, _surfaceIndices.Clear, _surfaceVerts.Clear
+      - void ComputePerceived( IReadOnlyList<Vector3> sources, Vector3 listener)
+        - Calls: _cachedPerceived.Add, _cachedPerceived.Clear, _geometry.GetTriangle, _geometry.TryClosestHit, _tracer.KickContinuousTrace, _tracer.ReadCompletedResult
+      - void RebuildLineMesh( IReadOnlyList<Vector3> sources, Vector3 listener)
+        - Calls: AddCross, AddLine, VertexBuffer, _lineBuffer.UpdateCustom, _lineIndices.Clear, _lineVerts.Clear
       - void EnsureResources()
         - Calls: AcousticGeometry, AcousticRayTracer, ShaderProgram
       - void AddLine( List<uint> indices,  Vector3 a,  Vector3 b,  Vector4 color, List<Vertex> verts)
@@ -993,8 +1008,6 @@ Folder: SiegeEngine
     - Dependencies: System
 - File: AcousticCommon.cs
   - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
-- File: AcousticFreeRayShader.cs
-  - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: AcousticGeometry.cs
   - Class: DrawVertex (Namespace: SiegeEngine.Core.GPU.Compute)
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Physics, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices
@@ -1010,8 +1023,16 @@ Folder: SiegeEngine
       - void main()
       - void main()
 - File: AcousticRayTracer.cs
-  - Class: made (Namespace: SiegeEngine.Core.GPU.Compute)
+  - Class: DebugSegment (Namespace: SiegeEngine.Core.GPU.Compute)
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices
+    - Fields:
+      - Vector3 A
+      - Vector3 B
+      - DebugSegmentKind Kind
+      - float Intensity
+      - float Radius
+      - Vector3 Normal
+      - int TriangleIndex
 - File: AcousticResidualShader.cs
   - Class: AcousticResidualShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
@@ -1019,8 +1040,6 @@ Folder: SiegeEngine
     - Methods:
       - void main()
         - Calls: closestHit, hash, randomUnit
-- File: AcousticVisibilityShader.cs
-  - Class: GpuTriangle (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: AngledOrthoCamera.cs
   - Class: AngledOrthoCamera (Namespace: SiegeEngine.PlayerSystem)
     - Inherits: CameraController
@@ -4168,9 +4187,9 @@ SiegeEngine.Core.Events.SoundRayTraceResult
 SiegeEngine.Core.Events.TimeOfDayChangedEvent
 SiegeEngine.Core.Events.WeatherChangedEvent
 SiegeEngine.Core.GPU.Compute.ComputeProgram
+SiegeEngine.Core.GPU.Compute.DebugSegment
 SiegeEngine.Core.GPU.Compute.DrawVertex
 SiegeEngine.Core.GPU.Compute.ShaderStorageBuffer
-SiegeEngine.Core.GPU.Compute.made
 SiegeEngine.Core.GPU.ContextManagement.AbstractRenderEnums
 SiegeEngine.Core.GPU.ContextManagement.ContextManager
 SiegeEngine.Core.GPU.ContextManagement.D3D12_COMMAND_SIGNATURE_DESC
@@ -4204,7 +4223,6 @@ SiegeEngine.Core.GPU.Shaders.AnimationShader
 SiegeEngine.Core.GPU.Shaders.AssetShader
 SiegeEngine.Core.GPU.Shaders.EditorSceneShader
 SiegeEngine.Core.GPU.Shaders.GpuDebugSegment
-SiegeEngine.Core.GPU.Shaders.GpuTriangle
 SiegeEngine.Core.GPU.Shaders.ModelShader
 SiegeEngine.Core.GPU.Shaders.PointShader
 SiegeEngine.Core.GPU.Shaders.SceneShader
