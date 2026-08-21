@@ -45,31 +45,26 @@ namespace SiegeEngine.Core.GPU.Compute
             public int TriangleIndex;
         }
         private readonly IRenderContext _renderContext;
-        private readonly ComputeProgram _residualProgram;
         private readonly ShaderProgram _idProgram;
-        private readonly ShaderStorageBuffer[] _resultSsbo = new ShaderStorageBuffer[2];
-        private readonly ShaderStorageBuffer[] _debugSsbo = new ShaderStorageBuffer[2];
         private readonly AcousticGeometry _geometry;
         private bool _disposed;
-        private int _writeIdx;
-        private int _readIdx = 1;
-        private const int MaxRays = 256;
-        private const int ContinuousRays = 128;
-        private const int ContinuousBounces = 6;
         private const int MaxDebugSegments = 65536;
         private const int IdBufferSize = 512;
-        private const float VisibilityMoveThreshold = 0.75f;
+        private const float VisibilityMoveThreshold = 0.25f;
         private const float SpeedOfSound = 34300f;
         private readonly List<DebugSegment> _debugSegments = new List<DebugSegment>(MaxDebugSegments);
         private Vector3 _lastListenerPos;
         private Vector3 _lastPrimarySource;
-        private readonly HashSet<int> _cachedListenerVisible = new HashSet<int>();
-        private readonly HashSet<int> _cachedSourceVisible = new HashSet<int>();
-        private readonly HashSet<int> _cachedMutual = new HashSet<int>();
-        private Vector3 _cachedListenerPos;
-        private Vector3 _cachedSourcePos;
-        private uint _cachedGeometryVersion;
-        private bool _visibilityCacheValid;
+        // Free-surface previous-completed double-buffer
+        private readonly HashSet<int>[] _listenerVisible = { new HashSet<int>(), new HashSet<int>() };
+        private readonly HashSet<int>[] _sourceVisible = { new HashSet<int>(), new HashSet<int>() };
+        private readonly HashSet<int>[] _mutual = { new HashSet<int>(), new HashSet<int>() };
+        private readonly Vector3[] _fsListenerPos = new Vector3[2];
+        private readonly Vector3[] _fsSourcePos = new Vector3[2];
+        private readonly uint[] _fsGeometryVersion = new uint[2];
+        private readonly bool[] _fsValid = new bool[2];
+        private int _fsWrite = 0;
+        private int _fsRead = 1;
         private uint _visibilityVersion;
         private uint _fbo;
         private uint _idTexture;
@@ -95,21 +90,12 @@ namespace SiegeEngine.Core.GPU.Compute
             new Vector3(0, 1, 0)
         };
         public uint VisibilityVersion => _visibilityVersion;
+        public bool VisibilityCacheValid => _fsValid[_fsRead];
         public AcousticRayTracer(IRenderContext renderContext, AcousticGeometry geometry)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _geometry = geometry ?? throw new ArgumentNullException(nameof(geometry));
-            _residualProgram = new ComputeProgram(_renderContext, AcousticCommon.Source + AcousticResidualShader.Source);
             _idProgram = new ShaderProgram(_renderContext, AcousticIdShader.VertexSource, AcousticIdShader.FragmentSource);
-            int resultBytes = MaxRays * sizeof(GpuRayResult);
-            int debugBytes = MaxDebugSegments * sizeof(GpuDebugSegment);
-            for (int i = 0; i < 2; i++)
-            {
-                _resultSsbo[i] = new ShaderStorageBuffer(_renderContext);
-                _resultSsbo[i].SetData((uint)resultBytes, null, _renderContext.Enums.DynamicCopy);
-                _debugSsbo[i] = new ShaderStorageBuffer(_renderContext);
-                _debugSsbo[i].SetData((uint)debugBytes, null, _renderContext.Enums.DynamicCopy);
-            }
             _idReadback = new uint[IdBufferSize * IdBufferSize];
             CreateIdFbo();
         }
@@ -139,25 +125,7 @@ namespace SiegeEngine.Core.GPU.Compute
         }
         public void KickContinuousTrace(Vector3 sourcePos, Vector3 listenerPos)
         {
-            if (_disposed || _geometry.TriangleCount <= 0) return;
-            _geometry.Buffer.BindBase(0);
-            _resultSsbo[_writeIdx].BindBase(1);
-            _debugSsbo[_writeIdx].BindBase(2);
-            _residualProgram.Use();
-            _residualProgram.SetUniform("uSourcePos", sourcePos.X, sourcePos.Y, sourcePos.Z);
-            _residualProgram.SetUniform("uListenerPos", listenerPos.X, listenerPos.Y, listenerPos.Z);
-            _residualProgram.SetUniform("uTriangleCount", _geometry.TriangleCount);
-            _residualProgram.SetUniform("uRayCount", ContinuousRays);
-            _residualProgram.SetUniform("uMaxBounces", ContinuousBounces);
-            _residualProgram.SetUniform("uListenerRadius", 5.0f);
-            _residualProgram.SetUniform("uMaxDistance", 350.0f);
-            _residualProgram.SetUniform("uDebugMode", 0);
-            _residualProgram.SetUniform("uSourceCount", 1);
-            uint groups = (uint)((ContinuousRays + 63) / 64);
-            _residualProgram.Dispatch(groups, 1, 1);
-            // Do NOT swap here. Swap happens in ReadCompletedResult after the previous
-            // buffer has been safely mapped. This makes residual fully asynchronous
-            // and eliminates the MapRange pipeline stall on the render thread.
+            // Residual multi-bounce path removed entirely for this stage.
         }
         public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources)
         {
@@ -168,28 +136,32 @@ namespace SiegeEngine.Core.GPU.Compute
             if (_geometry.TriangleCount <= 0 || !_fboReady)
             {
                 _debugSegments.Clear();
-                _visibilityCacheValid = false;
                 return;
             }
+            int read = _fsRead;
             bool needRecompute =
-                !_visibilityCacheValid ||
-                _geometry.GeometryVersion != _cachedGeometryVersion ||
-                Vector3.DistanceSquared(listenerPos, _cachedListenerPos) > VisibilityMoveThreshold * VisibilityMoveThreshold ||
-                Vector3.DistanceSquared(primarySource, _cachedSourcePos) > VisibilityMoveThreshold * VisibilityMoveThreshold;
+                !_fsValid[read] ||
+                _geometry.GeometryVersion != _fsGeometryVersion[read] ||
+                Vector3.DistanceSquared(listenerPos, _fsListenerPos[read]) > VisibilityMoveThreshold * VisibilityMoveThreshold ||
+                Vector3.DistanceSquared(primarySource, _fsSourcePos[read]) > VisibilityMoveThreshold * VisibilityMoveThreshold;
             if (needRecompute)
             {
-                _cachedListenerVisible.Clear();
-                _cachedSourceVisible.Clear();
-                _cachedMutual.Clear();
-                RasterSphericalVisibility(listenerPos, _cachedListenerVisible);
-                RasterSphericalVisibility(primarySource, _cachedSourceVisible);
-                foreach (int tri in _cachedListenerVisible)
-                    if (_cachedSourceVisible.Contains(tri))
-                        _cachedMutual.Add(tri);
-                _cachedListenerPos = listenerPos;
-                _cachedSourcePos = primarySource;
-                _cachedGeometryVersion = _geometry.GeometryVersion;
-                _visibilityCacheValid = true;
+                int write = _fsWrite;
+                _listenerVisible[write].Clear();
+                _sourceVisible[write].Clear();
+                _mutual[write].Clear();
+                RasterSphericalVisibility(listenerPos, _listenerVisible[write]);
+                RasterSphericalVisibility(primarySource, _sourceVisible[write]);
+                foreach (int tri in _listenerVisible[write])
+                    if (_sourceVisible[write].Contains(tri))
+                        _mutual[write].Add(tri);
+                _fsListenerPos[write] = listenerPos;
+                _fsSourcePos[write] = primarySource;
+                _fsGeometryVersion[write] = _geometry.GeometryVersion;
+                _fsValid[write] = true;
+                // Swap so consumers always see the previous completed state
+                _fsRead = write;
+                _fsWrite = 1 - write;
                 _visibilityVersion++;
             }
             _debugSegments.Clear();
@@ -223,10 +195,12 @@ namespace SiegeEngine.Core.GPU.Compute
         /// Exact free-surface perceived result used by the debug overlay orange ray.
         /// Energy-weighted inverse-square accumulation over mutual free triangles.
         /// This is the authoritative occluded path for live AudioSystem.
+        /// Always reads the previous completed free-surface state.
         /// </summary>
         public SoundRayTraceResult ComputeFreeSurfacePerceived(Vector3 listener, Vector3 source)
         {
-            if (!_visibilityCacheValid || _cachedMutual.Count == 0)
+            int read = _fsRead;
+            if (!_fsValid[read] || _mutual[read].Count == 0)
             {
                 return new SoundRayTraceResult
                 {
@@ -242,7 +216,7 @@ namespace SiegeEngine.Core.GPU.Compute
             float maxContrib = 0f;
             Vector3 strongestDir = Vector3.Zero;
             float strongestPath = dist;
-            foreach (int tri in _cachedMutual)
+            foreach (int tri in _mutual[read])
             {
                 if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
                 Vector3 centroid = (a + b + c) * (1f / 3f);
@@ -278,7 +252,7 @@ namespace SiegeEngine.Core.GPU.Compute
                 ? Vector3.Normalize(weightedArrival)
                 : strongestDir;
             float freeField = 1.0f / Math.Max(dist * dist, 1e-8f);
-            float intensity = Math.Clamp(energy / freeField, 0.15f, 1.0f);
+            float intensity = energy / freeField;
             return new SoundRayTraceResult
             {
                 Intensity = intensity,
@@ -330,95 +304,26 @@ namespace SiegeEngine.Core.GPU.Compute
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
         }
-        public IReadOnlyCollection<int> GetListenerFree() => _cachedListenerVisible;
-        public IReadOnlyCollection<int> GetSourceFree() => _cachedSourceVisible;
-        public IReadOnlyCollection<int> GetMutualFree() => _cachedMutual;
-        public bool VisibilityCacheValid => _visibilityCacheValid;
+        public IReadOnlyCollection<int> GetListenerFree() => _listenerVisible[_fsRead];
+        public IReadOnlyCollection<int> GetSourceFree() => _sourceVisible[_fsRead];
+        public IReadOnlyCollection<int> GetMutualFree() => _mutual[_fsRead];
         public IReadOnlyList<DebugSegment> GetDebugSegments() => _debugSegments;
         public SoundRayTraceResult ReadCompletedResult()
         {
-            if (_disposed || _geometry.TriangleCount <= 0)
-            {
-                return new SoundRayTraceResult
-                {
-                    Intensity = 0.001f,
-                    Delay = 0f,
-                    LowPassCutoff = 0f,
-                    ApparentDirection = Vector3.Zero
-                };
-            }
-            _residualProgram.Barrier();
-            uint byteSize = (uint)(ContinuousRays * sizeof(GpuRayResult));
-            GpuRayResult* results = (GpuRayResult*)_resultSsbo[_writeIdx].MapRange(0, byteSize, _renderContext.Enums.MapReadBit);
-            if (results == null)
-            {
-                return new SoundRayTraceResult
-                {
-                    Intensity = 0.001f,
-                    Delay = 0.02f,
-                    LowPassCutoff = 800f,
-                    ApparentDirection = Vector3.Zero
-                };
-            }
-            float totalEnergy = 0f;
-            Vector3 weightedDir = Vector3.Zero;
-            float bestDelay = 0f;
-            float bestLowPass = 0f;
-            float maxSingle = 0f;
-            int valid = 0;
-            for (int i = 0; i < ContinuousRays; i++)
-            {
-                float inten = results[i].Intensity;
-                if (inten > 0.00015f)
-                {
-                    valid++;
-                    float energy = inten * inten;
-                    totalEnergy += energy;
-                    Vector3 dir = new Vector3(results[i].ArrivalDir.X, results[i].ArrivalDir.Y, results[i].ArrivalDir.Z);
-                    if (dir.LengthSquared() > 1e-8f)
-                        weightedDir += dir * energy;
-                    if (inten > maxSingle)
-                    {
-                        maxSingle = inten;
-                        bestDelay = results[i].Delay;
-                        bestLowPass = results[i].LowPass;
-                    }
-                }
-            }
-            _resultSsbo[_writeIdx].Unmap();
-            _readIdx = _writeIdx;
-            _writeIdx = 1 - _writeIdx;
-            if (valid == 0 || totalEnergy < 1e-8f)
-            {
-                return new SoundRayTraceResult
-                {
-                    Intensity = 0.001f,
-                    Delay = 0.04f,
-                    LowPassCutoff = 800f,
-                    ApparentDirection = Vector3.Zero
-                };
-            }
-            Vector3 arrival = Vector3.Normalize(weightedDir);
-            float intensity = Math.Clamp(MathF.Sqrt(totalEnergy / valid) * 1.8f, 0.001f, 1.0f);
+            // Residual multi-bounce path removed entirely for this stage.
             return new SoundRayTraceResult
             {
-                Intensity = intensity,
-                Delay = bestDelay,
-                LowPassCutoff = bestLowPass > 0f ? bestLowPass : 2800f + 3200f * intensity,
-                ApparentDirection = arrival
+                Intensity = 0.001f,
+                Delay = 0f,
+                LowPassCutoff = 0f,
+                ApparentDirection = Vector3.Zero
             };
         }
         public void Dispose()
         {
             if (!_disposed)
             {
-                _residualProgram?.Dispose();
                 _idProgram?.Dispose();
-                for (int i = 0; i < 2; i++)
-                {
-                    _resultSsbo[i]?.Dispose();
-                    _debugSsbo[i]?.Dispose();
-                }
                 if (_fbo != 0)
                 {
                     uint f = _fbo;

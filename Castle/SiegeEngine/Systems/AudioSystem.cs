@@ -29,7 +29,6 @@ namespace SiegeEngine.Systems
         private const float MinAudibleVolume = 0.01f;
         private const float IntensitySmoothRate = 18.0f;
         private const float DirectionSmoothRate = 22.0f;
-        private const float FreeSurfaceMoveThreshold = 2.5f;
         private Vector3 _listenerPosition;
         private Vector3 _listenerForward = new Vector3(0, 1, 0);
         private volatile bool _listenerValid;
@@ -54,9 +53,6 @@ namespace SiegeEngine.Systems
         private Thread _audioWorker;
         private volatile bool _workerRunning;
         private readonly object _rayLock = new object();
-        private Vector3 _lastFreeSurfaceListener;
-        private Vector3 _lastFreeSurfaceSource;
-        private bool _hasFreeSurfacePositions;
         private class MonoPcmClip
         {
             public short[] Samples;
@@ -253,8 +249,8 @@ namespace SiegeEngine.Systems
             }
             if (_gpuOcclusionReady && !_geometryUploaded && _server != null && _server.GetEntities().Count > 0)
                 RebuildAcousticGeometry();
-            // Free-surface update is gated to large movement only so continuous camera orbit never hitches.
-            // The spherical raster is the expensive part; once the mutual set is valid the worker uses it.
+            // Free-surface: call Kick every frame exactly as the debug overlay does.
+            // The internal 0.25 m / GeometryVersion gate inside Kick decides whether the raster runs.
             if (_gpuOcclusionReady && _geometryUploaded && _acousticRayTracer != null && _listenerValid)
             {
                 List<AutoPlayRegistration> snapshot;
@@ -262,28 +258,15 @@ namespace SiegeEngine.Systems
                 {
                     snapshot = new List<AutoPlayRegistration>(_autoPlayRegs);
                 }
-                Vector3 primarySource = _listenerPosition + new Vector3(0, 10, 0);
+                var sources = new List<Vector3>();
                 for (int i = 0; i < snapshot.Count; i++)
                 {
                     if (snapshot[i].Started)
-                    {
-                        primarySource = snapshot[i].Source.Position;
-                        break;
-                    }
+                        sources.Add(snapshot[i].Source.Position);
                 }
-                bool needFree =
-                    !_hasFreeSurfacePositions
-                    || Vector3.DistanceSquared(_listenerPosition, _lastFreeSurfaceListener) > FreeSurfaceMoveThreshold * FreeSurfaceMoveThreshold
-                    || Vector3.DistanceSquared(primarySource, _lastFreeSurfaceSource) > FreeSurfaceMoveThreshold * FreeSurfaceMoveThreshold
-                    || (_acousticGeometry != null && _acousticRayTracer.VisibilityVersion == 0);
-                if (needFree)
-                {
-                    var sources = new List<Vector3> { primarySource };
-                    _acousticRayTracer.KickDebugBidirectional(_listenerPosition, sources);
-                    _lastFreeSurfaceListener = _listenerPosition;
-                    _lastFreeSurfaceSource = primarySource;
-                    _hasFreeSurfacePositions = true;
-                }
+                if (sources.Count == 0)
+                    sources.Add(_listenerPosition + new Vector3(0, 10, 0));
+                _acousticRayTracer.KickDebugBidirectional(_listenerPosition, sources);
             }
             if (_listenerValid)
                 TickMainThread(deltaTime);

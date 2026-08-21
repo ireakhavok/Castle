@@ -232,22 +232,10 @@ namespace ToolChest
                     perceivedDir = weightedArrival.LengthSquared() > 1e-12f
                         ? Vector3.Normalize(weightedArrival)
                         : strongestDir;
-                    // Intensity relative to free-field at the same path length.
-                    // Floor guarantees the ray is drawn.
-                    float freeField = 1.0f / (pathLen * pathLen);
-                    intensity = Math.Clamp(energy / Math.Max(freeField, 1e-8f), 0.15f, 1.0f);
+                    // Intensity relative to free-field at the same path length. Pure physics, no artificial floor.
+                    float freeField = 1.0f / Math.Max(pathLen * pathLen, 1e-8f);
+                    intensity = energy / freeField;
                     pathLen = strongestPath;
-                }
-                else if (!losClear)
-                {
-                    _tracer.KickContinuousTrace(source, listener);
-                    var residual = _tracer.ReadCompletedResult();
-                    if (residual.ApparentDirection.LengthSquared() > 1e-6f && residual.Intensity > 0.01f)
-                    {
-                        perceivedDir = Vector3.Normalize(residual.ApparentDirection);
-                        intensity = residual.Intensity;
-                        pathLen = residual.Delay * SpeedOfSound;
-                    }
                 }
                 _cachedPerceived.Add((losClear, perceivedDir, intensity, pathLen));
             }
@@ -270,7 +258,7 @@ namespace ToolChest
                 }
                 if (perceivedDir.LengthSquared() > 1e-6f && intensity > 0.01f)
                 {
-                    float rayLen = Math.Min(Math.Max(pathLen * 0.6f, dist * 0.4f), 30.0f) * (0.4f + 0.6f * intensity);
+                    float rayLen = Math.Min(Math.Max(pathLen * 0.6f, dist * 0.4f), 30.0f) * (0.4f + 0.6f * Math.Clamp(intensity, 0f, 1f));
                     Vector3 end = listener + perceivedDir * rayLen;
                     Vector4 col = new Vector4(PerceivedColor.X, PerceivedColor.Y, PerceivedColor.Z, PerceivedColor.W * Math.Clamp(intensity, 0.35f, 1.0f));
                     AddLine(_lineVerts, _lineIndices, listener, end, col);
