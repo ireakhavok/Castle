@@ -91,5 +91,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public abstract int MapReadBit { get; }
         public abstract int MapWriteBit { get; }
         public abstract int MapInvalidateBufferBit { get; }
+
+        // ClearBuffer target (glClearBufferuiv / glClearBufferfv)
+        public abstract int Color { get; }
     }
 }

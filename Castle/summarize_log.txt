@@ -1505,13 +1505,13 @@ Found: ..
 Found: AcousticGeometry.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticGeometry.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticGeometry.cs
-Read 20827 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticGeometry.cs
+Read 19191 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticGeometry.cs
 Namespace: SiegeEngine.Core.GPU.Compute
 Found 7 dependencies
 Found: AcousticRayTracer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
-Read 18324 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
+Read 19569 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
 Namespace: SiegeEngine.Core.GPU.Compute
 Found 7 dependencies
 Found: ComputeProgram.cs

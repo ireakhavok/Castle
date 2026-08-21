@@ -91,5 +91,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public override int MapReadBit => (int)GLEnum.MapReadBit;
         public override int MapWriteBit => (int)GLEnum.MapWriteBit;
         public override int MapInvalidateBufferBit => (int)GLEnum.MapInvalidateBufferBit;
+
+        // ClearBuffer target (glClearBufferuiv / glClearBufferfv)
+        public override int Color => (int)GLEnum.Color;
     }
 }
