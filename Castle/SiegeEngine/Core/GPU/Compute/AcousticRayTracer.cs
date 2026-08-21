@@ -66,7 +66,7 @@ namespace SiegeEngine.Core.GPU.Compute
         private int _fsWrite = 0;
         private int _fsRead = 1;
         private uint _visibilityVersion;
-        // Pending raster (true one-frame-behind production)
+        // Pending production – wait until all faces are done before swapping
         private bool _pendingRaster;
         private Vector3 _pendingListener;
         private Vector3 _pendingSource;
@@ -134,8 +134,8 @@ namespace SiegeEngine.Core.GPU.Compute
         }
         /// <summary>
         /// Zero-cost gate check. If a recompute is required, records pending positions
-        /// and returns immediately. The expensive RasterSphericalVisibility runs only
-        /// inside TryCompletePendingRaster (true one-frame-behind production).
+        /// and returns immediately. The full raster runs only inside TryCompletePendingRaster
+        /// and the double-buffer is swapped only after all faces are finished.
         /// </summary>
         public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources)
         {
@@ -148,6 +148,9 @@ namespace SiegeEngine.Core.GPU.Compute
                 _debugSegments.Clear();
                 return;
             }
+            // Never start a new production while one is already pending.
+            if (_pendingRaster)
+                return;
             int read = _fsRead;
             bool needRecompute =
                 !_fsValid[read] ||
@@ -161,13 +164,11 @@ namespace SiegeEngine.Core.GPU.Compute
                 _pendingGeometryVersion = _geometry.GeometryVersion;
                 _pendingRaster = true;
             }
-            // Hot path ends here. No Raster, no TryClosestHit, no HashSet mutation.
         }
         /// <summary>
-        /// Performs the expensive spherical ID raster into the write side and swaps
-        /// only after a full successful recompute. Consumers always see the previous
-        /// completed result. Call after the current frame has already consumed the
-        /// previous state (true one-frame-behind).
+        /// Runs the complete spherical ID raster (all 6 faces for listener + all 6 faces for source).
+        /// Builds the mutual set and swaps the double-buffer only after every face is finished.
+        /// Consumers always see the previous fully-completed result.
         /// </summary>
         public bool TryCompletePendingRaster()
         {
@@ -177,6 +178,7 @@ namespace SiegeEngine.Core.GPU.Compute
             _listenerVisible[write].Clear();
             _sourceVisible[write].Clear();
             _mutual[write].Clear();
+            // Wait until all faces are done – full raster for both origins
             RasterSphericalVisibility(_pendingListener, _listenerVisible[write]);
             RasterSphericalVisibility(_pendingSource, _sourceVisible[write]);
             foreach (int tri in _listenerVisible[write])
@@ -186,12 +188,12 @@ namespace SiegeEngine.Core.GPU.Compute
             _fsSourcePos[write] = _pendingSource;
             _fsGeometryVersion[write] = _pendingGeometryVersion;
             _fsValid[write] = true;
-            // Swap so consumers always see the previous completed state
+            // Swap only after the complete set is ready
             _fsRead = write;
             _fsWrite = 1 - write;
             _visibilityVersion++;
             _pendingRaster = false;
-            // Rebuild lightweight debug LOS segment only after the expensive work
+            // Lightweight debug LOS segment only after the full work is finished
             _debugSegments.Clear();
             Vector3 toSource = _pendingSource - _pendingListener;
             float dist = toSource.Length();

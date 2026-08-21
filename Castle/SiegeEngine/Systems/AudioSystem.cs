@@ -249,9 +249,9 @@ namespace SiegeEngine.Systems
             }
             if (_gpuOcclusionReady && !_geometryUploaded && _server != null && _server.GetEntities().Count > 0)
                 RebuildAcousticGeometry();
-            // Free-surface: Kick is zero-cost (gate check only).
-            // TryCompletePendingRaster runs the expensive work only when a previous
-            // pending exists, giving true one-frame-behind production.
+            // Free-surface true double-buffer:
+            // Kick is zero-cost (gate only).
+            // TryCompletePendingRaster runs the full 12-face raster and swaps only after all faces are finished.
             if (_gpuOcclusionReady && _geometryUploaded && _acousticRayTracer != null && _listenerValid)
             {
                 List<AutoPlayRegistration> snapshot;

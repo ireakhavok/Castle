@@ -101,8 +101,7 @@ namespace ToolChest
             {
                 // Zero-cost gate check only
                 _tracer.KickDebugBidirectional(listener, sources);
-                // Complete any pending raster after the current consumers have already
-                // used the previous completed state (true one-frame-behind).
+                // Complete the full raster only when pending – wait until all faces are done before swap
                 _tracer.TryCompletePendingRaster();
                 if (_tracer.VisibilityVersion != _lastPaintedVisibilityVersion)
                 {
@@ -161,7 +160,7 @@ namespace ToolChest
         {
             _surfaceVerts.Clear();
             _surfaceIndices.Clear();
-            // Only mutual (teal) filled surfaces — blue and red removed per request.
+            // Only mutual (teal) filled surfaces
             if (ShowMeetings)
             {
                 foreach (int tri in _tracer.GetMutualFree())
@@ -196,10 +195,6 @@ namespace ToolChest
                     }
                     else losClear = true;
                 }
-                // Physics: free-surface path intensity = inverse-square on total path length.
-                // energy = sum of contributions from every mutual free triangle.
-                // perceived direction = energy-weighted average of arrival directions
-                // (listener ← free surface). Strongest path length is retained for delay.
                 float energy = 0f;
                 Vector3 weightedArrival = Vector3.Zero;
                 float maxContrib = 0f;
@@ -232,11 +227,9 @@ namespace ToolChest
                 float pathLen = dist;
                 if (mutual.Count > 0 && energy > 0f)
                 {
-                    // Always produce a visible ray when mutual free surfaces exist.
                     perceivedDir = weightedArrival.LengthSquared() > 1e-12f
                         ? Vector3.Normalize(weightedArrival)
                         : strongestDir;
-                    // Intensity relative to free-field at the same path length. Pure physics, no artificial floor.
                     float freeField = 1.0f / Math.Max(pathLen * pathLen, 1e-8f);
                     intensity = energy / freeField;
                     pathLen = strongestPath;
