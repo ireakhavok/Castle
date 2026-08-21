@@ -24,14 +24,14 @@ void main() {
         vec3 toT = target - origin;
         float dT = length(toT);
         if (dT < uListenerRadius) {
-            dist += dT; arr = normalize(uListenerPos - origin);
+            dist += dT; arr = normalize(origin - uListenerPos);
             green += wt / max(dist * dist, 0.2); reached = true; ptype = 2; break;
         }
         if (dT > 0.01) {
             vec3 ld = toT / dT; float tl; vec3 nl; float dl;
             bool blk = closestHit(origin, ld, tl, nl, dl);
             if (!blk || tl >= dT - 0.12) {
-                dist += dT; arr = normalize(uListenerPos - origin);
+                dist += dT; arr = normalize(origin - uListenerPos);
                 green += wt / max(dist * dist, 0.2); reached = true; ptype = 2; break;
             }
         }
@@ -39,7 +39,7 @@ void main() {
         if (!closestHit(origin, dir, th, nh, dn)) {
             float d = length(target - origin);
             if (d < uMaxDistance * 0.95) {
-                dist += d; arr = normalize(uListenerPos - origin);
+                dist += d; arr = normalize(origin - uListenerPos);
                 yellow += wt * 0.9 / max(dist * dist, 0.4); reached = true; ptype = 1;
             }
             break;

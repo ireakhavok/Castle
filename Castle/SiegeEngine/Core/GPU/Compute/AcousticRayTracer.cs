@@ -59,6 +59,7 @@ namespace SiegeEngine.Core.GPU.Compute
         private const int MaxDebugSegments = 65536;
         private const int IdBufferSize = 512;
         private const float VisibilityMoveThreshold = 0.75f;
+        private const float SpeedOfSound = 34300f;
         private readonly List<DebugSegment> _debugSegments = new List<DebugSegment>(MaxDebugSegments);
         private Vector3 _lastListenerPos;
         private Vector3 _lastPrimarySource;
@@ -154,8 +155,9 @@ namespace SiegeEngine.Core.GPU.Compute
             _residualProgram.SetUniform("uSourceCount", 1);
             uint groups = (uint)((ContinuousRays + 63) / 64);
             _residualProgram.Dispatch(groups, 1, 1);
-            _readIdx = _writeIdx;
-            _writeIdx = 1 - _writeIdx;
+            // Do NOT swap here. Swap happens in ReadCompletedResult after the previous
+            // buffer has been safely mapped. This makes residual fully asynchronous
+            // and eliminates the MapRange pipeline stall on the render thread.
         }
         public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources)
         {
@@ -216,6 +218,74 @@ namespace SiegeEngine.Core.GPU.Compute
                     });
                 }
             }
+        }
+        /// <summary>
+        /// Exact free-surface perceived result used by the debug overlay orange ray.
+        /// Energy-weighted inverse-square accumulation over mutual free triangles.
+        /// This is the authoritative occluded path for live AudioSystem.
+        /// </summary>
+        public SoundRayTraceResult ComputeFreeSurfacePerceived(Vector3 listener, Vector3 source)
+        {
+            if (!_visibilityCacheValid || _cachedMutual.Count == 0)
+            {
+                return new SoundRayTraceResult
+                {
+                    Intensity = 0.001f,
+                    Delay = 0f,
+                    LowPassCutoff = 0f,
+                    ApparentDirection = Vector3.Zero
+                };
+            }
+            float dist = Vector3.Distance(listener, source);
+            float energy = 0f;
+            Vector3 weightedArrival = Vector3.Zero;
+            float maxContrib = 0f;
+            Vector3 strongestDir = Vector3.Zero;
+            float strongestPath = dist;
+            foreach (int tri in _cachedMutual)
+            {
+                if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
+                Vector3 centroid = (a + b + c) * (1f / 3f);
+                float rL = Vector3.Distance(centroid, listener);
+                float rS = Vector3.Distance(centroid, source);
+                if (rL < 0.05f || rS < 0.05f) continue;
+                float pathLength = rL + rS;
+                float contrib = 1.0f / (pathLength * pathLength);
+                energy += contrib;
+                Vector3 arrival = centroid - listener;
+                float arrivalLen = arrival.Length();
+                if (arrivalLen < 1e-5f) continue;
+                Vector3 arrivalDir = arrival / arrivalLen;
+                weightedArrival += arrivalDir * contrib;
+                if (contrib > maxContrib)
+                {
+                    maxContrib = contrib;
+                    strongestDir = arrivalDir;
+                    strongestPath = pathLength;
+                }
+            }
+            if (energy <= 0f)
+            {
+                return new SoundRayTraceResult
+                {
+                    Intensity = 0.001f,
+                    Delay = 0f,
+                    LowPassCutoff = 0f,
+                    ApparentDirection = Vector3.Zero
+                };
+            }
+            Vector3 perceivedDir = weightedArrival.LengthSquared() > 1e-12f
+                ? Vector3.Normalize(weightedArrival)
+                : strongestDir;
+            float freeField = 1.0f / Math.Max(dist * dist, 1e-8f);
+            float intensity = Math.Clamp(energy / freeField, 0.15f, 1.0f);
+            return new SoundRayTraceResult
+            {
+                Intensity = intensity,
+                Delay = strongestPath / SpeedOfSound,
+                LowPassCutoff = 2800f + 3200f * intensity,
+                ApparentDirection = perceivedDir
+            };
         }
         private void RasterSphericalVisibility(Vector3 origin, HashSet<int> visibleSet)
         {
@@ -279,7 +349,7 @@ namespace SiegeEngine.Core.GPU.Compute
             }
             _residualProgram.Barrier();
             uint byteSize = (uint)(ContinuousRays * sizeof(GpuRayResult));
-            GpuRayResult* results = (GpuRayResult*)_resultSsbo[_readIdx].MapRange(0, byteSize, _renderContext.Enums.MapReadBit);
+            GpuRayResult* results = (GpuRayResult*)_resultSsbo[_writeIdx].MapRange(0, byteSize, _renderContext.Enums.MapReadBit);
             if (results == null)
             {
                 return new SoundRayTraceResult
@@ -315,7 +385,9 @@ namespace SiegeEngine.Core.GPU.Compute
                     }
                 }
             }
-            _resultSsbo[_readIdx].Unmap();
+            _resultSsbo[_writeIdx].Unmap();
+            _readIdx = _writeIdx;
+            _writeIdx = 1 - _writeIdx;
             if (valid == 0 || totalEnergy < 1e-8f)
             {
                 return new SoundRayTraceResult
@@ -327,7 +399,7 @@ namespace SiegeEngine.Core.GPU.Compute
                 };
             }
             Vector3 arrival = Vector3.Normalize(weightedDir);
-            float intensity = Math.Clamp(MathF.Sqrt(totalEnergy / valid) * 1.8f, 0.001f, 0.82f);
+            float intensity = Math.Clamp(MathF.Sqrt(totalEnergy / valid) * 1.8f, 0.001f, 1.0f);
             return new SoundRayTraceResult
             {
                 Intensity = intensity,
