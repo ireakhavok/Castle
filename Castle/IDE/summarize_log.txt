@@ -247,7 +247,6 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\obj
 Found: ReadingChamber.csproj
 Found: summarize_log.txt
 Found: summary.txt
-Found: summary_IDE.txt
 Found: ToolChest
 Listing folder: C:\repos\RealmFoundry\Castle\IDE\ToolChest
 Found: .
@@ -255,7 +254,7 @@ Found: ..
 Found: AcousticDebugOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
-Read 15932 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
+Read 14949 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
 Namespace: ToolChest
 Found 11 dependencies
 Found: AddSkybox.html

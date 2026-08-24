@@ -709,7 +709,6 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\obj
 Found: ReadingChamber.csproj
 Found: summarize_log.txt
 Found: summary.txt
-Found: summary_IDE.txt
 Found: ToolChest
 Listing folder: C:\repos\RealmFoundry\Castle\IDE\ToolChest
 Found: .
@@ -717,7 +716,7 @@ Found: ..
 Found: AcousticDebugOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
-Read 15932 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
+Read 14949 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
 Namespace: ToolChest
 Found 11 dependencies
 Found: AddSkybox.html
@@ -1511,7 +1510,7 @@ Found 7 dependencies
 Found: AcousticRayTracer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
-Read 20299 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
+Read 17338 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
 Namespace: SiegeEngine.Core.GPU.Compute
 Found 7 dependencies
 Found: ComputeProgram.cs
@@ -2500,7 +2499,7 @@ Found 6 dependencies
 Found: AudioSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
-Read 39933 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
+Read 39006 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Namespace: SiegeEngine.Systems
 Found 16 dependencies
 Found: ClientPredictionSystem.cs

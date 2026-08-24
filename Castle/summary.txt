@@ -64,11 +64,11 @@ Folder: IDE
             IRenderContext renderContext)
       - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: ComputePerceived, EnsureResources, RebuildLineMesh, RebuildSurfaceMesh, _geometry.Rebuild, _lastPerceivedSources.Add, _lastPerceivedSources.Clear, _lineBuffer.Bind, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _surfaceBuffer.Bind, _tracer.KickDebugBidirectional
+        - Calls: ComputePerceived, EnsureResources, RebuildLineMesh, RebuildSurfaceMesh, _geometry.Rebuild, _lastPerceivedSources.Add, _lastPerceivedSources.Clear, _lineBuffer.Bind, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _surfaceBuffer.Bind, _tracer.KickDebugBidirectional, _tracer.TryCompletePendingRaster
       - void RebuildSurfaceMesh()
         - Calls: AddFilledTriangle, VertexBuffer, _geometry.GetTriangle, _surfaceBuffer.UpdateCustom, _surfaceIndices.Clear, _surfaceVerts.Clear
       - void ComputePerceived( IReadOnlyList<Vector3> sources, Vector3 listener)
-        - Calls: _cachedPerceived.Add, _cachedPerceived.Clear, _geometry.GetTriangle, _geometry.TryClosestHit, _tracer.KickContinuousTrace, _tracer.ReadCompletedResult
+        - Calls: _cachedPerceived.Add, _cachedPerceived.Clear, _geometry.GetTriangle, _geometry.TryClosestHit
       - void RebuildLineMesh( IReadOnlyList<Vector3> sources, Vector3 listener)
         - Calls: AddCross, AddLine, VertexBuffer, _lineBuffer.UpdateCustom, _lineIndices.Clear, _lineVerts.Clear
       - void EnsureResources()
