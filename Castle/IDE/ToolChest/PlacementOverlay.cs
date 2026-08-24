@@ -1,12 +1,12 @@
 ﻿using Keystone;
-using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
 using System;
 using System.Numerics;
-using SiegeEngine.Core.Rendering.Renderers;
+using SiegeEngine.Core.GPU.Renderers;
 namespace ToolChest
 {
     public class PlacementOverlay : ICustomOverlay

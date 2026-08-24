@@ -2,7 +2,7 @@
 // File: PanelChrome.cs
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
-using SiegeEngine.Core.Rendering.Renderers;
+using SiegeEngine.Core.GPU.Renderers;
 using System.Numerics;
 
 namespace SiegeEngine.Core.UI

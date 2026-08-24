@@ -24,14 +24,14 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\bin
 Found: BlueprintManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\BlueprintManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\BlueprintManager.cs
-Read 37183 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\BlueprintManager.cs
+Read 37177 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\BlueprintManager.cs
 Namespace: CastleBuilder
 Found 18 dependencies
 Found: CastleBuilder.csproj
 Found: EditorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
-Read 26182 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
+Read 26170 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
 Namespace: CastleBuilder
 Found 17 dependencies
 Found: Events
@@ -65,26 +65,26 @@ Found 4 dependencies
 Found: IDEBasePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\IDEBasePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\IDEBasePanel.cs
-Read 9399 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\IDEBasePanel.cs
+Read 9387 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\IDEBasePanel.cs
 Namespace: CastleBuilder
 Found 14 dependencies
 Found: IDE_UI.html
 Found: MenuCommands.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MenuCommands.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MenuCommands.cs
-Read 14936 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MenuCommands.cs
+Read 14930 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MenuCommands.cs
 Namespace: CastleBuilder
 Found 15 dependencies
 Found: MusicPlayerPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MusicPlayerPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MusicPlayerPanel.cs
-Read 6365 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MusicPlayerPanel.cs
+Read 6353 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MusicPlayerPanel.cs
 Namespace: CastleBuilder
 Found 13 dependencies
 Found: NewProjectPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\NewProjectPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\NewProjectPanel.cs
-Read 3835 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\NewProjectPanel.cs
+Read 3823 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\NewProjectPanel.cs
 Namespace: CastleBuilder
 Found 10 dependencies
 Found: obj
@@ -99,20 +99,20 @@ Found: SaveProjectForm.html
 Found: SaveProjectPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SaveProjectPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SaveProjectPanel.cs
-Read 3412 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SaveProjectPanel.cs
+Read 3400 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SaveProjectPanel.cs
 Namespace: CastleBuilder
 Found 12 dependencies
 Found: SceneEditorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
-Read 40902 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
+Read 44297 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
 Namespace: CastleBuilder
-Found 24 dependencies
+Found 25 dependencies
 Found: SceneEditorUI.html
 Found: ScriptEditorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\ScriptEditorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\ScriptEditorPanel.cs
-Read 36020 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\ScriptEditorPanel.cs
+Read 36008 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\ScriptEditorPanel.cs
 Namespace: ToolChest
 Found 18 dependencies
 Found: ScriptEditorPanelUI.html
@@ -185,7 +185,7 @@ Found: NewTerrainForm.html
 Found: NewTerrainPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\NewTerrainPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\NewTerrainPanel.cs
-Read 7813 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\NewTerrainPanel.cs
+Read 7801 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\NewTerrainPanel.cs
 Namespace: MapRoom
 Found 13 dependencies
 Found: obj
@@ -193,13 +193,13 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\MapRoom\obj
 Found: TerrainCreatorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
-Read 21001 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
+Read 20983 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
 Namespace: MapRoom
 Found 17 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
-Read 46903 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
+Read 46879 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
 Found 18 dependencies
 Found: TerrainCreatorUI.html
@@ -212,14 +212,14 @@ Found 4 dependencies
 Found: TwoDCreatorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TwoDCreatorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TwoDCreatorPanel.cs
-Read 7320 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TwoDCreatorPanel.cs
+Read 7308 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TwoDCreatorPanel.cs
 Namespace: MapRoom
 Found 17 dependencies
 Found: TwoDCreatorPanelUI.html
 Found: TwoDCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TwoDCreatorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TwoDCreatorScene.cs
-Read 14877 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TwoDCreatorScene.cs
+Read 14859 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TwoDCreatorScene.cs
 Namespace: MapRoom
 Found 12 dependencies
 Found: ReadingChamber
@@ -229,7 +229,7 @@ Found: ..
 Found: AnimationViewerPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\AnimationViewerPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\AnimationViewerPanel.cs
-Read 10128 chars from: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\AnimationViewerPanel.cs
+Read 10110 chars from: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\AnimationViewerPanel.cs
 Namespace: ReadingChamber
 Found 22 dependencies
 Found: AssetViewerUI.html
@@ -238,7 +238,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\bin
 Found: FileSelectorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\FileSelectorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\FileSelectorPanel.cs
-Read 10659 chars from: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\FileSelectorPanel.cs
+Read 10653 chars from: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\FileSelectorPanel.cs
 Namespace: ReadingChamber
 Found 10 dependencies
 Found: FileSelectorTemplate.html
@@ -247,36 +247,41 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\obj
 Found: ReadingChamber.csproj
 Found: summarize_log.txt
 Found: summary.txt
-Found: summary_IDE.txt
 Found: ToolChest
 Listing folder: C:\repos\RealmFoundry\Castle\IDE\ToolChest
 Found: .
 Found: ..
+Found: AcousticDebugOverlay.cs
+Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
+Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
+Read 14949 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
+Namespace: ToolChest
+Found 11 dependencies
 Found: AddSkybox.html
 Found: AddSkyboxPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AddSkyboxPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AddSkyboxPanel.cs
-Read 7183 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AddSkyboxPanel.cs
+Read 7177 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AddSkyboxPanel.cs
 Namespace: ToolChest
 Found 14 dependencies
 Found: AnimationBlendPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AnimationBlendPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AnimationBlendPanel.cs
-Read 22122 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AnimationBlendPanel.cs
+Read 22110 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AnimationBlendPanel.cs
 Namespace: ToolChest
 Found 20 dependencies
 Found: AnimationBlendUI.html
 Found: AnimationTimelinePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AnimationTimelinePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AnimationTimelinePanel.cs
-Read 9218 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AnimationTimelinePanel.cs
+Read 9206 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AnimationTimelinePanel.cs
 Namespace: ToolChest
 Found 16 dependencies
 Found: AnimationTimelineUI.html
 Found: AssetBrowserPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AssetBrowserPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AssetBrowserPanel.cs
-Read 6123 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AssetBrowserPanel.cs
+Read 6111 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AssetBrowserPanel.cs
 Namespace: ToolChest
 Found 11 dependencies
 Found: AssetBrowserPanelUI.html
@@ -285,7 +290,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\ToolChest\bin
 Found: BlendDotOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BlendDotOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BlendDotOverlay.cs
-Read 2050 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BlendDotOverlay.cs
+Read 2044 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BlendDotOverlay.cs
 Namespace: ToolChest
 Found 4 dependencies
 Found: Brush.cs
@@ -297,7 +302,7 @@ Found 2 dependencies
 Found: BrushPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BrushPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BrushPanel.cs
-Read 11511 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BrushPanel.cs
+Read 11499 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BrushPanel.cs
 Namespace: ToolChest
 Found 14 dependencies
 Found: BrushPanelUI.html
@@ -310,7 +315,7 @@ Found 3 dependencies
 Found: ConsolePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\ConsolePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\ConsolePanel.cs
-Read 14916 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\ConsolePanel.cs
+Read 14904 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\ConsolePanel.cs
 Namespace: ToolChest
 Found 11 dependencies
 Found: ConsolePanelUI.html
@@ -324,7 +329,7 @@ Found: NewMaterial.html
 Found: NewMaterialPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\NewMaterialPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\NewMaterialPanel.cs
-Read 7255 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\NewMaterialPanel.cs
+Read 7243 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\NewMaterialPanel.cs
 Namespace: ToolChest
 Found 13 dependencies
 Found: obj
@@ -332,26 +337,26 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\ToolChest\obj
 Found: PhysicsDebugOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PhysicsDebugOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PhysicsDebugOverlay.cs
-Read 20260 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PhysicsDebugOverlay.cs
+Read 20236 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PhysicsDebugOverlay.cs
 Namespace: ToolChest
 Found 10 dependencies
 Found: PlacementOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PlacementOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PlacementOverlay.cs
-Read 3495 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PlacementOverlay.cs
+Read 3483 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PlacementOverlay.cs
 Namespace: ToolChest
 Found 9 dependencies
 Found: PropertiesPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
-Read 32979 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
+Read 32967 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
 Namespace: ToolChest
 Found 18 dependencies
 Found: PropertiesPanelUI.html
 Found: SpritePlacementPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SpritePlacementPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SpritePlacementPanel.cs
-Read 5539 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SpritePlacementPanel.cs
+Read 5527 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SpritePlacementPanel.cs
 Namespace: ToolChest
 Found 10 dependencies
 Found: SpritePlacementPanelUI.html
@@ -359,13 +364,13 @@ Found: ToolChest.csproj
 Found: TransformGizmoOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
-Read 22024 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
+Read 22000 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
 Namespace: ToolChest
 Found 12 dependencies
 Found: TreeViewPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TreeViewPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TreeViewPanel.cs
-Read 10194 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TreeViewPanel.cs
+Read 10182 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TreeViewPanel.cs
 Namespace: ToolChest
 Found 14 dependencies
 Found: TreeViewPanelUI.html

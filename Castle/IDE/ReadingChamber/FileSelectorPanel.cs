@@ -9,7 +9,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.UI;
-using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.GPU.ContextManagement;
 
 namespace ReadingChamber
 {

@@ -6,7 +6,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using SiegeEngine.Core.Definitions;
-using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Networking;
 using Trebuchet;

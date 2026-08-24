@@ -3,7 +3,7 @@
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Networking;
-using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Scenes;
 using System;
@@ -12,7 +12,7 @@ using System.Numerics;
 using ReadingChamber;
 using SiegeEngine.Core.UI.Elements;
 using Keystone;
-using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.GPU.ContextManagement;
 
 namespace MapRoom
 {

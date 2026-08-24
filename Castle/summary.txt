@@ -21,11 +21,69 @@ Folder: Assets
       - string> BuildGuidMap(string path)
 
 Folder: IDE
+- File: AcousticDebugOverlay.cs
+  - Class: AcousticDebugOverlay (Namespace: ToolChest)
+    - Inherits: ICustomOverlay
+    
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.Compute, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - IRenderContext _renderContext
+      - Func<IReadOnlyList<Entity>> _getEntities
+      - Func<Vector3> _getListenerPos
+      - Func<IReadOnlyList<Vector3>> _getSourcePositions
+      - Func<IHeightProvider> _getHeightProvider
+      - VertexBuffer _surfaceBuffer
+      - VertexBuffer _lineBuffer
+      - ShaderProgram _shader
+      - List<Vertex> _surfaceVerts
+      - List<uint> _surfaceIndices
+      - List<Vertex> _lineVerts
+      - List<uint> _lineIndices
+      - AcousticGeometry _geometry
+      - AcousticRayTracer _tracer
+      - bool _geometryDirty
+      - int _lastEntityCount
+      - bool _wasEnabled
+      - uint _lastPaintedVisibilityVersion
+      - uint _lastPerceivedVersion
+      - Vector3 _lastPerceivedListener
+      - List<Vector3> _lastPerceivedSources
+      - float PerceivedMoveThreshold
+      - float SpeedOfSound
+      - Vector4 ListenerFreeColor
+      - Vector4 SourceFreeColor
+      - Vector4 DiffractedColor
+      - Vector4 LosColor
+      - Vector4 PerceivedColor
+    - Methods:
+      - constructor AcousticDebugOverlay(
+            Func<IHeightProvider> getHeightProvider = null, 
+            Func<IReadOnlyList<Entity>> getEntities, 
+            Func<IReadOnlyList<Vector3>> getSourcePositions, 
+            Func<Vector3> getListenerPos, 
+            IRenderContext renderContext)
+      - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
+      - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
+        - Calls: ComputePerceived, EnsureResources, RebuildLineMesh, RebuildSurfaceMesh, _geometry.Rebuild, _lastPerceivedSources.Add, _lastPerceivedSources.Clear, _lineBuffer.Bind, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _surfaceBuffer.Bind, _tracer.KickDebugBidirectional, _tracer.TryCompletePendingRaster
+      - void RebuildSurfaceMesh()
+        - Calls: AddFilledTriangle, VertexBuffer, _geometry.GetTriangle, _surfaceBuffer.UpdateCustom, _surfaceIndices.Clear, _surfaceVerts.Clear
+      - void ComputePerceived( IReadOnlyList<Vector3> sources, Vector3 listener)
+        - Calls: _cachedPerceived.Add, _cachedPerceived.Clear, _geometry.GetTriangle, _geometry.TryClosestHit
+      - void RebuildLineMesh( IReadOnlyList<Vector3> sources, Vector3 listener)
+        - Calls: AddCross, AddLine, VertexBuffer, _lineBuffer.UpdateCustom, _lineIndices.Clear, _lineVerts.Clear
+      - void EnsureResources()
+        - Calls: AcousticGeometry, AcousticRayTracer, ShaderProgram
+      - void AddLine( List<uint> indices,  Vector3 a,  Vector3 b,  Vector4 color, List<Vertex> verts)
+        - Calls: Vertex, indices.Add, verts.Add
+      - void AddFilledTriangle( List<uint> indices,  Vector3 a,  Vector3 b,  Vector3 c,  Vector4 color, List<Vertex> verts)
+        - Calls: Vertex, indices.Add, verts.Add
+      - void AddCross( List<uint> indices,  Vector3 center,  Vector4 color,  float size, List<Vertex> verts)
+        - Calls: AddLine
 - File: AddSkyboxPanel.cs
   - Class: AddSkyboxUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics, System.Text.Json
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics, System.Text.Json
     - Fields:
       - AddSkyboxPanel _parent
       - EventBus _eventBus
@@ -36,7 +94,7 @@ Folder: IDE
   - Class: BlendUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text, System.Text.Json
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text, System.Text.Json
     - Fields:
       - AnimationBlendPanel _parent
     - Methods:
@@ -45,7 +103,7 @@ Folder: IDE
   - Class: TimelineUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics, System.Text.Json
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics, System.Text.Json
     - Fields:
       - AnimationTimelinePanel _parent
     - Methods:
@@ -54,7 +112,7 @@ Folder: IDE
   - Class: AssetUIOverlay (Namespace: ReadingChamber)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text, System.Text.Json
+    - Dependencies: Keystone, SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text, System.Text.Json
     - Fields:
       - AnimationViewerPanel _parent
     - Methods:
@@ -63,7 +121,7 @@ Folder: IDE
   - Class: AssetBrowserUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
     - Fields:
       - AssetBrowserPanel _parent
     - Methods:
@@ -73,7 +131,7 @@ Folder: IDE
   - Class: BlendDotOverlay (Namespace: ToolChest)
     - Inherits: ICustomOverlay
     
-    - Dependencies: SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering.Renderers, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, System, System.Numerics
     - Fields:
       - AnimationBlendPanel _panel
     - Methods:
@@ -82,7 +140,7 @@ Folder: IDE
         - Calls: _panel._uiOverlay.FindElementById, quadRenderer.DrawQuad
 - File: BlueprintManager.cs
   - Class: StringExtensions (Namespace: CastleBuilder)
-    - Dependencies: CastleBuilder.Events, Keystone, MapRoom, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Terrain, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.IO, System.Linq, System.Text.Json, ToolChest
+    - Dependencies: CastleBuilder.Events, Keystone, MapRoom, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Terrain, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.IO, System.Linq, System.Text.Json, ToolChest
     - Methods:
       - string ReplaceInvalidFileChars(this string)
         - Calls: c.ToString
@@ -99,7 +157,7 @@ Folder: IDE
   - Class: BrushUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Linq, System.Numerics, System.Text
+    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Linq, System.Numerics, System.Text
     - Fields:
       - BrushPanel _parent
     - Methods:
@@ -120,7 +178,7 @@ Folder: IDE
   - Class: LogCaptureWriter (Namespace: ToolChest)
     - Inherits: TextWriter
         
-    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics, System.Text
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics, System.Text
     - Methods:
       - void WriteLine(string value)
         - Calls: AddLogInternal
@@ -157,14 +215,14 @@ Folder: IDE
   - Class: BasicGameScene (Namespace: CastleBuilder)
     - Inherits: GameScene
         
-    - Dependencies: Keystone, MapRoom, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json, ToolChest
+    - Dependencies: Keystone, MapRoom, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json, ToolChest
     - Methods:
       - void Render(IReadOnlyList<Entity> entities)
 - File: FileSelectorPanel.cs
   - Class: FileSelectorUIOverlay (Namespace: ReadingChamber)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
     - Fields:
       - FileSelectorPanel _parent
     - Methods:
@@ -173,7 +231,7 @@ Folder: IDE
   - Class: IDEUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
         
-    - Dependencies: CastleBuilder.Events, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Systems, System, System.IO, System.Linq, System.Numerics
+    - Dependencies: CastleBuilder.Events, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Systems, System, System.IO, System.Linq, System.Numerics
     - Fields:
       - EventBus _eventBus
     - Methods:
@@ -200,7 +258,7 @@ Folder: IDE
       - void Deserialize(byte[] data)
 - File: MenuCommands.cs
   - Class: MenuCommands (Namespace: CastleBuilder)
-    - Dependencies: CastleBuilder.Events, Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Scenes.StartingPoints, System.Diagnostics, System.IO, System.Text.Json, System.Threading.Tasks, ToolChest
+    - Dependencies: CastleBuilder.Events, Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Scenes.StartingPoints, System.Diagnostics, System.IO, System.Text.Json, System.Threading.Tasks, ToolChest
     - Fields:
       - string DefaultProjectsPath
     - Methods:
@@ -254,12 +312,12 @@ Folder: IDE
         - Calls: Console.WriteLine, ScriptEditorPanel.Open
 - File: MusicPlayerPanel.cs
   - Class: value (Namespace: CastleBuilder)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Systems, System, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Systems, System, System.IO, System.Numerics
 - File: NewMaterialPanel.cs
   - Class: NewMaterialUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics
     - Fields:
       - NewMaterialPanel _parent
       - EventBus _eventBus
@@ -280,7 +338,7 @@ Folder: IDE
   - Class: NewProjectUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics
     - Fields:
       - NewProjectPanel _parent
       - EventBus _eventBus
@@ -291,7 +349,7 @@ Folder: IDE
   - Class: NewTerrainUIOverlay (Namespace: MapRoom)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.IO, System.Numerics
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Networking, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.IO, System.Numerics
     - Fields:
       - NewTerrainPanel _parent
     - Methods:
@@ -322,7 +380,7 @@ Folder: IDE
   - Class: PhysicsDebugOverlay (Namespace: ToolChest)
     - Inherits: ICustomOverlay
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, SiegeEngine.Core.Rendering.Shaders, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - Func<IReadOnlyList<Entity>> _getEntities
@@ -368,7 +426,7 @@ Folder: IDE
   - Class: PlacementOverlay (Namespace: ToolChest)
     - Inherits: ICustomOverlay
     
-    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, System, System.Numerics
+    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, System, System.Numerics
     - Fields:
       - EventBus _eventBus
       - Vector3 _camPos
@@ -469,7 +527,7 @@ Folder: IDE
   - Class: PropertiesUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
+    - Dependencies: Keystone, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
     - Fields:
       - PropertiesPanel _parent
     - Methods:
@@ -493,7 +551,7 @@ Folder: IDE
   - Class: SaveUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics, ToolChest
+    - Dependencies: Keystone, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics, ToolChest
     - Fields:
       - SaveProjectPanel _parent
       - EventBus _eventBus
@@ -504,7 +562,7 @@ Folder: IDE
   - Class: SelectionBoxOverlay (Namespace: CastleBuilder)
     - Inherits: ICustomOverlay
         
-    - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
+    - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Physics, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
     - Fields:
       - SceneEditorPanel _parent
     - Methods:
@@ -515,7 +573,7 @@ Folder: IDE
   - Class: ScriptEditorUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: CastleBuilder, Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Numerics, System.Text, System.Text.RegularExpressions
+    - Dependencies: CastleBuilder, Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Numerics, System.Text, System.Text.RegularExpressions
     - Fields:
       - ScriptEditorPanel _parent
     - Methods:
@@ -524,7 +582,7 @@ Folder: IDE
   - Class: SpritePlacementUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: ReadingChamber, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics
+    - Dependencies: ReadingChamber, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics
     - Fields:
       - SpritePlacementPanel _parent
     - Methods:
@@ -534,7 +592,7 @@ Folder: IDE
   - Class: TerrainUIOverlay (Namespace: MapRoom)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
     - Fields:
       - TerrainCreatorPanel _parent
     - Methods:
@@ -543,7 +601,7 @@ Folder: IDE
   - Class: TerrainCreatorScene (Namespace: MapRoom)
     - Inherits: TerrainScene
     
-    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, SiegeEngine.Scenes, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics, System.Text.Json, ToolChest
+    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Terrain, SiegeEngine.Scenes, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics, System.Text.Json, ToolChest
     - Fields:
       - Vector3 _ghostPosition
       - bool _ghostVisible
@@ -654,7 +712,7 @@ Folder: IDE
   - Class: TransformGizmoOverlay (Namespace: ToolChest)
     - Inherits: ICustomOverlay
     
-    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, SiegeEngine.Core.Rendering.Shaders, System, System.Collections.Generic, System.Numerics
+    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - EventBus _eventBus
@@ -712,7 +770,7 @@ Folder: IDE
   - Class: TreeViewUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
+    - Dependencies: Keystone, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
     - Fields:
       - TreeViewPanel _parent
     - Methods:
@@ -722,7 +780,7 @@ Folder: IDE
   - Class: TwoDCreatorUIOverlay (Namespace: MapRoom)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
     - Fields:
       - TwoDCreatorPanel _parent
     - Methods:
@@ -731,7 +789,7 @@ Folder: IDE
   - Class: TwoDCreatorScene (Namespace: MapRoom)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics
     - Fields:
       - AngledOrthoCamera _orthoCamera
       - ShaderProgram _gridShader
@@ -769,7 +827,7 @@ Folder: IDE
 Folder: Launcher
 - File: Launcher.cs
   - Class: Launcher (Namespace: Trebuchet)
-    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Numerics, System.Reflection, System.Runtime.InteropServices
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Numerics, System.Reflection, System.Runtime.InteropServices
     - Fields:
       - bool _isRunning
       - IntPtr _window
@@ -790,7 +848,7 @@ Folder: Launcher
         - Calls: ConnectToDedicatedServer, Console.WriteLine, CreateLobby, Dispose, EventBus, InputHandler, JoinSpecificLobby, LoadLibrary, ModManager, PanelManager, Render, RequestP2PHostLobbies, SaveSettings, SceneManager, ScriptLoader.LoadCustomAssemblies, SteamEngine, System.Diagnostics.Debugger.Launch, Terminate, UISettingsManager, Update, _contextManager.Initialize, _controlContext.GetTime, _controlContext.PollEvents, _controlContext.SetWindowSizeCallback, _controlContext.SwapBuffers, _controlContext.WindowShouldClose, _eventBus.RegisterNamespace, _inputHandler.SetKeyCallback, _inputHandler.SetMouseCallback, _menuPanel.Init, _modManager.GetMenuConfigPath, _panelManager.AddPanel, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _sceneManager.Render, _sceneManager.Resize, _sceneManager.SwitchToRuntimeGameplay, _sceneManager.Update, _settingsManager.LoadSettings, _settingsManager.UpdateWindowSize, _steamEngine.Initialize, _steamEngine.RunCallbacks
 - File: Program.cs
   - Class: Program (Namespace: Foundation)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, System, System.Diagnostics, System.IO, System.Runtime.InteropServices, System.Text.Json, Trebuchet
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, System, System.Diagnostics, System.IO, System.Runtime.InteropServices, System.Text.Json, Trebuchet
     - Methods:
       - int MessageBox( string caption,  string text,  uint type, nint hWnd)
         - Calls: Console.WriteLine, JsonDocument.Parse, Process.Start, RendererDetector.DetectAvailable, SteamEngine, UISettingsManager, launcher.Start, settings.LoadSettings, settings.SaveSettings, steam.Dispose, steam.Initialize
@@ -808,7 +866,7 @@ Folder: Server
   - Class: GameServer (Namespace: Citadel.Server)
     - Inherits: IGameServer
     
-    - Dependencies: Citadel.Network, Citadel.Systems, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json
+    - Dependencies: Citadel.Network, Citadel.Systems, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json
     - Fields:
       - List<Entity> _entities
       - List<GameSystem> _systems
@@ -946,23 +1004,47 @@ Folder: SiegeEngine
       - void SetYawInternal( float yaw, this CameraController)
         - Calls: SetValue
 - File: AbstractRenderEnums.cs
-  - Class: AbstractRenderEnums (Namespace: SiegeEngine.Core.Rendering.ContextManagement)
+  - Class: AbstractRenderEnums (Namespace: SiegeEngine.Core.GPU.ContextManagement)
     - Dependencies: System
+- File: AcousticCommon.cs
+  - Class: GpuDebugSegment (Namespace: SiegeEngine.Core.GPU.Shaders)
 - File: AcousticGeometry.cs
-  - Class: GpuTriangle (Namespace: SiegeEngine.Core.Rendering.Compute)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering.ContextManagement, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices
+  - Class: DrawVertex (Namespace: SiegeEngine.Core.GPU.Compute)
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Physics, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices
     - Fields:
-      - Vector4 A
-      - Vector4 B
-      - Vector4 C
+      - Vector3 Position
+      - int TriangleIndex
+- File: AcousticIdShader.cs
+  - Class: AcousticIdShader (Namespace: SiegeEngine.Core.GPU.Shaders)
+    - Fields:
+      - string VertexSource
+      - string FragmentSource
+    - Methods:
+      - void main()
+      - void main()
 - File: AcousticRayTracer.cs
-  - Class: GpuRayResult (Namespace: SiegeEngine.Core.Rendering.Compute)
-    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Rendering.ContextManagement, System, System.Numerics, System.Runtime.InteropServices, System.Text
+  - Class: DebugSegment (Namespace: SiegeEngine.Core.GPU.Compute)
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices
+    - Fields:
+      - Vector3 A
+      - Vector3 B
+      - DebugSegmentKind Kind
+      - float Intensity
+      - float Radius
+      - Vector3 Normal
+      - int TriangleIndex
+- File: AcousticResidualShader.cs
+  - Class: AcousticResidualShader (Namespace: SiegeEngine.Core.GPU.Shaders)
+    - Fields:
+      - string Source
+    - Methods:
+      - void main()
+        - Calls: closestHit, hash, randomUnit
 - File: AngledOrthoCamera.cs
   - Class: AngledOrthoCamera (Namespace: SiegeEngine.PlayerSystem)
     - Inherits: CameraController
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, System, System.Diagnostics, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Managers, System, System.Diagnostics, System.Numerics
     - Methods:
       - void UpdateCamera()
 - File: Animation.cs
@@ -980,7 +1062,7 @@ Folder: SiegeEngine
   - Class: from (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: AnimationShader.cs
-  - Class: AnimationShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+  - Class: AnimationShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
       - string VertexShaderSource
       - string FragmentShaderSource
@@ -1001,7 +1083,7 @@ Folder: SiegeEngine
       - void UpdateBlendedAnimation( ModelComponent modelComp,  float deltaTime, BlendedAnimationComponent blendComp)
         - Calls: Matrix3x3, Matrix4x4.Transpose, blendComp.Pack.CreateBlendStack, modelComp.Model.Skeleton.ComputeGlobalTransforms, stack.ComputeBlendedLocals
 - File: AssetShader.cs
-  - Class: AssetShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+  - Class: AssetShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
       - string VertexShaderSource
       - string FragmentShaderSource
@@ -1017,18 +1099,22 @@ Folder: SiegeEngine
       - constructor ThrowStatementNode(ASTNode argument)
 - File: AudioSystem.cs
   - Class: AutoPlayRegistration (Namespace: SiegeEngine.Systems)
-    - Dependencies: SiegeEngine.Audio, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering.Compute, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.PlayerSystem, System, System.Collections.Generic, System.IO, System.Linq, System.Media, System.Numerics
+    - Dependencies: SiegeEngine.Audio, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.Compute, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Physics, SiegeEngine.PlayerSystem, System, System.Collections.Generic, System.IO, System.Linq, System.Media, System.Numerics, System.Threading
     - Fields:
       - int EntityId
       - SoundSource Source
       - int Handle
       - bool Started
-      - SoundRayTraceResult LastRayResult
+      - SoundRayTraceResult WorkerResult
+      - float SmoothedIntensity
+      - Vector3 SmoothedDirection
+      - float SmoothedLowPass
+      - bool HasSmoothedState
 - File: BackgroundRenderer.cs
-  - Class: BackgroundRenderer (Namespace: SiegeEngine.Core.Rendering.Renderers)
+  - Class: BackgroundRenderer (Namespace: SiegeEngine.Core.GPU.Renderers)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, System, System.Drawing, System.Drawing.Imaging, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, System, System.Drawing, System.Drawing.Imaging, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - ShaderProgram _shaderProgram
@@ -1049,7 +1135,7 @@ Folder: SiegeEngine
   - Class: BasePanel (Namespace: SiegeEngine.Core.UI)
     - Inherits: IPanel
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - IControlContext _controlContext
@@ -1129,7 +1215,7 @@ Folder: SiegeEngine
   - Class: ButtonElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, System, System.Numerics, System.Reflection
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, System, System.Numerics, System.Reflection
     - Methods:
       - constructor ButtonElement()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
@@ -1141,7 +1227,7 @@ Folder: SiegeEngine
         - Calls: mi.Invoke
 - File: CameraController.cs
   - Class: CameraController (Namespace: SiegeEngine.PlayerSystem)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Managers, System, System.Numerics
     - Fields:
       - IControlContext _controlContext
       - IntPtr _window
@@ -1200,7 +1286,7 @@ Folder: SiegeEngine
             float maxDist,  Vector3 centre,  Vector3 dir,  float radius,  out Vector3,  out float, Vector3 origin)
 - File: CaptureManager.cs
   - Class: CaptureManager (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering.ContextManagement, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, System.Numerics
     - Fields:
       - IControlContext _controlContext
       - IPanel _currentOwner
@@ -1216,10 +1302,10 @@ Folder: SiegeEngine
         - Calls: _controlContext.PopViewport, _controlContext.SetInputMode
       - void Update( Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta, float deltaTime)
 - File: ChromeRenderer.cs
-  - Class: ChromeRenderer (Namespace: SiegeEngine.Core.Rendering.Renderers)
+  - Class: ChromeRenderer (Namespace: SiegeEngine.Core.GPU.Renderers)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.UI, System, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - UIQuadRenderer _quadRenderer
@@ -1298,10 +1384,10 @@ Folder: SiegeEngine
   - Class: ColliderShape (Namespace: SiegeEngine.Core.Physics)
     - Dependencies: System.Numerics
 - File: ComputeProgram.cs
-  - Class: ComputeProgram (Namespace: SiegeEngine.Core.Rendering.Compute)
+  - Class: ComputeProgram (Namespace: SiegeEngine.Core.GPU.Compute)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - uint _program
@@ -1343,7 +1429,7 @@ Folder: SiegeEngine
     - Methods:
       - void Add(in ContactPoint)
 - File: ContextManager.cs
-  - Class: ContextManager (Namespace: SiegeEngine.Core.Rendering.ContextManagement)
+  - Class: ContextManager (Namespace: SiegeEngine.Core.GPU.ContextManagement)
     - Dependencies: System
     - Fields:
       - nint _window
@@ -1354,7 +1440,7 @@ Folder: SiegeEngine
       - IControlContext ControlContext
 - File: Core.cs
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics
     - Fields:
       - BackgroundRenderer _bgRenderer
       - string _baseDir
@@ -1451,7 +1537,7 @@ Folder: SiegeEngine
       - bool TryGetCustomScale( out float, string filePath)
         - Calls: Console.WriteLine
 - File: D3D12Native.cs
-  - Class: D3D12_COMMAND_SIGNATURE_DESC (Namespace: SiegeEngine.Core.Rendering.ContextManagement)
+  - Class: D3D12_COMMAND_SIGNATURE_DESC (Namespace: SiegeEngine.Core.GPU.ContextManagement)
     - Dependencies: System, System.Runtime.InteropServices
     - Fields:
       - uint ByteStride
@@ -1460,7 +1546,7 @@ Folder: SiegeEngine
       - uint NodeMask
 - File: DataHookProcessor.cs
   - Class: DataHookProcessor (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, System, System.IO, System.Reflection
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.UI, System, System.IO, System.Reflection
     - Methods:
       - void Process( BasePanel callerPanel = null,  EventBus eventBus,  IControlContext controlContext,  IRenderContext renderContext,  UIOverlay overlayForFormData = null,  nint window, string hook)
         - Calls: ClosePanelEvent, Console.WriteLine, mi.Invoke, mi5.Invoke
@@ -1468,7 +1554,7 @@ Folder: SiegeEngine
   - Class: DesktopDockingStrategy (Namespace: SiegeEngine.Core.Managers)
     - Inherits: IDockingStrategy
     
-    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
     - Fields:
       - DockNode _root
       - List<IPanel> _floatingPanels
@@ -1524,7 +1610,7 @@ Folder: SiegeEngine
       - constructor DivElement()
 - File: DockManager.cs
   - Class: DockManager (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
     - Fields:
       - IDockingStrategy _strategy
     - Methods:
@@ -1539,7 +1625,7 @@ Folder: SiegeEngine
   - Class: DynamicDockingStrategy (Namespace: SiegeEngine.Core.Managers)
     - Inherits: IDockingStrategy
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
     - Fields:
       - List<IPanel> _panels
       - IPanel _draggingPanel
@@ -1581,7 +1667,7 @@ Folder: SiegeEngine
         - Calls: _ghostRenderer.DrawQuad, renderContext.Scissor, renderContext.Viewport
       - void ComputeLayout( int winH, int winW)
 - File: EditorSceneShader.cs
-  - Class: EditorSceneShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+  - Class: EditorSceneShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
       - string VertexShaderSource
       - string FragmentShaderSource
@@ -1589,10 +1675,10 @@ Folder: SiegeEngine
       - void main()
       - void main()
 - File: EditorTextRenderer.cs
-  - Class: EditorTextRenderer (Namespace: SiegeEngine.Core.Rendering.Renderers)
+  - Class: EditorTextRenderer (Namespace: SiegeEngine.Core.GPU.Renderers)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - nint _window
@@ -1805,7 +1891,7 @@ Folder: SiegeEngine
         - Calls: FBXParserBase.Log
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing)
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.GPU, System, System.Collections.Generic, System.Linq, System.Numerics
     - Fields:
       - int totalLogCount
       - int MaxTotalLogs
@@ -1882,7 +1968,7 @@ Folder: SiegeEngine
       - void Deserialize(byte[] data)
 - File: FlyCameraController.cs
   - Class: FlyCameraController (Namespace: SiegeEngine.Scenes)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.ContextManagement, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, System, System.Numerics
     - Fields:
       - IControlContext _controlContext
       - IntPtr _window
@@ -1918,10 +2004,10 @@ Folder: SiegeEngine
         - Calls: Console.WriteLine
       - GameMode GetSelectedMode()
 - File: GameRenderer.cs
-  - Class: GameRenderer (Namespace: SiegeEngine.Core.Rendering.Renderers)
+  - Class: GameRenderer (Namespace: SiegeEngine.Core.GPU.Renderers)
     - Inherits: Renderer
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - nint _window
@@ -1946,7 +2032,7 @@ Folder: SiegeEngine
   - Class: GameScene (Namespace: SiegeEngine.Scenes)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Numerics
     - Fields:
       - bool _baseLoadCalled
     - Methods:
@@ -1982,7 +2068,7 @@ Folder: SiegeEngine
       - float MinNorth
       - float MaxNorth
 - File: GlfwControlContext.cs
-  - Class: GlfwControlContext (Namespace: SiegeEngine.Core.Rendering.ContextManagement)
+  - Class: GlfwControlContext (Namespace: SiegeEngine.Core.GPU.ContextManagement)
     - Inherits: IControlContext
     
     - Dependencies: SiegeEngine.Core.Definitions, Silk.NET.GLFW, System, System.Collections.Generic
@@ -2055,7 +2141,7 @@ Folder: SiegeEngine
       - float GetInterpolatedHeight( float worldY, float worldX)
 - File: HtmlLayoutUtils.cs
   - Class: HtmlLayoutUtils (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.Rendering, System, System.Linq, System.Numerics, System.Text.RegularExpressions
+    - Dependencies: SiegeEngine.Core.GPU, System, System.Linq, System.Numerics, System.Text.RegularExpressions
     - Methods:
       - float ParseSize( float parent,  float vh,  float vw, string s)
         - Calls: float.Parse
@@ -2090,17 +2176,17 @@ Folder: SiegeEngine
       - void SkipWhitespace()
       - string ReadUntil( bool> condition)
 - File: IControlContext.cs
-  - Class: IControlContext (Namespace: SiegeEngine.Core.Rendering.ContextManagement)
+  - Class: IControlContext (Namespace: SiegeEngine.Core.GPU.ContextManagement)
     - Dependencies: SiegeEngine.Core.Definitions, System
 - File: ICustomOverlay.cs
   - Class: ICustomOverlay (Namespace: SiegeEngine.Core.Interfaces)
-    - Dependencies: SiegeEngine.Core.Rendering.Renderers
+    - Dependencies: SiegeEngine.Core.GPU.Renderers
 - File: IDEDockingStrategy.cs
   - Class: SerializableFloatingPanel (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json, System.Text.Json.Serialization
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json, System.Text.Json.Serialization
 - File: IDockingStrategy.cs
   - Class: IDockingStrategy (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, System.Numerics
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, System.Numerics
 - File: IGameServer.cs
   - Class: IGameServer (Namespace: SiegeEngine.Core.Interfaces)
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Physics, SiegeEngine.Systems, System.Collections.Generic, System.Numerics
@@ -2114,7 +2200,7 @@ Folder: SiegeEngine
   - Class: IProjectionProvider (Namespace: SiegeEngine.Core.Interfaces)
     - Dependencies: System.Numerics
 - File: IRenderContext.cs
-  - Class: IRenderContext (Namespace: SiegeEngine.Core.Rendering.ContextManagement)
+  - Class: IRenderContext (Namespace: SiegeEngine.Core.GPU.ContextManagement)
     - Dependencies: System
 - File: IRenderer.cs
   - Class: IRenderer (Namespace: SiegeEngine.Core.Interfaces)
@@ -2139,7 +2225,7 @@ Folder: SiegeEngine
   - Class: InputElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, System, System.Globalization, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, System, System.Globalization, System.Numerics
     - Fields:
       - bool _cursorVisible
       - float _cursorTimer
@@ -2160,7 +2246,7 @@ Folder: SiegeEngine
     - Dependencies: System
 - File: InputHandler.cs
   - Class: InputHandler (Namespace: SiegeEngine.PlayerSystem)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering.ContextManagement, System, System.Collections.Generic, System.Numerics, System.Text
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Networking, System, System.Collections.Generic, System.Numerics, System.Text
     - Fields:
       - IControlContext _controlContext
       - IntPtr _window
@@ -2262,8 +2348,8 @@ Folder: SiegeEngine
   - Class: Keyframe (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Collections.Generic, System.Numerics
 - File: LayeredUIRenderer.cs
-  - Class: LayeredUIRenderer (Namespace: SiegeEngine.Core.Rendering.Renderers)
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, System.Numerics
+  - Class: LayeredUIRenderer (Namespace: SiegeEngine.Core.GPU.Renderers)
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.UI, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - IControlContext _controlContext
@@ -2277,7 +2363,7 @@ Folder: SiegeEngine
       - void Dispose()
 - File: Layout.cs
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
     - Methods:
       - float GetFullContentExtentForParent()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
@@ -2307,7 +2393,7 @@ Folder: SiegeEngine
   - Class: LiElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - constructor LiElement()
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
@@ -2397,7 +2483,7 @@ Folder: SiegeEngine
   - Class: MenuUIOverlay (Namespace: SiegeEngine.Core.UI)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, System, System.Collections.Generic, System.IO, System.Numerics, System.Reflection
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, System, System.Collections.Generic, System.IO, System.Numerics, System.Reflection
     - Fields:
       - MenuPanel _parent
       - ModManager _modManager
@@ -2439,10 +2525,10 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Interfaces, Silk.NET.Maths, System, System.Collections.Generic, System.Numerics
 - File: ModelManager.cs
   - Class: ModelMeshRender (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json
 - File: ModelRenderer.cs
-  - Class: ModelRenderer (Namespace: SiegeEngine.Core.Rendering.Renderers)
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, System, System.Numerics
+  - Class: ModelRenderer (Namespace: SiegeEngine.Core.GPU.Renderers)
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Managers, System, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - ShaderProgram _modelShader
@@ -2465,7 +2551,7 @@ Folder: SiegeEngine
         - Calls: RenderEntityFully
       - void Dispose()
 - File: ModelShader.cs
-  - Class: ModelShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+  - Class: ModelShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
       - string VertexShaderSource
       - string FragmentShaderSource
@@ -2479,7 +2565,7 @@ Folder: SiegeEngine
   - Class: ModelViewerScene (Namespace: SiegeEngine.Scenes)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
     - Fields:
       - FBXModel _model
       - string _currentAnimationPath
@@ -2581,14 +2667,14 @@ Folder: SiegeEngine
   - Class: NavElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, System, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, System, System.Linq, System.Numerics
     - Methods:
       - constructor NavElement()
 - File: NavLiElement.cs
   - Class: NavLiElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, System, System.Collections.Generic, System.Linq, System.Numerics
     - Fields:
       - bool _isPinnedOpen
       - bool IsDropdownOpen
@@ -2611,7 +2697,7 @@ Folder: SiegeEngine
   - Class: NavUlElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, System.Numerics
     - Methods:
       - constructor NavUlElement()
 - File: NodeParser.cs
@@ -2645,11 +2731,11 @@ Folder: SiegeEngine
   - Class: OlElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, System.Numerics
     - Methods:
       - constructor OlElement()
 - File: OpenGLContextManager.cs
-  - Class: OpenGLContextManager (Namespace: SiegeEngine.Core.Rendering.ContextManagement)
+  - Class: OpenGLContextManager (Namespace: SiegeEngine.Core.GPU.ContextManagement)
     - Inherits: ContextManager
     
     - Dependencies: Silk.NET.GLFW, Silk.NET.OpenGL, System
@@ -2660,12 +2746,12 @@ Folder: SiegeEngine
         - Calls: GlfwControlContext, OpenGLRenderContext, _glfw.Init, _glfw.Terminate
       - void Terminate()
 - File: OpenGLEnums.cs
-  - Class: OpenGLEnums (Namespace: SiegeEngine.Core.Rendering.ContextManagement)
+  - Class: OpenGLEnums (Namespace: SiegeEngine.Core.GPU.ContextManagement)
     - Inherits: AbstractRenderEnums
     
     - Dependencies: Silk.NET.OpenGL
 - File: OpenGLRenderContext.cs
-  - Class: OpenGLRenderContext (Namespace: SiegeEngine.Core.Rendering.ContextManagement)
+  - Class: OpenGLRenderContext (Namespace: SiegeEngine.Core.GPU.ContextManagement)
     - Inherits: IRenderContext
     
     - Dependencies: Silk.NET.GLFW, Silk.NET.OpenGL, System
@@ -2702,13 +2788,13 @@ Folder: SiegeEngine
   - Class: OptionElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, System, System.Numerics
     - Methods:
       - constructor OptionElement()
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
 - File: OrthoProjection.cs
-  - Class: OrthoProjection (Namespace: SiegeEngine.Core.Rendering.Projections)
+  - Class: OrthoProjection (Namespace: SiegeEngine.Core.GPU.Projections)
     - Inherits: IProjectionProvider
     
     - Dependencies: SiegeEngine.Core.Interfaces, System, System.Numerics
@@ -2719,7 +2805,7 @@ Folder: SiegeEngine
       - Matrix4x4 GetProjectionMatrix( float far,  float near,  int height, int width)
 - File: PanelChrome.cs
   - Class: PanelChrome (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.Renderers, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, System.Numerics
     - Fields:
       - BasePanel _owner
       - float _titleHeight
@@ -2733,7 +2819,7 @@ Folder: SiegeEngine
       - void Dispose()
 - File: PanelInputRouter.cs
   - Class: PanelInputRouter (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU, SiegeEngine.Core.Interfaces, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Linq, System.Numerics
     - Fields:
       - List<IPanel> _allPanels
       - HashSet<IPanel> _forcedOverdrawThisFrame
@@ -2750,7 +2836,7 @@ Folder: SiegeEngine
         - Calls: _forcedOverdrawThisFrame.Clear
 - File: PanelManager.cs
   - Class: PanelManager (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Linq, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - IControlContext _controlContext
@@ -2798,7 +2884,7 @@ Folder: SiegeEngine
       - void ReleasePanelCapture()
         - Calls: _captureManager.ReleaseCapture
 - File: PerspectiveProjection.cs
-  - Class: PerspectiveProjection (Namespace: SiegeEngine.Core.Rendering.Projections)
+  - Class: PerspectiveProjection (Namespace: SiegeEngine.Core.GPU.Projections)
     - Inherits: IProjectionProvider
     
     - Dependencies: SiegeEngine.Core.Interfaces, System, System.Numerics
@@ -2919,7 +3005,7 @@ Folder: SiegeEngine
   - Class: Player (Namespace: SiegeEngine.PlayerSystem)
     - Inherits: IComponent
     
-    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Managers, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering.ContextManagement, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Managers, SiegeEngine.Core.Physics, System, System.Numerics
     - Fields:
       - CameraController _camera
       - PhysicsComponent _physics
@@ -2937,7 +3023,7 @@ Folder: SiegeEngine
   - Class: PlayerControllerSystem (Namespace: SiegeEngine.Systems)
     - Inherits: GameSystem
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.PlayerSystem, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, System, System.Numerics
     - Fields:
       - IControlContext _controlContext
       - IntPtr _window
@@ -2983,7 +3069,7 @@ Folder: SiegeEngine
         - Calls: _predictionSystem.EnqueueMovementRequest, player.BlendComponent.Pack.CreateBlendStack, stack.MapPlayerInputToBlendCoord
       - void ResetFrame()
 - File: PointShader.cs
-  - Class: PointShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+  - Class: PointShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
       - string VertexShaderSource
       - string FragmentShaderSource
@@ -3017,7 +3103,7 @@ Folder: SiegeEngine
   - Class: RangeElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: InputElement
     
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, System, System.Globalization, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, System, System.Globalization, System.Numerics
     - Methods:
       - constructor RangeElement()
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
@@ -3027,14 +3113,14 @@ Folder: SiegeEngine
         - Calls: HtmlLayoutUtils.GetNdcQuad, quadRenderer.DrawNdcQuad
 - File: Render.cs
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics, System.Text.RegularExpressions
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics, System.Text.RegularExpressions
     - Methods:
       - void RenderBackgroundOnly( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, Render, _bgRenderer.Render, int.Parse, quadRenderer.DrawLine, quadRenderer.DrawNdcQuad
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, int.Parse, quadRenderer.DrawLine, quadRenderer.DrawNdcQuad
 - File: Renderer.cs
-  - Class: Renderer (Namespace: SiegeEngine.Core.Rendering)
+  - Class: Renderer (Namespace: SiegeEngine.Core.GPU)
     - Inherits: IRenderer
     
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, System, System.Collections.Generic
@@ -3043,7 +3129,7 @@ Folder: SiegeEngine
     - Methods:
       - constructor Renderer(Player player)
 - File: RendererDetector.cs
-  - Class: RendererDetector (Namespace: SiegeEngine.Core.Rendering)
+  - Class: RendererDetector (Namespace: SiegeEngine.Core.GPU)
     - Dependencies: System, System.Collections.Generic, System.Runtime.InteropServices
     - Fields:
       - string OpenGLDllWindows
@@ -3080,7 +3166,7 @@ Folder: SiegeEngine
   - Class: RuntimeGameplayScene (Namespace: SiegeEngine.Scenes)
     - Inherits: GameScene
     
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Physics, SiegeEngine.Core.Terrain, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
     - Fields:
       - Player _player
       - PlayerMovement _playerMovement
@@ -3126,7 +3212,7 @@ Folder: SiegeEngine
   - Class: SandboxScene (Namespace: SiegeEngine.Scenes.StartingPoints)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
     - Fields:
       - Player _player
       - PlayerMovement _playerMovement
@@ -3154,7 +3240,7 @@ Folder: SiegeEngine
   - Class: Scene (Namespace: SiegeEngine.Scenes)
     - Inherits: IScene, IDisposable
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - IControlContext _controlContext
@@ -3197,7 +3283,7 @@ Folder: SiegeEngine
       - void Deserialize(byte[] data)
 - File: SceneContext.cs
   - Class: SceneContext (Namespace: SiegeEngine.Scenes)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.PlayerSystem, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.PlayerSystem, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - SceneContext CreateCore( EventBus eventBus,  IControlContext controlContext,  IGameServer server,  nint window, IRenderContext renderContext)
       - SceneContext CreateForRuntime( EventBus eb,  IControlContext cc,  IGameServer s,  IRenderContext rc,  SceneData sceneData,  nint w, Level level)
@@ -3208,7 +3294,7 @@ Folder: SiegeEngine
 - File: SceneManager.cs
   - Class: resolution (Namespace: SiegeEngine.Core.Managers)
     - Inherits: pure
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Numerics, System.Text.Json
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Numerics, System.Text.Json
 - File: SceneRegistry.cs
   - Class: declaration (Namespace: SiegeEngine.Scenes)
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Scenes.StartingPoints, System, System.Collections.Generic, System.Linq
@@ -3216,7 +3302,7 @@ Folder: SiegeEngine
   - Class: SceneSettings (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System.Collections.Generic, System.Text.Json.Serialization
 - File: SceneShader.cs
-  - Class: SceneShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+  - Class: SceneShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Dependencies: System
     - Fields:
       - string VertexShaderSource
@@ -3237,7 +3323,7 @@ Folder: SiegeEngine
 - File: ScriptLoader.cs
   - Class: CustomSceneEntryAttribute (Namespace: SiegeEngine.Core.Managers)
     - Inherits: Attribute 
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Reflection
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Reflection
 - File: SelectBrushEvent.cs
   - Class: SelectBrushEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -3253,7 +3339,7 @@ Folder: SiegeEngine
   - Class: SelectElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - constructor SelectElement()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
@@ -3277,10 +3363,10 @@ Folder: SiegeEngine
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: ShaderProgram.cs
-  - Class: ShaderProgram (Namespace: SiegeEngine.Core.Rendering.Shaders)
+  - Class: ShaderProgram (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.ContextManagement, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - uint _program
@@ -3311,13 +3397,13 @@ Folder: SiegeEngine
       - void Dispose()
         - Calls: Console.WriteLine, _renderContext.DeleteProgram
 - File: ShaderSetup.cs
-  - Class: ShaderSetup (Namespace: SiegeEngine.Core.Rendering.Shaders)
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, Silk.NET.OpenGL
+  - Class: ShaderSetup (Namespace: SiegeEngine.Core.GPU.Shaders)
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, Silk.NET.OpenGL
 - File: ShaderStorageBuffer.cs
-  - Class: ShaderStorageBuffer (Namespace: SiegeEngine.Core.Rendering.Compute)
+  - Class: ShaderStorageBuffer (Namespace: SiegeEngine.Core.GPU.Compute)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, System
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, System
     - Fields:
       - IRenderContext _renderContext
       - uint _buffer
@@ -3355,10 +3441,10 @@ Folder: SiegeEngine
       - void LogBoneHierarchy( Bone bone,  int level, List<Bone> bones)
         - Calls: FBXParserBase.Log
 - File: SkyboxRenderer.cs
-  - Class: SkyboxRenderer (Namespace: SiegeEngine.Core.Rendering.Renderers)
+  - Class: SkyboxRenderer (Namespace: SiegeEngine.Core.GPU.Renderers)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, System, System.Collections.Generic, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, System, System.Collections.Generic, System.IO, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - ShaderProgram _skyShader
@@ -3377,7 +3463,7 @@ Folder: SiegeEngine
       - void Dispose()
         - Calls: _renderContext.DeleteTexture
 - File: SkyboxShader.cs
-  - Class: SkyboxShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+  - Class: SkyboxShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Dependencies: System
     - Fields:
       - string VertexShaderSource
@@ -3425,7 +3511,7 @@ Folder: SiegeEngine
     
     - Dependencies: System.Numerics
 - File: SpriteShader.cs
-  - Class: SpriteShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+  - Class: SpriteShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
       - string VertexShaderSource
       - string FragmentShaderSource
@@ -3451,13 +3537,13 @@ Folder: SiegeEngine
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: SystemFontRenderer.cs
-  - Class: CharacterData (Namespace: SiegeEngine.Core.Rendering.Renderers)
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.Drawing.Text, System.Linq
+  - Class: CharacterData (Namespace: SiegeEngine.Core.GPU.Renderers)
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.Drawing.Text, System.Linq
 - File: TableElement.cs
   - Class: TableElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - constructor TableElement()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
@@ -3468,7 +3554,7 @@ Folder: SiegeEngine
   - Class: TdElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, System.Numerics
     - Methods:
       - constructor TdElement()
 - File: TerrainManager.cs
@@ -3487,10 +3573,10 @@ Folder: SiegeEngine
       - void SaveToDisk( string terrainName, string projectPath)
         - Calls: Console.WriteLine
 - File: TerrainRenderer.cs
-  - Class: TerrainRenderer (Namespace: SiegeEngine.Core.Rendering.Renderers)
+  - Class: TerrainRenderer (Namespace: SiegeEngine.Core.GPU.Renderers)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Terrain, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - ShaderProgram _terrainShader
@@ -3508,7 +3594,7 @@ Folder: SiegeEngine
   - Class: TerrainScene (Namespace: SiegeEngine.Scenes)
     - Inherits: GameScene
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, SiegeEngine.PlayerSystem, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Terrain, SiegeEngine.PlayerSystem, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics
     - Fields:
       - FlyCameraController _flyCamera
       - int _terrainWidth
@@ -3574,7 +3660,7 @@ Folder: SiegeEngine
         - Calls: _renderContext.DeleteTexture
 - File: TerrainTextureParser.cs
   - Class: TerrainTextureParser (Namespace: SiegeEngine.Core.Terrain)
-    - Dependencies: SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, System, System.Drawing, System.IO
+    - Dependencies: SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, System, System.Drawing, System.IO
     - Methods:
       - uint LoadColorTexture( string path, IRenderContext renderContext)
         - Calls: Console.WriteLine
@@ -3584,7 +3670,7 @@ Folder: SiegeEngine
   - Class: TextElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, System, System.Collections.Generic, System.Numerics
     - Fields:
       - string _content
       - List<string> _lines
@@ -3601,14 +3687,14 @@ Folder: SiegeEngine
         - Calls: textRenderer.GetTextSize, textRenderer.RenderText
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
 - File: TextRenderer.cs
-  - Class: CachedGlyphRun (Namespace: SiegeEngine.Core.Rendering.Renderers)
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
+  - Class: CachedGlyphRun (Namespace: SiegeEngine.Core.GPU.Renderers)
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
     - Fields:
       - List<GlyphInstance> Glyphs
       - float TotalWidth
       - float LineHeight
 - File: TextShader.cs
-  - Class: TextShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+  - Class: TextShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
       - string VertexShaderSource
       - string FragmentShaderSource
@@ -3619,8 +3705,8 @@ Folder: SiegeEngine
   - Class: TextureInfo (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System
 - File: TextureLoader.cs
-  - Class: TextureLoader (Namespace: SiegeEngine.Core.Rendering)
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, Silk.NET.OpenGL, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics
+  - Class: TextureLoader (Namespace: SiegeEngine.Core.GPU)
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, Silk.NET.OpenGL, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics
     - Fields:
       - byte[] PngSignature
       - HashSet<byte> ValidTgaTypes
@@ -3635,7 +3721,7 @@ Folder: SiegeEngine
   - Class: ThElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, System.Numerics
     - Methods:
       - constructor ThElement()
 - File: TilemapExporter.cs
@@ -3659,7 +3745,7 @@ Folder: SiegeEngine
   - Class: TrElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, System.Numerics
     - Methods:
       - constructor TrElement()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
@@ -3678,7 +3764,7 @@ Folder: SiegeEngine
   - Class: TwoDSandboxScene (Namespace: SiegeEngine.Scenes.StartingPoints)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Projections, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Projections, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IProjectionProvider _projectionProvider
       - ShaderProgram _gridShader
@@ -3695,7 +3781,7 @@ Folder: SiegeEngine
       - void Dispose()
 - File: UIInteractionLayer.cs
   - Class: UIInteractionLayer (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI.Elements, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.Globalization, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.UI.Elements, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.Globalization, System.Linq, System.Numerics
     - Fields:
       - UIOverlay _overlay
       - IControlContext _controlContext
@@ -3722,7 +3808,7 @@ Folder: SiegeEngine
       - bool IsDropdownElement(HtmlElement elem)
 - File: UIOverlay.cs
   - Class: UIOverlay (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Renderers, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI.Elements, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.UI.Elements, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - IControlContext _controlContext
@@ -3802,10 +3888,10 @@ Folder: SiegeEngine
       - bool InvokeListeners( JSElement jsElem = null,  string eventName, HtmlElement elem)
         - Calls: Console.WriteLine, JSElement, _jsContext.Evaluator.CallFunction
 - File: UIQuadRenderer.cs
-  - Class: UIQuadRenderer (Namespace: SiegeEngine.Core.Rendering.Renderers)
+  - Class: UIQuadRenderer (Namespace: SiegeEngine.Core.GPU.Renderers)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - ShaderProgram _shader
@@ -3854,7 +3940,7 @@ Folder: SiegeEngine
       - void SaveSettings()
         - Calls: Console.WriteLine, JsonSerializer.Serialize
 - File: UiShader.cs
-  - Class: UiShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+  - Class: UiShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
       - string VertexSource
       - string FragmentSource
@@ -3867,19 +3953,19 @@ Folder: SiegeEngine
   - Class: UlElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, System.Numerics
     - Methods:
       - constructor UlElement()
 - File: Vertex.cs
-  - Class: Vertex (Namespace: SiegeEngine.Core.Rendering)
+  - Class: Vertex (Namespace: SiegeEngine.Core.GPU)
     - Dependencies: System.Numerics
     - Methods:
       - constructor Vertex( float a,  float b,  float g,  float r,  float y,  float z, float x)
 - File: VertexBuffer.cs
-  - Class: VertexBuffer (Namespace: SiegeEngine.Core.Rendering)
+  - Class: VertexBuffer (Namespace: SiegeEngine.Core.GPU)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.ContextManagement, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU.ContextManagement, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - uint _vao
@@ -3907,14 +3993,14 @@ Folder: SiegeEngine
       - void UpdateVerticesPartial( int startVertexIndex,  int stride = 9,  int vertexCount, List<float> vertices)
         - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferSubData
 - File: Viewport.cs
-  - Class: Viewport (Namespace: SiegeEngine.Core.Rendering.ContextManagement)
+  - Class: Viewport (Namespace: SiegeEngine.Core.GPU.ContextManagement)
     - Dependencies: System.Numerics
     - Fields:
       - Vector2 Center
     - Methods:
       - constructor Viewport( float height,  float width,  float y, float x)
 - File: VulkanNative.cs
-  - Class: VkDeviceCreateInfo (Namespace: SiegeEngine.Core.Rendering.ContextManagement)
+  - Class: VkDeviceCreateInfo (Namespace: SiegeEngine.Core.GPU.ContextManagement)
     - Dependencies: System, System.Runtime.InteropServices
     - Fields:
       - int sType
@@ -3937,7 +4023,7 @@ Folder: SiegeEngine
         - Calls: server.ValidateAndUpdateMovement
       - void Render( bool isPreview, GL gl)
 - File: WaterShader.cs
-  - Class: WaterShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+  - Class: WaterShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
       - string VertexShaderSource
       - string FragmentShaderSource
@@ -3971,7 +4057,7 @@ Folder: SiegeEngine
 - File: WeatherState.cs
   - Class: WeatherState (Namespace: SiegeEngine.Core.Definitions)
 - File: WindowNative.cs
-  - Class: POINT (Namespace: SiegeEngine.Core.Rendering)
+  - Class: POINT (Namespace: SiegeEngine.Core.GPU)
     - Dependencies: System, System.Runtime.InteropServices
     - Fields:
       - int x
@@ -4097,6 +4183,56 @@ SiegeEngine.Core.Events.SelectSpriteEvent
 SiegeEngine.Core.Events.SoundRayTraceResult
 SiegeEngine.Core.Events.TimeOfDayChangedEvent
 SiegeEngine.Core.Events.WeatherChangedEvent
+SiegeEngine.Core.GPU.Compute.ComputeProgram
+SiegeEngine.Core.GPU.Compute.DebugSegment
+SiegeEngine.Core.GPU.Compute.DrawVertex
+SiegeEngine.Core.GPU.Compute.ShaderStorageBuffer
+SiegeEngine.Core.GPU.ContextManagement.AbstractRenderEnums
+SiegeEngine.Core.GPU.ContextManagement.ContextManager
+SiegeEngine.Core.GPU.ContextManagement.D3D12_COMMAND_SIGNATURE_DESC
+SiegeEngine.Core.GPU.ContextManagement.GlfwControlContext
+SiegeEngine.Core.GPU.ContextManagement.IControlContext
+SiegeEngine.Core.GPU.ContextManagement.IRenderContext
+SiegeEngine.Core.GPU.ContextManagement.OpenGLContextManager
+SiegeEngine.Core.GPU.ContextManagement.OpenGLEnums
+SiegeEngine.Core.GPU.ContextManagement.OpenGLRenderContext
+SiegeEngine.Core.GPU.ContextManagement.Viewport
+SiegeEngine.Core.GPU.ContextManagement.VkDeviceCreateInfo
+SiegeEngine.Core.GPU.POINT
+SiegeEngine.Core.GPU.Projections.OrthoProjection
+SiegeEngine.Core.GPU.Projections.PerspectiveProjection
+SiegeEngine.Core.GPU.Renderer
+SiegeEngine.Core.GPU.RendererDetector
+SiegeEngine.Core.GPU.Renderers.BackgroundRenderer
+SiegeEngine.Core.GPU.Renderers.CachedGlyphRun
+SiegeEngine.Core.GPU.Renderers.CharacterData
+SiegeEngine.Core.GPU.Renderers.ChromeRenderer
+SiegeEngine.Core.GPU.Renderers.EditorTextRenderer
+SiegeEngine.Core.GPU.Renderers.GameRenderer
+SiegeEngine.Core.GPU.Renderers.LayeredUIRenderer
+SiegeEngine.Core.GPU.Renderers.ModelRenderer
+SiegeEngine.Core.GPU.Renderers.SkyboxRenderer
+SiegeEngine.Core.GPU.Renderers.TerrainRenderer
+SiegeEngine.Core.GPU.Renderers.UIQuadRenderer
+SiegeEngine.Core.GPU.Shaders.AcousticIdShader
+SiegeEngine.Core.GPU.Shaders.AcousticResidualShader
+SiegeEngine.Core.GPU.Shaders.AnimationShader
+SiegeEngine.Core.GPU.Shaders.AssetShader
+SiegeEngine.Core.GPU.Shaders.EditorSceneShader
+SiegeEngine.Core.GPU.Shaders.GpuDebugSegment
+SiegeEngine.Core.GPU.Shaders.ModelShader
+SiegeEngine.Core.GPU.Shaders.PointShader
+SiegeEngine.Core.GPU.Shaders.SceneShader
+SiegeEngine.Core.GPU.Shaders.ShaderProgram
+SiegeEngine.Core.GPU.Shaders.ShaderSetup
+SiegeEngine.Core.GPU.Shaders.SkyboxShader
+SiegeEngine.Core.GPU.Shaders.SpriteShader
+SiegeEngine.Core.GPU.Shaders.TextShader
+SiegeEngine.Core.GPU.Shaders.UiShader
+SiegeEngine.Core.GPU.Shaders.WaterShader
+SiegeEngine.Core.GPU.TextureLoader
+SiegeEngine.Core.GPU.Vertex
+SiegeEngine.Core.GPU.VertexBuffer
 SiegeEngine.Core.Interfaces.ICustomOverlay
 SiegeEngine.Core.Interfaces.IDataAwarePanel
 SiegeEngine.Core.Interfaces.IGameServer
@@ -4135,53 +4271,6 @@ SiegeEngine.Core.Physics.Node
 SiegeEngine.Core.Physics.ObbShape
 SiegeEngine.Core.Physics.PhysicsWorld
 SiegeEngine.Core.Physics.SphereShape
-SiegeEngine.Core.Rendering.Compute.ComputeProgram
-SiegeEngine.Core.Rendering.Compute.GpuRayResult
-SiegeEngine.Core.Rendering.Compute.GpuTriangle
-SiegeEngine.Core.Rendering.Compute.ShaderStorageBuffer
-SiegeEngine.Core.Rendering.ContextManagement.AbstractRenderEnums
-SiegeEngine.Core.Rendering.ContextManagement.ContextManager
-SiegeEngine.Core.Rendering.ContextManagement.D3D12_COMMAND_SIGNATURE_DESC
-SiegeEngine.Core.Rendering.ContextManagement.GlfwControlContext
-SiegeEngine.Core.Rendering.ContextManagement.IControlContext
-SiegeEngine.Core.Rendering.ContextManagement.IRenderContext
-SiegeEngine.Core.Rendering.ContextManagement.OpenGLContextManager
-SiegeEngine.Core.Rendering.ContextManagement.OpenGLEnums
-SiegeEngine.Core.Rendering.ContextManagement.OpenGLRenderContext
-SiegeEngine.Core.Rendering.ContextManagement.Viewport
-SiegeEngine.Core.Rendering.ContextManagement.VkDeviceCreateInfo
-SiegeEngine.Core.Rendering.POINT
-SiegeEngine.Core.Rendering.Projections.OrthoProjection
-SiegeEngine.Core.Rendering.Projections.PerspectiveProjection
-SiegeEngine.Core.Rendering.Renderer
-SiegeEngine.Core.Rendering.RendererDetector
-SiegeEngine.Core.Rendering.Renderers.BackgroundRenderer
-SiegeEngine.Core.Rendering.Renderers.CachedGlyphRun
-SiegeEngine.Core.Rendering.Renderers.CharacterData
-SiegeEngine.Core.Rendering.Renderers.ChromeRenderer
-SiegeEngine.Core.Rendering.Renderers.EditorTextRenderer
-SiegeEngine.Core.Rendering.Renderers.GameRenderer
-SiegeEngine.Core.Rendering.Renderers.LayeredUIRenderer
-SiegeEngine.Core.Rendering.Renderers.ModelRenderer
-SiegeEngine.Core.Rendering.Renderers.SkyboxRenderer
-SiegeEngine.Core.Rendering.Renderers.TerrainRenderer
-SiegeEngine.Core.Rendering.Renderers.UIQuadRenderer
-SiegeEngine.Core.Rendering.Shaders.AnimationShader
-SiegeEngine.Core.Rendering.Shaders.AssetShader
-SiegeEngine.Core.Rendering.Shaders.EditorSceneShader
-SiegeEngine.Core.Rendering.Shaders.ModelShader
-SiegeEngine.Core.Rendering.Shaders.PointShader
-SiegeEngine.Core.Rendering.Shaders.SceneShader
-SiegeEngine.Core.Rendering.Shaders.ShaderProgram
-SiegeEngine.Core.Rendering.Shaders.ShaderSetup
-SiegeEngine.Core.Rendering.Shaders.SkyboxShader
-SiegeEngine.Core.Rendering.Shaders.SpriteShader
-SiegeEngine.Core.Rendering.Shaders.TextShader
-SiegeEngine.Core.Rendering.Shaders.UiShader
-SiegeEngine.Core.Rendering.Shaders.WaterShader
-SiegeEngine.Core.Rendering.TextureLoader
-SiegeEngine.Core.Rendering.Vertex
-SiegeEngine.Core.Rendering.VertexBuffer
 SiegeEngine.Core.Terrain.CustomTerrainParser
 SiegeEngine.Core.Terrain.GeoReference
 SiegeEngine.Core.Terrain.TerrainPaintData
@@ -4256,6 +4345,7 @@ SiegeEngine.Systems.LightingSystem
 SiegeEngine.Systems.PlayerControllerSystem
 SwitchSceneEvent
 ThrowStatementNode
+ToolChest.AcousticDebugOverlay
 ToolChest.AddSkyboxUIOverlay
 ToolChest.AssetBrowserUIOverlay
 ToolChest.BlendDotOverlay

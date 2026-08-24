@@ -3,10 +3,10 @@
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Physics;
-using SiegeEngine.Core.Rendering;
-using SiegeEngine.Core.Rendering.ContextManagement;
-using SiegeEngine.Core.Rendering.Renderers;
-using SiegeEngine.Core.Rendering.Shaders;
+using SiegeEngine.Core.GPU;
+using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Renderers;
+using SiegeEngine.Core.GPU.Shaders;
 using System;
 using System.Collections.Generic;
 using System.Numerics;

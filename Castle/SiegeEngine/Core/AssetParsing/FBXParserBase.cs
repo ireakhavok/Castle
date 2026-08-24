@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetParsing.Model;
-using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.GPU;
 
 namespace SiegeEngine.Core.AssetParsing
 {

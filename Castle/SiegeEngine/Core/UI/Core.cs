@@ -1,7 +1,7 @@
 ﻿// file: core.cs
-using SiegeEngine.Core.Rendering.ContextManagement;
-using SiegeEngine.Core.Rendering.Renderers;
-using SiegeEngine.Core.Rendering.Shaders;
+using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Renderers;
+using SiegeEngine.Core.GPU.Shaders;
 using SiegeEngine.Core.UI.Elements;
 using System;
 using System.Collections.Generic;

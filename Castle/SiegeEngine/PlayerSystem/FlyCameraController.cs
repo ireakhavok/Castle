@@ -3,7 +3,7 @@
 using System;
 using System.Numerics;
 using SiegeEngine.Core.Definitions;
-using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.GPU.ContextManagement;
 
 namespace SiegeEngine.Scenes
 {

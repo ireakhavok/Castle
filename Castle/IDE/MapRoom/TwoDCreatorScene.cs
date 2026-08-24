@@ -3,15 +3,15 @@
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.Rendering;
-using SiegeEngine.Core.Rendering.Shaders;
+using SiegeEngine.Core.GPU;
+using SiegeEngine.Core.GPU.Shaders;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Scenes;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.IO;
-using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.GPU.ContextManagement;
 namespace MapRoom
 {
     public unsafe class TwoDCreatorScene : Scene

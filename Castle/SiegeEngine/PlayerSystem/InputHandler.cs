@@ -5,7 +5,7 @@ using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Networking;
-using SiegeEngine.Core.Rendering.ContextManagement;
+using SiegeEngine.Core.GPU.ContextManagement;
 
 namespace SiegeEngine.PlayerSystem
 {

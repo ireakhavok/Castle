@@ -1,4 +1,4 @@
-﻿using SiegeEngine.Core.Rendering;
+﻿using SiegeEngine.Core.GPU;
 using System;
 using System.Linq;
 using System.Numerics;

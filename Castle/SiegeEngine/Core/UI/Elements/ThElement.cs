@@ -1,7 +1,7 @@
 ﻿// Folder: SiegeEngine.UI
 // File: ThElement.cs
-using SiegeEngine.Core.Rendering.ContextManagement;
-using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU;
 using System.Numerics;
 
 namespace SiegeEngine.Core.UI.Elements
