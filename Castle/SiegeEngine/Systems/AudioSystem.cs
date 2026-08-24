@@ -26,8 +26,8 @@ namespace SiegeEngine.Systems
         private const float SpatialMaxDistance = 300f;
         private const float MinAudibleVolume = 0.01f;
         // Slower rates = fewer clicks when free-surface result updates
-        private const float IntensitySmoothRate = 4.0f;
-        private const float DirectionSmoothRate = 6.0f;
+        private const float IntensitySmoothRate = 10.0f;   // ~0.1 s
+        private const float DirectionSmoothRate = 10.0f;   // ~0.1 s
         private const float IntensityHysteresis = 0.04f;
         private Vector3 _listenerPosition;
         private Vector3 _listenerForward = new Vector3(0, 1, 0);
