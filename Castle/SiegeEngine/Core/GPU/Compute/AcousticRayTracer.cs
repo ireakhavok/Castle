@@ -72,7 +72,7 @@ namespace SiegeEngine.Core.GPU.Compute
         private Vector3 _pendingSource;
         private uint _pendingGeometryVersion;
         private int _pendingFace;
-        private const int FacesPerCall = 2;
+        private const int FacesPerCall = 1;
         private uint _fbo;
         private uint _idTexture;
         private uint _depthRb;

@@ -50,6 +50,9 @@ Folder: IDE
       - List<Vector3> _lastPerceivedSources
       - float PerceivedMoveThreshold
       - float SpeedOfSound
+      - AcousticRayTracer _sharedTracer
+      - AcousticGeometry _sharedGeometry
+      - bool HasSharedProvider
       - Vector4 ListenerFreeColor
       - Vector4 SourceFreeColor
       - Vector4 DiffractedColor
@@ -62,13 +65,14 @@ Folder: IDE
             Func<IReadOnlyList<Vector3>> getSourcePositions, 
             Func<Vector3> getListenerPos, 
             IRenderContext renderContext)
+      - void SetSharedFreeSurface( AcousticGeometry geometry, AcousticRayTracer tracer)
       - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: ComputePerceived, EnsureResources, RebuildLineMesh, RebuildSurfaceMesh, _geometry.Rebuild, _lastPerceivedSources.Add, _lastPerceivedSources.Clear, _lineBuffer.Bind, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _surfaceBuffer.Bind, _tracer.KickDebugBidirectional, _tracer.TryCompletePendingRaster
-      - void RebuildSurfaceMesh()
-        - Calls: AddFilledTriangle, VertexBuffer, _geometry.GetTriangle, _surfaceBuffer.UpdateCustom, _surfaceIndices.Clear, _surfaceVerts.Clear
-      - void ComputePerceived( IReadOnlyList<Vector3> sources, Vector3 listener)
-        - Calls: _cachedPerceived.Add, _cachedPerceived.Clear, _geometry.GetTriangle, _geometry.TryClosestHit
+        - Calls: ComputePerceived, EnsureResources, RebuildLineMesh, RebuildSurfaceMesh, _geometry.Rebuild, _lastPerceivedSources.Add, _lastPerceivedSources.Clear, _lineBuffer.Bind, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _surfaceBuffer.Bind, activeTracer.KickDebugBidirectional, activeTracer.TryCompletePendingRaster
+      - void RebuildSurfaceMesh( AcousticGeometry geom, AcousticRayTracer tracer)
+        - Calls: AddFilledTriangle, VertexBuffer, _surfaceBuffer.UpdateCustom, _surfaceIndices.Clear, _surfaceVerts.Clear, geom.GetTriangle
+      - void ComputePerceived( AcousticGeometry geom,  AcousticRayTracer tracer,  IReadOnlyList<Vector3> sources, Vector3 listener)
+        - Calls: _cachedPerceived.Add, _cachedPerceived.Clear, geom.GetTriangle, geom.TryClosestHit
       - void RebuildLineMesh( IReadOnlyList<Vector3> sources, Vector3 listener)
         - Calls: AddCross, AddLine, VertexBuffer, _lineBuffer.UpdateCustom, _lineIndices.Clear, _lineVerts.Clear
       - void EnsureResources()
@@ -215,7 +219,7 @@ Folder: IDE
   - Class: BasicGameScene (Namespace: CastleBuilder)
     - Inherits: GameScene
         
-    - Dependencies: Keystone, MapRoom, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json, ToolChest
+    - Dependencies: Keystone, MapRoom, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json, ToolChest
     - Methods:
       - void Render(IReadOnlyList<Entity> entities)
 - File: FileSelectorPanel.cs
