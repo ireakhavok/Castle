@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine/Systems
-// File: AudioSystem.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -27,8 +25,10 @@ namespace SiegeEngine.Systems
         private const float SpatialRefDistance = 5.0f;
         private const float SpatialMaxDistance = 300f;
         private const float MinAudibleVolume = 0.01f;
-        private const float IntensitySmoothRate = 18.0f;
-        private const float DirectionSmoothRate = 22.0f;
+        // Slower rates = fewer clicks when free-surface result updates
+        private const float IntensitySmoothRate = 4.0f;
+        private const float DirectionSmoothRate = 6.0f;
+        private const float IntensityHysteresis = 0.04f;
         private Vector3 _listenerPosition;
         private Vector3 _listenerForward = new Vector3(0, 1, 0);
         private volatile bool _listenerValid;
@@ -40,6 +40,8 @@ namespace SiegeEngine.Systems
         private readonly List<AutoPlayRegistration> _workerSnapshot = new List<AutoPlayRegistration>();
         private bool _autoPlayScanned;
         private bool _geometryUploaded;
+        private int _lastGeometryEntityCount = -1;
+        private uint _lastGeometryVersion;
         private readonly List<string> _playlist = new List<string>();
         private int _playlistIndex = -1;
         private int _currentPlaylistHandle = -1;
@@ -53,6 +55,32 @@ namespace SiegeEngine.Systems
         private Thread _audioWorker;
         private volatile bool _workerRunning;
         private readonly object _rayLock = new object();
+        /// <summary>
+        /// When true the free-surface (ray-traced) path is used for occluded sources.
+        /// When false only LOS + material transmission is applied (or none).
+        /// Games with no 3D world space simply leave this false.
+        /// Bind this to an IDE checkbox / ProjectSettings key.
+        /// </summary>
+        public bool EnableFreeSurfaceAudio { get; set; } = true;
+
+        // ---- Publish-subscribe surface (single producer) ----
+        public bool FreeSurfaceReady =>
+            _gpuOcclusionReady && _geometryUploaded && _acousticRayTracer != null && _acousticRayTracer.VisibilityCacheValid;
+        public uint FreeSurfaceVersion => _acousticRayTracer?.VisibilityVersion ?? 0;
+        public IReadOnlyCollection<int> GetMutualFree() =>
+            _acousticRayTracer != null ? _acousticRayTracer.GetMutualFree() : Array.Empty<int>();
+        public IReadOnlyCollection<int> GetListenerFree() =>
+            _acousticRayTracer != null ? _acousticRayTracer.GetListenerFree() : Array.Empty<int>();
+        public IReadOnlyCollection<int> GetSourceFree() =>
+            _acousticRayTracer != null ? _acousticRayTracer.GetSourceFree() : Array.Empty<int>();
+        public SoundRayTraceResult ComputeFreeSurfacePerceived(Vector3 listener, Vector3 source) =>
+            _acousticRayTracer != null
+                ? _acousticRayTracer.ComputeFreeSurfacePerceived(listener, source)
+                : new SoundRayTraceResult { Intensity = 0.001f, Delay = 0f, LowPassCutoff = 0f, ApparentDirection = Vector3.Zero };
+        public AcousticGeometry AcousticGeometry => _acousticGeometry;
+        public AcousticRayTracer AcousticRayTracer => _acousticRayTracer;
+        // ----------------------------------------------------
+
         private class MonoPcmClip
         {
             public short[] Samples;
@@ -117,6 +145,8 @@ namespace SiegeEngine.Systems
                 _acousticRayTracer = new AcousticRayTracer(renderContext, _acousticGeometry);
                 _gpuOcclusionReady = true;
                 _geometryUploaded = false;
+                _lastGeometryEntityCount = -1;
+                _lastGeometryVersion = 0;
                 Console.WriteLine("AudioSystem: GPU occlusion infrastructure ready.");
             }
             catch (Exception ex)
@@ -128,6 +158,9 @@ namespace SiegeEngine.Systems
         public void SetHeightProvider(IHeightProvider provider)
         {
             _heightProvider = provider;
+            // Force rebuild next frame so heightmap changes are picked up.
+            _geometryUploaded = false;
+            _lastGeometryEntityCount = -1;
         }
         public void RebuildAcousticGeometry()
         {
@@ -140,6 +173,8 @@ namespace SiegeEngine.Systems
             }
             _acousticGeometry.Rebuild(_server.GetEntities(), _heightProvider);
             _geometryUploaded = true;
+            _lastGeometryEntityCount = _server.GetEntities().Count;
+            _lastGeometryVersion = _acousticGeometry.GeometryVersion;
             Console.WriteLine($"AudioSystem: Acoustic geometry rebuilt – {_acousticGeometry.TriangleCount} triangles" +
                               (_heightProvider != null ? " (with heightmap)" : " (OBBs only)"));
         }
@@ -207,17 +242,17 @@ namespace SiegeEngine.Systems
             float dist = toListener.Length();
             if (dist < 0.01f)
                 return los;
-            // Pure LOS – absolute. No residual, no free-surface, no diffraction.
+            // Free-surface is completely optional. Games with no 3D world space never enable it.
+            if (!EnableFreeSurfaceAudio)
+                return los;
             if (los.Intensity >= 0.95f)
                 return los;
-            // Authoritative occluded path: free-surface mutual energy (exact same math as debug overlay orange ray)
             if (_acousticRayTracer != null && _acousticRayTracer.VisibilityCacheValid)
             {
                 var free = _acousticRayTracer.ComputeFreeSurfacePerceived(listenerPos, sourcePos);
                 if (free.Intensity > 0.01f && free.ApparentDirection.LengthSquared() > 1e-6f)
                     return free;
             }
-            // Fallback only when no mutual free surfaces exist
             return los;
         }
         public override void Update(float deltaTime)
@@ -247,12 +282,24 @@ namespace SiegeEngine.Systems
                 ScanAndRegisterAutoPlay();
                 _autoPlayScanned = true;
             }
-            if (_gpuOcclusionReady && !_geometryUploaded && _server != null && _server.GetEntities().Count > 0)
-                RebuildAcousticGeometry();
-            // Free-surface true double-buffer:
-            // Kick is zero-cost (gate only).
-            // TryCompletePendingRaster runs the full 12-face raster and swaps only after all faces are finished.
-            if (_gpuOcclusionReady && _geometryUploaded && _acousticRayTracer != null && _listenerValid)
+            // Geometry dirty tracking – rebuild only when entities or GeometryVersion actually change.
+            if (_gpuOcclusionReady && _server != null)
+            {
+                int entityCount = _server.GetEntities().Count;
+                uint geomVersion = _acousticGeometry?.GeometryVersion ?? 0;
+                bool dirty = !_geometryUploaded ||
+                             entityCount != _lastGeometryEntityCount ||
+                             geomVersion != _lastGeometryVersion;
+                if (dirty && entityCount > 0)
+                    RebuildAcousticGeometry();
+            }
+            // Free-surface production is completely optional.
+            // The cheap dirty/move gate lives inside KickDebugBidirectional.
+            // No per-frame LOS pre-filter – that was the FPS regression.
+            if (EnableFreeSurfaceAudio &&
+                _gpuOcclusionReady && _geometryUploaded &&
+                _acousticRayTracer != null && _listenerValid &&
+                _acousticGeometry != null && _acousticGeometry.TriangleCount > 0)
             {
                 List<AutoPlayRegistration> snapshot;
                 lock (_regsLock)
@@ -313,6 +360,12 @@ namespace SiegeEngine.Systems
                     ? reg.WorkerResult
                     : new SoundRayTraceResult { Intensity = 1f, ApparentDirection = Vector3.Zero, LowPassCutoff = 12000f };
                 float targetIntensity = Math.Clamp(target.Intensity, 0.001f, 1f);
+                // Hysteresis – ignore tiny intensity jumps that still produce clicks
+                if (reg.HasSmoothedState &&
+                    Math.Abs(targetIntensity - reg.SmoothedIntensity) < IntensityHysteresis)
+                {
+                    targetIntensity = reg.SmoothedIntensity;
+                }
                 Vector3 targetDir = target.ApparentDirection.LengthSquared() > 0.0001f
                     ? Vector3.Normalize(target.ApparentDirection)
                     : Vector3.Normalize(reg.Source.Position - _listenerPosition);

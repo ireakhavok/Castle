@@ -1,6 +1,4 @@
-﻿// Folder: CastleBuilder
-// File: EditorScene.cs
-using Keystone;
+﻿using Keystone;
 using MapRoom;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -10,6 +8,7 @@ using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Scenes;
+using SiegeEngine.Systems;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -29,6 +28,7 @@ namespace CastleBuilder
         private GameScene _pendingDisposeScene;
         private Scene _pendingDisposeHosted;
         private bool _scriptsActivatedForProject;
+        private bool _coreSystemsRegistered;
         public static EditorScene Current { get; private set; }
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus) { }
@@ -36,7 +36,24 @@ namespace CastleBuilder
         {
             base.Initialize(width, height);
             Current = this;
+            RegisterCoreSystems();
             LoadProjectData();
+        }
+        /// <summary>
+        /// Same core systems SceneManager registers for Play.
+        /// AudioSystem is optional at runtime (EnableFreeSurfaceAudio / LOS / none).
+        /// </summary>
+        private void RegisterCoreSystems()
+        {
+            if (_coreSystemsRegistered || _server == null) return;
+            _coreSystemsRegistered = true;
+            var prediction = new ClientPredictionSystem(_server, _eventBus);
+            _server.AddSystem(prediction);
+            _server.AddSystem(new AnimationSystem(_server));
+            // Free-surface is fully optional. Games with no 3D world space simply leave
+            // EnableFreeSurfaceAudio = false (or never call Kick). LOS / none still work.
+            _server.AddSystem(new AudioSystem(_server, _eventBus, isServer: false, validationSystem: null, renderContext: _renderContext));
+            Console.WriteLine("[EditorScene] Core systems registered (Prediction, Animation, Audio).");
         }
         public ProjectData GetProjectData() => _projectData;
         public IReadOnlyList<Entity> GetEntities() => _server.GetEntities();

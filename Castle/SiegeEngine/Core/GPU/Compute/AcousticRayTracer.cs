@@ -66,18 +66,24 @@ namespace SiegeEngine.Core.GPU.Compute
         private int _fsWrite = 0;
         private int _fsRead = 1;
         private uint _visibilityVersion;
-        // Progressive face state machine – 1 face per call → no hitch
+        // Progressive face state machine – 2 faces per call
         private bool _pendingRaster;
         private Vector3 _pendingListener;
         private Vector3 _pendingSource;
         private uint _pendingGeometryVersion;
-        private int _pendingFace;               // 0..11 (0-5 listener, 6-11 source)
-        private const int FacesPerCall = 1;
+        private int _pendingFace;
+        private const int FacesPerCall = 6;
         private uint _fbo;
         private uint _idTexture;
         private uint _depthRb;
         private uint[] _idReadback;
         private bool _fboReady;
+        // PBO + fence for non-blocking ID readback
+        private readonly uint[] _pbo = new uint[2];
+        private int _pboIndex;
+        private uint _pendingFence;
+        private int _pendingPbo;
+        private bool _fencePending;
         private static readonly Vector3[] CubeDirs =
         {
             new Vector3( 1, 0, 0),
@@ -129,6 +135,19 @@ namespace SiegeEngine.Core.GPU.Compute
             _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, 0);
             if (!_fboReady)
                 Console.WriteLine($"[AcousticRayTracer] ID FBO incomplete, status={status}");
+
+            // Allocate double-buffered PBOs for non-blocking ID readback
+            uint pboBytes = (uint)(IdBufferSize * IdBufferSize * sizeof(uint));
+            for (int i = 0; i < 2; i++)
+            {
+                _pbo[i] = _renderContext.GenBuffer();
+                _renderContext.BindBuffer(_renderContext.Enums.PixelPackBuffer, _pbo[i]);
+                _renderContext.BufferData(_renderContext.Enums.PixelPackBuffer, pboBytes, null, _renderContext.Enums.StreamRead);
+            }
+            _renderContext.BindBuffer(_renderContext.Enums.PixelPackBuffer, 0);
+            _pboIndex = 0;
+            _pendingFence = 0;
+            _fencePending = false;
         }
         public void KickContinuousTrace(Vector3 sourcePos, Vector3 listenerPos)
         {
@@ -136,7 +155,7 @@ namespace SiegeEngine.Core.GPU.Compute
         }
         /// <summary>
         /// Zero-cost gate. Records pending positions and returns immediately.
-        /// The full raster runs only inside TryCompletePendingRaster, one face at a time.
+        /// The full raster runs only inside TryCompletePendingRaster, two faces at a time.
         /// </summary>
         public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources)
         {
@@ -149,7 +168,6 @@ namespace SiegeEngine.Core.GPU.Compute
                 _debugSegments.Clear();
                 return;
             }
-            // Never start a new production while one is already pending.
             if (_pendingRaster) return;
             int read = _fsRead;
             bool needRecompute =
@@ -159,6 +177,14 @@ namespace SiegeEngine.Core.GPU.Compute
                 Vector3.DistanceSquared(primarySource, _fsSourcePos[read]) > VisibilityMoveThreshold * VisibilityMoveThreshold;
             if (needRecompute)
             {
+                // Abort any outstanding fence from a previous progressive run
+                if (_fencePending && _pendingFence != 0)
+                {
+                    _renderContext.ClientWaitSync(_pendingFence, 0, 0);
+                    _renderContext.DeleteSync(_pendingFence);
+                    _pendingFence = 0;
+                    _fencePending = false;
+                }
                 _pendingListener = listenerPos;
                 _pendingSource = primarySource;
                 _pendingGeometryVersion = _geometry.GeometryVersion;
@@ -171,7 +197,7 @@ namespace SiegeEngine.Core.GPU.Compute
             }
         }
         /// <summary>
-        /// Progressive completion. Processes FacesPerCall faces per call.
+        /// Progressive completion. Processes FacesPerCall faces per call using PBO + fence.
         /// Builds the mutual set and swaps the double-buffer only after every face is finished.
         /// Consumers always see the previous fully-completed result (sticky).
         /// </summary>
@@ -179,20 +205,70 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             if (_disposed || !_pendingRaster || _geometry.TriangleCount <= 0 || !_fboReady)
                 return false;
+
             int write = _fsWrite;
             int facesDone = 0;
+
+            // First drain any previously issued fence (non-blocking poll)
+            if (_fencePending)
+            {
+                int status = _renderContext.ClientWaitSync(_pendingFence, 0, 0);
+                if (status == _renderContext.Enums.AlreadySignaled || status == _renderContext.Enums.ConditionSatisfied)
+                {
+                    // Map the completed PBO and extract triangle IDs
+                    _renderContext.BindBuffer(_renderContext.Enums.PixelPackBuffer, _pbo[_pendingPbo]);
+                    void* mapped = _renderContext.MapBufferRange(
+                        _renderContext.Enums.PixelPackBuffer,
+                        0,
+                        (uint)(IdBufferSize * IdBufferSize * sizeof(uint)),
+                        _renderContext.Enums.MapReadBit);
+                    if (mapped != null)
+                    {
+                        uint* ptr = (uint*)mapped;
+                        int maxTri = _geometry.TriangleCount;
+                        HashSet<int> targetSet = (_pendingFace - 1 < 6)
+                            ? _listenerVisible[write]
+                            : _sourceVisible[write];
+                        for (int i = 0; i < IdBufferSize * IdBufferSize; i++)
+                        {
+                            uint raw = ptr[i];
+                            if (raw == 0) continue;
+                            int tri = (int)raw - 1;
+                            if (tri >= 0 && tri < maxTri)
+                                targetSet.Add(tri);
+                        }
+                        _renderContext.UnmapBuffer(_renderContext.Enums.PixelPackBuffer);
+                    }
+                    _renderContext.BindBuffer(_renderContext.Enums.PixelPackBuffer, 0);
+                    _renderContext.DeleteSync(_pendingFence);
+                    _pendingFence = 0;
+                    _fencePending = false;
+                }
+                else
+                {
+                    // Still pending – do not issue more work this frame
+                    return false;
+                }
+            }
+
+            // Issue new faces (up to FacesPerCall)
             while (facesDone < FacesPerCall && _pendingFace < 12)
             {
                 if (_pendingFace < 6)
-                    RasterSingleFace(_pendingListener, _pendingFace, _listenerVisible[write]);
+                    IssueRasterFace(_pendingListener, _pendingFace, write, true);
                 else
-                    RasterSingleFace(_pendingSource, _pendingFace - 6, _sourceVisible[write]);
+                    IssueRasterFace(_pendingSource, _pendingFace - 6, write, false);
                 _pendingFace++;
                 facesDone++;
+                // After issuing we have a fence; exit so the next call can poll it
+                if (_fencePending)
+                    return false;
             }
+
             if (_pendingFace < 12)
-                return false; // still in progress – previous completed buffer remains published
-            // All faces finished – build mutual and swap
+                return false;
+
+            // All faces complete – build mutual set and swap
             foreach (int tri in _listenerVisible[write])
                 if (_sourceVisible[write].Contains(tri))
                     _mutual[write].Add(tri);
@@ -204,7 +280,6 @@ namespace SiegeEngine.Core.GPU.Compute
             _fsWrite = 1 - write;
             _visibilityVersion++;
             _pendingRaster = false;
-            // Lightweight debug LOS segment only after the full work is finished
             _debugSegments.Clear();
             Vector3 toSource = _pendingSource - _pendingListener;
             float dist = toSource.Length();
@@ -233,7 +308,7 @@ namespace SiegeEngine.Core.GPU.Compute
             }
             return true;
         }
-        private void RasterSingleFace(Vector3 origin, int face, HashSet<int> visibleSet)
+        private void IssueRasterFace(Vector3 origin, int face, int write, bool isListener)
         {
             int savedViewportW = _renderContext.ViewportWidth;
             int savedViewportH = _renderContext.ViewportHeight;
@@ -253,30 +328,24 @@ namespace SiegeEngine.Core.GPU.Compute
             _renderContext.ClearBufferuiv(_renderContext.Enums.Color, 0, &clearVal);
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _geometry.Draw();
-            fixed (uint* ptr = _idReadback)
-            {
-                _renderContext.ReadPixels(0, 0, IdBufferSize, IdBufferSize,
-                    _renderContext.Enums.RedInteger, _renderContext.Enums.UnsignedIntType, ptr);
-            }
-            int maxTri = _geometry.TriangleCount;
-            for (int i = 0; i < _idReadback.Length; i++)
-            {
-                uint raw = _idReadback[i];
-                if (raw == 0) continue;
-                int tri = (int)raw - 1;
-                if (tri >= 0 && tri < maxTri)
-                    visibleSet.Add(tri);
-            }
+
+            // Asynchronous readback into the current PBO
+            int pbo = _pboIndex;
+            _pboIndex = 1 - _pboIndex;
+            _renderContext.BindBuffer(_renderContext.Enums.PixelPackBuffer, _pbo[pbo]);
+            _renderContext.ReadPixels(0, 0, IdBufferSize, IdBufferSize,
+                _renderContext.Enums.RedInteger, _renderContext.Enums.UnsignedIntType, null);
+            _pendingFence = _renderContext.FenceSync(_renderContext.Enums.SyncGpuCommandsComplete, 0);
+            _pendingPbo = pbo;
+            _fencePending = true;
+
+            _renderContext.BindBuffer(_renderContext.Enums.PixelPackBuffer, 0);
             _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, 0);
             _renderContext.Viewport(0, 0, (uint)savedViewportW, (uint)savedViewportH);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
         }
-        /// <summary>
-        /// Exact free-surface perceived result used by the debug overlay orange ray
-        /// and by the live AudioSystem path. Always reads the previous completed state.
-        /// </summary>
         public SoundRayTraceResult ComputeFreeSurfacePerceived(Vector3 listener, Vector3 source)
         {
             int read = _fsRead;
@@ -359,6 +428,13 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             if (!_disposed)
             {
+                if (_fencePending && _pendingFence != 0)
+                {
+                    _renderContext.ClientWaitSync(_pendingFence, 0, 0);
+                    _renderContext.DeleteSync(_pendingFence);
+                    _pendingFence = 0;
+                    _fencePending = false;
+                }
                 _idProgram?.Dispose();
                 if (_fbo != 0)
                 {
@@ -370,6 +446,11 @@ namespace SiegeEngine.Core.GPU.Compute
                 {
                     uint r = _depthRb;
                     _renderContext.DeleteRenderbuffers(1, &r);
+                }
+                for (int i = 0; i < 2; i++)
+                {
+                    if (_pbo[i] != 0)
+                        _renderContext.DeleteBuffer(_pbo[i]);
                 }
                 _disposed = true;
             }

@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Rendering/ContextManagement
+﻿// Folder: SiegeEngine/Core/GPU/ContextManagement
 // File: OpenGLRenderContext.cs
 using Silk.NET.GLFW;
 using Silk.NET.OpenGL;
@@ -281,6 +281,25 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public int GetProgramResourceLocation(uint program, int programInterface, string name)
         {
             return _gl.GetProgramResourceLocation(program, (ProgramInterface)programInterface, name);
+        }
+
+        // ------------------------------------------------------------------
+        // Pixel-pack / fence support for async free-surface ID readback
+        // ------------------------------------------------------------------
+
+        public uint FenceSync(int condition, uint flags)
+        {
+            return (uint)_gl.FenceSync((SyncCondition)condition, (SyncBehaviorFlags)flags);
+        }
+
+        public int ClientWaitSync(uint sync, uint flags, ulong timeout)
+        {
+            return (int)_gl.ClientWaitSync((nint)sync, flags, timeout);
+        }
+
+        public void DeleteSync(uint sync)
+        {
+            _gl.DeleteSync((nint)sync);
         }
     }
 }

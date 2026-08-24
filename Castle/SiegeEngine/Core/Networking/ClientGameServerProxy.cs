@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Networking
-// File: ClientGameServerProxy.cs
-using SiegeEngine.Core.Definitions;
+﻿using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Physics;
@@ -9,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Networking
 {
     public class ClientGameServerProxy : IGameServer
@@ -19,26 +16,21 @@ namespace SiegeEngine.Core.Networking
         private readonly List<GameSystem> _systems = new List<GameSystem>();
         private readonly PhysicsWorld _physicsWorld = new PhysicsWorld();
         private int _nextEntityId = 1;
-
         public ClientGameServerProxy(EventBus eventBus)
         {
             _eventBus = eventBus;
         }
-
         // Editor / debug surface
         public PhysicsWorld PhysicsWorld => _physicsWorld;
         public IReadOnlyList<ContactManifold> CurrentManifolds => _physicsWorld.CurrentManifolds;
-
         public void SetHeightProvider(IHeightProvider provider)
         {
             _physicsWorld.SetHeightProvider(provider);
         }
-
         public void SnapToGround(PhysicsComponent body)
         {
             _physicsWorld.SnapToGround(body);
         }
-
         public void AddEntity(Entity entity)
         {
             if (entity == null) return;
@@ -131,7 +123,6 @@ namespace SiegeEngine.Core.Networking
             _entities.Add(entity);
             _eventBus.Publish(new EntityAddedEvent(entity), true);
         }
-
         public void RemoveEntity(int id)
         {
             var entity = _entities.Find(e => e.Id == id);
@@ -143,7 +134,6 @@ namespace SiegeEngine.Core.Networking
                 _eventBus.Publish(new EntityRemovedEvent(id), true);
             }
         }
-
         public void ClearEntities()
         {
             var idsToRemove = _entities.Select(e => e.Id).ToList();
@@ -154,23 +144,23 @@ namespace SiegeEngine.Core.Networking
             _physicsWorld.ClearBodies();
             _entities.Clear();
         }
-
         public IReadOnlyList<Entity> GetEntities()
         {
             return _entities.AsReadOnly();
         }
-
         public Entity GetEntityById(int id)
         {
             return _entities.Find(e => e.Id == id);
         }
-
         public void AddSystem(GameSystem system)
         {
             if (system != null && !_systems.Contains(system))
                 _systems.Add(system);
         }
-
+        public T GetSystem<T>() where T : GameSystem
+        {
+            return _systems.OfType<T>().FirstOrDefault();
+        }
         public void Update(float deltaTime)
         {
             foreach (var entity in _entities)
@@ -182,23 +172,19 @@ namespace SiegeEngine.Core.Networking
             foreach (var system in _systems)
                 system.Update(deltaTime);
         }
-
         public bool ValidateAndUpdateMovement(int entityId, Vector2 requestedPosition, Quaternion requestedRotation, ulong steamId)
         {
             _eventBus.Publish(new MovementRequestEvent(entityId, requestedPosition, requestedRotation, steamId), true);
             return true;
         }
-
         public bool ValidateInventory(int entityId, string action, object data)
         {
             return true;
         }
-
         public void Publish<T>(T eventData, bool networkSync = false) where T : class
         {
             _eventBus.Publish(eventData, networkSync);
         }
-
         /// <summary>
         /// Local client-side ray-trace against the same PhysicsComponent shapes the server uses.
         /// Enables continuous occlusion / wall muffling in pure-client Play mode.
@@ -208,19 +194,15 @@ namespace SiegeEngine.Core.Networking
             RayTraceResult result = new RayTraceResult { DidHit = false };
             float closestDistance = float.MaxValue;
             PhysicsComponent hitPhysics = null;
-
             if (direction.LengthSquared() < 1e-8f)
                 return result;
-
             Vector3 dir = Vector3.Normalize(direction);
-
             for (int i = 0; i < _entities.Count; i++)
             {
                 var entity = _entities[i];
                 if (entity == null) continue;
                 var physics = entity.GetComponent<PhysicsComponent>();
                 if (physics == null || !physics.CollisionEnabled) continue;
-
                 if (physics.RayIntersects(start, dir, out float distance, out Vector3 hitPoint) &&
                     distance < closestDistance && distance <= maxDistance && distance > 0.001f)
                 {
@@ -229,7 +211,6 @@ namespace SiegeEngine.Core.Networking
                     result.HitPoint = hitPoint;
                 }
             }
-
             if (hitPhysics != null)
             {
                 result.DidHit = true;
@@ -241,10 +222,8 @@ namespace SiegeEngine.Core.Networking
                     Density = volume > 1e-6f ? hitPhysics.Mass / volume : 1.0f
                 };
             }
-
             return result;
         }
-
         private static Vector3 ApproximateNormal(Vector3 hitPoint, PhysicsComponent physics)
         {
             Vector3 center = physics.Position;
@@ -259,7 +238,6 @@ namespace SiegeEngine.Core.Networking
             else
                 return new Vector3(0, 0, localHit.Z > 0 ? 1 : -1);
         }
-
         public void QueueNetworkEvent(IEvent e)
         {
         }

@@ -1,12 +1,9 @@
-﻿// Folder: SiegeEngine/Core/Interfaces
-// File: IGameServer.cs
-using SiegeEngine.Core.Definitions;
+﻿using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Physics;
 using SiegeEngine.Systems;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Interfaces
 {
     public interface IGameServer
@@ -16,6 +13,7 @@ namespace SiegeEngine.Core.Interfaces
         IReadOnlyList<Entity> GetEntities();
         Entity GetEntityById(int id);
         void AddSystem(GameSystem system);
+        T GetSystem<T>() where T : GameSystem;
         void Update(float deltaTime);
         bool ValidateAndUpdateMovement(int entityId, Vector2 requestedPosition, Quaternion requestedRotation, ulong steamId);
         bool ValidateInventory(int entityId, string action, object data);
