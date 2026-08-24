@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Rendering/ContextManagement
+﻿// Folder: SiegeEngine/Core/GPU/ContextManagement
 // File: OpenGLEnums.cs
 using Silk.NET.OpenGL;
 
@@ -94,5 +94,15 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         // ClearBuffer target (glClearBufferuiv / glClearBufferfv)
         public override int Color => (int)GLEnum.Color;
+
+        // Pixel-pack / fence support for async free-surface ID readback
+        public override int PixelPackBuffer => (int)GLEnum.PixelPackBuffer;
+        public override int SyncFence => (int)GLEnum.SyncFence;
+        public override int SyncGpuCommandsComplete => (int)GLEnum.SyncGpuCommandsComplete;
+        public override int SyncFlushCommandsBit => (int)GLEnum.SyncFlushCommandsBit;
+        public override int AlreadySignaled => (int)GLEnum.AlreadySignaled;
+        public override int TimeoutExpired => (int)GLEnum.TimeoutExpired;
+        public override int ConditionSatisfied => (int)GLEnum.ConditionSatisfied;
+        public override int WaitFailed => (int)GLEnum.WaitFailed;
     }
 }

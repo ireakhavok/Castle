@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Rendering/ContextManagement
+﻿// Folder: SiegeEngine/Core/GPU/ContextManagement
 // File: AbstractRenderEnums.cs
 using System;
 
@@ -94,5 +94,15 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         // ClearBuffer target (glClearBufferuiv / glClearBufferfv)
         public abstract int Color { get; }
+
+        // Pixel-pack / fence support for async free-surface ID readback
+        public abstract int PixelPackBuffer { get; }
+        public abstract int SyncFence { get; }
+        public abstract int SyncGpuCommandsComplete { get; }
+        public abstract int SyncFlushCommandsBit { get; }
+        public abstract int AlreadySignaled { get; }
+        public abstract int TimeoutExpired { get; }
+        public abstract int ConditionSatisfied { get; }
+        public abstract int WaitFailed { get; }
     }
 }

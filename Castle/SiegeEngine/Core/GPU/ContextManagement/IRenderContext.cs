@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Rendering/ContextManagement
+﻿// Folder: SiegeEngine/Core/GPU/ContextManagement
 // File: IRenderContext.cs
 using System;
 
@@ -107,5 +107,10 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         void GetInteger(int pname, int* data);
         void GetProgramInterface(uint program, int programInterface, int pname, out int param);
         int GetProgramResourceLocation(uint program, int programInterface, string name);
+
+        // Pixel-pack / fence support for async free-surface ID readback
+        uint FenceSync(int condition, uint flags);
+        int ClientWaitSync(uint sync, uint flags, ulong timeout);
+        void DeleteSync(uint sync);
     }
 }
