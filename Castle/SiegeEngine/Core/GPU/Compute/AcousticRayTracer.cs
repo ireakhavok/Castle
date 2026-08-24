@@ -66,13 +66,13 @@ namespace SiegeEngine.Core.GPU.Compute
         private int _fsWrite = 0;
         private int _fsRead = 1;
         private uint _visibilityVersion;
-        // Progressive face state machine – 1 face per call → no hitch
+        // Progressive face state machine – 2 faces per call
         private bool _pendingRaster;
         private Vector3 _pendingListener;
         private Vector3 _pendingSource;
         private uint _pendingGeometryVersion;
-        private int _pendingFace;               // 0..11 (0-5 listener, 6-11 source)
-        private const int FacesPerCall = 1;
+        private int _pendingFace;
+        private const int FacesPerCall = 2;
         private uint _fbo;
         private uint _idTexture;
         private uint _depthRb;
@@ -136,7 +136,7 @@ namespace SiegeEngine.Core.GPU.Compute
         }
         /// <summary>
         /// Zero-cost gate. Records pending positions and returns immediately.
-        /// The full raster runs only inside TryCompletePendingRaster, one face at a time.
+        /// The full raster runs only inside TryCompletePendingRaster, two faces at a time.
         /// </summary>
         public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources)
         {
@@ -149,7 +149,6 @@ namespace SiegeEngine.Core.GPU.Compute
                 _debugSegments.Clear();
                 return;
             }
-            // Never start a new production while one is already pending.
             if (_pendingRaster) return;
             int read = _fsRead;
             bool needRecompute =
@@ -191,8 +190,7 @@ namespace SiegeEngine.Core.GPU.Compute
                 facesDone++;
             }
             if (_pendingFace < 12)
-                return false; // still in progress – previous completed buffer remains published
-            // All faces finished – build mutual and swap
+                return false;
             foreach (int tri in _listenerVisible[write])
                 if (_sourceVisible[write].Contains(tri))
                     _mutual[write].Add(tri);
@@ -204,7 +202,6 @@ namespace SiegeEngine.Core.GPU.Compute
             _fsWrite = 1 - write;
             _visibilityVersion++;
             _pendingRaster = false;
-            // Lightweight debug LOS segment only after the full work is finished
             _debugSegments.Clear();
             Vector3 toSource = _pendingSource - _pendingListener;
             float dist = toSource.Length();
@@ -273,10 +270,6 @@ namespace SiegeEngine.Core.GPU.Compute
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
         }
-        /// <summary>
-        /// Exact free-surface perceived result used by the debug overlay orange ray
-        /// and by the live AudioSystem path. Always reads the previous completed state.
-        /// </summary>
         public SoundRayTraceResult ComputeFreeSurfacePerceived(Vector3 listener, Vector3 source)
         {
             int read = _fsRead;

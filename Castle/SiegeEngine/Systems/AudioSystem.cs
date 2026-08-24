@@ -27,8 +27,10 @@ namespace SiegeEngine.Systems
         private const float SpatialRefDistance = 5.0f;
         private const float SpatialMaxDistance = 300f;
         private const float MinAudibleVolume = 0.01f;
-        private const float IntensitySmoothRate = 18.0f;
-        private const float DirectionSmoothRate = 22.0f;
+        // Slower rates = fewer clicks when free-surface result updates
+        private const float IntensitySmoothRate = 4.0f;
+        private const float DirectionSmoothRate = 6.0f;
+        private const float IntensityHysteresis = 0.04f;
         private Vector3 _listenerPosition;
         private Vector3 _listenerForward = new Vector3(0, 1, 0);
         private volatile bool _listenerValid;
@@ -53,6 +55,12 @@ namespace SiegeEngine.Systems
         private Thread _audioWorker;
         private volatile bool _workerRunning;
         private readonly object _rayLock = new object();
+        /// <summary>
+        /// When true the free-surface (ray-traced) path is used for occluded sources.
+        /// When false only LOS + material transmission is applied.
+        /// Bind this to an IDE checkbox / ProjectSettings key.
+        /// </summary>
+        public bool EnableFreeSurfaceAudio { get; set; } = true;
         private class MonoPcmClip
         {
             public short[] Samples;
@@ -207,17 +215,17 @@ namespace SiegeEngine.Systems
             float dist = toListener.Length();
             if (dist < 0.01f)
                 return los;
-            // Pure LOS – absolute. No residual, no free-surface, no diffraction.
             if (los.Intensity >= 0.95f)
                 return los;
-            // Authoritative occluded path: free-surface mutual energy (exact same math as debug overlay orange ray)
-            if (_acousticRayTracer != null && _acousticRayTracer.VisibilityCacheValid)
+            // Free-surface path is optional – controlled by EnableFreeSurfaceAudio
+            if (EnableFreeSurfaceAudio &&
+                _acousticRayTracer != null &&
+                _acousticRayTracer.VisibilityCacheValid)
             {
                 var free = _acousticRayTracer.ComputeFreeSurfacePerceived(listenerPos, sourcePos);
                 if (free.Intensity > 0.01f && free.ApparentDirection.LengthSquared() > 1e-6f)
                     return free;
             }
-            // Fallback only when no mutual free surfaces exist
             return los;
         }
         public override void Update(float deltaTime)
@@ -249,10 +257,9 @@ namespace SiegeEngine.Systems
             }
             if (_gpuOcclusionReady && !_geometryUploaded && _server != null && _server.GetEntities().Count > 0)
                 RebuildAcousticGeometry();
-            // Free-surface true double-buffer:
-            // Kick is zero-cost (gate only).
-            // TryCompletePendingRaster runs the full 12-face raster and swaps only after all faces are finished.
-            if (_gpuOcclusionReady && _geometryUploaded && _acousticRayTracer != null && _listenerValid)
+            // Free-surface production only when the toggle is on
+            if (EnableFreeSurfaceAudio &&
+                _gpuOcclusionReady && _geometryUploaded && _acousticRayTracer != null && _listenerValid)
             {
                 List<AutoPlayRegistration> snapshot;
                 lock (_regsLock)
@@ -313,6 +320,12 @@ namespace SiegeEngine.Systems
                     ? reg.WorkerResult
                     : new SoundRayTraceResult { Intensity = 1f, ApparentDirection = Vector3.Zero, LowPassCutoff = 12000f };
                 float targetIntensity = Math.Clamp(target.Intensity, 0.001f, 1f);
+                // Hysteresis – ignore tiny intensity jumps that still produce clicks
+                if (reg.HasSmoothedState &&
+                    Math.Abs(targetIntensity - reg.SmoothedIntensity) < IntensityHysteresis)
+                {
+                    targetIntensity = reg.SmoothedIntensity;
+                }
                 Vector3 targetDir = target.ApparentDirection.LengthSquared() > 0.0001f
                     ? Vector3.Normalize(target.ApparentDirection)
                     : Vector3.Normalize(reg.Source.Position - _listenerPosition);
