@@ -66,11 +66,13 @@ namespace SiegeEngine.Core.GPU.Compute
         private int _fsWrite = 0;
         private int _fsRead = 1;
         private uint _visibilityVersion;
-        // Pending production – wait until all faces are done before swapping
+        // Progressive face state machine – 1 face per call → no hitch
         private bool _pendingRaster;
         private Vector3 _pendingListener;
         private Vector3 _pendingSource;
         private uint _pendingGeometryVersion;
+        private int _pendingFace;               // 0..11 (0-5 listener, 6-11 source)
+        private const int FacesPerCall = 1;
         private uint _fbo;
         private uint _idTexture;
         private uint _depthRb;
@@ -133,9 +135,8 @@ namespace SiegeEngine.Core.GPU.Compute
             // Residual multi-bounce path removed entirely for this stage.
         }
         /// <summary>
-        /// Zero-cost gate check. If a recompute is required, records pending positions
-        /// and returns immediately. The full raster runs only inside TryCompletePendingRaster
-        /// and the double-buffer is swapped only after all faces are finished.
+        /// Zero-cost gate. Records pending positions and returns immediately.
+        /// The full raster runs only inside TryCompletePendingRaster, one face at a time.
         /// </summary>
         public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources)
         {
@@ -149,8 +150,7 @@ namespace SiegeEngine.Core.GPU.Compute
                 return;
             }
             // Never start a new production while one is already pending.
-            if (_pendingRaster)
-                return;
+            if (_pendingRaster) return;
             int read = _fsRead;
             bool needRecompute =
                 !_fsValid[read] ||
@@ -163,24 +163,36 @@ namespace SiegeEngine.Core.GPU.Compute
                 _pendingSource = primarySource;
                 _pendingGeometryVersion = _geometry.GeometryVersion;
                 _pendingRaster = true;
+                _pendingFace = 0;
+                int write = _fsWrite;
+                _listenerVisible[write].Clear();
+                _sourceVisible[write].Clear();
+                _mutual[write].Clear();
             }
         }
         /// <summary>
-        /// Runs the complete spherical ID raster (all 6 faces for listener + all 6 faces for source).
+        /// Progressive completion. Processes FacesPerCall faces per call.
         /// Builds the mutual set and swaps the double-buffer only after every face is finished.
-        /// Consumers always see the previous fully-completed result.
+        /// Consumers always see the previous fully-completed result (sticky).
         /// </summary>
         public bool TryCompletePendingRaster()
         {
             if (_disposed || !_pendingRaster || _geometry.TriangleCount <= 0 || !_fboReady)
                 return false;
             int write = _fsWrite;
-            _listenerVisible[write].Clear();
-            _sourceVisible[write].Clear();
-            _mutual[write].Clear();
-            // Wait until all faces are done – full raster for both origins
-            RasterSphericalVisibility(_pendingListener, _listenerVisible[write]);
-            RasterSphericalVisibility(_pendingSource, _sourceVisible[write]);
+            int facesDone = 0;
+            while (facesDone < FacesPerCall && _pendingFace < 12)
+            {
+                if (_pendingFace < 6)
+                    RasterSingleFace(_pendingListener, _pendingFace, _listenerVisible[write]);
+                else
+                    RasterSingleFace(_pendingSource, _pendingFace - 6, _sourceVisible[write]);
+                _pendingFace++;
+                facesDone++;
+            }
+            if (_pendingFace < 12)
+                return false; // still in progress – previous completed buffer remains published
+            // All faces finished – build mutual and swap
             foreach (int tri in _listenerVisible[write])
                 if (_sourceVisible[write].Contains(tri))
                     _mutual[write].Add(tri);
@@ -188,7 +200,6 @@ namespace SiegeEngine.Core.GPU.Compute
             _fsSourcePos[write] = _pendingSource;
             _fsGeometryVersion[write] = _pendingGeometryVersion;
             _fsValid[write] = true;
-            // Swap only after the complete set is ready
             _fsRead = write;
             _fsWrite = 1 - write;
             _visibilityVersion++;
@@ -222,11 +233,49 @@ namespace SiegeEngine.Core.GPU.Compute
             }
             return true;
         }
+        private void RasterSingleFace(Vector3 origin, int face, HashSet<int> visibleSet)
+        {
+            int savedViewportW = _renderContext.ViewportWidth;
+            int savedViewportH = _renderContext.ViewportHeight;
+            _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, _fbo);
+            _renderContext.Viewport(0, 0, IdBufferSize, IdBufferSize);
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
+            _renderContext.DepthFunc(_renderContext.Enums.Less);
+            _renderContext.Disable(_renderContext.Enums.Blend);
+            _renderContext.Disable(_renderContext.Enums.CullFace);
+            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI * 0.5f, 1.0f, 0.3f, 400.0f);
+            _idProgram.Use();
+            _idProgram.SetMatrix4("uProjection", proj);
+            Vector3 target = origin + CubeDirs[face] * 10.0f;
+            Matrix4x4 view = Matrix4x4.CreateLookAt(origin, target, CubeUps[face]);
+            _idProgram.SetMatrix4("uView", view);
+            uint clearVal = 0;
+            _renderContext.ClearBufferuiv(_renderContext.Enums.Color, 0, &clearVal);
+            _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
+            _geometry.Draw();
+            fixed (uint* ptr = _idReadback)
+            {
+                _renderContext.ReadPixels(0, 0, IdBufferSize, IdBufferSize,
+                    _renderContext.Enums.RedInteger, _renderContext.Enums.UnsignedIntType, ptr);
+            }
+            int maxTri = _geometry.TriangleCount;
+            for (int i = 0; i < _idReadback.Length; i++)
+            {
+                uint raw = _idReadback[i];
+                if (raw == 0) continue;
+                int tri = (int)raw - 1;
+                if (tri >= 0 && tri < maxTri)
+                    visibleSet.Add(tri);
+            }
+            _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, 0);
+            _renderContext.Viewport(0, 0, (uint)savedViewportW, (uint)savedViewportH);
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
+            _renderContext.Enable(_renderContext.Enums.Blend);
+            _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
+        }
         /// <summary>
-        /// Exact free-surface perceived result used by the debug overlay orange ray.
-        /// Energy-weighted inverse-square accumulation over mutual free triangles.
-        /// This is the authoritative occluded path for live AudioSystem.
-        /// Always reads the previous completed free-surface state.
+        /// Exact free-surface perceived result used by the debug overlay orange ray
+        /// and by the live AudioSystem path. Always reads the previous completed state.
         /// </summary>
         public SoundRayTraceResult ComputeFreeSurfacePerceived(Vector3 listener, Vector3 source)
         {
@@ -292,56 +341,12 @@ namespace SiegeEngine.Core.GPU.Compute
                 ApparentDirection = perceivedDir
             };
         }
-        private void RasterSphericalVisibility(Vector3 origin, HashSet<int> visibleSet)
-        {
-            int savedViewportW = _renderContext.ViewportWidth;
-            int savedViewportH = _renderContext.ViewportHeight;
-            _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, _fbo);
-            _renderContext.Viewport(0, 0, IdBufferSize, IdBufferSize);
-            _renderContext.Enable(_renderContext.Enums.DepthTest);
-            _renderContext.DepthFunc(_renderContext.Enums.Less);
-            _renderContext.Disable(_renderContext.Enums.Blend);
-            _renderContext.Disable(_renderContext.Enums.CullFace);
-            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI * 0.5f, 1.0f, 0.3f, 400.0f);
-            _idProgram.Use();
-            _idProgram.SetMatrix4("uProjection", proj);
-            int maxTri = _geometry.TriangleCount;
-            for (int face = 0; face < 6; face++)
-            {
-                Vector3 target = origin + CubeDirs[face] * 10.0f;
-                Matrix4x4 view = Matrix4x4.CreateLookAt(origin, target, CubeUps[face]);
-                _idProgram.SetMatrix4("uView", view);
-                uint clearVal = 0;
-                _renderContext.ClearBufferuiv(_renderContext.Enums.Color, 0, &clearVal);
-                _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
-                _geometry.Draw();
-                fixed (uint* ptr = _idReadback)
-                {
-                    _renderContext.ReadPixels(0, 0, IdBufferSize, IdBufferSize,
-                        _renderContext.Enums.RedInteger, _renderContext.Enums.UnsignedIntType, ptr);
-                }
-                for (int i = 0; i < _idReadback.Length; i++)
-                {
-                    uint raw = _idReadback[i];
-                    if (raw == 0) continue;
-                    int tri = (int)raw - 1;
-                    if (tri >= 0 && tri < maxTri)
-                        visibleSet.Add(tri);
-                }
-            }
-            _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, 0);
-            _renderContext.Viewport(0, 0, (uint)savedViewportW, (uint)savedViewportH);
-            _renderContext.Enable(_renderContext.Enums.DepthTest);
-            _renderContext.Enable(_renderContext.Enums.Blend);
-            _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
-        }
         public IReadOnlyCollection<int> GetListenerFree() => _listenerVisible[_fsRead];
         public IReadOnlyCollection<int> GetSourceFree() => _sourceVisible[_fsRead];
         public IReadOnlyCollection<int> GetMutualFree() => _mutual[_fsRead];
         public IReadOnlyList<DebugSegment> GetDebugSegments() => _debugSegments;
         public SoundRayTraceResult ReadCompletedResult()
         {
-            // Residual multi-bounce path removed entirely for this stage.
             return new SoundRayTraceResult
             {
                 Intensity = 0.001f,
