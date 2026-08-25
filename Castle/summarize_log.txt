@@ -818,7 +818,7 @@ Found: PropertiesPanelUI.html
 Found: SkyboxRotatePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
-Read 29984 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
+Read 37194 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
 Namespace: ToolChest
 Found 17 dependencies
 Found: SkyboxRotateUI.html
@@ -1300,7 +1300,7 @@ Found 1 dependencies
 Found: SceneData.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SceneData.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SceneData.cs
-Read 4645 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SceneData.cs
+Read 4225 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SceneData.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 3 dependencies
 Found: SceneSettings.cs
@@ -1673,9 +1673,9 @@ Found 7 dependencies
 Found: SkyboxRenderer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Renderers\SkyboxRenderer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Renderers\SkyboxRenderer.cs
-Read 5115 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Renderers\SkyboxRenderer.cs
+Read 5317 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Renderers\SkyboxRenderer.cs
 Namespace: SiegeEngine.Core.GPU.Renderers
-Found 7 dependencies
+Found 6 dependencies
 Found: SystemFontRenderer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Renderers\SystemFontRenderer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Renderers\SystemFontRenderer.cs
@@ -1773,7 +1773,7 @@ Found 2 dependencies
 Found: SkyboxShader.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\SkyboxShader.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\SkyboxShader.cs
-Read 907 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\SkyboxShader.cs
+Read 834 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Shaders\SkyboxShader.cs
 Namespace: SiegeEngine.Core.GPU.Shaders
 Found 1 dependencies
 Found: SpriteShader.cs
