@@ -25,13 +25,11 @@ namespace ToolChest
         private class SkyboxRotateUIOverlay : UIOverlay
         {
             private readonly SkyboxRotatePanel _parent;
-
             public SkyboxRotateUIOverlay(SkyboxRotatePanel parent, IRenderContext renderContext, IControlContext controlContext, nint window)
                 : base(renderContext, controlContext, window)
             {
                 _parent = parent;
             }
-
             // Match FileSelectorPanel: do NOT call base (base already fires data-hook).
             public override bool HandleUIClick(HtmlElement elem)
             {
@@ -45,6 +43,9 @@ namespace ToolChest
         private int _selectedFace = -1;
         private string[] _resolvedFaces = new string[6];
         private readonly int[] _faceSteps = new int[6];
+        private readonly bool[] _faceFlipH = new bool[6];
+        private readonly bool[] _faceFlipV = new bool[6];
+        private bool _swapMode = false;
 
         private uint _cubemapTex = 0;
         private VertexBuffer _previewCube;
@@ -52,6 +53,7 @@ namespace ToolChest
         private VertexBuffer _faceOutlineBuffer;
         private ShaderProgram _previewShader;
         private ShaderProgram _lineShader;
+
         private float _previewYaw = 0.6f;
         private float _previewPitch = 0.35f;
         private float _previewDist = 3.2f;
@@ -100,8 +102,10 @@ namespace ToolChest
             else
                 _workingSkybox = new SkyboxData { Enabled = true };
 
+            EnsureFacesList();
             ResolveFacePaths();
             LoadPreviewCubemap();
+
             _previewCube = new VertexBuffer(_renderContext);
             BuildPreviewCube();
             _axisBuffer = new VertexBuffer(_renderContext);
@@ -178,6 +182,14 @@ void main() {
             };
         }
 
+        private void EnsureFacesList()
+        {
+            if (_workingSkybox.Faces == null)
+                _workingSkybox.Faces = new List<string>();
+            while (_workingSkybox.Faces.Count < 6)
+                _workingSkybox.Faces.Add("");
+        }
+
         private void ResolveFacePaths()
         {
             string projectPath = ProjectSettings.Current.ActiveProject ?? "";
@@ -208,35 +220,48 @@ void main() {
             _renderContext.TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureWrapR, _renderContext.Enums.ClampToEdge);
 
             for (int i = 0; i < 6; i++)
-                UploadFace(i, 0);
+                UploadFace(i);
 
             _renderContext.GenerateMipmap(_renderContext.Enums.TextureCubeMap);
             _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
         }
 
-        private void UploadFace(int faceIndex, int step)
+        private void ApplyOrientationToBitmap(Bitmap bmp, int step, bool flipH, bool flipV)
         {
-            string path = _resolvedFaces[faceIndex];
-            if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
-
-            RotateFlipType flip = (step & 3) switch
+            RotateFlipType rot = (step & 3) switch
             {
                 1 => RotateFlipType.Rotate90FlipNone,
                 2 => RotateFlipType.Rotate180FlipNone,
                 3 => RotateFlipType.Rotate270FlipNone,
                 _ => RotateFlipType.RotateNoneFlipNone
             };
+            if (rot != RotateFlipType.RotateNoneFlipNone)
+                bmp.RotateFlip(rot);
+            if (flipH)
+                bmp.RotateFlip(RotateFlipType.RotateNoneFlipX);
+            if (flipV)
+                bmp.RotateFlip(RotateFlipType.RotateNoneFlipY);
+        }
+
+        private void UploadFace(int faceIndex)
+        {
+            string path = _resolvedFaces[faceIndex];
+            if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
+
+            int step = _faceSteps[faceIndex];
+            bool flipH = _faceFlipH[faceIndex];
+            bool flipV = _faceFlipV[faceIndex];
 
             using (var bmp = new Bitmap(path))
             {
-                if (flip != RotateFlipType.RotateNoneFlipNone)
-                    bmp.RotateFlip(flip);
+                ApplyOrientationToBitmap(bmp, step, flipH, flipV);
 
                 var data = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
                 int dataSize = bmp.Width * bmp.Height * 4;
                 byte[] pixelData = new byte[dataSize];
                 Marshal.Copy(data.Scan0, pixelData, 0, dataSize);
                 bmp.UnlockBits(data);
+
                 fixed (byte* ptr = pixelData)
                 {
                     _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTex);
@@ -253,11 +278,115 @@ void main() {
             int step = _faceSteps[_selectedFace] + deltaSteps;
             while (step < 0) step += 4;
             _faceSteps[_selectedFace] = step % 4;
-            UploadFace(_selectedFace, _faceSteps[_selectedFace]);
+            UploadFace(_selectedFace);
             _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTex);
             _renderContext.GenerateMipmap(_renderContext.Enums.TextureCubeMap);
             _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
-            Console.WriteLine($"[SkyboxRotatePanel] Face {_selectedFace} → {_faceSteps[_selectedFace] * 90}°");
+        }
+
+        private void MirrorSelectedFace(bool horizontal)
+        {
+            if (_selectedFace < 0 || _selectedFace > 5) return;
+            if (horizontal)
+                _faceFlipH[_selectedFace] = !_faceFlipH[_selectedFace];
+            else
+                _faceFlipV[_selectedFace] = !_faceFlipV[_selectedFace];
+            UploadFace(_selectedFace);
+            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTex);
+            _renderContext.GenerateMipmap(_renderContext.Enums.TextureCubeMap);
+            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
+            UpdateSelectionUI();
+        }
+
+        private void SwapFaces(int a, int b)
+        {
+            if (a < 0 || a > 5 || b < 0 || b > 5 || a == b) return;
+
+            string tmpPath = _resolvedFaces[a];
+            _resolvedFaces[a] = _resolvedFaces[b];
+            _resolvedFaces[b] = tmpPath;
+
+            EnsureFacesList();
+            string tmpFace = _workingSkybox.Faces[a];
+            _workingSkybox.Faces[a] = _workingSkybox.Faces[b];
+            _workingSkybox.Faces[b] = tmpFace;
+
+            int tmpStep = _faceSteps[a];
+            _faceSteps[a] = _faceSteps[b];
+            _faceSteps[b] = tmpStep;
+
+            bool tmpH = _faceFlipH[a];
+            _faceFlipH[a] = _faceFlipH[b];
+            _faceFlipH[b] = tmpH;
+
+            bool tmpV = _faceFlipV[a];
+            _faceFlipV[a] = _faceFlipV[b];
+            _faceFlipV[b] = tmpV;
+
+            UploadFace(a);
+            UploadFace(b);
+            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTex);
+            _renderContext.GenerateMipmap(_renderContext.Enums.TextureCubeMap);
+            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
+        }
+
+        private static void AtomicWriteBitmap(string targetPath, Bitmap bmp)
+        {
+            string dir = Path.GetDirectoryName(targetPath);
+            if (!string.IsNullOrEmpty(dir))
+                Directory.CreateDirectory(dir);
+            string temp = targetPath + ".tmp";
+            bmp.Save(temp, ImageFormat.Png);
+            if (File.Exists(targetPath))
+                File.Delete(targetPath);
+            File.Move(temp, targetPath);
+        }
+
+        private void Apply()
+        {
+            for (int i = 0; i < 6; i++)
+            {
+                if (_faceSteps[i] == 0 && !_faceFlipH[i] && !_faceFlipV[i])
+                    continue;
+
+                string path = _resolvedFaces[i];
+                if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                    continue;
+
+                using (var bmp = new Bitmap(path))
+                {
+                    ApplyOrientationToBitmap(bmp, _faceSteps[i], _faceFlipH[i], _faceFlipV[i]);
+                    AtomicWriteBitmap(path, bmp);
+                }
+
+                _faceSteps[i] = 0;
+                _faceFlipH[i] = false;
+                _faceFlipV[i] = false;
+            }
+
+            // Paths unchanged; push the same SkyboxData so Level + live stay consistent
+            var level = ProjectSettings.Current.CurrentLevel;
+            if (level != null)
+                level.Skybox = _workingSkybox;
+
+            string sceneName = ProjectSettings.Current.CurrentSceneName;
+            if (!string.IsNullOrEmpty(sceneName))
+            {
+                var live = ProjectStateManager.Current.GetLiveState(sceneName);
+                if (live != null)
+                {
+                    live.Skybox = _workingSkybox;
+                    live.SyncSkyboxIfNeeded();
+                }
+            }
+
+            // Rebuild preview from the now-corrected files on disk
+            LoadPreviewCubemap();
+
+            if (_eventBus != null)
+                _eventBus.Publish(new GenericEvent { Hook = "ProjectSaveRequest" });
+
+            UpdateSelectionUI();
         }
 
         private void BuildPreviewCube()
@@ -283,33 +412,59 @@ void main() {
         }
 
         // RGB axis lines from center: +X red, +Y green, +Z blue (and faint negatives)
+        // Tip markers give each positive axis a readable label shape.
         private void BuildAxisGizmo()
         {
             float L = 1.6f;
+            float tip = 0.12f;
             var verts = new List<Vertex>();
             var idx = new List<uint>();
+
             // +X red
             verts.Add(new Vertex(0, 0, 0, 1, 0.15f, 0.15f, 1));
             verts.Add(new Vertex(L, 0, 0, 1, 0.15f, 0.15f, 1));
             idx.Add(0); idx.Add(1);
+            // tip cross for +X
+            verts.Add(new Vertex(L, -tip, 0, 1, 0.15f, 0.15f, 1));
+            verts.Add(new Vertex(L, tip, 0, 1, 0.15f, 0.15f, 1));
+            idx.Add(2); idx.Add(3);
+            verts.Add(new Vertex(L, 0, -tip, 1, 0.15f, 0.15f, 1));
+            verts.Add(new Vertex(L, 0, tip, 1, 0.15f, 0.15f, 1));
+            idx.Add(4); idx.Add(5);
+
             // +Y green
             verts.Add(new Vertex(0, 0, 0, 0.15f, 1, 0.15f, 1));
             verts.Add(new Vertex(0, L, 0, 0.15f, 1, 0.15f, 1));
-            idx.Add(2); idx.Add(3);
+            idx.Add(6); idx.Add(7);
+            verts.Add(new Vertex(-tip, L, 0, 0.15f, 1, 0.15f, 1));
+            verts.Add(new Vertex(tip, L, 0, 0.15f, 1, 0.15f, 1));
+            idx.Add(8); idx.Add(9);
+            verts.Add(new Vertex(0, L, -tip, 0.15f, 1, 0.15f, 1));
+            verts.Add(new Vertex(0, L, tip, 0.15f, 1, 0.15f, 1));
+            idx.Add(10); idx.Add(11);
+
             // +Z blue
             verts.Add(new Vertex(0, 0, 0, 0.2f, 0.4f, 1, 1));
             verts.Add(new Vertex(0, 0, L, 0.2f, 0.4f, 1, 1));
-            idx.Add(4); idx.Add(5);
+            idx.Add(12); idx.Add(13);
+            verts.Add(new Vertex(-tip, 0, L, 0.2f, 0.4f, 1, 1));
+            verts.Add(new Vertex(tip, 0, L, 0.2f, 0.4f, 1, 1));
+            idx.Add(14); idx.Add(15);
+            verts.Add(new Vertex(0, -tip, L, 0.2f, 0.4f, 1, 1));
+            verts.Add(new Vertex(0, tip, L, 0.2f, 0.4f, 1, 1));
+            idx.Add(16); idx.Add(17);
+
             // faint negatives
             verts.Add(new Vertex(0, 0, 0, 0.5f, 0.1f, 0.1f, 0.4f));
             verts.Add(new Vertex(-L, 0, 0, 0.5f, 0.1f, 0.1f, 0.4f));
-            idx.Add(6); idx.Add(7);
+            idx.Add(18); idx.Add(19);
             verts.Add(new Vertex(0, 0, 0, 0.1f, 0.5f, 0.1f, 0.4f));
             verts.Add(new Vertex(0, -L, 0, 0.1f, 0.5f, 0.1f, 0.4f));
-            idx.Add(8); idx.Add(9);
+            idx.Add(20); idx.Add(21);
             verts.Add(new Vertex(0, 0, 0, 0.1f, 0.2f, 0.5f, 0.4f));
             verts.Add(new Vertex(0, 0, -L, 0.1f, 0.2f, 0.5f, 0.4f));
-            idx.Add(10); idx.Add(11);
+            idx.Add(22); idx.Add(23);
+
             _axisBuffer.UpdateCustom(verts, idx);
         }
 
@@ -320,7 +475,6 @@ void main() {
             var verts = new List<Vertex>();
             var idx = new List<uint>();
             Vector4 c = new Vector4(1f, 0.85f, 0.1f, 1f); // gold highlight
-
             Vector3[] corners = face switch
             {
                 0 => new[] { new Vector3(s, -s, -s), new Vector3(s, s, -s), new Vector3(s, s, s), new Vector3(s, -s, s) },   // +X
@@ -331,7 +485,6 @@ void main() {
                 5 => new[] { new Vector3(-s, -s, -s), new Vector3(-s, s, -s), new Vector3(s, s, -s), new Vector3(s, -s, -s) }, // -Z
                 _ => Array.Empty<Vector3>()
             };
-
             if (corners.Length == 4)
             {
                 for (int i = 0; i < 4; i++)
@@ -363,13 +516,24 @@ void main() {
             var modeSpan = _uiOverlay.FindElementById("modeLabel");
             if (modeSpan != null)
             {
-                string text = _selectedFace < 0 ? "Whole Cube (drag axes)" : $"Face {_selectedFace} ({FaceName(_selectedFace)})";
+                string text;
+                if (_swapMode)
+                    text = "Swap: pick target face";
+                else if (_selectedFace < 0)
+                    text = "Whole Cube (drag axes)";
+                else
+                {
+                    string flips = "";
+                    if (_faceFlipH[_selectedFace]) flips += " H";
+                    if (_faceFlipV[_selectedFace]) flips += " V";
+                    string rot = _faceSteps[_selectedFace] > 0 ? $" {_faceSteps[_selectedFace] * 90}°" : "";
+                    text = $"Face {_selectedFace} ({FaceName(_selectedFace)}){rot}{flips}";
+                }
                 foreach (var child in modeSpan.Children)
                 {
                     if (child is TextElement te) { te.Content = text; break; }
                 }
             }
-
             BuildFaceOutline(_selectedFace);
             _uiOverlay.RefreshUI();
         }
@@ -391,23 +555,47 @@ void main() {
                 _eventBus.Publish(new ClosePanelEvent(this));
                 return;
             }
-
+            if (hook == "Apply")
+            {
+                Apply();
+                return;
+            }
             if (hook == "SelectWhole")
             {
                 _selectedFace = -1;
+                _swapMode = false;
                 UpdateSelectionUI();
                 return;
             }
             if (hook.StartsWith("SelectFace") && int.TryParse(hook.AsSpan(10), out int idx) && idx >= 0 && idx < 6)
             {
+                if (_swapMode && _selectedFace >= 0 && _selectedFace != idx)
+                {
+                    SwapFaces(_selectedFace, idx);
+                    _swapMode = false;
+                    // keep selection on the original geometric face
+                    UpdateSelectionUI();
+                    return;
+                }
                 _selectedFace = idx;
+                _swapMode = false;
                 UpdateSelectionUI();
                 return;
             }
-
-            if (hook == "FaceRotCW") { RotateSelectedFace(+1); return; }
-            if (hook == "FaceRotCCW") { RotateSelectedFace(-1); return; }
-            if (hook == "FaceRot180") { RotateSelectedFace(+2); return; }
+            if (hook == "FaceRotCW") { RotateSelectedFace(+1); UpdateSelectionUI(); return; }
+            if (hook == "FaceRotCCW") { RotateSelectedFace(-1); UpdateSelectionUI(); return; }
+            if (hook == "FaceRot180") { RotateSelectedFace(+2); UpdateSelectionUI(); return; }
+            if (hook == "MirrorH") { MirrorSelectedFace(true); return; }
+            if (hook == "MirrorV") { MirrorSelectedFace(false); return; }
+            if (hook == "StartSwap")
+            {
+                if (_selectedFace >= 0)
+                {
+                    _swapMode = true;
+                    UpdateSelectionUI();
+                }
+                return;
+            }
         }
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
@@ -549,19 +737,16 @@ void main() {
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _lineShader.Use();
             _lineShader.SetMatrix4("uMVP", mvp);
-
             if (_axisBuffer != null)
             {
                 _axisBuffer.Bind();
                 _renderContext.DrawElements(_renderContext.Enums.Lines, _axisBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }
-
             if (_selectedFace >= 0 && _faceOutlineBuffer != null && _faceOutlineBuffer.GetIndexCount() > 0)
             {
                 _faceOutlineBuffer.Bind();
                 _renderContext.DrawElements(_renderContext.Enums.Lines, _faceOutlineBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }
-
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
 
