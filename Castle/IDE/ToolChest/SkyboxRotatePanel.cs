@@ -35,6 +35,10 @@ namespace ToolChest
                 _parent.HandleUIClick(elem);
                 return true;
             }
+            protected override void HandleDataHook(string hook)
+            {
+                _parent.HandleDataHook(hook);
+            }
         }
 
         private EventBus _eventBus;
@@ -49,20 +53,24 @@ namespace ToolChest
         private uint _cubemapTex = 0;
         private VertexBuffer _previewCube;
         private VertexBuffer _axisBuffer;
+        private VertexBuffer _ringBuffer;
         private VertexBuffer _faceOutlineBuffer;
         private ShaderProgram _previewShader;
         private ShaderProgram _lineShader;
 
         private float _previewYaw = 0.6f;
         private float _previewPitch = 0.35f;
-        private float _previewDist = 3.2f;
+        private float _previewDist = 2.8f;
         private bool _orbitDragging = false;
         private Vector2 _lastMouse;
-        private Matrix4x4 _previewModel = Matrix4x4.Identity;
 
-        private int _gizmoAxis = -1;
-        private bool _gizmoDragging = false;
-        private Vector2 _gizmoLast;
+        private bool _ringDragging = false;
+        private int _activeRing = -1;
+        private Quaternion _dragStartOrient = Quaternion.Identity;
+        private float _accumAngle = 0f;
+        private Vector3 _lastPlanePoint;
+
+        private const float RingPickTolerance = 18f;
 
         public override bool WantsContinuousUpdate => true;
 
@@ -107,8 +115,9 @@ namespace ToolChest
             _previewCube = new VertexBuffer(_renderContext);
             BuildPreviewCube();
             _axisBuffer = new VertexBuffer(_renderContext);
-            BuildAxisGizmo();
+            _ringBuffer = new VertexBuffer(_renderContext);
             _faceOutlineBuffer = new VertexBuffer(_renderContext);
+            RebuildAxesAndRings();
             BuildFaceOutline(-1);
 
             string vs = @"
@@ -150,6 +159,7 @@ void main() {
             _lineShader = new ShaderProgram(_renderContext, lvs, lfs);
 
             LoadUIFromFile();
+            SyncSliderFromData();
             UpdateSelectionUI();
         }
 
@@ -173,7 +183,9 @@ void main() {
                 CubemapPath = src.CubemapPath ?? "",
                 Faces = src.Faces != null ? new List<string>(src.Faces) : new List<string>(),
                 RotationSpeed = src.RotationSpeed,
-                Intensity = src.Intensity
+                Intensity = src.Intensity,
+                VerticalOffset = src.VerticalOffset,
+                Orientation = src.Orientation
             };
         }
 
@@ -355,6 +367,13 @@ void main() {
                 _faceFlipV[i] = false;
             }
 
+            PushSkyboxLive();
+            LoadPreviewCubemap();
+            UpdateSelectionUI();
+        }
+
+        private void PushSkyboxLive()
+        {
             var level = ProjectSettings.Current.CurrentLevel;
             if (level != null)
                 level.Skybox = _workingSkybox;
@@ -370,17 +389,35 @@ void main() {
                 }
             }
 
-            LoadPreviewCubemap();
-
             if (_eventBus != null)
                 _eventBus.Publish(new GenericEvent { Hook = "SkyboxRefresh" });
+        }
 
-            UpdateSelectionUI();
+        private void SyncSliderFromData()
+        {
+            var slider = _uiOverlay.FindElementById("heightSlider") as RangeElement;
+            if (slider != null)
+            {
+                slider.Value = _workingSkybox.VerticalOffset;
+                slider.Attributes["value"] = _workingSkybox.VerticalOffset.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+            UpdateHeightLabel();
+        }
+
+        private void UpdateHeightLabel()
+        {
+            var span = _uiOverlay.FindElementById("heightValue");
+            if (span == null) return;
+            string text = ((int)Math.Round(_workingSkybox.VerticalOffset)).ToString();
+            foreach (var child in span.Children)
+            {
+                if (child is TextElement te) { te.Content = text; break; }
+            }
         }
 
         private void BuildPreviewCube()
         {
-            float s = 1.0f;
+            float s = 0.7f;
             var vertices = new List<float>();
             var indices = new List<uint>();
             vertices.AddRange(new float[] { -s, -s, -s, 1, 1, 1, 1, 0, 0 });
@@ -400,59 +437,58 @@ void main() {
             _previewCube.UpdateCustomWithUV(vertices, indices);
         }
 
-        private void BuildAxisGizmo()
+        private void RebuildAxesAndRings()
         {
-            float L = 1.6f;
-            float tip = 0.12f;
-            var verts = new List<Vertex>();
-            var idx = new List<uint>();
+            var aVerts = new List<Vertex>();
+            var aIdx = new List<uint>();
+            float len = 1.1f;
+            aVerts.Add(new Vertex(0, 0, 0, 1, 0.15f, 0.15f, 1));
+            aVerts.Add(new Vertex(len, 0, 0, 1, 0.15f, 0.15f, 1));
+            aIdx.Add(0); aIdx.Add(1);
+            aVerts.Add(new Vertex(0, 0, 0, 0.15f, 1, 0.15f, 1));
+            aVerts.Add(new Vertex(0, len, 0, 0.15f, 1, 0.15f, 1));
+            aIdx.Add(2); aIdx.Add(3);
+            aVerts.Add(new Vertex(0, 0, 0, 0.2f, 0.4f, 1, 1));
+            aVerts.Add(new Vertex(0, 0, len, 0.2f, 0.4f, 1, 1));
+            aIdx.Add(4); aIdx.Add(5);
+            _axisBuffer.UpdateCustom(aVerts, aIdx);
 
-            verts.Add(new Vertex(0, 0, 0, 1, 0.15f, 0.15f, 1));
-            verts.Add(new Vertex(L, 0, 0, 1, 0.15f, 0.15f, 1));
-            idx.Add(0); idx.Add(1);
-            verts.Add(new Vertex(L, -tip, 0, 1, 0.15f, 0.15f, 1));
-            verts.Add(new Vertex(L, tip, 0, 1, 0.15f, 0.15f, 1));
-            idx.Add(2); idx.Add(3);
-            verts.Add(new Vertex(L, 0, -tip, 1, 0.15f, 0.15f, 1));
-            verts.Add(new Vertex(L, 0, tip, 1, 0.15f, 0.15f, 1));
-            idx.Add(4); idx.Add(5);
+            var rVerts = new List<Vertex>();
+            var rIdx = new List<uint>();
+            AddRing(rVerts, rIdx, Vector3.UnitX, new Vector4(1f, 0.2f, 0.2f, 1f));
+            AddRing(rVerts, rIdx, Vector3.UnitY, new Vector4(0.2f, 1f, 0.2f, 1f));
+            AddRing(rVerts, rIdx, Vector3.UnitZ, new Vector4(0.2f, 0.4f, 1f, 1f));
+            _ringBuffer.UpdateCustom(rVerts, rIdx);
+        }
 
-            verts.Add(new Vertex(0, 0, 0, 0.15f, 1, 0.15f, 1));
-            verts.Add(new Vertex(0, L, 0, 0.15f, 1, 0.15f, 1));
-            idx.Add(6); idx.Add(7);
-            verts.Add(new Vertex(-tip, L, 0, 0.15f, 1, 0.15f, 1));
-            verts.Add(new Vertex(tip, L, 0, 0.15f, 1, 0.15f, 1));
-            idx.Add(8); idx.Add(9);
-            verts.Add(new Vertex(0, L, -tip, 0.15f, 1, 0.15f, 1));
-            verts.Add(new Vertex(0, L, tip, 0.15f, 1, 0.15f, 1));
-            idx.Add(10); idx.Add(11);
-
-            verts.Add(new Vertex(0, 0, 0, 0.2f, 0.4f, 1, 1));
-            verts.Add(new Vertex(0, 0, L, 0.2f, 0.4f, 1, 1));
-            idx.Add(12); idx.Add(13);
-            verts.Add(new Vertex(-tip, 0, L, 0.2f, 0.4f, 1, 1));
-            verts.Add(new Vertex(tip, 0, L, 0.2f, 0.4f, 1, 1));
-            idx.Add(14); idx.Add(15);
-            verts.Add(new Vertex(0, -tip, L, 0.2f, 0.4f, 1, 1));
-            verts.Add(new Vertex(0, tip, L, 0.2f, 0.4f, 1, 1));
-            idx.Add(16); idx.Add(17);
-
-            verts.Add(new Vertex(0, 0, 0, 0.5f, 0.1f, 0.1f, 0.4f));
-            verts.Add(new Vertex(-L, 0, 0, 0.5f, 0.1f, 0.1f, 0.4f));
-            idx.Add(18); idx.Add(19);
-            verts.Add(new Vertex(0, 0, 0, 0.1f, 0.5f, 0.1f, 0.4f));
-            verts.Add(new Vertex(0, -L, 0, 0.1f, 0.5f, 0.1f, 0.4f));
-            idx.Add(20); idx.Add(21);
-            verts.Add(new Vertex(0, 0, 0, 0.1f, 0.2f, 0.5f, 0.4f));
-            verts.Add(new Vertex(0, 0, -L, 0.1f, 0.2f, 0.5f, 0.4f));
-            idx.Add(22); idx.Add(23);
-
-            _axisBuffer.UpdateCustom(verts, idx);
+        private void AddRing(List<Vertex> vertices, List<uint> indices, Vector3 axis, Vector4 color)
+        {
+            uint baseIndex = (uint)vertices.Count;
+            int segments = 48;
+            float radius = 1.05f;
+            for (int i = 0; i < segments; i++)
+            {
+                float angle = i * MathF.PI * 2f / segments;
+                float x = MathF.Cos(angle) * radius;
+                float y = MathF.Sin(angle) * radius;
+                Vector3 point;
+                if (axis == Vector3.UnitX) point = new Vector3(0, x, y);
+                else if (axis == Vector3.UnitY) point = new Vector3(x, 0, y);
+                else point = new Vector3(x, y, 0);
+                vertices.Add(new Vertex(point.X, point.Y, point.Z, color.X, color.Y, color.Z, color.W));
+            }
+            for (int i = 0; i < segments; i++)
+            {
+                uint current = baseIndex + (uint)i;
+                uint next = baseIndex + (uint)((i + 1) % segments);
+                indices.Add(current);
+                indices.Add(next);
+            }
         }
 
         private void BuildFaceOutline(int face)
         {
-            float s = 1.02f;
+            float s = 0.72f;
             var verts = new List<Vertex>();
             var idx = new List<uint>();
             Vector4 c = new Vector4(1f, 0.85f, 0.1f, 1f);
@@ -501,7 +537,7 @@ void main() {
                 if (_swapMode)
                     text = "Swap: pick target face";
                 else if (_selectedFace < 0)
-                    text = "Whole Cube (drag axes)";
+                    text = "Whole Cube (gizmo rings)";
                 else
                 {
                     string flips = "";
@@ -515,6 +551,7 @@ void main() {
                     if (child is TextElement te) { te.Content = text; break; }
                 }
             }
+
             BuildFaceOutline(_selectedFace);
             _uiOverlay.RefreshUI();
         }
@@ -541,6 +578,7 @@ void main() {
                 Apply();
                 return;
             }
+            // Height is handled by the continuous poll in Update – no data-hook needed
             if (hook == "SelectWhole")
             {
                 _selectedFace = -1;
@@ -582,26 +620,35 @@ void main() {
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
 
+            // Pure AnimationTimeline-style poll – this is the only reliable way
+            var slider = _uiOverlay.FindElementById("heightSlider") as RangeElement;
+            if (slider != null && Math.Abs(slider.Value - _workingSkybox.VerticalOffset) > 0.5f)
+            {
+                _workingSkybox.VerticalOffset = slider.Value;
+                UpdateHeightLabel();
+                PushSkyboxLive();
+            }
+
             float header = HasTitleBar ? HeaderHeight : 0f;
             Vector2 rel = absMousePos - Position;
             bool inPreview = rel.Y > header && rel.Y < Size.Y - 140f && rel.X > 0 && rel.X < Size.X;
 
             if (inPreview && mousePressed)
             {
-                if (_selectedFace < 0)
+                int ring = PickRing(rel);
+                if (ring >= 0)
                 {
-                    int axis = PickAxis(rel);
-                    if (axis >= 0)
+                    _activeRing = ring;
+                    _dragStartOrient = _workingSkybox.Orientation;
+                    _accumAngle = 0f;
+                    var (o, d, ok) = GetPreviewRay(rel);
+                    if (ok)
                     {
-                        _gizmoAxis = axis;
-                        _gizmoDragging = true;
-                        _gizmoLast = rel;
+                        Vector3 localAxis = GetAxisVector(ring);
+                        Vector3 worldAxis = Vector3.Transform(localAxis, Matrix4x4.CreateFromQuaternion(_dragStartOrient));
+                        _lastPlanePoint = ClosestPointOnPlane(o, d, Vector3.Zero, worldAxis);
                     }
-                    else
-                    {
-                        _orbitDragging = true;
-                        _lastMouse = rel;
-                    }
+                    _ringDragging = true;
                 }
                 else
                 {
@@ -610,46 +657,62 @@ void main() {
                 }
             }
 
-            if (_gizmoDragging && mouseDown)
+            if (_ringDragging && mouseDown)
             {
-                Vector2 delta = rel - _gizmoLast;
-                float amount = delta.X * 0.012f;
-                Matrix4x4 rot = _gizmoAxis switch
+                var (o, d, ok) = GetPreviewRay(rel);
+                if (ok)
                 {
-                    0 => Matrix4x4.CreateRotationX(amount),
-                    1 => Matrix4x4.CreateRotationY(amount),
-                    2 => Matrix4x4.CreateRotationZ(amount),
-                    _ => Matrix4x4.Identity
-                };
-                _previewModel = rot * _previewModel;
-                _gizmoLast = rel;
+                    Vector3 localAxis = GetAxisVector(_activeRing);
+                    Vector3 worldAxis = Vector3.Transform(localAxis, Matrix4x4.CreateFromQuaternion(_dragStartOrient));
+                    Vector3 cur = ClosestPointOnPlane(o, d, Vector3.Zero, worldAxis);
+                    Vector3 v1 = Vector3.Normalize(_lastPlanePoint);
+                    Vector3 v2 = Vector3.Normalize(cur);
+                    float dot = Math.Clamp(Vector3.Dot(v1, v2), -1f, 1f);
+                    float ang = MathF.Acos(dot);
+                    if (Vector3.Dot(Vector3.Cross(v1, v2), worldAxis) < 0) ang = -ang;
+                    _accumAngle += ang;
+                    _lastPlanePoint = cur;
+
+                    Quaternion delta = Quaternion.CreateFromAxisAngle(localAxis, _accumAngle);
+                    _workingSkybox.Orientation = Quaternion.Normalize(delta * _dragStartOrient);
+                }
             }
-            else if (_orbitDragging && mouseDown)
+
+            if (_ringDragging && mouseReleased)
+            {
+                float snap = MathF.Round(_accumAngle / (MathF.PI * 0.5f)) * (MathF.PI * 0.5f);
+                Vector3 localAxis = GetAxisVector(_activeRing);
+                Quaternion delta = Quaternion.CreateFromAxisAngle(localAxis, snap);
+                _workingSkybox.Orientation = Quaternion.Normalize(delta * _dragStartOrient);
+                PushSkyboxLive();
+
+                _ringDragging = false;
+                _activeRing = -1;
+            }
+
+            if (_orbitDragging && mouseDown)
             {
                 Vector2 delta = rel - _lastMouse;
-                _previewYaw += delta.X * 0.01f;
-                _previewPitch = Math.Clamp(_previewPitch + delta.Y * 0.01f, -1.4f, 1.4f);
+                _previewYaw += delta.X * 0.012f;
+                _previewPitch = Math.Clamp(_previewPitch + delta.Y * 0.012f, -1.4f, 1.4f);
                 _lastMouse = rel;
             }
 
             if (mouseReleased)
             {
-                _gizmoDragging = false;
-                _gizmoAxis = -1;
                 _orbitDragging = false;
             }
 
             if (inPreview && MathF.Abs(scrollDelta) > 0.01f)
-                _previewDist = Math.Clamp(_previewDist - scrollDelta * 0.3f, 1.8f, 8f);
+                _previewDist = Math.Clamp(_previewDist - scrollDelta * 0.25f, 1.6f, 7f);
         }
 
-        private int PickAxis(Vector2 relMouse)
+        private (Vector3 origin, Vector3 dir, bool ok) GetPreviewRay(Vector2 relMouse)
         {
             float header = HasTitleBar ? HeaderHeight : 0f;
             float contentW = Size.X;
             float contentH = Size.Y - header;
             float aspect = contentW / Math.Max(contentH, 1f);
-
             Vector3 camPos = new Vector3(
                 MathF.Sin(_previewYaw) * MathF.Cos(_previewPitch) * _previewDist,
                -MathF.Cos(_previewYaw) * MathF.Cos(_previewPitch) * _previewDist,
@@ -657,29 +720,91 @@ void main() {
             );
             Matrix4x4 view = Matrix4x4.CreateLookAt(camPos, Vector3.Zero, Vector3.UnitZ);
             Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 3.2f, aspect, 0.1f, 50f);
-            Matrix4x4 mvp = _previewModel * view * proj;
-
-            Vector3[] tips = {
-                new Vector3(1.6f, 0, 0),
-                new Vector3(0, 1.6f, 0),
-                new Vector3(0, 0, 1.6f)
-            };
-
-            float bestDist = 18f;
-            int best = -1;
-            for (int i = 0; i < 3; i++)
-            {
-                Vector4 clip = Vector4.Transform(new Vector4(tips[i], 1f), mvp);
-                if (clip.W <= 0.001f) continue;
-                float ndcX = clip.X / clip.W;
-                float ndcY = clip.Y / clip.W;
-                float sx = (ndcX * 0.5f + 0.5f) * contentW;
-                float sy = (1f - (ndcY * 0.5f + 0.5f)) * contentH + header;
-                float d = Vector2.Distance(relMouse, new Vector2(sx, sy));
-                if (d < bestDist) { bestDist = d; best = i; }
-            }
-            return best;
+            if (!Matrix4x4.Invert(proj, out Matrix4x4 invProj)) return (Vector3.Zero, Vector3.Zero, false);
+            if (!Matrix4x4.Invert(view, out Matrix4x4 invView)) return (Vector3.Zero, Vector3.Zero, false);
+            float ndcX = (relMouse.X / contentW) * 2f - 1f;
+            float ndcY = 1f - ((relMouse.Y - header) / contentH) * 2f;
+            Vector4 nearH = Vector4.Transform(new Vector4(ndcX, ndcY, -1f, 1f), invProj);
+            Vector4 farH = Vector4.Transform(new Vector4(ndcX, ndcY, 1f, 1f), invProj);
+            Vector3 near = new Vector3(nearH.X / nearH.W, nearH.Y / nearH.W, nearH.Z / nearH.W);
+            Vector3 far = new Vector3(farH.X / farH.W, farH.Y / farH.W, farH.Z / farH.W);
+            Vector3 origin = Vector3.Transform(near, invView);
+            Vector3 dir = Vector3.Normalize(Vector3.Transform(far, invView) - origin);
+            return (origin, dir, true);
         }
+
+        private int PickRing(Vector2 relMouse)
+        {
+            float header = HasTitleBar ? HeaderHeight : 0f;
+            float contentW = Size.X;
+            float contentH = Size.Y - header;
+            // Use the same inverse orientation that the preview uses so picking matches what the user sees
+            Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(Quaternion.Inverse(_workingSkybox.Orientation));
+
+            float best = float.MaxValue;
+            int bestRing = -1;
+            for (int ring = 0; ring < 3; ring++)
+            {
+                int segs = 48;
+                float radius = 1.05f;
+                Vector3 prev = Vector3.Zero;
+                for (int i = 0; i <= segs; i++)
+                {
+                    float ang = i * MathF.PI * 2f / segs;
+                    float x = MathF.Cos(ang) * radius;
+                    float y = MathF.Sin(ang) * radius;
+                    Vector3 local;
+                    if (ring == 0) local = new Vector3(0, x, y);
+                    else if (ring == 1) local = new Vector3(x, 0, y);
+                    else local = new Vector3(x, y, 0);
+                    Vector3 world = Vector3.Transform(local, orient);
+                    if (i > 0)
+                    {
+                        float d = DistanceToSegment2D(relMouse, prev, world, contentW, contentH, header);
+                        if (d < best) { best = d; bestRing = ring; }
+                    }
+                    prev = world;
+                }
+            }
+            return best < RingPickTolerance ? bestRing : -1;
+        }
+
+        private float DistanceToSegment2D(Vector2 p, Vector3 a3, Vector3 b3, float vw, float vh, float header)
+        {
+            Vector2 a = WorldToScreen(a3, vw, vh, header);
+            Vector2 b = WorldToScreen(b3, vw, vh, header);
+            Vector2 ab = b - a;
+            float len2 = ab.LengthSquared();
+            if (len2 < 1e-8f) return Vector2.Distance(p, a);
+            float t = Math.Clamp(Vector2.Dot(p - a, ab) / len2, 0f, 1f);
+            return Vector2.Distance(p, a + ab * t);
+        }
+
+        private Vector2 WorldToScreen(Vector3 world, float vw, float vh, float header)
+        {
+            Vector3 camPos = new Vector3(
+                MathF.Sin(_previewYaw) * MathF.Cos(_previewPitch) * _previewDist,
+               -MathF.Cos(_previewYaw) * MathF.Cos(_previewPitch) * _previewDist,
+                MathF.Sin(_previewPitch) * _previewDist
+            );
+            Matrix4x4 view = Matrix4x4.CreateLookAt(camPos, Vector3.Zero, Vector3.UnitZ);
+            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 3.2f, vw / Math.Max(vh, 1f), 0.1f, 50f);
+            Vector4 clip = Vector4.Transform(new Vector4(world, 1f), view * proj);
+            if (Math.Abs(clip.W) < 1e-6f) return new Vector2(vw * 0.5f, vh * 0.5f + header);
+            float ndcX = clip.X / clip.W;
+            float ndcY = clip.Y / clip.W;
+            return new Vector2((ndcX * 0.5f + 0.5f) * vw, (1f - (ndcY * 0.5f + 0.5f)) * vh + header);
+        }
+
+        private Vector3 ClosestPointOnPlane(Vector3 rayO, Vector3 rayD, Vector3 center, Vector3 normal)
+        {
+            float denom = Vector3.Dot(rayD, normal);
+            if (Math.Abs(denom) < 1e-6f) return center;
+            float t = Vector3.Dot(center - rayO, normal) / denom;
+            return rayO + t * rayD;
+        }
+
+        private Vector3 GetAxisVector(int axis) => axis switch { 0 => Vector3.UnitX, 1 => Vector3.UnitY, 2 => Vector3.UnitZ, _ => Vector3.UnitZ };
 
         protected override void RenderInnerContent()
         {
@@ -697,7 +822,10 @@ void main() {
             );
             Matrix4x4 view = Matrix4x4.CreateLookAt(camPos, Vector3.Zero, Vector3.UnitZ);
             Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 3.2f, aspect, 0.1f, 50f);
-            Matrix4x4 mvp = _previewModel * view * proj;
+
+            // Inverse Orientation so the panel matches the main-scene sample-direction rotation
+            Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(Quaternion.Inverse(_workingSkybox.Orientation));
+            Matrix4x4 mvp = orient * view * proj;
 
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
@@ -713,16 +841,25 @@ void main() {
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _lineShader.Use();
             _lineShader.SetMatrix4("uMVP", mvp);
+
             if (_axisBuffer != null)
             {
                 _axisBuffer.Bind();
                 _renderContext.DrawElements(_renderContext.Enums.Lines, _axisBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            }
+            if (_ringBuffer != null)
+            {
+                _ringBuffer.Bind();
+                _renderContext.LineWidth(2.5f);
+                _renderContext.DrawElements(_renderContext.Enums.Lines, _ringBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                _renderContext.LineWidth(1f);
             }
             if (_selectedFace >= 0 && _faceOutlineBuffer != null && _faceOutlineBuffer.GetIndexCount() > 0)
             {
                 _faceOutlineBuffer.Bind();
                 _renderContext.DrawElements(_renderContext.Enums.Lines, _faceOutlineBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }
+
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
 
@@ -731,6 +868,7 @@ void main() {
             if (_cubemapTex != 0) _renderContext.DeleteTexture(_cubemapTex);
             _previewCube?.Dispose();
             _axisBuffer?.Dispose();
+            _ringBuffer?.Dispose();
             _faceOutlineBuffer?.Dispose();
             _previewShader?.Dispose();
             _lineShader?.Dispose();

@@ -5,7 +5,6 @@ using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Numerics;
 
 namespace SiegeEngine.Core.GPU.Renderers
@@ -78,6 +77,9 @@ namespace SiegeEngine.Core.GPU.Renderers
             viewNoTranslation.M41 = 0; viewNoTranslation.M42 = 0; viewNoTranslation.M43 = 0;
             _skyShader.SetMatrix4("uView", viewNoTranslation);
             _skyShader.SetMatrix4("uProjection", projection);
+            Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(skybox.Orientation);
+            _skyShader.SetMatrix4("uOrientation", orient);
+            _skyShader.SetUniform("uVerticalOffset", skybox.VerticalOffset);
             _renderContext.ActiveTexture(0);
             _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTexture);
             _cubeBuffer.Bind();

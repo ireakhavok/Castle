@@ -14,13 +14,6 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("sceneType")]
         public string SceneType { get; set; } = "Gameplay";
 
-        /// <summary>
-        /// Optional fully-qualified or simple name of the pure-client Scene class
-        /// that implements this scene (e.g. "ChessScene"). When present and
-        /// registered via [CustomSceneEntry], the Scene Editor hosts it as a
-        /// view-only preview. Play/Export continue to use the existing
-        /// RuntimeGameplay rebind path for compatibility.
-        /// </summary>
         [JsonPropertyName("customSceneClass")]
         public string CustomSceneClass { get; set; }
 
@@ -43,7 +36,7 @@ namespace SiegeEngine.Core.Definitions
         public SceneSettings Settings { get; set; }
 
         [JsonIgnore]
-        public string LiveStateGuid { get; set; } // used internally by ProjectStateManager
+        public string LiveStateGuid { get; set; }
     }
 
     public class TerrainData
@@ -72,8 +65,6 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("verticalExaggeration")]
         public float VerticalExaggeration { get; set; } = 1f;
 
-        // Transfer-only: populated only for pure in-memory Play when heightmap is dirty / never-saved.
-        // Explicit Save always clears these so project.json remains path-only.
         [JsonPropertyName("embeddedHeightmapWidth")]
         public int EmbeddedHeightmapWidth { get; set; }
 
@@ -133,5 +124,11 @@ namespace SiegeEngine.Core.Definitions
 
         [JsonPropertyName("intensity")]
         public float Intensity { get; set; } = 1.0f;
+
+        [JsonPropertyName("verticalOffset")]
+        public float VerticalOffset { get; set; } = 0f;
+
+        [JsonPropertyName("orientation")]
+        public Quaternion Orientation { get; set; } = Quaternion.Identity;
     }
 }

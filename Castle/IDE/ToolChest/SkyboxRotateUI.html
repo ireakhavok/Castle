@@ -81,13 +81,19 @@
                 background: #2a5a3a;
                 border-color: #3a7a4a;
             }
+
+        input[type="range"] {
+            width: 180px;
+            accent-color: #4a8a6a;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <div class="toolbar">
         <div class="row">
             <span class="label">Mode:</span>
-            <span class="mode" id="modeLabel">Whole Cube (use gizmo)</span>
+            <span class="mode" id="modeLabel">Whole Cube (gizmo rings)</span>
             <button class="close-btn" data-hook="ClosePanel">Close</button>
             <button class="apply-btn" data-hook="Apply">Apply</button>
         </div>
@@ -111,6 +117,12 @@
             <button data-hook="MirrorH">Mirror H</button>
             <button data-hook="MirrorV">Mirror V</button>
             <button data-hook="StartSwap">Swap with…</button>
+        </div>
+
+        <div class="row">
+            <span class="label">Height</span>
+            <input type="range" id="heightSlider" min="-20000" max="20000" step="50" value="0" data-hook="HeightChanged" />
+            <span class="mode" id="heightValue">0</span>
         </div>
     </div>
 </body>
