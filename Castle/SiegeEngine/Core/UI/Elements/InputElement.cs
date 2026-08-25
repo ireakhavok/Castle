@@ -119,7 +119,9 @@ namespace SiegeEngine.Core.UI.Elements
             bool over = base.HandleClick(mousePos, viewportWidth, viewportHeight);
             if (this.Type == "range" && this is RangeElement range && over && IsActive)
             {
-                float relX = Math.Clamp(mousePos.X - ComputedContentX, 0f, ComputedContentWidth);
+                // Transform-aware local mapping so absolute + CSS transform elements work correctly
+                Vector2 local = ScreenToLocal(mousePos, viewportWidth, viewportHeight);
+                float relX = Math.Clamp(local.X - ComputedContentX, 0f, ComputedContentWidth);
                 float percent = relX / ComputedContentWidth;
                 float newValue = range.Min + percent * (range.Max - range.Min);
                 if (range.Step > 0) newValue = (float)Math.Round(newValue / range.Step) * range.Step;

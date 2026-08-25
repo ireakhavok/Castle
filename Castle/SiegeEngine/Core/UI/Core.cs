@@ -1,4 +1,5 @@
-﻿// file: core.cs
+﻿// Folder: SiegeEngine.Core.UI
+// File: core.cs
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.GPU.Shaders;
@@ -134,6 +135,24 @@ namespace SiegeEngine.Core.UI
             {
                 child.UpdateFullTransforms(ComputedFullTransform);
             }
+        }
+
+        /// <summary>
+        /// Maps a panel-space mouse position into this element's local layout space,
+        /// correctly accounting for any CSS transform applied via ComputedFullTransform.
+        /// Used by continuous controls (range sliders) so drag math matches visual position.
+        /// </summary>
+        public Vector2 ScreenToLocal(Vector2 screenPos, float viewportWidth, float viewportHeight)
+        {
+            if (!Matrix4x4.Invert(ComputedFullTransform, out Matrix4x4 inv))
+                return screenPos;
+            Vector4 local = Vector4.Transform(new Vector4(screenPos.X, screenPos.Y, 0f, 1f), inv);
+            if (Math.Abs(local.W) > 1e-6f)
+            {
+                local.X /= local.W;
+                local.Y /= local.W;
+            }
+            return new Vector2(local.X, local.Y);
         }
 
         public void PrepareResources(string baseDir, IControlContext controlContext, nint window, IRenderContext renderContext, ShaderProgram shader)

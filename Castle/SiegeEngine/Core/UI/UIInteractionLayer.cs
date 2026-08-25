@@ -247,7 +247,9 @@ namespace SiegeEngine.Core.UI
             }
             if (currentMouseDown && _draggingSlider != null)
             {
-                float relX = Math.Clamp(relMousePos.X - _draggingSlider.ComputedContentX, 0f, _draggingSlider.ComputedContentWidth);
+                // Transform-aware local mapping so absolute + CSS transform elements (e.g. centered toolbars) work correctly
+                Vector2 local = _draggingSlider.ScreenToLocal(relMousePos, panelW, panelH);
+                float relX = Math.Clamp(local.X - _draggingSlider.ComputedContentX, 0f, _draggingSlider.ComputedContentWidth);
                 float percent = relX / _draggingSlider.ComputedContentWidth;
                 float newValue = _draggingSlider.Min + percent * (_draggingSlider.Max - _draggingSlider.Min);
                 if (_draggingSlider.Step > 0) newValue = (float)Math.Round(newValue / _draggingSlider.Step) * _draggingSlider.Step;
