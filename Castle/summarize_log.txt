@@ -716,7 +716,7 @@ Found: ..
 Found: AcousticDebugOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
-Read 16649 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
+Read 15239 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
 Namespace: ToolChest
 Found 11 dependencies
 Found: AddSkybox.html
@@ -1157,7 +1157,7 @@ Found: ..
 Found: WaveOutPlayer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Audio\WaveOutPlayer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Audio\WaveOutPlayer.cs
-Read 12877 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Audio\WaveOutPlayer.cs
+Read 13017 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Audio\WaveOutPlayer.cs
 Namespace: SiegeEngine.Audio
 Found 3 dependencies
 Found: Definitions
@@ -1510,7 +1510,7 @@ Found 7 dependencies
 Found: AcousticRayTracer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
-Read 16817 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
+Read 30355 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Compute\AcousticRayTracer.cs
 Namespace: SiegeEngine.Core.GPU.Compute
 Found 7 dependencies
 Found: ComputeProgram.cs
@@ -1532,7 +1532,7 @@ Found: ..
 Found: AbstractRenderEnums.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\AbstractRenderEnums.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\AbstractRenderEnums.cs
-Read 4585 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\AbstractRenderEnums.cs
+Read 5081 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\AbstractRenderEnums.cs
 Namespace: SiegeEngine.Core.GPU.ContextManagement
 Found 1 dependencies
 Found: ContextManager.cs
@@ -1562,7 +1562,7 @@ Found 2 dependencies
 Found: IRenderContext.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\IRenderContext.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\IRenderContext.cs
-Read 5667 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\IRenderContext.cs
+Read 5888 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\IRenderContext.cs
 Namespace: SiegeEngine.Core.GPU.ContextManagement
 Found 1 dependencies
 Found: OpenGLContextManager.cs
@@ -1574,13 +1574,13 @@ Found 3 dependencies
 Found: OpenGLEnums.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\OpenGLEnums.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\OpenGLEnums.cs
-Read 6271 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\OpenGLEnums.cs
+Read 6955 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\OpenGLEnums.cs
 Namespace: SiegeEngine.Core.GPU.ContextManagement
 Found 1 dependencies
 Found: OpenGLRenderContext.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\OpenGLRenderContext.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\OpenGLRenderContext.cs
-Read 12825 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\OpenGLRenderContext.cs
+Read 13487 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\ContextManagement\OpenGLRenderContext.cs
 Namespace: SiegeEngine.Core.GPU.ContextManagement
 Found 3 dependencies
 Found: Viewport.cs
@@ -2499,7 +2499,7 @@ Found 6 dependencies
 Found: AudioSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
-Read 42149 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
+Read 43392 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Namespace: SiegeEngine.Systems
 Found 16 dependencies
 Found: ClientPredictionSystem.cs

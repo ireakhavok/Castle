@@ -19,16 +19,25 @@ Folder: Core
       - void main()
       - void main()
 - File: AcousticRayTracer.cs
-  - Class: DebugSegment (Namespace: SiegeEngine.Core.GPU.Compute)
+  - Class: SecondarySlot (Namespace: SiegeEngine.Core.GPU.Compute)
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, System, System.Collections.Generic, System.Numerics, System.Runtime.InteropServices
     - Fields:
-      - Vector3 A
-      - Vector3 B
-      - DebugSegmentKind Kind
-      - float Intensity
-      - float Radius
-      - Vector3 Normal
-      - int TriangleIndex
+      - int EntityId
+      - Vector3 SourcePos
+      - HashSet<int>[] ListenerVisible
+      - HashSet<int>[] SourceVisible
+      - HashSet<int>[] Mutual
+      - Vector3[] FsListenerPos
+      - Vector3[] FsSourcePos
+      - uint[] FsGeometryVersion
+      - bool[] FsValid
+      - int FsWrite
+      - int FsRead
+      - bool PendingRaster
+      - int PendingFace
+      - Vector3 PendingListener
+      - Vector3 PendingSource
+      - uint PendingGeometryVersion
 - File: AcousticResidualShader.cs
   - Class: AcousticResidualShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
@@ -1460,6 +1469,9 @@ Folder: Core
       - void Viewport( int y,  uint height,  uint width, int x)
       - void GetProgramInterface( int pname,  int programInterface,  out int, uint program)
       - int GetProgramResourceLocation( int programInterface,  string name, uint program)
+      - uint FenceSync( uint flags, int condition)
+      - int ClientWaitSync( uint flags,  ulong timeout, uint sync)
+      - void DeleteSync(uint sync)
 - File: OpenPanelEvent.cs
   - Class: OpenPanelEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -3137,8 +3149,8 @@ SiegeEngine.Core.Events.SoundRayTraceResult
 SiegeEngine.Core.Events.TimeOfDayChangedEvent
 SiegeEngine.Core.Events.WeatherChangedEvent
 SiegeEngine.Core.GPU.Compute.ComputeProgram
-SiegeEngine.Core.GPU.Compute.DebugSegment
 SiegeEngine.Core.GPU.Compute.DrawVertex
+SiegeEngine.Core.GPU.Compute.SecondarySlot
 SiegeEngine.Core.GPU.Compute.ShaderStorageBuffer
 SiegeEngine.Core.GPU.ContextManagement.AbstractRenderEnums
 SiegeEngine.Core.GPU.ContextManagement.ContextManager
