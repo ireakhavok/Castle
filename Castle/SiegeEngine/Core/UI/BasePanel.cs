@@ -9,11 +9,9 @@ using SiegeEngine.Core.GPU.Renderers;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.Core.UI
 {
     public enum ScalingMode { Fill, BestFit }
-
     public abstract class BasePanel : IPanel
     {
         protected readonly IRenderContext _renderContext;
@@ -59,7 +57,6 @@ namespace SiegeEngine.Core.UI
         public bool IsClosable { get; set; } = false;
         public int RenderOrder { get; set; } = 0;
         public static bool MouseReleasedConsumedThisFrame { get; set; } = false;
-
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -68,12 +65,10 @@ namespace SiegeEngine.Core.UI
             _eventBus = eventBus;
             _uiOverlay = CreateUIOverlay();
         }
-
         protected virtual UIOverlay CreateUIOverlay()
         {
             return new UIOverlay(_renderContext, _controlContext, _window);
         }
-
         public virtual void Init()
         {
             _uiOverlay.Init();
@@ -82,28 +77,23 @@ namespace SiegeEngine.Core.UI
             Size = new Vector2(BaseWidth, BaseHeight);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
-
             if (HasTitleBar)
             {
                 chrome = new PanelChrome(this);
                 HeaderHeight = TitleHeight;
             }
-
             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
             _uiOverlay.RefreshUI();
         }
-
         public virtual bool IsMouseOver(Vector2 absMousePos)
         {
             if (!Visible) return false;
             return absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                    absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
         }
-
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
-
             if (HasTitleBar && chrome != null)
             {
                 if (chrome.HandleUpdate(absMousePos, mousePressed, mouseReleased))
@@ -112,7 +102,6 @@ namespace SiegeEngine.Core.UI
                     return;
                 }
             }
-
             if (_isDragging)
             {
                 if (mouseDown)
@@ -125,7 +114,6 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
-
             if (_currentResizeHandle != ResizeHandle.None)
             {
                 if (mouseDown)
@@ -133,7 +121,6 @@ namespace SiegeEngine.Core.UI
                     Vector2 delta = absMousePos - _resizeStartMousePos;
                     Vector2 newPos = _resizeStartPosition;
                     Vector2 newSize = _resizeStartSize;
-
                     switch (_currentResizeHandle)
                     {
                         case ResizeHandle.Left:
@@ -171,15 +158,12 @@ namespace SiegeEngine.Core.UI
                             newSize.Y = _resizeStartSize.Y + delta.Y;
                             break;
                     }
-
                     newSize.X = Math.Max(newSize.X, 200f);
                     newSize.Y = Math.Max(newSize.Y, 150f);
-
                     Position = newPos;
                     Size = newSize;
                     OnLiveResize(Size.X, Size.Y);
                 }
-
                 if (mouseReleased)
                 {
                     _currentResizeHandle = ResizeHandle.None;
@@ -187,15 +171,12 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
-
             bool overPanel = IsMouseOver(absMousePos);
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
-
             if (isTopmost && overPanel && mousePressed)
             {
                 OnContentFocusGained();
             }
-
             if (isTopmost)
             {
                 Vector2 relMousePos = absMousePos - Position;
@@ -205,14 +186,11 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
             }
         }
-
         public virtual void OnContentFocusGained()
         {
             Console.WriteLine($"[BasePanel] OnContentFocusGained called on {GetType().Name} (default no-op)");
         }
-
         public virtual void ToggleCameraMode() { }
-
         public ResizeHandle GetResizeHandle(Vector2 absMousePos)
         {
             float left = absMousePos.X - Position.X;
@@ -221,7 +199,6 @@ namespace SiegeEngine.Core.UI
             float bottom = Position.Y + Size.Y - absMousePos.Y;
             const float grip = 8f;
             float titleH = HasTitleBar ? TitleHeight : 0f;
-
             if (left < grip && top < grip) return ResizeHandle.TopLeft;
             if (right < grip && top < grip) return ResizeHandle.TopRight;
             if (left < grip && bottom < grip) return ResizeHandle.BottomLeft;
@@ -232,7 +209,6 @@ namespace SiegeEngine.Core.UI
             if (bottom < grip) return ResizeHandle.Bottom;
             return ResizeHandle.None;
         }
-
         public void StartResize(Vector2 mousePos, ResizeHandle handle)
         {
             _currentResizeHandle = handle;
@@ -240,11 +216,9 @@ namespace SiegeEngine.Core.UI
             _resizeStartPosition = Position;
             _resizeStartSize = Size;
         }
-
         public virtual void Render()
         {
             if (!Visible) return;
-
             if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
             {
                 _lastW = (int)Size.X;
@@ -252,12 +226,12 @@ namespace SiegeEngine.Core.UI
                 OnLiveResize(Size.X, Size.Y);
                 _uiOverlay.PanelWidth = Size.X;
                 _uiOverlay.PanelHeight = Size.Y;
-                _uiOverlay.RefreshUI();
+                // Live size change only updates dimensions.
+                // Full RefreshUI is reserved for OnPanelResize (mouse-up) and explicit content/style changes.
+                // This matches the contract used by SceneEditorPanel and TerrainCreatorPanel.
             }
-
             _layeredRenderer.RenderPanel(this);
         }
-
         protected internal virtual void RenderContentLayer()
         {
             RenderInnerContent();
@@ -266,19 +240,15 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Render();
             }
         }
-
         protected virtual void RenderInnerContent()
         {
         }
-
         public virtual void Dispose()
         {
             _uiOverlay.Dispose();
             if (chrome != null) chrome.Dispose();
         }
-
         public virtual void Detach() { }
-
         public virtual void OnPanelResize(float w, float h)
         {
             Size = new Vector2(w, h);
@@ -291,31 +261,25 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
             _uiOverlay.RefreshUI();
         }
-
         public virtual void OnLiveResize(float w, float h)
         {
         }
-
         public void StartTitleBarDrag(Vector2 mousePos)
         {
             _isDragging = true;
             _dragOffset = mousePos - Position;
             _dragStartMousePos = mousePos;
             _lastClickTime = _controlContext.GetTime();
-
             PanelManager.Current?.BringToFront(this);
         }
-
         public void ResetDragState()
         {
             _isDragging = false;
         }
-
         public void Close()
         {
             _eventBus.Publish(new ClosePanelEvent(this));
         }
-
         public bool IsOverCloseButton(Vector2 mousePos)
         {
             if (!IsClosable || !HasTitleBar) return false;
@@ -323,19 +287,14 @@ namespace SiegeEngine.Core.UI
             return mousePos.X >= closeX && mousePos.X <= Position.X + Size.X &&
                    mousePos.Y >= Position.Y && mousePos.Y <= Position.Y + TitleHeight;
         }
-
         public nint WindowHandle => _window;
-
         protected internal UIQuadRenderer QuadRenderer => _quadRenderer;
-
         public List<ICustomOverlay> CustomOverlays { get; } = new List<ICustomOverlay>();
-
         public virtual void Hide()
         {
             Visible = false;
             Detach();
         }
-
         public virtual void Show()
         {
             Visible = true;
