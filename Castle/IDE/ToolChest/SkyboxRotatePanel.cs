@@ -812,20 +812,6 @@ void main() {
             }
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
-        //public override void OnPanelResize(float w, float h)
-        //{
-        //    Size = new Vector2(w, h);
-        //    if (DockState == DockState.Floating && Position.Y < HeaderHeight)
-        //        Position = new Vector2(Position.X, HeaderHeight);
-        //    if (_uiOverlay != null)
-        //    {
-        //        _uiOverlay.PanelWidth = Size.X;
-        //        _uiOverlay.PanelHeight = Size.Y;
-        //        _uiOverlay.ReservedHeaderHeight = HeaderHeight;
-        //    }
-        //    // No RefreshUI. Docking calls this every splitter tick; full HTML rebuild is not needed.
-        //    // RefreshUI still runs from Init, UpdateSelectionUI, Apply, and height-label updates.
-        //}
         public override void Dispose()
         {
             if (_cubemapTex != 0) _renderContext.DeleteTexture(_cubemapTex);

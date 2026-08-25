@@ -730,6 +730,7 @@ Folder: IDE
       - int _selectedEntityId
       - VertexBuffer _arrowBuffer
       - VertexBuffer _ringBuffer
+      - ShaderProgram _shader
       - bool _isDragging
       - int _activeAxis
       - bool _isRotating
@@ -759,7 +760,7 @@ Folder: IDE
       - void AddRing( List<uint> indices,  Vector3 axis,  Vector4 color, List<Vertex> vertices)
         - Calls: Vertex, indices.Add, vertices.Add
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: ShaderProgram, _arrowBuffer.Bind, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _renderContext.LineWidth, _ringBuffer.Bind, arrowShader.Dispose, arrowShader.SetMatrix4, arrowShader.SetUniform, arrowShader.Use
+        - Calls: ShaderProgram, _arrowBuffer.Bind, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _renderContext.LineWidth, _ringBuffer.Bind, _shader.SetMatrix4, _shader.SetUniform, _shader.Use
       - bool HandleMouseInput( bool mouseDown,  bool mousePressed,  bool mouseReleased,  float contentH,  float contentW, Vector2 contentMouse)
         - Calls: EndDrag, PerformDrag, PickAxisScreenSpace, PickRingScreenSpace, StartDrag
       - void StartDrag( float contentH,  float contentW, Vector2 contentMouse)
@@ -771,9 +772,9 @@ Folder: IDE
       - Vector3 ClosestPointOnInfiniteAxis( Vector3 lineDir,  Vector3 linePoint,  Vector3 rayDir, Vector3 rayOrigin)
       - Vector3 ClosestPointOnRingPlane( Vector3 center,  Vector3 normal,  Vector3 rayDir, Vector3 rayOrigin)
       - int PickAxisScreenSpace( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: Console.WriteLine, DistanceToLineSegment2D
+        - Calls: DistanceToLineSegment2D
       - int PickRingScreenSpace( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: Console.WriteLine, DistanceToLineSegment2D
+        - Calls: DistanceToLineSegment2D
       - float DistanceToLineSegment2D( Vector3 a3,  Vector3 b3,  float viewportH,  float viewportW, Vector2 p)
         - Calls: WorldToScreen
       - Vector2 WorldToScreen( float viewportH,  float viewportW, Vector3 worldPos)
@@ -1200,7 +1201,7 @@ Folder: SiegeEngine
       - ResizeHandle GetResizeHandle(Vector2 absMousePos)
       - void StartResize( ResizeHandle handle, Vector2 mousePos)
       - void Render()
-        - Calls: OnLiveResize, _layeredRenderer.RenderPanel, _uiOverlay.RefreshUI
+        - Calls: OnLiveResize, OnPanelResize, _layeredRenderer.RenderPanel
       - void RenderContentLayer()
         - Calls: RenderInnerContent, _uiOverlay.Render
       - void RenderInnerContent()
@@ -1480,6 +1481,7 @@ Folder: SiegeEngine
       - string GetEffectiveDisplay()
       - HtmlElement FindContainingBlock()
       - void UpdateFullTransforms(Matrix4x4 parentMatrix)
+      - Vector2 ScreenToLocal( float viewportHeight,  float viewportWidth, Vector2 screenPos)
       - void PrepareResources( IControlContext controlContext,  IRenderContext renderContext,  ShaderProgram shader,  nint window, string baseDir)
         - Calls: BackgroundRenderer, Console.WriteLine, _bgRenderer.Initialize
       - HtmlElement FindElementById(string id)
@@ -2259,7 +2261,7 @@ Folder: SiegeEngine
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings, textRenderer.GetTextSize
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
-        - Calls: newValue.ToString
+        - Calls: ScreenToLocal, newValue.ToString
       - bool Update( IControlContext controlContext,  nint window, float deltaTime)
 - File: InputEnums.cs
   - Class: WindowAttribute (Namespace: SiegeEngine.Core.Definitions)
@@ -3827,7 +3829,7 @@ Folder: SiegeEngine
       - void ClearFocus(bool refresh = true)
         - Calls: _overlay.RefreshUI
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
-        - Calls: ClearFocus, IsContextMenuElement, IsDropdownElement, IsPressOverTextInput, JSElement, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetTime, _keyDownTime.Remove, _lastAddTime.Remove, _overlay.CloseAllOpenSelects, _overlay.CloseContextMenu, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.OnContextMenuRequested, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._document.InvokeDocumentMousemove, _overlay._document.InvokeDocumentMouseup, _overlay._jsContext.RunWithThis, clickable.UpdateHover, newValue.ToString
+        - Calls: ClearFocus, IsContextMenuElement, IsDropdownElement, IsPressOverTextInput, JSElement, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetTime, _draggingSlider.ScreenToLocal, _keyDownTime.Remove, _lastAddTime.Remove, _overlay.CloseAllOpenSelects, _overlay.CloseContextMenu, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.OnContextMenuRequested, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._document.InvokeDocumentMousemove, _overlay._document.InvokeDocumentMouseup, _overlay._jsContext.RunWithThis, clickable.UpdateHover, newValue.ToString
       - bool IsDropdownElement(HtmlElement elem)
 - File: UIOverlay.cs
   - Class: UIOverlay (Namespace: SiegeEngine.Core.UI)

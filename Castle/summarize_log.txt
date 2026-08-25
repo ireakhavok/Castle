@@ -818,7 +818,7 @@ Found: PropertiesPanelUI.html
 Found: SkyboxRotatePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
-Read 37194 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
+Read 38591 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
 Namespace: ToolChest
 Found 17 dependencies
 Found: SkyboxRotateUI.html
@@ -833,7 +833,7 @@ Found: ToolChest.csproj
 Found: TransformGizmoOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
-Read 22000 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
+Read 21297 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
 Namespace: ToolChest
 Found 12 dependencies
 Found: TreeViewPanel.cs
@@ -2115,13 +2115,13 @@ Found: ..
 Found: BasePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
-Read 12704 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
+Read 12888 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Namespace: SiegeEngine.Core.UI
 Found 9 dependencies
 Found: Core.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Core.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Core.cs
-Read 7122 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Core.cs
+Read 7991 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Core.cs
 Namespace: SiegeEngine.Core.UI
 Found 8 dependencies
 Found: CssParser.cs
@@ -2161,7 +2161,7 @@ Found 0 dependencies
 Found: InputElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\InputElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\InputElement.cs
-Read 11015 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\InputElement.cs
+Read 11201 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\InputElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 6 dependencies
 Found: LiElement.cs
@@ -2345,7 +2345,7 @@ Found 8 dependencies
 Found: UIInteractionLayer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
-Read 18715 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
+Read 18927 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
 Namespace: SiegeEngine.Core.UI
 Found 9 dependencies
 Found: UIOverlay.cs
