@@ -582,6 +582,15 @@ Folder: IDE
       - ScriptEditorPanel _parent
     - Methods:
       - void HandleDataHook(string hook)
+- File: SkyboxRotatePanel.cs
+  - Class: SkyboxRotateUIOverlay (Namespace: ToolChest)
+    - Inherits: UIOverlay
+        
+    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics, System.Runtime.InteropServices
+    - Fields:
+      - SkyboxRotatePanel _parent
+    - Methods:
+      - bool HandleUIClick(HtmlElement elem)
 - File: SpritePlacementPanel.cs
   - Class: SpritePlacementUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -626,7 +635,6 @@ Folder: IDE
       - bool _enableBrush
       - TerrainRenderer _terrainRenderer
       - SkyboxRenderer _skyboxRenderer
-      - float _skyboxTempRotationOffset
     - Methods:
       - void Initialize( int height, int width)
         - Calls: SkyboxRenderer, VertexBuffer
@@ -695,9 +703,7 @@ Folder: IDE
       - void SaveSkybox(string sceneName)
         - Calls: live.SyncSkyboxIfNeeded
       - void OnSkyboxDataHook( GenericEvent evt = null, string hook)
-        - Calls: AddSkyboxPanel.Open, ComposeSkybox, Console.WriteLine, RefreshFromLiveState, SetSkybox, ToString
-      - void ApplyTempSkyboxRotation(float offset)
-        - Calls: ComposeSkybox
+        - Calls: AddSkyboxPanel.Open, Console.WriteLine, RefreshFromLiveState, SetSkybox, ToString
 - File: TerrainModifiedEvent.cs
   - Class: TerrainModifiedEvent (Namespace: MapRoom)
     - Inherits: IEvent
@@ -4376,6 +4382,7 @@ ToolChest.PhysicsDebugOverlay
 ToolChest.PlacementOverlay
 ToolChest.PropertiesUIOverlay
 ToolChest.ScriptEditorUIOverlay
+ToolChest.SkyboxRotateUIOverlay
 ToolChest.SpritePlacementUIOverlay
 ToolChest.TimelineUIOverlay
 ToolChest.TransformGizmoOverlay

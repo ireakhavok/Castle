@@ -328,7 +328,6 @@ Folder: MapRoom
       - bool _enableBrush
       - TerrainRenderer _terrainRenderer
       - SkyboxRenderer _skyboxRenderer
-      - float _skyboxTempRotationOffset
     - Methods:
       - void Initialize( int height, int width)
       - void Render(IReadOnlyList<Entity> entities)
@@ -390,9 +389,7 @@ Folder: MapRoom
         - Calls: ComposeSkybox, Console.WriteLine
       - void SaveSkybox(string sceneName)
       - void OnSkyboxDataHook( GenericEvent evt = null, string hook)
-        - Calls: AddSkyboxPanel.Open, ComposeSkybox, Console.WriteLine, RefreshFromLiveState, SetSkybox
-      - void ApplyTempSkyboxRotation(float offset)
-        - Calls: ComposeSkybox
+        - Calls: AddSkyboxPanel.Open, Console.WriteLine, RefreshFromLiveState, SetSkybox
 - File: TerrainModifiedEvent.cs
   - Class: TerrainModifiedEvent (Namespace: MapRoom)
     - Inherits: IEvent
@@ -706,6 +703,15 @@ Folder: ToolChest
       - void TriggerChange(HtmlElement elem)
         - Calls: _parent.ApplyComponentPropertyFromInput, _parent.FlushLiveSettings
       - bool OnContextMenuRequested( Vector2 mousePos, HtmlElement sourceElement)
+- File: SkyboxRotatePanel.cs
+  - Class: SkyboxRotateUIOverlay (Namespace: ToolChest)
+    - Inherits: UIOverlay
+        
+    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics, System.Runtime.InteropServices
+    - Fields:
+      - SkyboxRotatePanel _parent
+    - Methods:
+      - bool HandleUIClick(HtmlElement elem)
 - File: SpritePlacementPanel.cs
   - Class: SpritePlacementUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -828,6 +834,7 @@ ToolChest.PhysicsDebugOverlay
 ToolChest.PlacementOverlay
 ToolChest.PropertiesUIOverlay
 ToolChest.ScriptEditorUIOverlay
+ToolChest.SkyboxRotateUIOverlay
 ToolChest.SpritePlacementUIOverlay
 ToolChest.TimelineUIOverlay
 ToolChest.TransformGizmoOverlay
