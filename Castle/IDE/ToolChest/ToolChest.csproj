@@ -16,6 +16,7 @@
     <None Remove="ConsolePanelUI.html" />
     <None Remove="NewMaterial.html" />
     <None Remove="PropertiesPanelUI.html" />
+    <None Remove="SkyboxRotateUI.html" />
     <None Remove="SpritePlacementPanelUI.html" />
     <None Remove="TreeViewPanelUI.html" />
   </ItemGroup>
@@ -43,6 +44,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="PropertiesPanelUI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="SkyboxRotateUI.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="SpritePlacementPanelUI.html">
