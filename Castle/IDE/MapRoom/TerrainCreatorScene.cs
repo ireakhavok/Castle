@@ -42,7 +42,6 @@ namespace MapRoom
         private readonly bool _enableBrush;
         private TerrainRenderer _terrainRenderer;
         private SkyboxRenderer _skyboxRenderer;
-        private float _skyboxTempRotationOffset = 0f;
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null, bool enableBrush = true)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
@@ -57,7 +56,7 @@ namespace MapRoom
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
             _terrainRenderer = new TerrainRenderer(renderContext);
             _skyboxRenderer = null;
-            _eventBus.Subscribe<GenericEvent>(e => { if (e.Hook == "SkyboxSet" || e.Hook == "OpenAddSkybox" || e.Hook == "SkyboxRotatePreview") OnSkyboxDataHook(e.Hook, e); });
+            _eventBus.Subscribe<GenericEvent>(e => { if (e.Hook == "SkyboxSet" || e.Hook == "OpenAddSkybox") OnSkyboxDataHook(e.Hook, e); });
         }
         public override void Initialize(int width, int height)
         {
@@ -581,7 +580,6 @@ namespace MapRoom
                     live.SyncColorTextureIfNeeded();
                 }
             }
-            _skyboxTempRotationOffset = 0f;
         }
         private void SaveAsPng(string path)
         {
@@ -987,7 +985,6 @@ namespace MapRoom
                 live.Skybox = _sceneData.Skybox;
                 live.SyncSkyboxIfNeeded();
             }
-            _skyboxTempRotationOffset = 0f;
         }
         public void OnSkyboxDataHook(string hook, GenericEvent evt = null)
         {
@@ -1012,26 +1009,7 @@ namespace MapRoom
                 }
                 catch { }
             }
-            if (hook == "SkyboxRotatePreview")
-            {
-                _skyboxTempRotationOffset = (_skyboxTempRotationOffset + 90f) % 360f;
-                if (_sceneData?.Skybox != null)
-                {
-                    ComposeSkybox(_sceneData.Skybox);
-                    Console.WriteLine($"[TerrainCreatorScene] Temporary skybox preview rotation applied (offset: {_skyboxTempRotationOffset}°)");
-                }
-                RefreshFromLiveState(_sceneData);
-                return;
-            }
             RefreshFromLiveState(_sceneData);
-        }
-        public void ApplyTempSkyboxRotation(float offset)
-        {
-            _skyboxTempRotationOffset = offset;
-            if (_sceneData?.Skybox != null)
-            {
-                ComposeSkybox(_sceneData.Skybox);
-            }
         }
     }
 }
