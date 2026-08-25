@@ -393,6 +393,27 @@ void main() {
                 _eventBus.Publish(new GenericEvent { Hook = "SkyboxRefresh" });
         }
 
+        /// <summary>
+        /// Lightweight live write used by the continuous Height slider.
+        /// Only mutates the VerticalOffset field on the shared SkyboxData reference.
+        /// Does NOT call SyncSkyboxIfNeeded or publish SkyboxRefresh, so the cubemap
+        /// is never reloaded and the main viewport stays smooth.
+        /// </summary>
+        private void PushSkyboxOffsetLive()
+        {
+            var level = ProjectSettings.Current.CurrentLevel;
+            if (level != null)
+                level.Skybox = _workingSkybox;
+
+            string sceneName = ProjectSettings.Current.CurrentSceneName;
+            if (!string.IsNullOrEmpty(sceneName))
+            {
+                var live = ProjectStateManager.Current.GetLiveState(sceneName);
+                if (live != null)
+                    live.Skybox = _workingSkybox;
+            }
+        }
+
         private void SyncSliderFromData()
         {
             var slider = _uiOverlay.FindElementById("heightSlider") as RangeElement;
@@ -409,10 +430,21 @@ void main() {
             var span = _uiOverlay.FindElementById("heightValue");
             if (span == null) return;
             string text = ((int)Math.Round(_workingSkybox.VerticalOffset)).ToString();
+            bool changed = false;
             foreach (var child in span.Children)
             {
-                if (child is TextElement te) { te.Content = text; break; }
+                if (child is TextElement te)
+                {
+                    if (te.Content != text)
+                    {
+                        te.Content = text;
+                        changed = true;
+                    }
+                    break;
+                }
             }
+            if (changed)
+                _uiOverlay.RefreshUI();
         }
 
         private void BuildPreviewCube()
@@ -620,13 +652,17 @@ void main() {
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
 
-            // Pure AnimationTimeline-style poll – this is the only reliable way
+            // Continuous Height poll – no arbitrary threshold, lightweight live write only
             var slider = _uiOverlay.FindElementById("heightSlider") as RangeElement;
-            if (slider != null && Math.Abs(slider.Value - _workingSkybox.VerticalOffset) > 0.5f)
+            if (slider != null)
             {
-                _workingSkybox.VerticalOffset = slider.Value;
-                UpdateHeightLabel();
-                PushSkyboxLive();
+                float v = slider.Value;
+                if (v != _workingSkybox.VerticalOffset)
+                {
+                    _workingSkybox.VerticalOffset = v;
+                    UpdateHeightLabel();
+                    PushSkyboxOffsetLive();
+                }
             }
 
             float header = HasTitleBar ? HeaderHeight : 0f;
