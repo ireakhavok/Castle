@@ -126,7 +126,7 @@ namespace SiegeEngine.Core.GPU.Compute
         private readonly Queue<int> _secondaryQueue = new Queue<int>();
         private int _activeSecondaryEntityId = -1;
         private bool _secondaryFencePending;
-        private int _secondaryPendingFaceForExtraction = -1; // which face the current fence belongs to
+        private int _secondaryPendingFaceForExtraction = -1;
         private readonly HashSet<int> _joinedMutual = new HashSet<int>();
         private uint _joinedVersion;
         public uint VisibilityVersion => _visibilityVersion;
@@ -179,9 +179,6 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             // Residual multi-bounce path removed entirely for this stage.
         }
-        /// <summary>
-        /// PRIMARY path – completely untouched from the original working machine.
-        /// </summary>
         public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources)
         {
             if (_disposed) return;
@@ -221,32 +218,67 @@ namespace SiegeEngine.Core.GPU.Compute
             }
         }
         /// <summary>
-        /// Enqueue secondary sources. Each will receive its own independent mutual
-        /// calculated from the listener and *that* source’s position.
+        /// Enqueue secondary sources. Each receives its own independent mutual.
+        /// Also prunes any SecondarySlots whose EntityId is no longer present.
         /// </summary>
         public void EnqueueSecondarySources(Vector3 listenerPos, IReadOnlyList<(int entityId, Vector3 pos)> secondaries)
         {
-            if (_disposed || secondaries == null) return;
-            for (int i = 0; i < secondaries.Count; i++)
+            if (_disposed) return;
+            var liveIds = new HashSet<int>();
+            if (secondaries != null)
             {
-                int id = secondaries[i].entityId;
-                Vector3 pos = secondaries[i].pos;
-                if (!_secondarySlots.TryGetValue(id, out var slot))
+                for (int i = 0; i < secondaries.Count; i++)
                 {
-                    slot = new SecondarySlot { EntityId = id };
-                    _secondarySlots[id] = slot;
+                    int id = secondaries[i].entityId;
+                    Vector3 pos = secondaries[i].pos;
+                    liveIds.Add(id);
+                    if (!_secondarySlots.TryGetValue(id, out var slot))
+                    {
+                        slot = new SecondarySlot { EntityId = id };
+                        _secondarySlots[id] = slot;
+                    }
+                    slot.SourcePos = pos;
+                    int read = slot.FsRead;
+                    bool dirty =
+                        !slot.FsValid[read] ||
+                        _geometry.GeometryVersion != slot.FsGeometryVersion[read] ||
+                        Vector3.DistanceSquared(listenerPos, slot.FsListenerPos[read]) > VisibilityMoveThreshold * VisibilityMoveThreshold ||
+                        Vector3.DistanceSquared(pos, slot.FsSourcePos[read]) > VisibilityMoveThreshold * VisibilityMoveThreshold;
+                    if (dirty && !slot.PendingRaster)
+                    {
+                        if (!_secondaryQueue.Contains(id))
+                            _secondaryQueue.Enqueue(id);
+                    }
                 }
-                slot.SourcePos = pos;
-                int read = slot.FsRead;
-                bool dirty =
-                    !slot.FsValid[read] ||
-                    _geometry.GeometryVersion != slot.FsGeometryVersion[read] ||
-                    Vector3.DistanceSquared(listenerPos, slot.FsListenerPos[read]) > VisibilityMoveThreshold * VisibilityMoveThreshold ||
-                    Vector3.DistanceSquared(pos, slot.FsSourcePos[read]) > VisibilityMoveThreshold * VisibilityMoveThreshold;
-                if (dirty && !slot.PendingRaster)
+            }
+            // Lifetime prune – remove slots that are no longer live
+            if (_secondarySlots.Count > 0)
+            {
+                var toRemove = new List<int>();
+                foreach (var kv in _secondarySlots)
                 {
-                    if (!_secondaryQueue.Contains(id))
-                        _secondaryQueue.Enqueue(id);
+                    if (!liveIds.Contains(kv.Key))
+                        toRemove.Add(kv.Key);
+                }
+                for (int i = 0; i < toRemove.Count; i++)
+                {
+                    int id = toRemove[i];
+                    _secondarySlots.Remove(id);
+                    if (_activeSecondaryEntityId == id)
+                        _activeSecondaryEntityId = -1;
+                }
+                // Also drop any queued ids that were pruned
+                if (toRemove.Count > 0 && _secondaryQueue.Count > 0)
+                {
+                    var kept = new Queue<int>();
+                    while (_secondaryQueue.Count > 0)
+                    {
+                        int q = _secondaryQueue.Dequeue();
+                        if (liveIds.Contains(q))
+                            kept.Enqueue(q);
+                    }
+                    while (kept.Count > 0)
+                        _secondaryQueue.Enqueue(kept.Dequeue());
                 }
             }
         }
@@ -259,7 +291,6 @@ namespace SiegeEngine.Core.GPU.Compute
             {
                 primaryDidWork = AdvancePrimary();
             }
-            // Secondary only when primary has no pending work and no outstanding fence
             if (!_pendingRaster && !_fencePending && !_secondaryFencePending)
             {
                 AdvanceSecondary();
@@ -298,7 +329,6 @@ namespace SiegeEngine.Core.GPU.Compute
             }
             if (_pendingFace < 12)
                 return false;
-            // Primary complete
             foreach (int tri in _listenerVisible[write])
                 if (_sourceVisible[write].Contains(tri))
                     _mutual[write].Add(tri);
@@ -399,7 +429,6 @@ namespace SiegeEngine.Core.GPU.Compute
             }
             if (slot.PendingFace < 12)
                 return;
-            // Secondary complete – its own mutual
             foreach (int tri in slot.ListenerVisible[write])
                 if (slot.SourceVisible[write].Contains(tri))
                     slot.Mutual[write].Add(tri);
@@ -499,19 +528,16 @@ namespace SiegeEngine.Core.GPU.Compute
         }
         public SoundRayTraceResult ComputeFreeSurfacePerceived(Vector3 listener, Vector3 source, int entityId)
         {
-            // 1. Primary match
             int read = _fsRead;
             if (_fsValid[read] &&
                 Vector3.DistanceSquared(source, _fsSourcePos[read]) < VisibilityMoveThreshold * VisibilityMoveThreshold * 4f)
             {
                 return ComputeFromMutual(_mutual[read], listener, source);
             }
-            // 2. Exact EntityId secondary
             if (entityId >= 0 && _secondarySlots.TryGetValue(entityId, out var slot) && slot.FsValid[slot.FsRead])
             {
                 return ComputeFromMutual(slot.Mutual[slot.FsRead], listener, source);
             }
-            // 3. Closest secondary by position
             foreach (var kv in _secondarySlots)
             {
                 var s = kv.Value;
