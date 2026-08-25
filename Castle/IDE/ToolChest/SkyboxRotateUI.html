@@ -1,0 +1,108 @@
+<!-- File: SkyboxRotateUI.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            background: transparent;
+            font-family: system-ui, sans-serif;
+            color: #ddd;
+            font-size: 13px;
+        }
+
+        .toolbar {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(28, 28, 36, 0.96);
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(95, 95, 115, 0.6);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 300;
+            max-width: 92%;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .label {
+            color: #aaa;
+            font-size: 12px;
+            margin-right: 4px;
+            white-space: nowrap;
+        }
+
+        .mode {
+            font-weight: 600;
+            color: #e0e0e0;
+            margin-right: 8px;
+        }
+
+        button {
+            padding: 5px 10px;
+            background: #3a3a48;
+            color: #f0f0f0;
+            border: 1px solid #555566;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12.5px;
+            transition: background 0.15s;
+        }
+
+            button:hover {
+                background: #4a4a5a;
+            }
+
+            button.selected {
+                background: #2a5a3a;
+                border-color: #3a7a4a;
+            }
+
+            button.close-btn {
+                background: #444;
+                margin-left: 8px;
+            }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div class="row">
+            <span class="label">Mode:</span>
+            <span class="mode" id="modeLabel">Whole Cube (use gizmo)</span>
+            <button class="close-btn" data-hook="ClosePanel">Close</button>
+        </div>
+
+        <div class="row">
+            <span class="label">Face</span>
+            <button data-hook="SelectFace0" id="face0">+X</button>
+            <button data-hook="SelectFace1" id="face1">−X</button>
+            <button data-hook="SelectFace2" id="face2">+Y</button>
+            <button data-hook="SelectFace3" id="face3">−Y</button>
+            <button data-hook="SelectFace4" id="face4">+Z</button>
+            <button data-hook="SelectFace5" id="face5">−Z</button>
+            <button data-hook="SelectWhole" id="faceWhole" class="selected">Whole</button>
+        </div>
+
+        <div class="row">
+            <span class="label">Selected Face</span>
+            <button data-hook="FaceRotCW">↻ CW</button>
+            <button data-hook="FaceRotCCW">↺ CCW</button>
+            <button data-hook="FaceRot180">180°</button>
+        </div>
+    </div>
+</body>
+</html>

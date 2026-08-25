@@ -551,8 +551,7 @@ namespace ToolChest
             }
             if (hook == "RotateSkybox")
             {
-                _eventBus.Publish(new GenericEvent { Hook = "SkyboxRotatePreview" });
-                RebuildPropertiesUI();
+                SkyboxRotatePanel.Open(_renderContext, _controlContext, _window, _eventBus);
                 return;
             }
             if (hook == "PlayPreviewSound")
