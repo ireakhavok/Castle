@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: SiegeEngine/Systems
+// File: AudioSystem.cs
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -25,9 +27,9 @@ namespace SiegeEngine.Systems
         private const float SpatialRefDistance = 5.0f;
         private const float SpatialMaxDistance = 300f;
         private const float MinAudibleVolume = 0.01f;
-        // Slower rates = fewer clicks when free-surface result updates
-        private const float IntensitySmoothRate = 4.0f;
-        private const float DirectionSmoothRate = 6.0f;
+        // slower rates = fewer clicks when free-surface result updates
+        private const float IntensitySmoothRate = 10.0f; // ~0.1 s
+        private const float DirectionSmoothRate = 10.0f; // ~0.1 s
         private const float IntensityHysteresis = 0.04f;
         private Vector3 _listenerPosition;
         private Vector3 _listenerForward = new Vector3(0, 1, 0);
@@ -62,13 +64,14 @@ namespace SiegeEngine.Systems
         /// Bind this to an IDE checkbox / ProjectSettings key.
         /// </summary>
         public bool EnableFreeSurfaceAudio { get; set; } = true;
-
         // ---- Publish-subscribe surface (single producer) ----
         public bool FreeSurfaceReady =>
             _gpuOcclusionReady && _geometryUploaded && _acousticRayTracer != null && _acousticRayTracer.VisibilityCacheValid;
         public uint FreeSurfaceVersion => _acousticRayTracer?.VisibilityVersion ?? 0;
         public IReadOnlyCollection<int> GetMutualFree() =>
             _acousticRayTracer != null ? _acousticRayTracer.GetMutualFree() : Array.Empty<int>();
+        public IReadOnlyCollection<int> GetJoinedMutualFree() =>
+            _acousticRayTracer != null ? _acousticRayTracer.GetJoinedMutualFree() : Array.Empty<int>();
         public IReadOnlyCollection<int> GetListenerFree() =>
             _acousticRayTracer != null ? _acousticRayTracer.GetListenerFree() : Array.Empty<int>();
         public IReadOnlyCollection<int> GetSourceFree() =>
@@ -77,10 +80,13 @@ namespace SiegeEngine.Systems
             _acousticRayTracer != null
                 ? _acousticRayTracer.ComputeFreeSurfacePerceived(listener, source)
                 : new SoundRayTraceResult { Intensity = 0.001f, Delay = 0f, LowPassCutoff = 0f, ApparentDirection = Vector3.Zero };
+        public SoundRayTraceResult ComputeFreeSurfacePerceived(Vector3 listener, Vector3 source, int entityId) =>
+            _acousticRayTracer != null
+                ? _acousticRayTracer.ComputeFreeSurfacePerceived(listener, source, entityId)
+                : new SoundRayTraceResult { Intensity = 0.001f, Delay = 0f, LowPassCutoff = 0f, ApparentDirection = Vector3.Zero };
         public AcousticGeometry AcousticGeometry => _acousticGeometry;
         public AcousticRayTracer AcousticRayTracer => _acousticRayTracer;
         // ----------------------------------------------------
-
         private class MonoPcmClip
         {
             public short[] Samples;
@@ -249,7 +255,7 @@ namespace SiegeEngine.Systems
                 return los;
             if (_acousticRayTracer != null && _acousticRayTracer.VisibilityCacheValid)
             {
-                var free = _acousticRayTracer.ComputeFreeSurfacePerceived(listenerPos, sourcePos);
+                var free = _acousticRayTracer.ComputeFreeSurfacePerceived(listenerPos, sourcePos, reg.EntityId);
                 if (free.Intensity > 0.01f && free.ApparentDirection.LengthSquared() > 1e-6f)
                     return free;
             }
@@ -307,14 +313,23 @@ namespace SiegeEngine.Systems
                     snapshot = new List<AutoPlayRegistration>(_autoPlayRegs);
                 }
                 var sources = new List<Vector3>();
+                var secondary = new List<(int entityId, Vector3 pos)>();
                 for (int i = 0; i < snapshot.Count; i++)
                 {
-                    if (snapshot[i].Started)
-                        sources.Add(snapshot[i].Source.Position);
+                    if (!snapshot[i].Started) continue;
+                    // Only local non-sensitive AutoPlay sources receive independent free-surface
+                    if (snapshot[i].Source.IsSensitive) continue;
+                    sources.Add(snapshot[i].Source.Position);
+                    if (i > 0)
+                        secondary.Add((snapshot[i].EntityId, snapshot[i].Source.Position));
                 }
                 if (sources.Count == 0)
                     sources.Add(_listenerPosition + new Vector3(0, 10, 0));
+                // Primary path – byte-identical call
                 _acousticRayTracer.KickDebugBidirectional(_listenerPosition, sources);
+                // Secondary independent mutuals
+                if (secondary.Count > 0)
+                    _acousticRayTracer.EnqueueSecondarySources(_listenerPosition, secondary);
                 _acousticRayTracer.TryCompletePendingRaster();
             }
             if (_listenerValid)
