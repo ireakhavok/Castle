@@ -661,7 +661,7 @@ Found 17 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
-Read 45934 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
+Read 46289 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
 Found 18 dependencies
 Found: TerrainCreatorUI.html
@@ -818,7 +818,7 @@ Found: PropertiesPanelUI.html
 Found: SkyboxRotatePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
-Read 23955 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
+Read 29984 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
 Namespace: ToolChest
 Found 17 dependencies
 Found: SkyboxRotateUI.html

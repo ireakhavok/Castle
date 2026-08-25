@@ -703,7 +703,7 @@ Folder: IDE
       - void SaveSkybox(string sceneName)
         - Calls: live.SyncSkyboxIfNeeded
       - void OnSkyboxDataHook( GenericEvent evt = null, string hook)
-        - Calls: AddSkyboxPanel.Open, Console.WriteLine, RefreshFromLiveState, SetSkybox, ToString
+        - Calls: AddSkyboxPanel.Open, ComposeSkybox, Console.WriteLine, RefreshFromLiveState, SetSkybox, ToString
 - File: TerrainModifiedEvent.cs
   - Class: TerrainModifiedEvent (Namespace: MapRoom)
     - Inherits: IEvent
