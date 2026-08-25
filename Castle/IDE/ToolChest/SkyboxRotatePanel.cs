@@ -30,7 +30,6 @@ namespace ToolChest
             {
                 _parent = parent;
             }
-            // Match FileSelectorPanel: do NOT call base (base already fires data-hook).
             public override bool HandleUIClick(HtmlElement elem)
             {
                 _parent.HandleUIClick(elem);
@@ -61,7 +60,6 @@ namespace ToolChest
         private Vector2 _lastMouse;
         private Matrix4x4 _previewModel = Matrix4x4.Identity;
 
-        // Whole-cube gizmo drag (axis pick: 0=X, 1=Y, 2=Z)
         private int _gizmoAxis = -1;
         private bool _gizmoDragging = false;
         private Vector2 _gizmoLast;
@@ -159,10 +157,7 @@ void main() {
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SkyboxRotateUI.html");
             if (!File.Exists(htmlPath))
-            {
-                Console.WriteLine("[SkyboxRotatePanel] SkyboxRotateUI.html not found at " + htmlPath);
                 return;
-            }
             _uiOverlay.LoadUI(File.ReadAllText(htmlPath));
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
@@ -248,13 +243,9 @@ void main() {
             string path = _resolvedFaces[faceIndex];
             if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
 
-            int step = _faceSteps[faceIndex];
-            bool flipH = _faceFlipH[faceIndex];
-            bool flipV = _faceFlipV[faceIndex];
-
             using (var bmp = new Bitmap(path))
             {
-                ApplyOrientationToBitmap(bmp, step, flipH, flipV);
+                ApplyOrientationToBitmap(bmp, _faceSteps[faceIndex], _faceFlipH[faceIndex], _faceFlipV[faceIndex]);
 
                 var data = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
                 int dataSize = bmp.Width * bmp.Height * 4;
@@ -364,7 +355,6 @@ void main() {
                 _faceFlipV[i] = false;
             }
 
-            // Paths unchanged; push the same SkyboxData so Level + live stay consistent
             var level = ProjectSettings.Current.CurrentLevel;
             if (level != null)
                 level.Skybox = _workingSkybox;
@@ -380,11 +370,10 @@ void main() {
                 }
             }
 
-            // Rebuild preview from the now-corrected files on disk
             LoadPreviewCubemap();
 
             if (_eventBus != null)
-                _eventBus.Publish(new GenericEvent { Hook = "ProjectSaveRequest" });
+                _eventBus.Publish(new GenericEvent { Hook = "SkyboxRefresh" });
 
             UpdateSelectionUI();
         }
@@ -411,8 +400,6 @@ void main() {
             _previewCube.UpdateCustomWithUV(vertices, indices);
         }
 
-        // RGB axis lines from center: +X red, +Y green, +Z blue (and faint negatives)
-        // Tip markers give each positive axis a readable label shape.
         private void BuildAxisGizmo()
         {
             float L = 1.6f;
@@ -420,11 +407,9 @@ void main() {
             var verts = new List<Vertex>();
             var idx = new List<uint>();
 
-            // +X red
             verts.Add(new Vertex(0, 0, 0, 1, 0.15f, 0.15f, 1));
             verts.Add(new Vertex(L, 0, 0, 1, 0.15f, 0.15f, 1));
             idx.Add(0); idx.Add(1);
-            // tip cross for +X
             verts.Add(new Vertex(L, -tip, 0, 1, 0.15f, 0.15f, 1));
             verts.Add(new Vertex(L, tip, 0, 1, 0.15f, 0.15f, 1));
             idx.Add(2); idx.Add(3);
@@ -432,7 +417,6 @@ void main() {
             verts.Add(new Vertex(L, 0, tip, 1, 0.15f, 0.15f, 1));
             idx.Add(4); idx.Add(5);
 
-            // +Y green
             verts.Add(new Vertex(0, 0, 0, 0.15f, 1, 0.15f, 1));
             verts.Add(new Vertex(0, L, 0, 0.15f, 1, 0.15f, 1));
             idx.Add(6); idx.Add(7);
@@ -443,7 +427,6 @@ void main() {
             verts.Add(new Vertex(0, L, tip, 0.15f, 1, 0.15f, 1));
             idx.Add(10); idx.Add(11);
 
-            // +Z blue
             verts.Add(new Vertex(0, 0, 0, 0.2f, 0.4f, 1, 1));
             verts.Add(new Vertex(0, 0, L, 0.2f, 0.4f, 1, 1));
             idx.Add(12); idx.Add(13);
@@ -454,7 +437,6 @@ void main() {
             verts.Add(new Vertex(0, tip, L, 0.2f, 0.4f, 1, 1));
             idx.Add(16); idx.Add(17);
 
-            // faint negatives
             verts.Add(new Vertex(0, 0, 0, 0.5f, 0.1f, 0.1f, 0.4f));
             verts.Add(new Vertex(-L, 0, 0, 0.5f, 0.1f, 0.1f, 0.4f));
             idx.Add(18); idx.Add(19);
@@ -468,21 +450,20 @@ void main() {
             _axisBuffer.UpdateCustom(verts, idx);
         }
 
-        // Thick outline of one face of the unit cube for selection feedback
         private void BuildFaceOutline(int face)
         {
             float s = 1.02f;
             var verts = new List<Vertex>();
             var idx = new List<uint>();
-            Vector4 c = new Vector4(1f, 0.85f, 0.1f, 1f); // gold highlight
+            Vector4 c = new Vector4(1f, 0.85f, 0.1f, 1f);
             Vector3[] corners = face switch
             {
-                0 => new[] { new Vector3(s, -s, -s), new Vector3(s, s, -s), new Vector3(s, s, s), new Vector3(s, -s, s) },   // +X
-                1 => new[] { new Vector3(-s, -s, -s), new Vector3(-s, -s, s), new Vector3(-s, s, s), new Vector3(-s, s, -s) }, // -X
-                2 => new[] { new Vector3(-s, s, -s), new Vector3(s, s, -s), new Vector3(s, s, s), new Vector3(-s, s, s) },     // +Y
-                3 => new[] { new Vector3(-s, -s, -s), new Vector3(-s, -s, s), new Vector3(s, -s, s), new Vector3(s, -s, -s) }, // -Y
-                4 => new[] { new Vector3(-s, -s, s), new Vector3(s, -s, s), new Vector3(s, s, s), new Vector3(-s, s, s) },     // +Z
-                5 => new[] { new Vector3(-s, -s, -s), new Vector3(-s, s, -s), new Vector3(s, s, -s), new Vector3(s, -s, -s) }, // -Z
+                0 => new[] { new Vector3(s, -s, -s), new Vector3(s, s, -s), new Vector3(s, s, s), new Vector3(s, -s, s) },
+                1 => new[] { new Vector3(-s, -s, -s), new Vector3(-s, -s, s), new Vector3(-s, s, s), new Vector3(-s, s, -s) },
+                2 => new[] { new Vector3(-s, s, -s), new Vector3(s, s, -s), new Vector3(s, s, s), new Vector3(-s, s, s) },
+                3 => new[] { new Vector3(-s, -s, -s), new Vector3(-s, -s, s), new Vector3(s, -s, s), new Vector3(s, -s, -s) },
+                4 => new[] { new Vector3(-s, -s, s), new Vector3(s, -s, s), new Vector3(s, s, s), new Vector3(-s, s, s) },
+                5 => new[] { new Vector3(-s, -s, -s), new Vector3(-s, s, -s), new Vector3(s, s, -s), new Vector3(s, -s, -s) },
                 _ => Array.Empty<Vector3>()
             };
             if (corners.Length == 4)
@@ -573,7 +554,6 @@ void main() {
                 {
                     SwapFaces(_selectedFace, idx);
                     _swapMode = false;
-                    // keep selection on the original geometric face
                     UpdateSelectionUI();
                     return;
                 }
@@ -608,7 +588,6 @@ void main() {
 
             if (inPreview && mousePressed)
             {
-                // Pick axis for whole-cube rotation when in whole mode
                 if (_selectedFace < 0)
                 {
                     int axis = PickAxis(rel);
@@ -634,7 +613,7 @@ void main() {
             if (_gizmoDragging && mouseDown)
             {
                 Vector2 delta = rel - _gizmoLast;
-                float amount = (delta.X) * 0.012f;
+                float amount = delta.X * 0.012f;
                 Matrix4x4 rot = _gizmoAxis switch
                 {
                     0 => Matrix4x4.CreateRotationX(amount),
@@ -664,7 +643,6 @@ void main() {
                 _previewDist = Math.Clamp(_previewDist - scrollDelta * 0.3f, 1.8f, 8f);
         }
 
-        // Screen-space pick of the projected axis tips
         private int PickAxis(Vector2 relMouse)
         {
             float header = HasTitleBar ? HeaderHeight : 0f;
@@ -725,7 +703,6 @@ void main() {
             _renderContext.Disable(_renderContext.Enums.CullFace);
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
 
-            // Cubemap cube
             _previewShader.Use();
             _previewShader.SetMatrix4("uMVP", mvp);
             _renderContext.ActiveTexture(0);
@@ -733,7 +710,6 @@ void main() {
             _previewCube.Bind();
             _renderContext.DrawElements(_renderContext.Enums.Triangles, _previewCube.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
 
-            // Axis gizmo + selected face outline
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _lineShader.Use();
             _lineShader.SetMatrix4("uMVP", mvp);

@@ -56,7 +56,7 @@ namespace MapRoom
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
             _terrainRenderer = new TerrainRenderer(renderContext);
             _skyboxRenderer = null;
-            _eventBus.Subscribe<GenericEvent>(e => { if (e.Hook == "SkyboxSet" || e.Hook == "OpenAddSkybox") OnSkyboxDataHook(e.Hook, e); });
+            _eventBus.Subscribe<GenericEvent>(e => { if (e.Hook == "SkyboxSet" || e.Hook == "OpenAddSkybox" || e.Hook == "SkyboxRefresh") OnSkyboxDataHook(e.Hook, e); });
         }
         public override void Initialize(int width, int height)
         {
@@ -988,6 +988,14 @@ namespace MapRoom
         }
         public void OnSkyboxDataHook(string hook, GenericEvent evt = null)
         {
+            if (hook == "SkyboxRefresh")
+            {
+                if (_liveState is LiveSceneState live && live.Skybox != null)
+                    ComposeSkybox(live.Skybox);
+                else if (_sceneData?.Skybox != null)
+                    ComposeSkybox(_sceneData.Skybox);
+                return;
+            }
             if (hook == "OpenAddSkybox")
             {
                 AddSkyboxPanel.Open(_renderContext, _controlContext, _window, _eventBus);
