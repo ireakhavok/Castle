@@ -5,12 +5,6 @@ using System.Runtime.InteropServices;
 using System.Threading;
 namespace SiegeEngine.Audio
 {
-    /// <summary>
-    /// Streaming stereo 16-bit PCM output via winmm.dll (waveOut*).
-    /// Keeps decoded mono PCM resident and applies live spatial gains on every buffer fill.
-    /// No third-party libraries. World / spatial sources only.
-    /// Music playlist continues to use System.Media.SoundPlayer.
-    /// </summary>
     public sealed class WaveOutPlayer : IDisposable
     {
         private const int BufferFrames = 4096;
@@ -29,12 +23,12 @@ namespace SiegeEngine.Audio
         private readonly object _sync = new object();
         private Thread _refillThread;
         private volatile bool _stopRequested;
-        // Live spatial parameters (written from main thread, read on refill thread)
         private volatile float _leftGain = 0.7071f;
         private volatile float _rightGain = 0.7071f;
         private volatile float _volume = 1f;
-        private volatile float _lpAlpha = 0f; // 0 = disabled
+        private volatile float _lpAlpha = 0f;
         private float _lpState;
+        private volatile int _delaySamples;
         private GCHandle[] _bufferHandles = new GCHandle[NumBuffers];
         private GCHandle[] _headerHandles = new GCHandle[NumBuffers];
         private WAVEHDR[] _headers = new WAVEHDR[NumBuffers];
@@ -75,10 +69,6 @@ namespace SiegeEngine.Audio
         private static extern uint waveOutReset(IntPtr hWaveOut);
         [DllImport("winmm.dll", SetLastError = true)]
         private static extern uint waveOutClose(IntPtr hWaveOut);
-        /// <summary>
-        /// Start continuous (or one-shot) playback from resident mono PCM.
-        /// Spatial gains can be updated at any time via UpdateSpatial without restarting.
-        /// </summary>
         public bool Start(short[] monoSamples, int sampleRate, bool loop)
         {
             if (monoSamples == null || monoSamples.Length == 0 || sampleRate <= 0)
@@ -91,6 +81,7 @@ namespace SiegeEngine.Audio
                 _loop = loop;
                 _cursor = 0;
                 _lpState = 0f;
+                _delaySamples = 0;
                 _stopRequested = false;
                 _playing = true;
                 var fmt = new WAVEFORMATEX
@@ -111,7 +102,7 @@ namespace SiegeEngine.Audio
                     _playing = false;
                     return false;
                 }
-                int byteLen = BufferFrames * 4; // stereo 16-bit
+                int byteLen = BufferFrames * 4;
                 for (int i = 0; i < NumBuffers; i++)
                 {
                     _rawBuffers[i] = new byte[byteLen];
@@ -149,17 +140,13 @@ namespace SiegeEngine.Audio
                 return true;
             }
         }
-        /// <summary>
-        /// Update spatial parameters. Applied on the next buffer fill. Thread-safe.
-        /// </summary>
-        public void UpdateSpatial(float leftGain, float rightGain, float volume, float lowPassCutoffHz = 0f)
+        public void UpdateSpatial(float leftGain, float rightGain, float volume, float lowPassCutoffHz = 0f, float delaySeconds = 0f)
         {
             _leftGain = Math.Clamp(leftGain, 0f, 1f);
             _rightGain = Math.Clamp(rightGain, 0f, 1f);
             _volume = Math.Clamp(volume, 0f, 1f);
             if (lowPassCutoffHz > 20f && lowPassCutoffHz < _sampleRate * 0.45f)
             {
-                // one-pole low-pass coefficient
                 float x = (float)Math.Exp(-2.0 * Math.PI * lowPassCutoffHz / _sampleRate);
                 _lpAlpha = x;
             }
@@ -167,6 +154,8 @@ namespace SiegeEngine.Audio
             {
                 _lpAlpha = 0f;
             }
+            // Delay is applied exactly as computed (path length / speed of sound). Negative is meaningless.
+            _delaySamples = delaySeconds > 0f ? (int)(delaySeconds * _sampleRate) : 0;
         }
         public bool IsPlaying
         {
@@ -199,13 +188,11 @@ namespace SiegeEngine.Audio
                 for (int i = 0; i < NumBuffers; i++)
                 {
                     if (_stopRequested) break;
-                    // Re-read header from pinned memory
                     WAVEHDR hdr = (WAVEHDR)Marshal.PtrToStructure(_headerHandles[i].AddrOfPinnedObject(), typeof(WAVEHDR));
                     if ((hdr.dwFlags & WHDR_DONE) != 0)
                     {
                         if (!FillBuffer(i))
                         {
-                            // end of non-looping clip
                             _playing = false;
                             break;
                         }
@@ -234,29 +221,38 @@ namespace SiegeEngine.Audio
             long cursor = _cursor;
             int monoLen = mono.Length;
             bool loop = _loop;
+            int delaySamples = _delaySamples;
             byte[] dest = _rawBuffers[index];
             int frames = BufferFrames;
             for (int f = 0; f < frames; f++)
             {
-                if (cursor >= monoLen)
+                long readCursor = cursor - delaySamples;
+                float sample = 0f;
+                if (readCursor < 0)
                 {
                     if (loop)
-                        cursor = 0;
+                    {
+                        readCursor = ((readCursor % monoLen) + monoLen) % monoLen;
+                        sample = mono[readCursor] * vol;
+                    }
+                    // else silence for the delayed head of a one-shot
+                }
+                else if (readCursor >= monoLen)
+                {
+                    if (loop)
+                    {
+                        readCursor %= monoLen;
+                        sample = mono[readCursor] * vol;
+                    }
                     else
                     {
-                        // pad remaining with silence and signal end
-                        for (int k = f; k < frames; k++)
-                        {
-                            int bi = k * 4;
-                            dest[bi] = 0; dest[bi + 1] = 0;
-                            dest[bi + 2] = 0; dest[bi + 3] = 0;
-                        }
-                        _cursor = cursor;
-                        _lpState = lp;
-                        return false;
+                        // past end
                     }
                 }
-                float sample = mono[cursor] * vol;
+                else
+                {
+                    sample = mono[readCursor] * vol;
+                }
                 if (alpha > 0f)
                 {
                     lp = alpha * lp + (1f - alpha) * sample;
@@ -270,10 +266,26 @@ namespace SiegeEngine.Audio
                 dest[baseIdx + 2] = (byte)(sR & 0xFF);
                 dest[baseIdx + 3] = (byte)((sR >> 8) & 0xFF);
                 cursor++;
+                if (cursor >= monoLen)
+                {
+                    if (loop)
+                        cursor = 0;
+                    else
+                    {
+                        for (int k = f + 1; k < frames; k++)
+                        {
+                            int bi = k * 4;
+                            dest[bi] = 0; dest[bi + 1] = 0;
+                            dest[bi + 2] = 0; dest[bi + 3] = 0;
+                        }
+                        _cursor = cursor;
+                        _lpState = lp;
+                        return false;
+                    }
+                }
             }
             _cursor = cursor;
             _lpState = lp;
-            // Clear DONE flag so the header can be written again
             _headers[index].dwFlags = WHDR_PREPARED;
             Marshal.StructureToPtr(_headers[index], _headerHandles[index].AddrOfPinnedObject(), false);
             return true;

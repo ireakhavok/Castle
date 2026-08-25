@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.Definitions;
+﻿// Folder: IDE
+// File: AcousticDebugOverlay.cs
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.GPU;
@@ -180,10 +182,10 @@ namespace ToolChest
         {
             _surfaceVerts.Clear();
             _surfaceIndices.Clear();
-            // Only mutual (teal) filled surfaces
+            // Joined mutual (teal) – primary ∪ all completed secondary. Stable, no flicker.
             if (ShowMeetings)
             {
-                foreach (int tri in tracer.GetMutualFree())
+                foreach (int tri in tracer.GetJoinedMutualFree())
                 {
                     if (!geom.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
                     AddFilledTriangle(_surfaceVerts, _surfaceIndices, a, b, c, DiffractedColor);
@@ -199,7 +201,6 @@ namespace ToolChest
             _cachedPerceived.Clear();
             if (geom.TriangleCount <= 0 || sources.Count == 0)
                 return;
-            var mutual = tracer.GetMutualFree();
             for (int s = 0; s < sources.Count; s++)
             {
                 Vector3 source = sources[s];
@@ -215,45 +216,12 @@ namespace ToolChest
                     }
                     else losClear = true;
                 }
-                float energy = 0f;
-                Vector3 weightedArrival = Vector3.Zero;
-                float maxContrib = 0f;
-                Vector3 strongestDir = Vector3.Zero;
-                float strongestPath = dist;
-                foreach (int tri in mutual)
-                {
-                    if (!geom.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
-                    Vector3 centroid = (a + b + c) * (1f / 3f);
-                    float rL = Vector3.Distance(centroid, listener);
-                    float rS = Vector3.Distance(centroid, source);
-                    if (rL < 0.05f || rS < 0.05f) continue;
-                    float pathLength = rL + rS;
-                    float contrib = 1.0f / (pathLength * pathLength);
-                    energy += contrib;
-                    Vector3 arrival = centroid - listener;
-                    float arrivalLen = arrival.Length();
-                    if (arrivalLen < 1e-5f) continue;
-                    Vector3 arrivalDir = arrival / arrivalLen;
-                    weightedArrival += arrivalDir * contrib;
-                    if (contrib > maxContrib)
-                    {
-                        maxContrib = contrib;
-                        strongestDir = arrivalDir;
-                        strongestPath = pathLength;
-                    }
-                }
-                Vector3 perceivedDir = Vector3.Zero;
-                float intensity = 0f;
-                float pathLen = dist;
-                if (mutual.Count > 0 && energy > 0f)
-                {
-                    perceivedDir = weightedArrival.LengthSquared() > 1e-12f
-                        ? Vector3.Normalize(weightedArrival)
-                        : strongestDir;
-                    float freeField = 1.0f / Math.Max(pathLen * pathLen, 1e-8f);
-                    intensity = energy / freeField;
-                    pathLen = strongestPath;
-                }
+                // Use the correct individual mutual for this source (primary or secondary).
+                // This is the same lookup the audio path uses – no pollution from other sources.
+                var free = tracer.ComputeFreeSurfacePerceived(listener, source);
+                Vector3 perceivedDir = free.ApparentDirection;
+                float intensity = free.Intensity;
+                float pathLen = free.Delay > 0f ? free.Delay * SpeedOfSound : dist;
                 _cachedPerceived.Add((losClear, perceivedDir, intensity, pathLen));
             }
         }

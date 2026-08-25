@@ -55,7 +55,7 @@ namespace SiegeEngine.Core.GPU.Compute
         private readonly List<DebugSegment> _debugSegments = new List<DebugSegment>(MaxDebugSegments);
         private Vector3 _lastListenerPos;
         private Vector3 _lastPrimarySource;
-        // Free-surface previous-completed double-buffer
+        // ===== PRIMARY sticky double-buffer (byte-identical, never written by secondary) =====
         private readonly HashSet<int>[] _listenerVisible = { new HashSet<int>(), new HashSet<int>() };
         private readonly HashSet<int>[] _sourceVisible = { new HashSet<int>(), new HashSet<int>() };
         private readonly HashSet<int>[] _mutual = { new HashSet<int>(), new HashSet<int>() };
@@ -66,7 +66,7 @@ namespace SiegeEngine.Core.GPU.Compute
         private int _fsWrite = 0;
         private int _fsRead = 1;
         private uint _visibilityVersion;
-        // Progressive face state machine – 2 faces per call
+        // Progressive face state machine – PRIMARY only
         private bool _pendingRaster;
         private Vector3 _pendingListener;
         private Vector3 _pendingSource;
@@ -78,7 +78,7 @@ namespace SiegeEngine.Core.GPU.Compute
         private uint _depthRb;
         private uint[] _idReadback;
         private bool _fboReady;
-        // PBO + fence for non-blocking ID readback
+        // PBO + fence (shared hardware, but primary and secondary never run concurrently)
         private readonly uint[] _pbo = new uint[2];
         private int _pboIndex;
         private uint _pendingFence;
@@ -102,6 +102,33 @@ namespace SiegeEngine.Core.GPU.Compute
             new Vector3(0, 1, 0),
             new Vector3(0, 1, 0)
         };
+        // ===== SECONDARY independent sticky slots (one per EntityId) =====
+        private class SecondarySlot
+        {
+            public int EntityId;
+            public Vector3 SourcePos;
+            public readonly HashSet<int>[] ListenerVisible = { new HashSet<int>(), new HashSet<int>() };
+            public readonly HashSet<int>[] SourceVisible = { new HashSet<int>(), new HashSet<int>() };
+            public readonly HashSet<int>[] Mutual = { new HashSet<int>(), new HashSet<int>() };
+            public readonly Vector3[] FsListenerPos = new Vector3[2];
+            public readonly Vector3[] FsSourcePos = new Vector3[2];
+            public readonly uint[] FsGeometryVersion = new uint[2];
+            public readonly bool[] FsValid = new bool[2];
+            public int FsWrite = 0;
+            public int FsRead = 1;
+            public bool PendingRaster;
+            public int PendingFace;
+            public Vector3 PendingListener;
+            public Vector3 PendingSource;
+            public uint PendingGeometryVersion;
+        }
+        private readonly Dictionary<int, SecondarySlot> _secondarySlots = new Dictionary<int, SecondarySlot>();
+        private readonly Queue<int> _secondaryQueue = new Queue<int>();
+        private int _activeSecondaryEntityId = -1;
+        private bool _secondaryFencePending;
+        private int _secondaryPendingFaceForExtraction = -1; // which face the current fence belongs to
+        private readonly HashSet<int> _joinedMutual = new HashSet<int>();
+        private uint _joinedVersion;
         public uint VisibilityVersion => _visibilityVersion;
         public bool VisibilityCacheValid => _fsValid[_fsRead];
         public AcousticRayTracer(IRenderContext renderContext, AcousticGeometry geometry)
@@ -135,8 +162,6 @@ namespace SiegeEngine.Core.GPU.Compute
             _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, 0);
             if (!_fboReady)
                 Console.WriteLine($"[AcousticRayTracer] ID FBO incomplete, status={status}");
-
-            // Allocate double-buffered PBOs for non-blocking ID readback
             uint pboBytes = (uint)(IdBufferSize * IdBufferSize * sizeof(uint));
             for (int i = 0; i < 2; i++)
             {
@@ -148,14 +173,14 @@ namespace SiegeEngine.Core.GPU.Compute
             _pboIndex = 0;
             _pendingFence = 0;
             _fencePending = false;
+            _secondaryFencePending = false;
         }
         public void KickContinuousTrace(Vector3 sourcePos, Vector3 listenerPos)
         {
             // Residual multi-bounce path removed entirely for this stage.
         }
         /// <summary>
-        /// Zero-cost gate. Records pending positions and returns immediately.
-        /// The full raster runs only inside TryCompletePendingRaster, two faces at a time.
+        /// PRIMARY path – completely untouched from the original working machine.
         /// </summary>
         public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources)
         {
@@ -177,7 +202,6 @@ namespace SiegeEngine.Core.GPU.Compute
                 Vector3.DistanceSquared(primarySource, _fsSourcePos[read]) > VisibilityMoveThreshold * VisibilityMoveThreshold;
             if (needRecompute)
             {
-                // Abort any outstanding fence from a previous progressive run
                 if (_fencePending && _pendingFence != 0)
                 {
                     _renderContext.ClientWaitSync(_pendingFence, 0, 0);
@@ -197,78 +221,84 @@ namespace SiegeEngine.Core.GPU.Compute
             }
         }
         /// <summary>
-        /// Progressive completion. Processes FacesPerCall faces per call using PBO + fence.
-        /// Builds the mutual set and swaps the double-buffer only after every face is finished.
-        /// Consumers always see the previous fully-completed result (sticky).
+        /// Enqueue secondary sources. Each will receive its own independent mutual
+        /// calculated from the listener and *that* source’s position.
         /// </summary>
+        public void EnqueueSecondarySources(Vector3 listenerPos, IReadOnlyList<(int entityId, Vector3 pos)> secondaries)
+        {
+            if (_disposed || secondaries == null) return;
+            for (int i = 0; i < secondaries.Count; i++)
+            {
+                int id = secondaries[i].entityId;
+                Vector3 pos = secondaries[i].pos;
+                if (!_secondarySlots.TryGetValue(id, out var slot))
+                {
+                    slot = new SecondarySlot { EntityId = id };
+                    _secondarySlots[id] = slot;
+                }
+                slot.SourcePos = pos;
+                int read = slot.FsRead;
+                bool dirty =
+                    !slot.FsValid[read] ||
+                    _geometry.GeometryVersion != slot.FsGeometryVersion[read] ||
+                    Vector3.DistanceSquared(listenerPos, slot.FsListenerPos[read]) > VisibilityMoveThreshold * VisibilityMoveThreshold ||
+                    Vector3.DistanceSquared(pos, slot.FsSourcePos[read]) > VisibilityMoveThreshold * VisibilityMoveThreshold;
+                if (dirty && !slot.PendingRaster)
+                {
+                    if (!_secondaryQueue.Contains(id))
+                        _secondaryQueue.Enqueue(id);
+                }
+            }
+        }
         public bool TryCompletePendingRaster()
         {
-            if (_disposed || !_pendingRaster || _geometry.TriangleCount <= 0 || !_fboReady)
+            if (_disposed || _geometry.TriangleCount <= 0 || !_fboReady)
                 return false;
-
+            bool primaryDidWork = false;
+            if (_pendingRaster)
+            {
+                primaryDidWork = AdvancePrimary();
+            }
+            // Secondary only when primary has no pending work and no outstanding fence
+            if (!_pendingRaster && !_fencePending && !_secondaryFencePending)
+            {
+                AdvanceSecondary();
+            }
+            return primaryDidWork;
+        }
+        private bool AdvancePrimary()
+        {
             int write = _fsWrite;
             int facesDone = 0;
-
-            // First drain any previously issued fence (non-blocking poll)
             if (_fencePending)
             {
                 int status = _renderContext.ClientWaitSync(_pendingFence, 0, 0);
                 if (status == _renderContext.Enums.AlreadySignaled || status == _renderContext.Enums.ConditionSatisfied)
                 {
-                    // Map the completed PBO and extract triangle IDs
-                    _renderContext.BindBuffer(_renderContext.Enums.PixelPackBuffer, _pbo[_pendingPbo]);
-                    void* mapped = _renderContext.MapBufferRange(
-                        _renderContext.Enums.PixelPackBuffer,
-                        0,
-                        (uint)(IdBufferSize * IdBufferSize * sizeof(uint)),
-                        _renderContext.Enums.MapReadBit);
-                    if (mapped != null)
-                    {
-                        uint* ptr = (uint*)mapped;
-                        int maxTri = _geometry.TriangleCount;
-                        HashSet<int> targetSet = (_pendingFace - 1 < 6)
-                            ? _listenerVisible[write]
-                            : _sourceVisible[write];
-                        for (int i = 0; i < IdBufferSize * IdBufferSize; i++)
-                        {
-                            uint raw = ptr[i];
-                            if (raw == 0) continue;
-                            int tri = (int)raw - 1;
-                            if (tri >= 0 && tri < maxTri)
-                                targetSet.Add(tri);
-                        }
-                        _renderContext.UnmapBuffer(_renderContext.Enums.PixelPackBuffer);
-                    }
-                    _renderContext.BindBuffer(_renderContext.Enums.PixelPackBuffer, 0);
+                    ExtractIdsInto(_listenerVisible[write], _sourceVisible[write], _pendingFace - 1);
                     _renderContext.DeleteSync(_pendingFence);
                     _pendingFence = 0;
                     _fencePending = false;
                 }
                 else
                 {
-                    // Still pending – do not issue more work this frame
                     return false;
                 }
             }
-
-            // Issue new faces (up to FacesPerCall)
             while (facesDone < FacesPerCall && _pendingFace < 12)
             {
                 if (_pendingFace < 6)
-                    IssueRasterFace(_pendingListener, _pendingFace, write, true);
+                    IssueRasterFace(_pendingListener, _pendingFace);
                 else
-                    IssueRasterFace(_pendingSource, _pendingFace - 6, write, false);
+                    IssueRasterFace(_pendingSource, _pendingFace - 6);
                 _pendingFace++;
                 facesDone++;
-                // After issuing we have a fence; exit so the next call can poll it
                 if (_fencePending)
                     return false;
             }
-
             if (_pendingFace < 12)
                 return false;
-
-            // All faces complete – build mutual set and swap
+            // Primary complete
             foreach (int tri in _listenerVisible[write])
                 if (_sourceVisible[write].Contains(tri))
                     _mutual[write].Add(tri);
@@ -280,6 +310,7 @@ namespace SiegeEngine.Core.GPU.Compute
             _fsWrite = 1 - write;
             _visibilityVersion++;
             _pendingRaster = false;
+            RebuildJoinedMutual();
             _debugSegments.Clear();
             Vector3 toSource = _pendingSource - _pendingListener;
             float dist = toSource.Length();
@@ -308,7 +339,82 @@ namespace SiegeEngine.Core.GPU.Compute
             }
             return true;
         }
-        private void IssueRasterFace(Vector3 origin, int face, int write, bool isListener)
+        private void AdvanceSecondary()
+        {
+            if (_activeSecondaryEntityId < 0)
+            {
+                while (_secondaryQueue.Count > 0)
+                {
+                    int id = _secondaryQueue.Dequeue();
+                    if (_secondarySlots.TryGetValue(id, out var s) && !s.PendingRaster)
+                    {
+                        _activeSecondaryEntityId = id;
+                        s.PendingListener = _lastListenerPos;
+                        s.PendingSource = s.SourcePos;
+                        s.PendingGeometryVersion = _geometry.GeometryVersion;
+                        s.PendingRaster = true;
+                        s.PendingFace = 0;
+                        int w = s.FsWrite;
+                        s.ListenerVisible[w].Clear();
+                        s.SourceVisible[w].Clear();
+                        s.Mutual[w].Clear();
+                        break;
+                    }
+                }
+            }
+            if (_activeSecondaryEntityId < 0) return;
+            if (!_secondarySlots.TryGetValue(_activeSecondaryEntityId, out var slot)) return;
+            if (!slot.PendingRaster) { _activeSecondaryEntityId = -1; return; }
+            int write = slot.FsWrite;
+            int facesDone = 0;
+            if (_secondaryFencePending)
+            {
+                int status = _renderContext.ClientWaitSync(_pendingFence, 0, 0);
+                if (status == _renderContext.Enums.AlreadySignaled || status == _renderContext.Enums.ConditionSatisfied)
+                {
+                    ExtractIdsInto(slot.ListenerVisible[write], slot.SourceVisible[write], _secondaryPendingFaceForExtraction);
+                    _renderContext.DeleteSync(_pendingFence);
+                    _pendingFence = 0;
+                    _secondaryFencePending = false;
+                    _fencePending = false;
+                }
+                else
+                {
+                    return;
+                }
+            }
+            while (facesDone < FacesPerCall && slot.PendingFace < 12)
+            {
+                int face = slot.PendingFace < 6 ? slot.PendingFace : slot.PendingFace - 6;
+                Vector3 origin = slot.PendingFace < 6 ? slot.PendingListener : slot.PendingSource;
+                IssueRasterFace(origin, face);
+                _secondaryPendingFaceForExtraction = slot.PendingFace;
+                slot.PendingFace++;
+                facesDone++;
+                if (_fencePending)
+                {
+                    _secondaryFencePending = true;
+                    return;
+                }
+            }
+            if (slot.PendingFace < 12)
+                return;
+            // Secondary complete – its own mutual
+            foreach (int tri in slot.ListenerVisible[write])
+                if (slot.SourceVisible[write].Contains(tri))
+                    slot.Mutual[write].Add(tri);
+            slot.FsListenerPos[write] = slot.PendingListener;
+            slot.FsSourcePos[write] = slot.PendingSource;
+            slot.FsGeometryVersion[write] = slot.PendingGeometryVersion;
+            slot.FsValid[write] = true;
+            slot.FsRead = write;
+            slot.FsWrite = 1 - write;
+            slot.PendingRaster = false;
+            _activeSecondaryEntityId = -1;
+            _visibilityVersion++;
+            RebuildJoinedMutual();
+        }
+        private void IssueRasterFace(Vector3 origin, int face)
         {
             int savedViewportW = _renderContext.ViewportWidth;
             int savedViewportH = _renderContext.ViewportHeight;
@@ -328,8 +434,6 @@ namespace SiegeEngine.Core.GPU.Compute
             _renderContext.ClearBufferuiv(_renderContext.Enums.Color, 0, &clearVal);
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _geometry.Draw();
-
-            // Asynchronous readback into the current PBO
             int pbo = _pboIndex;
             _pboIndex = 1 - _pboIndex;
             _renderContext.BindBuffer(_renderContext.Enums.PixelPackBuffer, _pbo[pbo]);
@@ -338,7 +442,6 @@ namespace SiegeEngine.Core.GPU.Compute
             _pendingFence = _renderContext.FenceSync(_renderContext.Enums.SyncGpuCommandsComplete, 0);
             _pendingPbo = pbo;
             _fencePending = true;
-
             _renderContext.BindBuffer(_renderContext.Enums.PixelPackBuffer, 0);
             _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, 0);
             _renderContext.Viewport(0, 0, (uint)savedViewportW, (uint)savedViewportH);
@@ -346,10 +449,89 @@ namespace SiegeEngine.Core.GPU.Compute
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
         }
+        private void ExtractIdsInto(HashSet<int> listenerSet, HashSet<int> sourceSet, int faceIndex)
+        {
+            _renderContext.BindBuffer(_renderContext.Enums.PixelPackBuffer, _pbo[_pendingPbo]);
+            void* mapped = _renderContext.MapBufferRange(
+                _renderContext.Enums.PixelPackBuffer,
+                0,
+                (uint)(IdBufferSize * IdBufferSize * sizeof(uint)),
+                _renderContext.Enums.MapReadBit);
+            if (mapped != null)
+            {
+                uint* ptr = (uint*)mapped;
+                int maxTri = _geometry.TriangleCount;
+                HashSet<int> targetSet = (faceIndex < 6) ? listenerSet : sourceSet;
+                for (int i = 0; i < IdBufferSize * IdBufferSize; i++)
+                {
+                    uint raw = ptr[i];
+                    if (raw == 0) continue;
+                    int tri = (int)raw - 1;
+                    if (tri >= 0 && tri < maxTri)
+                        targetSet.Add(tri);
+                }
+                _renderContext.UnmapBuffer(_renderContext.Enums.PixelPackBuffer);
+            }
+            _renderContext.BindBuffer(_renderContext.Enums.PixelPackBuffer, 0);
+        }
+        private void RebuildJoinedMutual()
+        {
+            _joinedMutual.Clear();
+            if (_fsValid[_fsRead])
+            {
+                foreach (int t in _mutual[_fsRead])
+                    _joinedMutual.Add(t);
+            }
+            foreach (var kv in _secondarySlots)
+            {
+                var slot = kv.Value;
+                if (slot.FsValid[slot.FsRead])
+                {
+                    foreach (int t in slot.Mutual[slot.FsRead])
+                        _joinedMutual.Add(t);
+                }
+            }
+            _joinedVersion = _visibilityVersion;
+        }
         public SoundRayTraceResult ComputeFreeSurfacePerceived(Vector3 listener, Vector3 source)
         {
+            return ComputeFreeSurfacePerceived(listener, source, -1);
+        }
+        public SoundRayTraceResult ComputeFreeSurfacePerceived(Vector3 listener, Vector3 source, int entityId)
+        {
+            // 1. Primary match
             int read = _fsRead;
-            if (!_fsValid[read] || _mutual[read].Count == 0)
+            if (_fsValid[read] &&
+                Vector3.DistanceSquared(source, _fsSourcePos[read]) < VisibilityMoveThreshold * VisibilityMoveThreshold * 4f)
+            {
+                return ComputeFromMutual(_mutual[read], listener, source);
+            }
+            // 2. Exact EntityId secondary
+            if (entityId >= 0 && _secondarySlots.TryGetValue(entityId, out var slot) && slot.FsValid[slot.FsRead])
+            {
+                return ComputeFromMutual(slot.Mutual[slot.FsRead], listener, source);
+            }
+            // 3. Closest secondary by position
+            foreach (var kv in _secondarySlots)
+            {
+                var s = kv.Value;
+                if (s.FsValid[s.FsRead] &&
+                    Vector3.DistanceSquared(source, s.FsSourcePos[s.FsRead]) < VisibilityMoveThreshold * VisibilityMoveThreshold * 4f)
+                {
+                    return ComputeFromMutual(s.Mutual[s.FsRead], listener, source);
+                }
+            }
+            return new SoundRayTraceResult
+            {
+                Intensity = 0.001f,
+                Delay = 0f,
+                LowPassCutoff = 0f,
+                ApparentDirection = Vector3.Zero
+            };
+        }
+        private SoundRayTraceResult ComputeFromMutual(HashSet<int> mutual, Vector3 listener, Vector3 source)
+        {
+            if (mutual == null || mutual.Count == 0)
             {
                 return new SoundRayTraceResult
                 {
@@ -365,7 +547,7 @@ namespace SiegeEngine.Core.GPU.Compute
             float maxContrib = 0f;
             Vector3 strongestDir = Vector3.Zero;
             float strongestPath = dist;
-            foreach (int tri in _mutual[read])
+            foreach (int tri in mutual)
             {
                 if (!_geometry.GetTriangle(tri, out Vector3 a, out Vector3 b, out Vector3 c)) continue;
                 Vector3 centroid = (a + b + c) * (1f / 3f);
@@ -413,6 +595,12 @@ namespace SiegeEngine.Core.GPU.Compute
         public IReadOnlyCollection<int> GetListenerFree() => _listenerVisible[_fsRead];
         public IReadOnlyCollection<int> GetSourceFree() => _sourceVisible[_fsRead];
         public IReadOnlyCollection<int> GetMutualFree() => _mutual[_fsRead];
+        public IReadOnlyCollection<int> GetJoinedMutualFree()
+        {
+            if (_joinedVersion != _visibilityVersion)
+                RebuildJoinedMutual();
+            return _joinedMutual;
+        }
         public IReadOnlyList<DebugSegment> GetDebugSegments() => _debugSegments;
         public SoundRayTraceResult ReadCompletedResult()
         {
@@ -452,6 +640,8 @@ namespace SiegeEngine.Core.GPU.Compute
                     if (_pbo[i] != 0)
                         _renderContext.DeleteBuffer(_pbo[i]);
                 }
+                _secondarySlots.Clear();
+                _secondaryQueue.Clear();
                 _disposed = true;
             }
             GC.SuppressFinalize(this);
