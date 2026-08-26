@@ -11,13 +11,14 @@ using SiegeEngine.Scenes;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace ToolChest
 {
     /// <summary>
     /// IDE-only scene owned by SkyboxRotatePanel.
-    /// Matches ModelViewerScene ownership. Clear Depth is required for correct cube face order.
-    /// Lines go through LineRenderer.
+    /// Matches ModelViewerScene pure-content ownership.
+    /// Depth clear is performed only when the panel size actually changes
+    /// so continuous docked resize does not pay a scissored Clear every frame.
+    /// Lines go through the shared LineRenderer.
     /// </summary>
     public unsafe class SkyboxPreviewScene : Scene
     {
@@ -28,26 +29,22 @@ namespace ToolChest
         private VertexBuffer _faceOutlineBuffer;
         private ShaderProgram _previewShader;
         private LineRenderer _lineRenderer;
-
         public float PreviewYaw = 0.6f;
         public float PreviewPitch = 0.35f;
         public float PreviewDist = 2.8f;
-
         private Quaternion _orientation = Quaternion.Identity;
         private int _selectedFace = -1;
-
+        private int _lastClearedW = -1;
+        private int _lastClearedH = -1;
         public SkyboxPreviewScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
         }
-
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
-
             _lineRenderer = new LineRenderer(_renderContext);
             _lineRenderer.Initialize();
-
             _previewCube = new VertexBuffer(_renderContext);
             BuildPreviewCube();
             _axisBuffer = new VertexBuffer(_renderContext);
@@ -55,7 +52,6 @@ namespace ToolChest
             _faceOutlineBuffer = new VertexBuffer(_renderContext);
             RebuildAxesAndRings();
             BuildFaceOutline(-1);
-
             string vs = @"
 #version 330 core
 layout(location = 0) in vec3 aPosition;
@@ -74,20 +70,26 @@ void main() {
     FragColor = texture(uSkybox, normalize(vDir));
 }";
             _previewShader = new ShaderProgram(_renderContext, vs, fs);
+            _lastClearedW = width;
+            _lastClearedH = height;
         }
-
+        public override void Resize(int width, int height)
+        {
+            _width = width;
+            _height = height;
+            _aspectRatio = width > 0 && height > 0 ? (float)width / height : 16f / 9f;
+            // No Viewport – LayeredUIRenderer owns the panel absolute viewport + scissor.
+        }
         public void SetOrientation(Quaternion orient)
         {
             _orientation = orient;
         }
-
         public void SetSelectedFace(int face)
         {
             if (_selectedFace == face) return;
             _selectedFace = face;
             BuildFaceOutline(face);
         }
-
         public void SetCubemapTexture(uint tex)
         {
             if (_cubemapTex != 0 && _cubemapTex != tex)
@@ -96,17 +98,13 @@ void main() {
             }
             _cubemapTex = tex;
         }
-
         public uint CubemapTexture => _cubemapTex;
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             if (_cubemapTex == 0 || _previewCube == null || _previewShader == null)
                 return;
-
             float aspect = AspectRatio;
             if (aspect <= 0f) aspect = 1f;
-
             Vector3 camPos = new Vector3(
                 MathF.Sin(PreviewYaw) * MathF.Cos(PreviewPitch) * PreviewDist,
                -MathF.Cos(PreviewYaw) * MathF.Cos(PreviewPitch) * PreviewDist,
@@ -116,20 +114,24 @@ void main() {
             Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 3.2f, aspect, 0.1f, 50f);
             Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(Quaternion.Inverse(_orientation));
             Matrix4x4 mvp = orient * view * proj;
-
-            // Required for correct cube face ordering (original working path)
+            // Minimal state required for a closed cube under the depth buffer left dirty by LayeredUIRenderer.
+            // Clear is performed only when the panel size has actually changed so continuous docked resize
+            // does not pay a scissored Clear every frame (matches the pure-content cost model of ModelViewerScene).
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
-            _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
-
+            if (_width != _lastClearedW || _height != _lastClearedH)
+            {
+                _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
+                _lastClearedW = _width;
+                _lastClearedH = _height;
+            }
             _previewShader.Use();
             _previewShader.SetMatrix4("uMVP", mvp);
             _renderContext.ActiveTexture(0);
             _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTex);
             _previewCube.Bind();
             _renderContext.DrawElements(_renderContext.Enums.Triangles, _previewCube.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-
-            // Lines through generic LineRenderer
+            // Lines through the shared LineRenderer (owns its own Depth/LineWidth state)
             Matrix4x4 lineModel = orient;
             if (_axisBuffer != null)
                 _lineRenderer.DrawLines(_axisBuffer, lineModel, view, proj, 1f);
@@ -137,10 +139,7 @@ void main() {
                 _lineRenderer.DrawLines(_ringBuffer, lineModel, view, proj, 2.5f);
             if (_selectedFace >= 0 && _faceOutlineBuffer != null && _faceOutlineBuffer.GetIndexCount() > 0)
                 _lineRenderer.DrawLines(_faceOutlineBuffer, lineModel, view, proj, 1f);
-
-            _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
-
         private void BuildPreviewCube()
         {
             float s = 0.7f;
@@ -162,7 +161,6 @@ void main() {
             indices.AddRange(new uint[] { 0, 1, 5, 5, 4, 0 });
             _previewCube.UpdateCustomWithUV(vertices, indices);
         }
-
         private void RebuildAxesAndRings()
         {
             var aVerts = new List<Vertex>();
@@ -178,7 +176,6 @@ void main() {
             aVerts.Add(new Vertex(0, 0, len, 0.2f, 0.4f, 1, 1));
             aIdx.Add(4); aIdx.Add(5);
             _axisBuffer.UpdateCustom(aVerts, aIdx);
-
             var rVerts = new List<Vertex>();
             var rIdx = new List<uint>();
             AddRing(rVerts, rIdx, Vector3.UnitX, new Vector4(1f, 0.2f, 0.2f, 1f));
@@ -186,7 +183,6 @@ void main() {
             AddRing(rVerts, rIdx, Vector3.UnitZ, new Vector4(0.2f, 0.4f, 1f, 1f));
             _ringBuffer.UpdateCustom(rVerts, rIdx);
         }
-
         private void AddRing(List<Vertex> vertices, List<uint> indices, Vector3 axis, Vector4 color)
         {
             uint baseIndex = (uint)vertices.Count;
@@ -211,7 +207,6 @@ void main() {
                 indices.Add(next);
             }
         }
-
         private void BuildFaceOutline(int face)
         {
             float s = 0.72f;
@@ -239,7 +234,6 @@ void main() {
             }
             _faceOutlineBuffer.UpdateCustom(verts, idx);
         }
-
         public (Vector3 origin, Vector3 dir, bool ok) GetPreviewRay(Vector2 relMouse, float contentW, float contentH, float header)
         {
             float aspect = contentW / Math.Max(contentH, 1f);
@@ -262,7 +256,6 @@ void main() {
             Vector3 dir = Vector3.Normalize(Vector3.Transform(far, invView) - origin);
             return (origin, dir, true);
         }
-
         public int PickRing(Vector2 relMouse, float contentW, float contentH, float header, float tolerance)
         {
             Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(Quaternion.Inverse(_orientation));
@@ -293,7 +286,6 @@ void main() {
             }
             return best < tolerance ? bestRing : -1;
         }
-
         private float DistanceToSegment2D(Vector2 p, Vector3 a3, Vector3 b3, float vw, float vh, float header)
         {
             Vector2 a = WorldToScreen(a3, vw, vh, header);
@@ -304,7 +296,6 @@ void main() {
             float t = Math.Clamp(Vector2.Dot(p - a, ab) / len2, 0f, 1f);
             return Vector2.Distance(p, a + ab * t);
         }
-
         private Vector2 WorldToScreen(Vector3 world, float vw, float vh, float header)
         {
             Vector3 camPos = new Vector3(
@@ -320,7 +311,6 @@ void main() {
             float ndcY = clip.Y / clip.W;
             return new Vector2((ndcX * 0.5f + 0.5f) * vw, (1f - (ndcY * 0.5f + 0.5f)) * vh + header);
         }
-
         public override void Dispose()
         {
             if (_cubemapTex != 0)

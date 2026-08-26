@@ -18,7 +18,6 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
-
 namespace ToolChest
 {
     public unsafe class SkyboxRotatePanel : BasePanel
@@ -41,7 +40,6 @@ namespace ToolChest
                 _parent.HandleDataHook(hook);
             }
         }
-
         private EventBus _eventBus;
         private SkyboxData _workingSkybox;
         private int _selectedFace = -1;
@@ -50,9 +48,7 @@ namespace ToolChest
         private readonly bool[] _faceFlipH = new bool[6];
         private readonly bool[] _faceFlipV = new bool[6];
         private bool _swapMode = false;
-
         private SkyboxPreviewScene _previewScene;
-
         private bool _orbitDragging = false;
         private Vector2 _lastMouse;
         private bool _ringDragging = false;
@@ -61,9 +57,7 @@ namespace ToolChest
         private float _accumAngle = 0f;
         private Vector3 _lastPlanePoint;
         private const float RingPickTolerance = 18f;
-
         public override bool WantsContinuousUpdate => true;
-
         public SkyboxRotatePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -80,39 +74,31 @@ namespace ToolChest
             BaseHeight = 620f;
             Size = new Vector2(760f, 620f);
             Scaling = ScalingMode.BestFit;
-
             _previewScene = new SkyboxPreviewScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new SkyboxRotateUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
-
             var level = ProjectSettings.Current.CurrentLevel;
             if (level?.Skybox != null)
                 _workingSkybox = CloneSkybox(level.Skybox);
             else
                 _workingSkybox = new SkyboxData { Enabled = true };
-
             EnsureFacesList();
             ResolveFacePaths();
-
             _previewScene.Initialize((int)Size.Y, (int)Size.X);
             LoadPreviewCubemap();
             _previewScene.SetOrientation(_workingSkybox.Orientation);
             _previewScene.SetSelectedFace(_selectedFace);
-
             LoadUIFromFile();
             SyncSliderFromData();
             UpdateSelectionUI();
         }
-
         private void LoadUIFromFile()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SkyboxRotateUI.html");
@@ -123,7 +109,6 @@ namespace ToolChest
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         private SkyboxData CloneSkybox(SkyboxData src)
         {
             return new SkyboxData
@@ -138,7 +123,6 @@ namespace ToolChest
                 Orientation = src.Orientation
             };
         }
-
         private void EnsureFacesList()
         {
             if (_workingSkybox.Faces == null)
@@ -146,7 +130,6 @@ namespace ToolChest
             while (_workingSkybox.Faces.Count < 6)
                 _workingSkybox.Faces.Add("");
         }
-
         private void ResolveFacePaths()
         {
             string projectPath = ProjectSettings.Current.ActiveProject ?? "";
@@ -158,7 +141,6 @@ namespace ToolChest
                 _resolvedFaces[i] = f;
             }
         }
-
         private void LoadPreviewCubemap()
         {
             uint old = _previewScene.CubemapTexture;
@@ -167,10 +149,8 @@ namespace ToolChest
                 _renderContext.DeleteTexture(old);
                 _previewScene.SetCubemapTexture(0);
             }
-
             if (_workingSkybox == null || !_workingSkybox.Enabled)
                 return;
-
             uint tex;
             _renderContext.GenTextures(1, out tex);
             _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, tex);
@@ -179,15 +159,12 @@ namespace ToolChest
             _renderContext.TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureWrapS, _renderContext.Enums.ClampToEdge);
             _renderContext.TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureWrapT, _renderContext.Enums.ClampToEdge);
             _renderContext.TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureWrapR, _renderContext.Enums.ClampToEdge);
-
             for (int i = 0; i < 6; i++)
                 UploadFace(tex, i);
-
             _renderContext.GenerateMipmap(_renderContext.Enums.TextureCubeMap);
             _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
             _previewScene.SetCubemapTexture(tex);
         }
-
         private void ApplyOrientationToBitmap(Bitmap bmp, int step, bool flipH, bool flipV)
         {
             RotateFlipType rot = (step & 3) switch
@@ -204,7 +181,6 @@ namespace ToolChest
             if (flipV)
                 bmp.RotateFlip(RotateFlipType.RotateNoneFlipY);
         }
-
         private void UploadFace(uint tex, int faceIndex)
         {
             string path = _resolvedFaces[faceIndex];
@@ -226,7 +202,6 @@ namespace ToolChest
                 }
             }
         }
-
         private void RotateSelectedFace(int deltaSteps)
         {
             if (_selectedFace < 0 || _selectedFace > 5) return;
@@ -240,7 +215,6 @@ namespace ToolChest
             _renderContext.GenerateMipmap(_renderContext.Enums.TextureCubeMap);
             _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
         }
-
         private void MirrorSelectedFace(bool horizontal)
         {
             if (_selectedFace < 0 || _selectedFace > 5) return;
@@ -256,7 +230,6 @@ namespace ToolChest
             _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
             UpdateSelectionUI();
         }
-
         private void SwapFaces(int a, int b)
         {
             if (a < 0 || a > 5 || b < 0 || b > 5 || a == b) return;
@@ -286,7 +259,6 @@ namespace ToolChest
                 _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
             }
         }
-
         private static void AtomicWriteBitmap(string targetPath, Bitmap bmp)
         {
             string dir = Path.GetDirectoryName(targetPath);
@@ -298,7 +270,6 @@ namespace ToolChest
                 File.Delete(targetPath);
             File.Move(temp, targetPath);
         }
-
         private void Apply()
         {
             for (int i = 0; i < 6; i++)
@@ -321,7 +292,6 @@ namespace ToolChest
             LoadPreviewCubemap();
             UpdateSelectionUI();
         }
-
         private void PushSkyboxLive()
         {
             var level = ProjectSettings.Current.CurrentLevel;
@@ -340,7 +310,6 @@ namespace ToolChest
             if (_eventBus != null)
                 _eventBus.Publish(new GenericEvent { Hook = "SkyboxRefresh" });
         }
-
         private void PushSkyboxOffsetLive()
         {
             var level = ProjectSettings.Current.CurrentLevel;
@@ -354,7 +323,6 @@ namespace ToolChest
                     live.Skybox = _workingSkybox;
             }
         }
-
         private void SyncSliderFromData()
         {
             var slider = _uiOverlay.FindElementById("heightSlider") as RangeElement;
@@ -365,7 +333,6 @@ namespace ToolChest
             }
             UpdateHeightLabel();
         }
-
         private void UpdateHeightLabel()
         {
             var span = _uiOverlay.FindElementById("heightValue");
@@ -387,7 +354,6 @@ namespace ToolChest
             if (changed)
                 _uiOverlay.RefreshUI();
         }
-
         private void UpdateSelectionUI()
         {
             for (int i = 0; i < 6; i++)
@@ -427,9 +393,7 @@ namespace ToolChest
             _previewScene?.SetSelectedFace(_selectedFace);
             _uiOverlay.RefreshUI();
         }
-
         private static string FaceName(int i) => i switch { 0 => "+X", 1 => "-X", 2 => "+Y", 3 => "-Y", 4 => "+Z", 5 => "-Z", _ => "?" };
-
         public void HandleUIClick(HtmlElement elem)
         {
             if (elem == null) return;
@@ -437,7 +401,6 @@ namespace ToolChest
             if (!string.IsNullOrEmpty(hook))
                 HandleDataHook(hook);
         }
-
         public void HandleDataHook(string hook)
         {
             if (hook == "ClosePanel")
@@ -486,11 +449,9 @@ namespace ToolChest
                 return;
             }
         }
-
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
-
             var slider = _uiOverlay.FindElementById("heightSlider") as RangeElement;
             if (slider != null)
             {
@@ -502,13 +463,10 @@ namespace ToolChest
                     PushSkyboxOffsetLive();
                 }
             }
-
             if (_previewScene == null) return;
-
             float header = HasTitleBar ? HeaderHeight : 0f;
             Vector2 rel = absMousePos - Position;
             bool inPreview = rel.Y > header && rel.Y < Size.Y - 140f && rel.X > 0 && rel.X < Size.X;
-
             if (inPreview && mousePressed)
             {
                 int ring = _previewScene.PickRing(rel, Size.X, Size.Y - header, header, RingPickTolerance);
@@ -532,7 +490,6 @@ namespace ToolChest
                     _lastMouse = rel;
                 }
             }
-
             if (_ringDragging && mouseDown)
             {
                 var (o, d, ok) = _previewScene.GetPreviewRay(rel, Size.X, Size.Y - header, header);
@@ -553,7 +510,6 @@ namespace ToolChest
                     _previewScene.SetOrientation(_workingSkybox.Orientation);
                 }
             }
-
             if (_ringDragging && mouseReleased)
             {
                 float snap = MathF.Round(_accumAngle / (MathF.PI * 0.5f)) * (MathF.PI * 0.5f);
@@ -565,7 +521,6 @@ namespace ToolChest
                 _ringDragging = false;
                 _activeRing = -1;
             }
-
             if (_orbitDragging && mouseDown)
             {
                 Vector2 delta = rel - _lastMouse;
@@ -573,16 +528,13 @@ namespace ToolChest
                 _previewScene.PreviewPitch = Math.Clamp(_previewScene.PreviewPitch + delta.Y * 0.012f, -1.4f, 1.4f);
                 _lastMouse = rel;
             }
-
             if (mouseReleased)
             {
                 _orbitDragging = false;
             }
-
             if (inPreview && MathF.Abs(scrollDelta) > 0.01f)
                 _previewScene.PreviewDist = Math.Clamp(_previewScene.PreviewDist - scrollDelta * 0.25f, 1.6f, 7f);
         }
-
         private Vector3 ClosestPointOnPlane(Vector3 rayO, Vector3 rayD, Vector3 center, Vector3 normal)
         {
             float denom = Vector3.Dot(rayD, normal);
@@ -590,30 +542,23 @@ namespace ToolChest
             float t = Vector3.Dot(center - rayO, normal) / denom;
             return rayO + t * rayD;
         }
-
         private Vector3 GetAxisVector(int axis) => axis switch { 0 => Vector3.UnitX, 1 => Vector3.UnitY, 2 => Vector3.UnitZ, _ => Vector3.UnitZ };
-
         public override void OnLiveResize(float w, float h)
         {
             _previewScene?.Resize((int)w, (int)h);
             base.OnLiveResize(w, h);
         }
-
         protected override void RenderInnerContent()
         {
-            if (IsResizing) return;
             if (_previewScene == null) return;
-            _previewScene.SetOrientation(_workingSkybox.Orientation);
             _previewScene.Render(null);
         }
-
         public override void Dispose()
         {
             _previewScene?.Dispose();
             _previewScene = null;
             base.Dispose();
         }
-
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new SkyboxRotatePanel(renderContext, controlContext, window, eventBus);

@@ -716,7 +716,7 @@ Found: ..
 Found: AcousticDebugOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
-Read 15239 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
+Read 14180 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AcousticDebugOverlay.cs
 Namespace: ToolChest
 Found 11 dependencies
 Found: AddSkybox.html
@@ -799,7 +799,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\ToolChest\obj
 Found: PhysicsDebugOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PhysicsDebugOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PhysicsDebugOverlay.cs
-Read 20236 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PhysicsDebugOverlay.cs
+Read 17907 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PhysicsDebugOverlay.cs
 Namespace: ToolChest
 Found 10 dependencies
 Found: PlacementOverlay.cs
@@ -815,12 +815,18 @@ Read 32935 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPane
 Namespace: ToolChest
 Found 18 dependencies
 Found: PropertiesPanelUI.html
+Found: SkyboxPreviewScene.cs
+Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxPreviewScene.cs
+Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxPreviewScene.cs
+Read 15110 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxPreviewScene.cs
+Namespace: ToolChest
+Found 11 dependencies
 Found: SkyboxRotatePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
-Read 38591 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
+Read 25212 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SkyboxRotatePanel.cs
 Namespace: ToolChest
-Found 17 dependencies
+Found 18 dependencies
 Found: SkyboxRotateUI.html
 Found: SpritePlacementPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SpritePlacementPanel.cs
@@ -833,7 +839,7 @@ Found: ToolChest.csproj
 Found: TransformGizmoOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
-Read 21297 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
+Read 19799 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
 Namespace: ToolChest
 Found 12 dependencies
 Found: TreeViewPanel.cs
@@ -1664,6 +1670,12 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Renderers\Layere
 Read 3328 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Renderers\LayeredUIRenderer.cs
 Namespace: SiegeEngine.Core.GPU.Renderers
 Found 3 dependencies
+Found: LineRenderer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Renderers\LineRenderer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Renderers\LineRenderer.cs
+Read 2750 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Renderers\LineRenderer.cs
+Namespace: SiegeEngine.Core.GPU.Renderers
+Found 4 dependencies
 Found: ModelRenderer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Renderers\ModelRenderer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\GPU\Renderers\ModelRenderer.cs
