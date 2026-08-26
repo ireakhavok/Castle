@@ -8,6 +8,7 @@ using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.GPU.Shaders;
+using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
 using System;
@@ -17,6 +18,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
+
 namespace ToolChest
 {
     public unsafe class SkyboxRotatePanel : BasePanel
@@ -39,6 +41,7 @@ namespace ToolChest
                 _parent.HandleDataHook(hook);
             }
         }
+
         private EventBus _eventBus;
         private SkyboxData _workingSkybox;
         private int _selectedFace = -1;
@@ -47,16 +50,9 @@ namespace ToolChest
         private readonly bool[] _faceFlipH = new bool[6];
         private readonly bool[] _faceFlipV = new bool[6];
         private bool _swapMode = false;
-        private uint _cubemapTex = 0;
-        private VertexBuffer _previewCube;
-        private VertexBuffer _axisBuffer;
-        private VertexBuffer _ringBuffer;
-        private VertexBuffer _faceOutlineBuffer;
-        private ShaderProgram _previewShader;
-        private ShaderProgram _lineShader;
-        private float _previewYaw = 0.6f;
-        private float _previewPitch = 0.35f;
-        private float _previewDist = 2.8f;
+
+        private SkyboxPreviewScene _previewScene;
+
         private bool _orbitDragging = false;
         private Vector2 _lastMouse;
         private bool _ringDragging = false;
@@ -65,7 +61,9 @@ namespace ToolChest
         private float _accumAngle = 0f;
         private Vector3 _lastPlanePoint;
         private const float RingPickTolerance = 18f;
+
         public override bool WantsContinuousUpdate => true;
+
         public SkyboxRotatePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -82,70 +80,39 @@ namespace ToolChest
             BaseHeight = 620f;
             Size = new Vector2(760f, 620f);
             Scaling = ScalingMode.BestFit;
+
+            _previewScene = new SkyboxPreviewScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new SkyboxRotateUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
         public override void Init()
         {
             base.Init();
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
+
             var level = ProjectSettings.Current.CurrentLevel;
             if (level?.Skybox != null)
                 _workingSkybox = CloneSkybox(level.Skybox);
             else
                 _workingSkybox = new SkyboxData { Enabled = true };
+
             EnsureFacesList();
             ResolveFacePaths();
+
+            _previewScene.Initialize((int)Size.Y, (int)Size.X);
             LoadPreviewCubemap();
-            _previewCube = new VertexBuffer(_renderContext);
-            BuildPreviewCube();
-            _axisBuffer = new VertexBuffer(_renderContext);
-            _ringBuffer = new VertexBuffer(_renderContext);
-            _faceOutlineBuffer = new VertexBuffer(_renderContext);
-            RebuildAxesAndRings();
-            BuildFaceOutline(-1);
-            string vs = @"
-#version 330 core
-layout(location = 0) in vec3 aPosition;
-uniform mat4 uMVP;
-out vec3 vDir;
-void main() {
-    vDir = aPosition;
-    gl_Position = uMVP * vec4(aPosition, 1.0);
-}";
-            string fs = @"
-#version 330 core
-in vec3 vDir;
-uniform samplerCube uSkybox;
-out vec4 FragColor;
-void main() {
-    FragColor = texture(uSkybox, normalize(vDir));
-}";
-            _previewShader = new ShaderProgram(_renderContext, vs, fs);
-            string lvs = @"
-#version 330 core
-layout(location = 0) in vec3 aPosition;
-layout(location = 1) in vec4 aColor;
-uniform mat4 uMVP;
-out vec4 vColor;
-void main() {
-    vColor = aColor;
-    gl_Position = uMVP * vec4(aPosition, 1.0);
-}";
-            string lfs = @"
-#version 330 core
-in vec4 vColor;
-out vec4 FragColor;
-void main() {
-    FragColor = vColor;
-}";
-            _lineShader = new ShaderProgram(_renderContext, lvs, lfs);
+            _previewScene.SetOrientation(_workingSkybox.Orientation);
+            _previewScene.SetSelectedFace(_selectedFace);
+
             LoadUIFromFile();
             SyncSliderFromData();
             UpdateSelectionUI();
         }
+
         private void LoadUIFromFile()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SkyboxRotateUI.html");
@@ -156,6 +123,7 @@ void main() {
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         private SkyboxData CloneSkybox(SkyboxData src)
         {
             return new SkyboxData
@@ -170,6 +138,7 @@ void main() {
                 Orientation = src.Orientation
             };
         }
+
         private void EnsureFacesList()
         {
             if (_workingSkybox.Faces == null)
@@ -177,6 +146,7 @@ void main() {
             while (_workingSkybox.Faces.Count < 6)
                 _workingSkybox.Faces.Add("");
         }
+
         private void ResolveFacePaths()
         {
             string projectPath = ProjectSettings.Current.ActiveProject ?? "";
@@ -188,26 +158,36 @@ void main() {
                 _resolvedFaces[i] = f;
             }
         }
+
         private void LoadPreviewCubemap()
         {
-            if (_cubemapTex != 0)
+            uint old = _previewScene.CubemapTexture;
+            if (old != 0)
             {
-                _renderContext.DeleteTexture(_cubemapTex);
-                _cubemapTex = 0;
+                _renderContext.DeleteTexture(old);
+                _previewScene.SetCubemapTexture(0);
             }
-            if (_workingSkybox == null || !_workingSkybox.Enabled) return;
-            _renderContext.GenTextures(1, out _cubemapTex);
-            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTex);
+
+            if (_workingSkybox == null || !_workingSkybox.Enabled)
+                return;
+
+            uint tex;
+            _renderContext.GenTextures(1, out tex);
+            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, tex);
             _renderContext.TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureMinFilter, _renderContext.Enums.Linear);
             _renderContext.TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureMagFilter, _renderContext.Enums.Linear);
             _renderContext.TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureWrapS, _renderContext.Enums.ClampToEdge);
             _renderContext.TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureWrapT, _renderContext.Enums.ClampToEdge);
             _renderContext.TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureWrapR, _renderContext.Enums.ClampToEdge);
+
             for (int i = 0; i < 6; i++)
-                UploadFace(i);
+                UploadFace(tex, i);
+
             _renderContext.GenerateMipmap(_renderContext.Enums.TextureCubeMap);
             _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
+            _previewScene.SetCubemapTexture(tex);
         }
+
         private void ApplyOrientationToBitmap(Bitmap bmp, int step, bool flipH, bool flipV)
         {
             RotateFlipType rot = (step & 3) switch
@@ -224,7 +204,8 @@ void main() {
             if (flipV)
                 bmp.RotateFlip(RotateFlipType.RotateNoneFlipY);
         }
-        private void UploadFace(int faceIndex)
+
+        private void UploadFace(uint tex, int faceIndex)
         {
             string path = _resolvedFaces[faceIndex];
             if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
@@ -238,24 +219,28 @@ void main() {
                 bmp.UnlockBits(data);
                 fixed (byte* ptr = pixelData)
                 {
-                    _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTex);
+                    _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, tex);
                     _renderContext.TexImage2D((int)(_renderContext.Enums.TextureCubeMapPositiveX + faceIndex), 0,
                         _renderContext.Enums.InternalRgba, (uint)bmp.Width, (uint)bmp.Height, 0,
                         _renderContext.Enums.PixelBgra, _renderContext.Enums.UnsignedByte, ptr);
                 }
             }
         }
+
         private void RotateSelectedFace(int deltaSteps)
         {
             if (_selectedFace < 0 || _selectedFace > 5) return;
             int step = _faceSteps[_selectedFace] + deltaSteps;
             while (step < 0) step += 4;
             _faceSteps[_selectedFace] = step % 4;
-            UploadFace(_selectedFace);
-            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTex);
+            uint tex = _previewScene.CubemapTexture;
+            if (tex == 0) return;
+            UploadFace(tex, _selectedFace);
+            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, tex);
             _renderContext.GenerateMipmap(_renderContext.Enums.TextureCubeMap);
             _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
         }
+
         private void MirrorSelectedFace(bool horizontal)
         {
             if (_selectedFace < 0 || _selectedFace > 5) return;
@@ -263,12 +248,15 @@ void main() {
                 _faceFlipH[_selectedFace] = !_faceFlipH[_selectedFace];
             else
                 _faceFlipV[_selectedFace] = !_faceFlipV[_selectedFace];
-            UploadFace(_selectedFace);
-            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTex);
+            uint tex = _previewScene.CubemapTexture;
+            if (tex == 0) return;
+            UploadFace(tex, _selectedFace);
+            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, tex);
             _renderContext.GenerateMipmap(_renderContext.Enums.TextureCubeMap);
             _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
             UpdateSelectionUI();
         }
+
         private void SwapFaces(int a, int b)
         {
             if (a < 0 || a > 5 || b < 0 || b > 5 || a == b) return;
@@ -288,12 +276,17 @@ void main() {
             bool tmpV = _faceFlipV[a];
             _faceFlipV[a] = _faceFlipV[b];
             _faceFlipV[b] = tmpV;
-            UploadFace(a);
-            UploadFace(b);
-            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTex);
-            _renderContext.GenerateMipmap(_renderContext.Enums.TextureCubeMap);
-            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
+            uint tex = _previewScene.CubemapTexture;
+            if (tex != 0)
+            {
+                UploadFace(tex, a);
+                UploadFace(tex, b);
+                _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, tex);
+                _renderContext.GenerateMipmap(_renderContext.Enums.TextureCubeMap);
+                _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
+            }
         }
+
         private static void AtomicWriteBitmap(string targetPath, Bitmap bmp)
         {
             string dir = Path.GetDirectoryName(targetPath);
@@ -305,6 +298,7 @@ void main() {
                 File.Delete(targetPath);
             File.Move(temp, targetPath);
         }
+
         private void Apply()
         {
             for (int i = 0; i < 6; i++)
@@ -327,6 +321,7 @@ void main() {
             LoadPreviewCubemap();
             UpdateSelectionUI();
         }
+
         private void PushSkyboxLive()
         {
             var level = ProjectSettings.Current.CurrentLevel;
@@ -345,12 +340,7 @@ void main() {
             if (_eventBus != null)
                 _eventBus.Publish(new GenericEvent { Hook = "SkyboxRefresh" });
         }
-        /// <summary>
-        /// Lightweight live write used by the continuous Height slider.
-        /// Only mutates the VerticalOffset field on the shared SkyboxData reference.
-        /// Does NOT call SyncSkyboxIfNeeded or publish SkyboxRefresh, so the cubemap
-        /// is never reloaded and the main viewport stays smooth.
-        /// </summary>
+
         private void PushSkyboxOffsetLive()
         {
             var level = ProjectSettings.Current.CurrentLevel;
@@ -364,6 +354,7 @@ void main() {
                     live.Skybox = _workingSkybox;
             }
         }
+
         private void SyncSliderFromData()
         {
             var slider = _uiOverlay.FindElementById("heightSlider") as RangeElement;
@@ -374,6 +365,7 @@ void main() {
             }
             UpdateHeightLabel();
         }
+
         private void UpdateHeightLabel()
         {
             var span = _uiOverlay.FindElementById("heightValue");
@@ -395,100 +387,7 @@ void main() {
             if (changed)
                 _uiOverlay.RefreshUI();
         }
-        private void BuildPreviewCube()
-        {
-            float s = 0.7f;
-            var vertices = new List<float>();
-            var indices = new List<uint>();
-            vertices.AddRange(new float[] { -s, -s, -s, 1, 1, 1, 1, 0, 0 });
-            vertices.AddRange(new float[] { s, -s, -s, 1, 1, 1, 1, 1, 0 });
-            vertices.AddRange(new float[] { s, s, -s, 1, 1, 1, 1, 1, 1 });
-            vertices.AddRange(new float[] { -s, s, -s, 1, 1, 1, 1, 0, 1 });
-            vertices.AddRange(new float[] { -s, -s, s, 1, 1, 1, 1, 0, 0 });
-            vertices.AddRange(new float[] { s, -s, s, 1, 1, 1, 1, 1, 0 });
-            vertices.AddRange(new float[] { s, s, s, 1, 1, 1, 1, 1, 1 });
-            vertices.AddRange(new float[] { -s, s, s, 1, 1, 1, 1, 0, 1 });
-            indices.AddRange(new uint[] { 0, 1, 2, 2, 3, 0 });
-            indices.AddRange(new uint[] { 4, 5, 6, 6, 7, 4 });
-            indices.AddRange(new uint[] { 0, 4, 7, 7, 3, 0 });
-            indices.AddRange(new uint[] { 1, 5, 6, 6, 2, 1 });
-            indices.AddRange(new uint[] { 3, 2, 6, 6, 7, 3 });
-            indices.AddRange(new uint[] { 0, 1, 5, 5, 4, 0 });
-            _previewCube.UpdateCustomWithUV(vertices, indices);
-        }
-        private void RebuildAxesAndRings()
-        {
-            var aVerts = new List<Vertex>();
-            var aIdx = new List<uint>();
-            float len = 1.1f;
-            aVerts.Add(new Vertex(0, 0, 0, 1, 0.15f, 0.15f, 1));
-            aVerts.Add(new Vertex(len, 0, 0, 1, 0.15f, 0.15f, 1));
-            aIdx.Add(0); aIdx.Add(1);
-            aVerts.Add(new Vertex(0, 0, 0, 0.15f, 1, 0.15f, 1));
-            aVerts.Add(new Vertex(0, len, 0, 0.15f, 1, 0.15f, 1));
-            aIdx.Add(2); aIdx.Add(3);
-            aVerts.Add(new Vertex(0, 0, 0, 0.2f, 0.4f, 1, 1));
-            aVerts.Add(new Vertex(0, 0, len, 0.2f, 0.4f, 1, 1));
-            aIdx.Add(4); aIdx.Add(5);
-            _axisBuffer.UpdateCustom(aVerts, aIdx);
-            var rVerts = new List<Vertex>();
-            var rIdx = new List<uint>();
-            AddRing(rVerts, rIdx, Vector3.UnitX, new Vector4(1f, 0.2f, 0.2f, 1f));
-            AddRing(rVerts, rIdx, Vector3.UnitY, new Vector4(0.2f, 1f, 0.2f, 1f));
-            AddRing(rVerts, rIdx, Vector3.UnitZ, new Vector4(0.2f, 0.4f, 1f, 1f));
-            _ringBuffer.UpdateCustom(rVerts, rIdx);
-        }
-        private void AddRing(List<Vertex> vertices, List<uint> indices, Vector3 axis, Vector4 color)
-        {
-            uint baseIndex = (uint)vertices.Count;
-            int segments = 48;
-            float radius = 1.05f;
-            for (int i = 0; i < segments; i++)
-            {
-                float angle = i * MathF.PI * 2f / segments;
-                float x = MathF.Cos(angle) * radius;
-                float y = MathF.Sin(angle) * radius;
-                Vector3 point;
-                if (axis == Vector3.UnitX) point = new Vector3(0, x, y);
-                else if (axis == Vector3.UnitY) point = new Vector3(x, 0, y);
-                else point = new Vector3(x, y, 0);
-                vertices.Add(new Vertex(point.X, point.Y, point.Z, color.X, color.Y, color.Z, color.W));
-            }
-            for (int i = 0; i < segments; i++)
-            {
-                uint current = baseIndex + (uint)i;
-                uint next = baseIndex + (uint)((i + 1) % segments);
-                indices.Add(current);
-                indices.Add(next);
-            }
-        }
-        private void BuildFaceOutline(int face)
-        {
-            float s = 0.72f;
-            var verts = new List<Vertex>();
-            var idx = new List<uint>();
-            Vector4 c = new Vector4(1f, 0.85f, 0.1f, 1f);
-            Vector3[] corners = face switch
-            {
-                0 => new[] { new Vector3(s, -s, -s), new Vector3(s, s, -s), new Vector3(s, s, s), new Vector3(s, -s, s) },
-                1 => new[] { new Vector3(-s, -s, -s), new Vector3(-s, -s, s), new Vector3(-s, s, s), new Vector3(-s, s, -s) },
-                2 => new[] { new Vector3(-s, s, -s), new Vector3(s, s, -s), new Vector3(s, s, s), new Vector3(-s, s, s) },
-                3 => new[] { new Vector3(-s, -s, -s), new Vector3(-s, -s, s), new Vector3(s, -s, s), new Vector3(s, -s, -s) },
-                4 => new[] { new Vector3(-s, -s, s), new Vector3(s, -s, s), new Vector3(s, s, s), new Vector3(-s, s, s) },
-                5 => new[] { new Vector3(-s, -s, -s), new Vector3(-s, s, -s), new Vector3(s, s, -s), new Vector3(s, -s, -s) },
-                _ => Array.Empty<Vector3>()
-            };
-            if (corners.Length == 4)
-            {
-                for (int i = 0; i < 4; i++)
-                {
-                    verts.Add(new Vertex(corners[i].X, corners[i].Y, corners[i].Z, c.X, c.Y, c.Z, c.W));
-                    idx.Add((uint)i);
-                    idx.Add((uint)((i + 1) % 4));
-                }
-            }
-            _faceOutlineBuffer.UpdateCustom(verts, idx);
-        }
+
         private void UpdateSelectionUI()
         {
             for (int i = 0; i < 6; i++)
@@ -525,10 +424,12 @@ void main() {
                     if (child is TextElement te) { te.Content = text; break; }
                 }
             }
-            BuildFaceOutline(_selectedFace);
+            _previewScene?.SetSelectedFace(_selectedFace);
             _uiOverlay.RefreshUI();
         }
+
         private static string FaceName(int i) => i switch { 0 => "+X", 1 => "-X", 2 => "+Y", 3 => "-Y", 4 => "+Z", 5 => "-Z", _ => "?" };
+
         public void HandleUIClick(HtmlElement elem)
         {
             if (elem == null) return;
@@ -536,6 +437,7 @@ void main() {
             if (!string.IsNullOrEmpty(hook))
                 HandleDataHook(hook);
         }
+
         public void HandleDataHook(string hook)
         {
             if (hook == "ClosePanel")
@@ -548,7 +450,6 @@ void main() {
                 Apply();
                 return;
             }
-            // Height is handled by the continuous poll in Update – no data-hook needed
             if (hook == "SelectWhole")
             {
                 _selectedFace = -1;
@@ -585,10 +486,11 @@ void main() {
                 return;
             }
         }
+
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
-            // Continuous Height poll – no arbitrary threshold, lightweight live write only
+
             var slider = _uiOverlay.FindElementById("heightSlider") as RangeElement;
             if (slider != null)
             {
@@ -600,18 +502,22 @@ void main() {
                     PushSkyboxOffsetLive();
                 }
             }
+
+            if (_previewScene == null) return;
+
             float header = HasTitleBar ? HeaderHeight : 0f;
             Vector2 rel = absMousePos - Position;
             bool inPreview = rel.Y > header && rel.Y < Size.Y - 140f && rel.X > 0 && rel.X < Size.X;
+
             if (inPreview && mousePressed)
             {
-                int ring = PickRing(rel);
+                int ring = _previewScene.PickRing(rel, Size.X, Size.Y - header, header, RingPickTolerance);
                 if (ring >= 0)
                 {
                     _activeRing = ring;
                     _dragStartOrient = _workingSkybox.Orientation;
                     _accumAngle = 0f;
-                    var (o, d, ok) = GetPreviewRay(rel);
+                    var (o, d, ok) = _previewScene.GetPreviewRay(rel, Size.X, Size.Y - header, header);
                     if (ok)
                     {
                         Vector3 localAxis = GetAxisVector(ring);
@@ -626,9 +532,10 @@ void main() {
                     _lastMouse = rel;
                 }
             }
+
             if (_ringDragging && mouseDown)
             {
-                var (o, d, ok) = GetPreviewRay(rel);
+                var (o, d, ok) = _previewScene.GetPreviewRay(rel, Size.X, Size.Y - header, header);
                 if (ok)
                 {
                     Vector3 localAxis = GetAxisVector(_activeRing);
@@ -643,116 +550,39 @@ void main() {
                     _lastPlanePoint = cur;
                     Quaternion delta = Quaternion.CreateFromAxisAngle(localAxis, _accumAngle);
                     _workingSkybox.Orientation = Quaternion.Normalize(delta * _dragStartOrient);
+                    _previewScene.SetOrientation(_workingSkybox.Orientation);
                 }
             }
+
             if (_ringDragging && mouseReleased)
             {
                 float snap = MathF.Round(_accumAngle / (MathF.PI * 0.5f)) * (MathF.PI * 0.5f);
                 Vector3 localAxis = GetAxisVector(_activeRing);
                 Quaternion delta = Quaternion.CreateFromAxisAngle(localAxis, snap);
                 _workingSkybox.Orientation = Quaternion.Normalize(delta * _dragStartOrient);
+                _previewScene.SetOrientation(_workingSkybox.Orientation);
                 PushSkyboxLive();
                 _ringDragging = false;
                 _activeRing = -1;
             }
+
             if (_orbitDragging && mouseDown)
             {
                 Vector2 delta = rel - _lastMouse;
-                _previewYaw += delta.X * 0.012f;
-                _previewPitch = Math.Clamp(_previewPitch + delta.Y * 0.012f, -1.4f, 1.4f);
+                _previewScene.PreviewYaw += delta.X * 0.012f;
+                _previewScene.PreviewPitch = Math.Clamp(_previewScene.PreviewPitch + delta.Y * 0.012f, -1.4f, 1.4f);
                 _lastMouse = rel;
             }
+
             if (mouseReleased)
             {
                 _orbitDragging = false;
             }
+
             if (inPreview && MathF.Abs(scrollDelta) > 0.01f)
-                _previewDist = Math.Clamp(_previewDist - scrollDelta * 0.25f, 1.6f, 7f);
+                _previewScene.PreviewDist = Math.Clamp(_previewScene.PreviewDist - scrollDelta * 0.25f, 1.6f, 7f);
         }
-        private (Vector3 origin, Vector3 dir, bool ok) GetPreviewRay(Vector2 relMouse)
-        {
-            float header = HasTitleBar ? HeaderHeight : 0f;
-            float contentW = Size.X;
-            float contentH = Size.Y - header;
-            float aspect = contentW / Math.Max(contentH, 1f);
-            Vector3 camPos = new Vector3(
-                MathF.Sin(_previewYaw) * MathF.Cos(_previewPitch) * _previewDist,
-               -MathF.Cos(_previewYaw) * MathF.Cos(_previewPitch) * _previewDist,
-                MathF.Sin(_previewPitch) * _previewDist
-            );
-            Matrix4x4 view = Matrix4x4.CreateLookAt(camPos, Vector3.Zero, Vector3.UnitZ);
-            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 3.2f, aspect, 0.1f, 50f);
-            if (!Matrix4x4.Invert(proj, out Matrix4x4 invProj)) return (Vector3.Zero, Vector3.Zero, false);
-            if (!Matrix4x4.Invert(view, out Matrix4x4 invView)) return (Vector3.Zero, Vector3.Zero, false);
-            float ndcX = (relMouse.X / contentW) * 2f - 1f;
-            float ndcY = 1f - ((relMouse.Y - header) / contentH) * 2f;
-            Vector4 nearH = Vector4.Transform(new Vector4(ndcX, ndcY, -1f, 1f), invProj);
-            Vector4 farH = Vector4.Transform(new Vector4(ndcX, ndcY, 1f, 1f), invProj);
-            Vector3 near = new Vector3(nearH.X / nearH.W, nearH.Y / nearH.W, nearH.Z / nearH.W);
-            Vector3 far = new Vector3(farH.X / farH.W, farH.Y / farH.W, farH.Z / farH.W);
-            Vector3 origin = Vector3.Transform(near, invView);
-            Vector3 dir = Vector3.Normalize(Vector3.Transform(far, invView) - origin);
-            return (origin, dir, true);
-        }
-        private int PickRing(Vector2 relMouse)
-        {
-            float header = HasTitleBar ? HeaderHeight : 0f;
-            float contentW = Size.X;
-            float contentH = Size.Y - header;
-            // Use the same inverse orientation that the preview uses so picking matches what the user sees
-            Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(Quaternion.Inverse(_workingSkybox.Orientation));
-            float best = float.MaxValue;
-            int bestRing = -1;
-            for (int ring = 0; ring < 3; ring++)
-            {
-                int segs = 48;
-                float radius = 1.05f;
-                Vector3 prev = Vector3.Zero;
-                for (int i = 0; i <= segs; i++)
-                {
-                    float ang = i * MathF.PI * 2f / segs;
-                    float x = MathF.Cos(ang) * radius;
-                    float y = MathF.Sin(ang) * radius;
-                    Vector3 local;
-                    if (ring == 0) local = new Vector3(0, x, y);
-                    else if (ring == 1) local = new Vector3(x, 0, y);
-                    else local = new Vector3(x, y, 0);
-                    Vector3 world = Vector3.Transform(local, orient);
-                    if (i > 0)
-                    {
-                        float d = DistanceToSegment2D(relMouse, prev, world, contentW, contentH, header);
-                        if (d < best) { best = d; bestRing = ring; }
-                    }
-                    prev = world;
-                }
-            }
-            return best < RingPickTolerance ? bestRing : -1;
-        }
-        private float DistanceToSegment2D(Vector2 p, Vector3 a3, Vector3 b3, float vw, float vh, float header)
-        {
-            Vector2 a = WorldToScreen(a3, vw, vh, header);
-            Vector2 b = WorldToScreen(b3, vw, vh, header);
-            Vector2 ab = b - a;
-            float len2 = ab.LengthSquared();
-            if (len2 < 1e-8f) return Vector2.Distance(p, a);
-            float t = Math.Clamp(Vector2.Dot(p - a, ab) / len2, 0f, 1f);
-            return Vector2.Distance(p, a + ab * t);
-        }
-        private Vector2 WorldToScreen(Vector3 world, float vw, float vh, float header)
-        {
-            Vector3 camPos = new Vector3(
-                MathF.Sin(_previewYaw) * MathF.Cos(_previewPitch) * _previewDist,
-               -MathF.Cos(_previewYaw) * MathF.Cos(_previewPitch) * _previewDist,
-                MathF.Sin(_previewPitch) * _previewDist
-            );
-            Matrix4x4 view = Matrix4x4.CreateLookAt(camPos, Vector3.Zero, Vector3.UnitZ);
-            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 3.2f, vw / Math.Max(vh, 1f), 0.1f, 50f);
-            Vector4 clip = Vector4.Transform(new Vector4(world, 1f), view * proj);
-            if (Math.Abs(clip.W) < 1e-6f) return new Vector2(vw * 0.5f, vh * 0.5f + header);
-            float ndcX = clip.X / clip.W;
-            float ndcY = clip.Y / clip.W;
-            return new Vector2((ndcX * 0.5f + 0.5f) * vw, (1f - (ndcY * 0.5f + 0.5f)) * vh + header);
-        }
+
         private Vector3 ClosestPointOnPlane(Vector3 rayO, Vector3 rayD, Vector3 center, Vector3 normal)
         {
             float denom = Vector3.Dot(rayD, normal);
@@ -760,69 +590,30 @@ void main() {
             float t = Vector3.Dot(center - rayO, normal) / denom;
             return rayO + t * rayD;
         }
+
         private Vector3 GetAxisVector(int axis) => axis switch { 0 => Vector3.UnitX, 1 => Vector3.UnitY, 2 => Vector3.UnitZ, _ => Vector3.UnitZ };
+
+        public override void OnLiveResize(float w, float h)
+        {
+            _previewScene?.Resize((int)w, (int)h);
+            base.OnLiveResize(w, h);
+        }
+
         protected override void RenderInnerContent()
         {
-            // Skip expensive 3-D preview while the user is dragging a resize handle.
-            // Matches the cost profile of other continuous panels (AnimationViewer, Terrain, etc.).
             if (IsResizing) return;
-            if (_cubemapTex == 0 || _previewCube == null || _previewShader == null)
-                return;
-            float contentW = Size.X;
-            float contentH = Size.Y - (HasTitleBar ? HeaderHeight : 0f);
-            float aspect = contentW / Math.Max(contentH, 1f);
-            Vector3 camPos = new Vector3(
-                MathF.Sin(_previewYaw) * MathF.Cos(_previewPitch) * _previewDist,
-               -MathF.Cos(_previewYaw) * MathF.Cos(_previewPitch) * _previewDist,
-                MathF.Sin(_previewPitch) * _previewDist
-            );
-            Matrix4x4 view = Matrix4x4.CreateLookAt(camPos, Vector3.Zero, Vector3.UnitZ);
-            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 3.2f, aspect, 0.1f, 50f);
-            // Inverse Orientation so the panel matches the main-scene sample-direction rotation
-            Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(Quaternion.Inverse(_workingSkybox.Orientation));
-            Matrix4x4 mvp = orient * view * proj;
-            _renderContext.Enable(_renderContext.Enums.DepthTest);
-            _renderContext.Disable(_renderContext.Enums.CullFace);
-            _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
-            _previewShader.Use();
-            _previewShader.SetMatrix4("uMVP", mvp);
-            _renderContext.ActiveTexture(0);
-            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTex);
-            _previewCube.Bind();
-            _renderContext.DrawElements(_renderContext.Enums.Triangles, _previewCube.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-            _renderContext.Disable(_renderContext.Enums.DepthTest);
-            _lineShader.Use();
-            _lineShader.SetMatrix4("uMVP", mvp);
-            if (_axisBuffer != null)
-            {
-                _axisBuffer.Bind();
-                _renderContext.DrawElements(_renderContext.Enums.Lines, _axisBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-            }
-            if (_ringBuffer != null)
-            {
-                _ringBuffer.Bind();
-                _renderContext.LineWidth(2.5f);
-                _renderContext.DrawElements(_renderContext.Enums.Lines, _ringBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-                _renderContext.LineWidth(1f);
-            }
-            if (_selectedFace >= 0 && _faceOutlineBuffer != null && _faceOutlineBuffer.GetIndexCount() > 0)
-            {
-                _faceOutlineBuffer.Bind();
-                _renderContext.DrawElements(_renderContext.Enums.Lines, _faceOutlineBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-            }
-            _renderContext.Enable(_renderContext.Enums.DepthTest);
+            if (_previewScene == null) return;
+            _previewScene.SetOrientation(_workingSkybox.Orientation);
+            _previewScene.Render(null);
         }
+
         public override void Dispose()
         {
-            if (_cubemapTex != 0) _renderContext.DeleteTexture(_cubemapTex);
-            _previewCube?.Dispose();
-            _axisBuffer?.Dispose();
-            _ringBuffer?.Dispose();
-            _faceOutlineBuffer?.Dispose();
-            _previewShader?.Dispose();
-            _lineShader?.Dispose();
+            _previewScene?.Dispose();
+            _previewScene = null;
             base.Dispose();
         }
+
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new SkyboxRotatePanel(renderContext, controlContext, window, eventBus);

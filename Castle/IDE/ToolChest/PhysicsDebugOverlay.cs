@@ -10,7 +10,6 @@ using SiegeEngine.Core.GPU.Shaders;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace ToolChest
 {
     public class PhysicsDebugOverlay : ICustomOverlay
@@ -19,12 +18,10 @@ namespace ToolChest
         private readonly Func<IReadOnlyList<Entity>> _getEntities;
         private readonly Func<IReadOnlyList<ContactManifold>> _getManifolds;
         private readonly Func<IReadOnlyList<int>> _getSelectedIds;
-        // Local-space geometry caches (uploaded once, GPU transforms thereafter)
         private readonly Dictionary<object, VertexBuffer> _shapeCaches = new Dictionary<object, VertexBuffer>();
         private readonly Dictionary<object, bool> _cacheWasSleeping = new Dictionary<object, bool>();
-        // Small dynamic buffer for contacts + velocities + angular + friction/rolling impulses
         private VertexBuffer _dynamicBuffer;
-        private ShaderProgram _shader;
+        private LineRenderer _lineRenderer;
         private readonly List<Vertex> _dynVerts = new List<Vertex>(512);
         private readonly List<uint> _dynIndices = new List<uint>(1024);
         private readonly List<Vector3> _triA = new List<Vector3>(256);
@@ -50,6 +47,8 @@ namespace ToolChest
             _getEntities = getEntities ?? throw new ArgumentNullException(nameof(getEntities));
             _getManifolds = getManifolds;
             _getSelectedIds = getSelectedIds ?? (() => Array.Empty<int>());
+            _lineRenderer = new LineRenderer(_renderContext);
+            _lineRenderer.Initialize();
         }
         public void Draw(UIQuadRenderer quadRenderer, float panelWidth, float panelHeight) { }
         public unsafe void RenderWorld(Matrix4x4 view, Matrix4x4 projection)
@@ -64,8 +63,6 @@ namespace ToolChest
                 _dynamicDirty = true;
                 _wasEnabled = true;
             }
-            if (_shader == null)
-                _shader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
             var entities = _getEntities();
             if (entities == null || entities.Count == 0) return;
             var selected = _getSelectedIds();
@@ -79,18 +76,11 @@ namespace ToolChest
                 if (p != null && !p.IsSleeping && p.BodyType == BodyType.Dynamic)
                     awakeCount++;
             }
-            // Always keep dynamic buffer live while anything is moving or contacts may change
             if (awakeCount != _lastAwakeCount || awakeCount > 0)
             {
                 _dynamicDirty = true;
                 _lastAwakeCount = awakeCount;
             }
-            _renderContext.Disable(_renderContext.Enums.DepthTest);
-            _shader.Use();
-            _shader.SetMatrix4("uView", view);
-            _shader.SetMatrix4("uProjection", projection);
-            _shader.SetUniform("uPointSize", 6f);
-            // ── Static / local-space shape geometry (GPU transformed) ──────────
             if (ShowShapes)
             {
                 for (int i = 0; i < entities.Count; i++)
@@ -101,7 +91,6 @@ namespace ToolChest
                     var physics = entity.GetComponent<PhysicsComponent>();
                     if (physics == null || physics.Shape == null) continue;
                     object cacheKey = GetCacheKey(physics);
-                    // Invalidate cache if sleeping state changed so colour updates
                     if (_cacheWasSleeping.TryGetValue(cacheKey, out bool wasSleeping) && wasSleeping != physics.IsSleeping)
                     {
                         if (_shapeCaches.TryGetValue(cacheKey, out var oldBuf))
@@ -119,12 +108,9 @@ namespace ToolChest
                         _cacheWasSleeping[cacheKey] = physics.IsSleeping;
                     }
                     Matrix4x4 model = BuildModelMatrix(physics);
-                    _shader.SetMatrix4("uModel", model);
-                    buf.Bind();
-                    _renderContext.DrawElements(_renderContext.Enums.Lines, buf.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                    _lineRenderer.DrawLines(buf, model, view, projection, 1f);
                 }
             }
-            // ── Dynamic contacts + linear + angular velocities + friction / rolling impulses ─
             if (ShowContacts || ShowVelocities)
             {
                 if (_dynamicDirty)
@@ -134,12 +120,9 @@ namespace ToolChest
                 }
                 if (_dynamicBuffer != null && _dynamicBuffer.GetIndexCount() > 0)
                 {
-                    _shader.SetMatrix4("uModel", Matrix4x4.Identity);
-                    _dynamicBuffer.Bind();
-                    _renderContext.DrawElements(_renderContext.Enums.Lines, _dynamicBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                    _lineRenderer.DrawLines(_dynamicBuffer, view, projection, 1f);
                 }
             }
-            _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
         private static object GetCacheKey(PhysicsComponent physics)
         {
@@ -195,7 +178,6 @@ namespace ToolChest
         {
             _dynVerts.Clear();
             _dynIndices.Clear();
-            // Linear + Angular velocity arrows at centre of mass
             if (ShowVelocities)
             {
                 for (int i = 0; i < entities.Count; i++)
@@ -206,7 +188,6 @@ namespace ToolChest
                     var physics = entity.GetComponent<PhysicsComponent>();
                     if (physics == null || physics.BodyType != BodyType.Dynamic) continue;
                     Vector3 com = physics.WorldCentreOfMass;
-                    // Linear velocity (green)
                     Vector3 vel = physics.Velocity;
                     float vLen = vel.Length();
                     if (vLen > 0.01f)
@@ -215,7 +196,6 @@ namespace ToolChest
                         Vector3 end = com + Vector3.Normalize(vel) * scale;
                         AddLocalLine(_dynVerts, _dynIndices, com, end, new Vector4(0.2f, 1.0f, 0.3f, 1.0f));
                     }
-                    // Angular velocity (magenta) – direction of spin axis, length = spin rate
                     Vector3 ang = physics.AngularVelocity;
                     float aLen = ang.Length();
                     if (aLen > 0.05f)
@@ -226,7 +206,6 @@ namespace ToolChest
                     }
                 }
             }
-            // Contact normals + friction impulses + rolling-resistance impulses
             if (ShowContacts)
             {
                 bool hasLive = false;
@@ -247,12 +226,6 @@ namespace ToolChest
                         _lastContactCount = _cachedContacts.Count;
                     }
                 }
-
-                // Refined hybrid:
-                // - Live manifolds present → already filled above (zero lag).
-                // - No live manifolds this frame:
-                //     * any dynamic body still awake → clear cache (kill trailing ghosts).
-                //     * everything sleeping → keep previous cache so resting contacts stay visible.
                 if (!hasLive)
                 {
                     bool anyAwake = false;
@@ -270,20 +243,16 @@ namespace ToolChest
                     if (anyAwake)
                         _cachedContacts.Clear();
                 }
-
-                // Draw whatever is now in the cache (live or retained resting)
                 for (int c = 0; c < _cachedContacts.Count; c++)
                 {
                     var cp = _cachedContacts[c];
                     Vector3 pos = cp.Position;
                     Vector3 n = cp.Normal;
                     float pen = cp.Penetration;
-                    // Contact normal (bright orange-red)
                     float len = Math.Clamp(0.35f + pen * 4.0f, 0.4f, 2.0f);
                     float intensity = Math.Clamp(0.6f + pen * 3.0f, 0.6f, 1.0f);
                     Vector4 color = new Vector4(1.0f, 0.35f, 0.05f, intensity);
                     AddLocalLine(_dynVerts, _dynIndices, pos, pos + n * len, color);
-                    // Friction impulse (cyan)
                     Vector3 fImp = cp.FrictionImpulse;
                     float fLen = fImp.Length();
                     if (fLen > 1e-5f)
@@ -292,7 +261,6 @@ namespace ToolChest
                         Vector3 end = pos + Vector3.Normalize(fImp) * scale;
                         AddLocalLine(_dynVerts, _dynIndices, pos, end, new Vector4(0.1f, 0.9f, 1.0f, 1.0f));
                     }
-                    // Rolling-resistance impulse (purple)
                     Vector3 rImp = cp.RollingResistanceImpulse;
                     float rLen = rImp.Length();
                     if (rLen > 1e-5f)
@@ -325,7 +293,6 @@ namespace ToolChest
             }
             return c;
         }
-        // ── Local-space geometry helpers ──────────────────────────────────────
         private static void AddLocalLine(List<Vertex> verts, List<uint> indices, Vector3 a, Vector3 b, Vector4 color)
         {
             uint i0 = (uint)verts.Count;
