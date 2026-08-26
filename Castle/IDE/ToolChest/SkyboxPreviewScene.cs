@@ -1,5 +1,3 @@
-﻿// Folder: ToolChest
-// File: SkyboxPreviewScene.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -39,6 +37,7 @@ namespace ToolChest
         public SkyboxPreviewScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
+            SetOwnsFramebuffer(false);
         }
         public override void Initialize(int width, int height)
         {
@@ -73,13 +72,6 @@ void main() {
             _lastClearedW = width;
             _lastClearedH = height;
         }
-        public override void Resize(int width, int height)
-        {
-            _width = width;
-            _height = height;
-            _aspectRatio = width > 0 && height > 0 ? (float)width / height : 16f / 9f;
-            // No Viewport – LayeredUIRenderer owns the panel absolute viewport + scissor.
-        }
         public void SetOrientation(Quaternion orient)
         {
             _orientation = orient;
@@ -99,10 +91,8 @@ void main() {
             _cubemapTex = tex;
         }
         public uint CubemapTexture => _cubemapTex;
-        public override void Render(IReadOnlyList<Entity> entities)
+        protected override void GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection)
         {
-            if (_cubemapTex == 0 || _previewCube == null || _previewShader == null)
-                return;
             float aspect = AspectRatio;
             if (aspect <= 0f) aspect = 1f;
             Vector3 camPos = new Vector3(
@@ -110,10 +100,15 @@ void main() {
                -MathF.Cos(PreviewYaw) * MathF.Cos(PreviewPitch) * PreviewDist,
                 MathF.Sin(PreviewPitch) * PreviewDist
             );
-            Matrix4x4 view = Matrix4x4.CreateLookAt(camPos, Vector3.Zero, Vector3.UnitZ);
-            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 3.2f, aspect, 0.1f, 50f);
+            view = Matrix4x4.CreateLookAt(camPos, Vector3.Zero, Vector3.UnitZ);
+            projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 3.2f, aspect, 0.1f, 50f);
+        }
+        protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
+        {
+            if (_cubemapTex == 0 || _previewCube == null || _previewShader == null)
+                return;
             Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(Quaternion.Inverse(_orientation));
-            Matrix4x4 mvp = orient * view * proj;
+            Matrix4x4 mvp = orient * view * projection;
             // Minimal state required for a closed cube under the depth buffer left dirty by LayeredUIRenderer.
             // Clear is performed only when the panel size has actually changed so continuous docked resize
             // does not pay a scissored Clear every frame (matches the pure-content cost model of ModelViewerScene).
@@ -134,11 +129,11 @@ void main() {
             // Lines through the shared LineRenderer (owns its own Depth/LineWidth state)
             Matrix4x4 lineModel = orient;
             if (_axisBuffer != null)
-                _lineRenderer.DrawLines(_axisBuffer, lineModel, view, proj, 1f);
+                _lineRenderer.DrawLines(_axisBuffer, lineModel, view, projection, 1f);
             if (_ringBuffer != null)
-                _lineRenderer.DrawLines(_ringBuffer, lineModel, view, proj, 2.5f);
+                _lineRenderer.DrawLines(_ringBuffer, lineModel, view, projection, 2.5f);
             if (_selectedFace >= 0 && _faceOutlineBuffer != null && _faceOutlineBuffer.GetIndexCount() > 0)
-                _lineRenderer.DrawLines(_faceOutlineBuffer, lineModel, view, proj, 1f);
+                _lineRenderer.DrawLines(_faceOutlineBuffer, lineModel, view, projection, 1f);
         }
         private void BuildPreviewCube()
         {

@@ -1,4 +1,4 @@
-﻿using Keystone;
+using Keystone;
 using MapRoom;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -246,6 +246,11 @@ namespace CastleBuilder
                 Console.WriteLine($"[EditorScene] Script activation warning: {ex.Message}");
             }
         }
+        private void HostChild(Scene child)
+        {
+            if (child == null) return;
+            child.SetOwnsFramebuffer(false);
+        }
         private void ActivateScene(string sceneName)
         {
             Level level = ProjectSettings.Current.CurrentLevel;
@@ -267,6 +272,7 @@ namespace CastleBuilder
                     _hostedCustomScene = null;
                 }
                 _activeGameScene = cachedScene;
+                HostChild(_activeGameScene);
                 _currentGameSceneName = sceneName;
                 if (_projectData != null) _projectData.LastOpenedScene = sceneName;
                 if (_activeGameScene is TerrainCreatorScene cachedTcs)
@@ -325,8 +331,10 @@ namespace CastleBuilder
                     try
                     {
                         _hostedCustomScene = (Scene)SceneRegistry.Create(hostedName, hostedCtx);
+                        HostChild(_hostedCustomScene);
                         _hostedCustomScene.Initialize(_width, _height);
                         _activeGameScene = new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sd ?? sceneData);
+                        HostChild(_activeGameScene);
                         _activeGameScene.Initialize(_width, _height);
                         Console.WriteLine($"[EditorScene] Hosted pure-client scene '{hostedName}' as view-only preview");
                         SyncCurrentLevelToRuntimeServer();
@@ -344,6 +352,7 @@ namespace CastleBuilder
             _activeGameScene = isTerrainScene
                 ? new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sd, enableBrush: false)
                 : new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sd);
+            HostChild(_activeGameScene);
             _activeGameScene.Initialize(_width, _height);
             _activeGameScene.LoadSceneData(sd);
             if (_activeGameScene is TerrainCreatorScene tcs)
@@ -504,21 +513,26 @@ namespace CastleBuilder
                 _activeGameScene.Update(deltaTime);
             _hostedCustomScene?.Update(deltaTime);
         }
+        protected override Vector4 FrameClearColor =>
+            _activeGameScene is TerrainCreatorScene
+                ? new Vector4(0.05f, 0.08f, 0.15f, 1f)
+                : new Vector4(0.12f, 0.12f, 0.18f, 1f);
         public override void Render(IReadOnlyList<Entity> entities)
         {
+            if (_disposed) return;
+            if (OwnsFramebuffer)
+            {
+                Vector4 c = FrameClearColor;
+                _renderContext.ClearColor(c.X, c.Y, c.Z, c.W);
+                _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
+            }
+            var list = entities ?? GetEntities();
             if (_hostedCustomScene != null)
             {
-                _renderContext.ClearColor(0.12f, 0.12f, 0.18f, 1f);
-                _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-                _hostedCustomScene.Render(entities ?? GetEntities());
+                _hostedCustomScene.Render(list);
                 return;
             }
-            if (!(_activeGameScene is TerrainCreatorScene))
-            {
-                _renderContext.ClearColor(0.12f, 0.12f, 0.18f, 1f);
-                _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-            }
-            _activeGameScene?.Render(entities ?? GetEntities());
+            _activeGameScene?.Render(list);
         }
         public override void Resize(int width, int height)
         {
@@ -548,7 +562,6 @@ namespace CastleBuilder
         {
             public BasicGameScene(IRenderContext rc, IControlContext cc, nint w, IGameServer s, EventBus eb, SceneData data)
                 : base(rc, cc, w, s, eb, data) { }
-            public override void Render(IReadOnlyList<Entity> entities) { }
         }
     }
 }
