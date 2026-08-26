@@ -61,11 +61,9 @@ namespace SiegeEngine.Core.Managers
         public void ClearAll()
         {
             var pm = PanelManager.Current;
-            if (pm != null)
-            {
-                foreach (var p in _floatingPanels.ToList())
-                    pm.RemovePanel(p);
-            }
+            var all = new List<IPanel>();
+            if (_root != null) CollectPanelsRecursive(_root, all);
+            all.AddRange(_floatingPanels);
             _floatingPanels.Clear();
             _draggingPanel = null;
             _resizingPanel = null;
@@ -73,6 +71,11 @@ namespace SiegeEngine.Core.Managers
             _root = new DockTabbedNode();
             _needsLayout = true;
             _hoverEdge = DockState.Floating;
+            if (pm != null)
+            {
+                foreach (var p in all.ToList())
+                    pm.RemovePanel(p);
+            }
             Console.WriteLine("[IDEDockingStrategy.ClearAll] Workspace fully cleared");
         }
         public void SwitchBlade(string newContext)
@@ -112,6 +115,7 @@ namespace SiegeEngine.Core.Managers
                 _floatingPanels.Clear();
                 var state = JsonSerializer.Deserialize<SerializableLayoutState>(json);
                 _root = RebuildDockTree(state.Root, existingPanels);
+                _root = CollapseNode(_root) ?? new DockTabbedNode();
                 foreach (var fp in state.FloatingPanels)
                 {
                     var panel = existingPanels.FirstOrDefault(p => p.GetType().AssemblyQualifiedName == fp.PanelType);
@@ -174,13 +178,16 @@ namespace SiegeEngine.Core.Managers
             bool alreadyDocked = _floatingPanels.Contains(panel) || (_root != null && _root.FindNode(panel) != null);
             if (alreadyDocked)
             {
+                // DIAGNOSTIC: state of restored panel when OpenPanelEvent arrives after Deserialize
+                Console.WriteLine($"[IDEDockingStrategy.AddPanel alreadyDocked] type={panel.GetType().Name} DockState={panel.DockState} Size={panel.Size} inTree={(_root != null && _root.FindNode(panel) != null)} floatingList={_floatingPanels.Contains(panel)}");
                 panel.HasTitleBar = true;
                 panel.IsClosable = true;
                 panel.HeaderHeight = BasePanel.TitleHeight;
                 panel.DockingMode = DockingMode.IDE;
                 panel.AllowDragging = true;
-                if (panel.DockState != DockState.Floating)
-                    panel.DockState = DockState.Tabbed;
+                // Force Tabbed when the panel is already a member of the dock tree
+                // (restored panels arrive as Floating; leaving them Floating breaks the first TearOut)
+                panel.DockState = DockState.Tabbed;
                 if (!_originalFloatingSizes.ContainsKey(panel))
                     _originalFloatingSizes[panel] = panel.Size;
                 _needsLayout = true;
@@ -549,6 +556,9 @@ namespace SiegeEngine.Core.Managers
         }
         private void TearOutPanel(IPanel panel, Vector2 mousePos, int winW, int winH)
         {
+            // DIAGNOSTIC: exact state at the moment of immediate post-load TearOut
+            Vector2 origSize = _originalFloatingSizes.ContainsKey(panel) ? _originalFloatingSizes[panel] : new Vector2(-1, -1);
+            Console.WriteLine($"[IDEDockingStrategy.TearOutPanel] type={panel.GetType().Name} DockState={panel.DockState} Size={panel.Size} origSize={origSize} inTree={(_root != null && _root.FindNode(panel) != null)} floatingList={_floatingPanels.Contains(panel)} AllowDragging={panel.AllowDragging}");
             RestoreOriginalFloatingSize(panel);
             _root.RemovePanel(panel);
             _floatingPanels.Add(panel);
@@ -731,6 +741,7 @@ namespace SiegeEngine.Core.Managers
                 newRoot.Right = newTab;
             }
             _root = newRoot;
+            _root = CollapseNode(_root) ?? new DockTabbedNode();
             _needsLayout = true;
         }
         public void Render(IRenderContext renderContext, int winW, int winH)
@@ -871,11 +882,12 @@ namespace SiegeEngine.Core.Managers
         {
             var state = new SerializableLayoutState();
             state.Root = SerializeNode(_root);
-            var dockedPanels = new HashSet<IPanel>();
-            CollectPanelsRecursive(_root, dockedPanels.ToList());
+            var dockedList = new List<IPanel>();
+            CollectPanelsRecursive(_root, dockedList);
+            var dockedPanels = new HashSet<IPanel>(dockedList);
             foreach (var panel in _floatingPanels)
             {
-                if (panel is BasePanel bp && (dockedPanels.Count == 0 || !dockedPanels.Contains(panel)))
+                if (panel is BasePanel bp && !dockedPanels.Contains(panel))
                 {
                     state.FloatingPanels.Add(new SerializableFloatingPanel
                     {
@@ -923,6 +935,13 @@ namespace SiegeEngine.Core.Managers
                 if (state.Root != null)
                 {
                     _root = DeserializeNode(state.Root);
+                    _root = CollapseNode(_root) ?? new DockTabbedNode();
+                    // DIAGNOSTIC: what the tree actually contains right after build
+                    var restored = new List<IPanel>();
+                    CollectPanelsRecursive(_root, restored);
+                    Console.WriteLine($"[IDEDockingStrategy.DeserializeState] tree panels after build+collapse: count={restored.Count}");
+                    foreach (var p in restored)
+                        Console.WriteLine($"  - {p.GetType().Name} DockState={p.DockState} Size={p.Size}");
                     RegisterAllPanelsInTree(_root);
                 }
                 foreach (var fp in state.FloatingPanels)
