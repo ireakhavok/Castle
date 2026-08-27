@@ -53,10 +53,7 @@ namespace SiegeEngine.Core.GPU.Renderers
         public void LoadSkybox(SkyboxData skybox)
         {
             if (skybox == null || !skybox.Enabled) return;
-            if (_cubemapTexture != 0)
-            {
-                _renderContext.DeleteTexture(_cubemapTexture);
-            }
+            TextureLoader.DeleteTexture(_renderContext, ref _cubemapTexture);
             if (skybox.Type == "Cubemap" && !string.IsNullOrEmpty(skybox.CubemapPath))
             {
                 _cubemapTexture = TextureLoader.LoadCubemap(_renderContext, skybox.CubemapPath);
@@ -88,11 +85,26 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.Enable(_renderContext.Enums.CullFace);
         }
 
+        public static void RenderPreviewCube(IRenderContext renderContext, uint cubemapTex, VertexBuffer cube, ShaderProgram shader, Matrix4x4 mvp, bool clearDepth)
+        {
+            if (renderContext == null || cubemapTex == 0 || cube == null || shader == null) return;
+            renderContext.Enable(renderContext.Enums.DepthTest);
+            renderContext.Disable(renderContext.Enums.CullFace);
+            if (clearDepth)
+                renderContext.Clear(renderContext.Enums.DepthBufferBit);
+            shader.Use();
+            shader.SetMatrix4("uMVP", mvp);
+            renderContext.ActiveTexture(0);
+            renderContext.BindTexture(renderContext.Enums.TextureCubeMap, cubemapTex);
+            cube.Bind();
+            renderContext.DrawElements(renderContext.Enums.Triangles, cube.GetIndexCount(), renderContext.Enums.UnsignedInt, null);
+        }
+
         public void Dispose()
         {
             _skyShader?.Dispose();
             _cubeBuffer?.Dispose();
-            if (_cubemapTexture != 0) _renderContext.DeleteTexture(_cubemapTexture);
+            TextureLoader.DeleteTexture(_renderContext, ref _cubemapTexture);
         }
     }
 }

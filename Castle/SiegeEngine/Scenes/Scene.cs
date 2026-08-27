@@ -30,6 +30,12 @@ namespace SiegeEngine.Scenes
         protected ModelRenderer _modelRenderer;
 
         public DockingMode DefaultDockingMode { get; protected set; } = DockingMode.Desktop;
+        public bool OwnsFramebuffer { get; protected set; } = true;
+
+        public void SetOwnsFramebuffer(bool owns)
+        {
+            OwnsFramebuffer = owns;
+        }
 
         public Scene(IRenderContext renderContext, IControlContext controlContext, IntPtr window, IGameServer server, EventBus eventBus)
         {
@@ -46,14 +52,20 @@ namespace SiegeEngine.Scenes
 
         protected float AspectRatio => _aspectRatio;
 
+        protected virtual Vector4 FrameClearColor => new Vector4(0.1f, 0.1f, 0.1f, 1f);
+
         public virtual void Initialize(int width, int height)
         {
             _width = width;
             _height = height;
             _aspectRatio = width > 0 && height > 0 ? (float)width / height : 16f / 9f;
-            _renderContext.Viewport(0, 0, (uint)width, (uint)height);
+            if (OwnsFramebuffer)
+            {
+                _renderContext.Viewport(0, 0, (uint)width, (uint)height);
+                Vector4 c = FrameClearColor;
+                _renderContext.ClearColor(c.X, c.Y, c.Z, c.W);
+            }
             _renderContext.Enable(_renderContext.Enums.DepthTest);
-            _renderContext.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
             _modelRenderer.Initialize();
         }
 
@@ -62,7 +74,8 @@ namespace SiegeEngine.Scenes
             _width = width;
             _height = height;
             _aspectRatio = width > 0 && height > 0 ? (float)width / height : 16f / 9f;
-            _renderContext.Viewport(0, 0, (uint)width, (uint)height);
+            if (OwnsFramebuffer)
+                _renderContext.Viewport(0, 0, (uint)width, (uint)height);
         }
 
         public virtual void Update(float deltaTime)
@@ -82,10 +95,20 @@ namespace SiegeEngine.Scenes
         public virtual void Render(IReadOnlyList<Entity> entities)
         {
             if (_disposed) return;
-            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-            Matrix4x4 view = _player?.Camera?.ViewMatrix ?? Matrix4x4.Identity;
-            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f);
+            if (OwnsFramebuffer)
+            {
+                Vector4 c = FrameClearColor;
+                _renderContext.ClearColor(c.X, c.Y, c.Z, c.W);
+                _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
+            }
+            GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection);
             RenderContent(entities, view, projection);
+        }
+
+        protected virtual void GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection)
+        {
+            view = _player?.Camera?.ViewMatrix ?? Matrix4x4.Identity;
+            projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f);
         }
 
         protected virtual void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)

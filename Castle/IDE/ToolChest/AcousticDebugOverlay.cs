@@ -1,4 +1,4 @@
-﻿// Folder: IDE
+﻿// Folder: ToolChest
 // File: AcousticDebugOverlay.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Interfaces;
@@ -22,15 +22,14 @@ namespace ToolChest
         private readonly Func<IHeightProvider> _getHeightProvider;
         private VertexBuffer _surfaceBuffer;
         private VertexBuffer _lineBuffer;
-        private ShaderProgram _shader;
+        private LineRenderer _lineRenderer;
+        private ShaderProgram _surfaceShader;
         private readonly List<Vertex> _surfaceVerts = new List<Vertex>(8192);
         private readonly List<uint> _surfaceIndices = new List<uint>(16384);
         private readonly List<Vertex> _lineVerts = new List<Vertex>(256);
         private readonly List<uint> _lineIndices = new List<uint>(512);
-        // Local geometry is used only for GetTriangle positions when drawing.
-        // Visibility / mutual set comes exclusively from the shared producer when supplied.
         private AcousticGeometry _geometry;
-        private AcousticRayTracer _tracer; // only used when no shared provider is set (fallback)
+        private AcousticRayTracer _tracer;
         private bool _geometryDirty = true;
         private int _lastEntityCount = -1;
         private bool _wasEnabled;
@@ -41,7 +40,6 @@ namespace ToolChest
         private readonly List<(bool losClear, Vector3 perceivedDir, float intensity, float pathLength)> _cachedPerceived = new List<(bool, Vector3, float, float)>();
         private const float PerceivedMoveThreshold = 0.75f;
         private const float SpeedOfSound = 34300f;
-        // Shared producer (true publish-subscribe). When set, Overlay is pure subscriber.
         private AcousticRayTracer _sharedTracer;
         private AcousticGeometry _sharedGeometry;
         private bool HasSharedProvider => _sharedTracer != null;
@@ -66,11 +64,9 @@ namespace ToolChest
             _getListenerPos = getListenerPos ?? (() => Vector3.Zero);
             _getSourcePositions = getSourcePositions ?? (() => Array.Empty<Vector3>());
             _getHeightProvider = getHeightProvider ?? (() => null);
+            _lineRenderer = new LineRenderer(_renderContext);
+            _lineRenderer.Initialize();
         }
-        /// <summary>
-        /// Wire the single FreeSurface producer (owned by AudioSystem).
-        /// After this call the overlay becomes a pure subscriber: no Kick, no private tracer production.
-        /// </summary>
         public void SetSharedFreeSurface(AcousticRayTracer tracer, AcousticGeometry geometry)
         {
             _sharedTracer = tracer;
@@ -103,7 +99,6 @@ namespace ToolChest
                 _geometryDirty = true;
                 _lastEntityCount = entities.Count;
             }
-            // Local geometry is only for triangle positions (drawing). Visibility comes from shared producer when present.
             if (_geometryDirty)
             {
                 IHeightProvider height = null;
@@ -119,8 +114,6 @@ namespace ToolChest
             AcousticGeometry activeGeom = HasSharedProvider && _sharedGeometry != null ? _sharedGeometry : _geometry;
             if (activeTracer == null || activeGeom == null || activeGeom.TriangleCount <= 0)
                 return;
-            // Pure subscriber path: never Kick / TryComplete when shared producer is present.
-            // Fallback path (no shared producer) keeps the old progressive behaviour for compatibility.
             if (!HasSharedProvider)
             {
                 activeTracer.KickDebugBidirectional(listener, sources);
@@ -157,32 +150,33 @@ namespace ToolChest
                     _lastPerceivedSources.Add(sources[i]);
             }
             RebuildLineMesh(listener, sources);
-            _shader.Use();
-            _shader.SetMatrix4("uView", view);
-            _shader.SetMatrix4("uProjection", projection);
-            _shader.SetMatrix4("uModel", Matrix4x4.Identity);
-            _shader.SetUniform("uPointSize", 4f);
-            _renderContext.Disable(_renderContext.Enums.DepthTest);
-            _renderContext.Enable(_renderContext.Enums.Blend);
-            _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
+
+            // Surface triangles (keep minimal local state – not lines)
             if (_surfaceBuffer != null && _surfaceIndices.Count > 0)
             {
+                _renderContext.Disable(_renderContext.Enums.DepthTest);
+                _renderContext.Enable(_renderContext.Enums.Blend);
+                _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
+                if (_surfaceShader == null)
+                    _surfaceShader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
+                _surfaceShader.Use();
+                _surfaceShader.SetMatrix4("uView", view);
+                _surfaceShader.SetMatrix4("uProjection", projection);
+                _surfaceShader.SetMatrix4("uModel", Matrix4x4.Identity);
                 _surfaceBuffer.Bind();
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, (uint)_surfaceIndices.Count, _renderContext.Enums.UnsignedInt, null);
+                _renderContext.Disable(_renderContext.Enums.Blend);
+                _renderContext.Enable(_renderContext.Enums.DepthTest);
             }
+
+            // All lines through the generic LineRenderer
             if (_lineBuffer != null && _lineIndices.Count > 0)
-            {
-                _lineBuffer.Bind();
-                _renderContext.DrawElements(_renderContext.Enums.Lines, (uint)_lineIndices.Count, _renderContext.Enums.UnsignedInt, null);
-            }
-            _renderContext.Disable(_renderContext.Enums.Blend);
-            _renderContext.Enable(_renderContext.Enums.DepthTest);
+                _lineRenderer.DrawLines(_lineBuffer, view, projection, 1f);
         }
         private void RebuildSurfaceMesh(AcousticRayTracer tracer, AcousticGeometry geom)
         {
             _surfaceVerts.Clear();
             _surfaceIndices.Clear();
-            // Joined mutual (teal) – primary ∪ all completed secondary. Stable, no flicker.
             if (ShowMeetings)
             {
                 foreach (int tri in tracer.GetJoinedMutualFree())
@@ -216,8 +210,6 @@ namespace ToolChest
                     }
                     else losClear = true;
                 }
-                // Use the correct individual mutual for this source (primary or secondary).
-                // This is the same lookup the audio path uses – no pollution from other sources.
                 var free = tracer.ComputeFreeSurfacePerceived(listener, source);
                 Vector3 perceivedDir = free.ApparentDirection;
                 float intensity = free.Intensity;
@@ -256,11 +248,8 @@ namespace ToolChest
         }
         private void EnsureResources()
         {
-            if (_shader == null)
-                _shader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
             if (_geometry == null)
                 _geometry = new AcousticGeometry(_renderContext);
-            // Private tracer only created when no shared producer is supplied (compatibility fallback).
             if (_tracer == null && !HasSharedProvider)
                 _tracer = new AcousticRayTracer(_renderContext, _geometry);
         }

@@ -1,5 +1,3 @@
-﻿// Folder: SiegeEngine/Scenes
-// File: ModelViewerScene.cs
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
@@ -74,6 +72,7 @@ namespace SiegeEngine.Scenes
         public ModelViewerScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
+            SetOwnsFramebuffer(false);
             _ModelManager = new ModelManager(_renderContext);
             _modelData = new ModelManager.ModelData();
         }
@@ -540,15 +539,16 @@ namespace SiegeEngine.Scenes
             }
             UpdateSkeletonVisualization();
         }
-        public override void Render(IReadOnlyList<Entity> entities)
+        protected override void GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection)
         {
-            // Pure content renderer - PanelManager is the sole orchestrator of the full frame (strict layering - Option C)
-            var view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
-            var proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f);
-            _modelRenderer.RenderModel(_model, _modelData, view, proj, _cameraPosition, Matrix4x4.Identity, _boneMatrices, _currentNormalTransforms);
-            if (_showSkeleton) _modelRenderer.RenderSkeletonDebug(_skeletonBuffer, _pointShader, view, proj);
-            if (_bindSkeletonBuffer != null && _showBindPoseSkeleton) _modelRenderer.RenderSkeletonDebug(_bindSkeletonBuffer, _pointShader, view, proj);
-            // PanelManager.Current?.Render(); removed - PanelManager always orchestrates
+            view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
+            projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f);
+        }
+        protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
+        {
+            _modelRenderer.RenderModel(_model, _modelData, view, projection, _cameraPosition, Matrix4x4.Identity, _boneMatrices, _currentNormalTransforms);
+            if (_showSkeleton) _modelRenderer.RenderSkeletonDebug(_skeletonBuffer, _pointShader, view, projection);
+            if (_bindSkeletonBuffer != null && _showBindPoseSkeleton) _modelRenderer.RenderSkeletonDebug(_bindSkeletonBuffer, _pointShader, view, projection);
         }
         public override void Dispose()
         {

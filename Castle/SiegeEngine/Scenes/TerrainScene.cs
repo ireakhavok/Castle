@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Scenes
+// Folder: SiegeEngine/Scenes
 // File: TerrainScene.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -6,14 +6,11 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
-using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.GPU.Shaders;
 using SiegeEngine.Core.Terrain;
-using SiegeEngine.PlayerSystem;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 
@@ -22,17 +19,11 @@ namespace SiegeEngine.Scenes
     public unsafe class TerrainScene : GameScene
     {
         protected FlyCameraController _flyCamera;
-        protected float[,] _heightmap;
-        protected int _terrainWidth = 200;
-        protected int _terrainHeight = 200;
         protected float _minHeight = 0;
         protected float _maxHeight = 0;
         protected const float VerticalExaggeration = 1.0f;
         protected int WireframeStep = 1;
-        protected VertexBuffer _terrainBuffer;
         protected ShaderProgram _terrainShader;
-        protected uint _terrainTextureId = 0;
-        protected bool _hasColorTexture = false;
         protected GeoTiffParser.GeoReference _colorGeoRef;
         protected GeoTiffParser.GeoReference _terrainGeoRef;
         protected float _worldScaleX = 1.0f;
@@ -46,7 +37,6 @@ namespace SiegeEngine.Scenes
         protected bool _isEditorContext = false;
         protected ISceneStateProvider _liveState;
         protected int _lastColorVersion = -1;
-        protected TerrainRenderer _terrainRenderer;
 
         public TerrainScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
@@ -54,7 +44,7 @@ namespace SiegeEngine.Scenes
             _flyCamera = new FlyCameraController(controlContext, window);
             _terrainGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
             _colorGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
-            _terrainRenderer = new TerrainRenderer(renderContext);
+            _terrainWireframe = true;
         }
 
         public virtual void BindLiveState(ISceneStateProvider liveState)
@@ -110,22 +100,7 @@ namespace SiegeEngine.Scenes
             }
             else
             {
-                _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
-                var data = live.ColorBitmap.LockBits(new Rectangle(0, 0, live.ColorBitmap.Width, live.ColorBitmap.Height), ImageLockMode.ReadOnly, live.ColorBitmap.PixelFormat);
-                try
-                {
-                    unsafe
-                    {
-                        byte* ptr = (byte*)data.Scan0.ToPointer();
-                        _renderContext.TexImage2D(_renderContext.Enums.Texture2D, 0, _renderContext.Enums.InternalRgba, (uint)live.ColorBitmap.Width, (uint)live.ColorBitmap.Height, 0, _renderContext.Enums.PixelBgra, _renderContext.Enums.UnsignedByte, ptr);
-                    }
-                }
-                finally
-                {
-                    live.ColorBitmap.UnlockBits(data);
-                }
-                _renderContext.GenerateMipmap(_renderContext.Enums.Texture2D);
-                _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+                TextureLoader.UpdateFromBitmap(_renderContext, _terrainTextureId, live.ColorBitmap);
             }
             if (_hasColorTexture)
             {
@@ -182,9 +157,7 @@ namespace SiegeEngine.Scenes
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
-            _terrainBuffer = new VertexBuffer(_renderContext);
             _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
-            _terrainRenderer.Initialize();
             EnsureHeightProvider();
         }
 
@@ -503,24 +476,17 @@ namespace SiegeEngine.Scenes
             return true;
         }
 
-        public override void Render(IReadOnlyList<Entity> entities)
+        protected override void GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection)
         {
-            Matrix4x4 view = _flyCamera.ViewMatrix;
-            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, (float)_width / _height, 0.1f, 50000f);
-
-            _terrainRenderer.RenderTerrain(view, projection, _hasColorTexture, _terrainTextureId, _terrainBuffer, _heightmap);
+            view = _flyCamera.ViewMatrix;
+            float aspect = _height > 0 ? (float)_width / _height : AspectRatio;
+            if (aspect <= 0f) aspect = 1f;
+            projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, aspect, 0.1f, 50000f);
         }
 
         public override void Dispose()
         {
-            if (_terrainTextureId != 0)
-            {
-                _renderContext.DeleteTexture(_terrainTextureId);
-                _terrainTextureId = 0;
-            }
-            _terrainBuffer?.Dispose();
             _terrainShader?.Dispose();
-            _terrainRenderer?.Dispose();
             base.Dispose();
         }
 

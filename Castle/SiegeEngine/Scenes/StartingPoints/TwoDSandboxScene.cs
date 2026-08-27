@@ -7,7 +7,7 @@ using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.Projections;
 using SiegeEngine.Core.GPU.ContextManagement;
-using SiegeEngine.Core.GPU.Shaders;
+using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Systems;
 using System;
@@ -19,7 +19,7 @@ namespace SiegeEngine.Scenes.StartingPoints
     public class TwoDSandboxScene : Scene
     {
         private readonly IProjectionProvider _projectionProvider = new OrthoProjection(30f); // 30-degree tilt
-        private ShaderProgram _gridShader;
+        private LineRenderer _lineRenderer;
         private VertexBuffer _gridBuffer;
         private ModelManager _modelManager;
 
@@ -28,22 +28,24 @@ namespace SiegeEngine.Scenes.StartingPoints
         {
         }
 
+        protected override Vector4 FrameClearColor => new Vector4(0.1f, 0.1f, 0.1f, 1.0f);
+
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _modelManager = new ModelManager(_renderContext);
-            SetupGrid();
-            _gridShader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
+            _lineRenderer = new LineRenderer(_renderContext);
+            _lineRenderer.Initialize();
             _gridBuffer = new VertexBuffer(_renderContext);
+            SetupGrid();
             _controlContext.SetScrollCallback(_window, (win, x, y) =>
             {
                 // Handle zoom for ortho
             });
             _controlContext.SetWindowSizeCallback(_window, (win, w, h) =>
             {
-                _renderContext.Viewport(0, 0, (uint)w, (uint)h);
+                Resize(w, h);
             });
-            _renderContext.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         }
 
         private void SetupGrid()
@@ -71,14 +73,7 @@ namespace SiegeEngine.Scenes.StartingPoints
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
             projection = _projectionProvider.GetProjectionMatrix(_width, _height, 0.1f, 1000f);
-            _gridShader.Use();
-            _gridShader.SetMatrix4("uView", view);
-            _gridShader.SetMatrix4("uProjection", projection);
-            _gridShader.SetMatrix4("uModel", Matrix4x4.Identity);
-            _gridBuffer.Bind();
-            _renderContext.Enable(_renderContext.Enums.LineSmooth);
-            _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, _gridBuffer.GetVertexCount());
-            _renderContext.Disable(_renderContext.Enums.LineSmooth);
+            _lineRenderer.DrawLines(_gridBuffer, view, projection, 1f, true);
             Vector3 viewPos = _player.Camera.Position;
             foreach (var entity in entities)
             {
@@ -103,6 +98,8 @@ namespace SiegeEngine.Scenes.StartingPoints
 
         public override void Dispose()
         {
+            _lineRenderer?.Dispose();
+            _gridBuffer?.Dispose();
             base.Dispose();
         }
     }

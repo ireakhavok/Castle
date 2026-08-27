@@ -34,7 +34,8 @@ Folder: IDE
       - Func<IHeightProvider> _getHeightProvider
       - VertexBuffer _surfaceBuffer
       - VertexBuffer _lineBuffer
-      - ShaderProgram _shader
+      - LineRenderer _lineRenderer
+      - ShaderProgram _surfaceShader
       - List<Vertex> _surfaceVerts
       - List<uint> _surfaceIndices
       - List<Vertex> _lineVerts
@@ -65,10 +66,11 @@ Folder: IDE
             Func<IReadOnlyList<Vector3>> getSourcePositions, 
             Func<Vector3> getListenerPos, 
             IRenderContext renderContext)
+        - Calls: LineRenderer, _lineRenderer.Initialize
       - void SetSharedFreeSurface( AcousticGeometry geometry, AcousticRayTracer tracer)
       - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: ComputePerceived, EnsureResources, RebuildLineMesh, RebuildSurfaceMesh, _geometry.Rebuild, _lastPerceivedSources.Add, _lastPerceivedSources.Clear, _lineBuffer.Bind, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _surfaceBuffer.Bind, activeTracer.KickDebugBidirectional, activeTracer.TryCompletePendingRaster
+        - Calls: ComputePerceived, EnsureResources, RebuildLineMesh, RebuildSurfaceMesh, ShaderProgram, _geometry.Rebuild, _lastPerceivedSources.Add, _lastPerceivedSources.Clear, _lineRenderer.DrawLines, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _surfaceBuffer.Bind, _surfaceShader.SetMatrix4, _surfaceShader.Use, activeTracer.KickDebugBidirectional, activeTracer.TryCompletePendingRaster
       - void RebuildSurfaceMesh( AcousticGeometry geom, AcousticRayTracer tracer)
         - Calls: AddFilledTriangle, VertexBuffer, _surfaceBuffer.UpdateCustom, _surfaceIndices.Clear, _surfaceVerts.Clear, geom.GetTriangle, tracer.GetJoinedMutualFree
       - void ComputePerceived( AcousticGeometry geom,  AcousticRayTracer tracer,  IReadOnlyList<Vector3> sources, Vector3 listener)
@@ -76,7 +78,7 @@ Folder: IDE
       - void RebuildLineMesh( IReadOnlyList<Vector3> sources, Vector3 listener)
         - Calls: AddCross, AddLine, VertexBuffer, _lineBuffer.UpdateCustom, _lineIndices.Clear, _lineVerts.Clear
       - void EnsureResources()
-        - Calls: AcousticGeometry, AcousticRayTracer, ShaderProgram
+        - Calls: AcousticGeometry, AcousticRayTracer
       - void AddLine( List<uint> indices,  Vector3 a,  Vector3 b,  Vector4 color, List<Vertex> verts)
         - Calls: Vertex, indices.Add, verts.Add
       - void AddFilledTriangle( List<uint> indices,  Vector3 a,  Vector3 b,  Vector3 c,  Vector4 color, List<Vertex> verts)
@@ -391,7 +393,7 @@ Folder: IDE
       - Func<IReadOnlyList<ContactManifold>> _getManifolds
       - Func<IReadOnlyList<int>> _getSelectedIds
       - VertexBuffer _dynamicBuffer
-      - ShaderProgram _shader
+      - LineRenderer _lineRenderer
       - List<Vertex> _dynVerts
       - List<uint> _dynIndices
       - List<Vector3> _triA
@@ -408,9 +410,10 @@ Folder: IDE
             Func<IReadOnlyList<Entity>> getEntities, 
             Func<IReadOnlyList<int>> getSelectedIds, 
             IRenderContext renderContext)
+        - Calls: LineRenderer, _lineRenderer.Initialize
       - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: BuildLocalShapeBuffer, BuildModelMatrix, GetCacheKey, RebuildDynamicBuffer, ShaderProgram, _cacheWasSleeping.Remove, _dynamicBuffer.Bind, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, _shapeCaches.Remove, buf.Bind, oldBuf.Dispose
+        - Calls: BuildLocalShapeBuffer, BuildModelMatrix, GetCacheKey, RebuildDynamicBuffer, _cacheWasSleeping.Remove, _lineRenderer.DrawLines, _shapeCaches.Remove, oldBuf.Dispose
       - object GetCacheKey(PhysicsComponent physics)
       - Matrix4x4 BuildModelMatrix(PhysicsComponent physics)
       - VertexBuffer BuildLocalShapeBuffer(PhysicsComponent physics)
@@ -582,11 +585,57 @@ Folder: IDE
       - ScriptEditorPanel _parent
     - Methods:
       - void HandleDataHook(string hook)
+- File: SkyboxPreviewScene.cs
+  - Class: SkyboxPreviewScene (Namespace: ToolChest)
+    - Inherits: Scene
+    
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Scenes, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - uint _cubemapTex
+      - VertexBuffer _previewCube
+      - VertexBuffer _axisBuffer
+      - VertexBuffer _ringBuffer
+      - VertexBuffer _faceOutlineBuffer
+      - ShaderProgram _previewShader
+      - LineRenderer _lineRenderer
+      - float PreviewYaw
+      - float PreviewPitch
+      - float PreviewDist
+      - Quaternion _orientation
+      - int _selectedFace
+      - uint CubemapTexture
+    - Methods:
+      - void Initialize( int height, int width)
+        - Calls: BuildFaceOutline, BuildPreviewCube, LineRenderer, RebuildAxesAndRings, ShaderProgram, VertexBuffer, main
+      - void main()
+      - void main()
+      - void SetOrientation(Quaternion orient)
+      - void SetSelectedFace(int face)
+        - Calls: BuildFaceOutline
+      - void SetCubemapTexture(uint tex)
+        - Calls: _renderContext.DeleteTexture
+      - void Render(IReadOnlyList<Entity> entities)
+        - Calls: Quaternion.Inverse, _lineRenderer.DrawLines, _previewCube.Bind, _previewShader.SetMatrix4, _previewShader.Use, _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.Clear, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable
+      - void BuildPreviewCube()
+        - Calls: _previewCube.UpdateCustomWithUV
+      - void RebuildAxesAndRings()
+        - Calls: AddRing, Vertex, _axisBuffer.UpdateCustom, _ringBuffer.UpdateCustom, aIdx.Add, aVerts.Add
+      - void AddRing( List<uint> indices,  Vector3 axis,  Vector4 color, List<Vertex> vertices)
+        - Calls: Vertex, indices.Add, vertices.Add
+      - void BuildFaceOutline(int face)
+        - Calls: Vertex, _faceOutlineBuffer.UpdateCustom, idx.Add, verts.Add
+      - int PickRing( float contentH,  float contentW,  float header,  float tolerance, Vector2 relMouse)
+        - Calls: DistanceToSegment2D, Quaternion.Inverse
+      - float DistanceToSegment2D( Vector3 a3,  Vector3 b3,  float header,  float vh,  float vw, Vector2 p)
+        - Calls: WorldToScreen
+      - Vector2 WorldToScreen( float header,  float vh,  float vw, Vector3 world)
+      - void Dispose()
+        - Calls: _renderContext.DeleteTexture
 - File: SkyboxRotatePanel.cs
   - Class: SkyboxRotateUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics, System.Runtime.InteropServices
+    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics, System.Runtime.InteropServices
     - Fields:
       - SkyboxRotatePanel _parent
     - Methods:
@@ -730,6 +779,7 @@ Folder: IDE
       - int _selectedEntityId
       - VertexBuffer _arrowBuffer
       - VertexBuffer _ringBuffer
+      - LineRenderer _lineRenderer
       - bool _isDragging
       - int _activeAxis
       - bool _isRotating
@@ -759,21 +809,20 @@ Folder: IDE
       - void AddRing( List<uint> indices,  Vector3 axis,  Vector4 color, List<Vertex> vertices)
         - Calls: Vertex, indices.Add, vertices.Add
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: ShaderProgram, _arrowBuffer.Bind, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _renderContext.LineWidth, _ringBuffer.Bind, arrowShader.Dispose, arrowShader.SetMatrix4, arrowShader.SetUniform, arrowShader.Use
+        - Calls: _lineRenderer.DrawLines
       - bool HandleMouseInput( bool mouseDown,  bool mousePressed,  bool mouseReleased,  float contentH,  float contentW, Vector2 contentMouse)
         - Calls: EndDrag, PerformDrag, PickAxisScreenSpace, PickRingScreenSpace, StartDrag
       - void StartDrag( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: ClosestPointOnInfiniteAxis, ClosestPointOnRingPlane, Console.WriteLine
+        - Calls: ClosestPointOnInfiniteAxis, ClosestPointOnRingPlane
       - void PerformDrag( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: ClosestPointOnInfiniteAxis, ClosestPointOnRingPlane, Console.WriteLine, EntityMovedEvent
+        - Calls: ClosestPointOnInfiniteAxis, ClosestPointOnRingPlane, EntityMovedEvent
       - void EndDrag()
-        - Calls: Console.WriteLine
       - Vector3 ClosestPointOnInfiniteAxis( Vector3 lineDir,  Vector3 linePoint,  Vector3 rayDir, Vector3 rayOrigin)
       - Vector3 ClosestPointOnRingPlane( Vector3 center,  Vector3 normal,  Vector3 rayDir, Vector3 rayOrigin)
       - int PickAxisScreenSpace( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: Console.WriteLine, DistanceToLineSegment2D
+        - Calls: DistanceToLineSegment2D
       - int PickRingScreenSpace( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: Console.WriteLine, DistanceToLineSegment2D
+        - Calls: DistanceToLineSegment2D
       - float DistanceToLineSegment2D( Vector3 a3,  Vector3 b3,  float viewportH,  float viewportW, Vector2 p)
         - Calls: WorldToScreen
       - Vector2 WorldToScreen( float viewportH,  float viewportW, Vector3 worldPos)
@@ -1200,7 +1249,7 @@ Folder: SiegeEngine
       - ResizeHandle GetResizeHandle(Vector2 absMousePos)
       - void StartResize( ResizeHandle handle, Vector2 mousePos)
       - void Render()
-        - Calls: OnLiveResize, _layeredRenderer.RenderPanel, _uiOverlay.RefreshUI
+        - Calls: OnLiveResize, OnPanelResize, _layeredRenderer.RenderPanel
       - void RenderContentLayer()
         - Calls: RenderInnerContent, _uiOverlay.Render
       - void RenderInnerContent()
@@ -1480,6 +1529,7 @@ Folder: SiegeEngine
       - string GetEffectiveDisplay()
       - HtmlElement FindContainingBlock()
       - void UpdateFullTransforms(Matrix4x4 parentMatrix)
+      - Vector2 ScreenToLocal( float viewportHeight,  float viewportWidth, Vector2 screenPos)
       - void PrepareResources( IControlContext controlContext,  IRenderContext renderContext,  ShaderProgram shader,  nint window, string baseDir)
         - Calls: BackgroundRenderer, Console.WriteLine, _bgRenderer.Initialize
       - HtmlElement FindElementById(string id)
@@ -2259,7 +2309,7 @@ Folder: SiegeEngine
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings, textRenderer.GetTextSize
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
-        - Calls: newValue.ToString
+        - Calls: ScreenToLocal, newValue.ToString
       - bool Update( IControlContext controlContext,  nint window, float deltaTime)
 - File: InputEnums.cs
   - Class: WindowAttribute (Namespace: SiegeEngine.Core.Definitions)
@@ -2444,6 +2494,22 @@ Folder: SiegeEngine
       - void RemoveLight(LightComponent light)
         - Calls: _directionalLights.Remove, _pointLights.Remove
       - void Update(float deltaTime)
+- File: LineRenderer.cs
+  - Class: LineRenderer (Namespace: SiegeEngine.Core.GPU.Renderers)
+    - Inherits: IDisposable
+    
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, System, System.Numerics
+    - Fields:
+      - IRenderContext _renderContext
+      - ShaderProgram _shader
+    - Methods:
+      - constructor LineRenderer(IRenderContext renderContext)
+      - void Initialize()
+        - Calls: ShaderProgram
+      - void DrawLines( Matrix4x4 model,  Matrix4x4 projection,  Matrix4x4 view,  float lineWidth = 1f, VertexBuffer buffer)
+        - Calls: Initialize, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _renderContext.LineWidth, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, buffer.Bind
+      - void DrawLines( Matrix4x4 projection,  Matrix4x4 view,  float lineWidth = 1f, VertexBuffer buffer)
+      - void Dispose()
 - File: LiveSceneState.cs
   - Class: LiveSceneState (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IDisposable, ISceneStateProvider, IHeightProvider
@@ -3827,7 +3893,7 @@ Folder: SiegeEngine
       - void ClearFocus(bool refresh = true)
         - Calls: _overlay.RefreshUI
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
-        - Calls: ClearFocus, IsContextMenuElement, IsDropdownElement, IsPressOverTextInput, JSElement, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetTime, _keyDownTime.Remove, _lastAddTime.Remove, _overlay.CloseAllOpenSelects, _overlay.CloseContextMenu, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.OnContextMenuRequested, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._document.InvokeDocumentMousemove, _overlay._document.InvokeDocumentMouseup, _overlay._jsContext.RunWithThis, clickable.UpdateHover, newValue.ToString
+        - Calls: ClearFocus, IsContextMenuElement, IsDropdownElement, IsPressOverTextInput, JSElement, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetTime, _draggingSlider.ScreenToLocal, _keyDownTime.Remove, _lastAddTime.Remove, _overlay.CloseAllOpenSelects, _overlay.CloseContextMenu, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.OnContextMenuRequested, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._document.InvokeDocumentMousemove, _overlay._document.InvokeDocumentMouseup, _overlay._jsContext.RunWithThis, clickable.UpdateHover, newValue.ToString
       - bool IsDropdownElement(HtmlElement elem)
 - File: UIOverlay.cs
   - Class: UIOverlay (Namespace: SiegeEngine.Core.UI)
@@ -4233,6 +4299,7 @@ SiegeEngine.Core.GPU.Renderers.ChromeRenderer
 SiegeEngine.Core.GPU.Renderers.EditorTextRenderer
 SiegeEngine.Core.GPU.Renderers.GameRenderer
 SiegeEngine.Core.GPU.Renderers.LayeredUIRenderer
+SiegeEngine.Core.GPU.Renderers.LineRenderer
 SiegeEngine.Core.GPU.Renderers.ModelRenderer
 SiegeEngine.Core.GPU.Renderers.SkyboxRenderer
 SiegeEngine.Core.GPU.Renderers.TerrainRenderer
@@ -4383,6 +4450,7 @@ ToolChest.PhysicsDebugOverlay
 ToolChest.PlacementOverlay
 ToolChest.PropertiesUIOverlay
 ToolChest.ScriptEditorUIOverlay
+ToolChest.SkyboxPreviewScene
 ToolChest.SkyboxRotateUIOverlay
 ToolChest.SpritePlacementUIOverlay
 ToolChest.TimelineUIOverlay

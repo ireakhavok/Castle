@@ -1,5 +1,3 @@
-﻿// Folder: SiegeEngine/Scenes
-// File: RuntimeGameplayScene.cs
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -26,19 +24,10 @@ namespace SiegeEngine.Scenes
         private readonly PlayerMovement _playerMovement;
         private readonly FlyCameraController _flyCamera;
         private ShaderProgram _terrainShader;
-        protected VertexBuffer _terrainBuffer;
         private ModelRenderer _modelRenderer;
-        private float[,] _heightmap;
-        private int _terrainWidth = 205;
-        private int _terrainHeight = 205;
-        private uint _terrainTextureId = 0;
-        private bool _hasColorTexture = true;
         private bool _contentLoaded = false;
         private bool _firstFrame = true;
         private ModelManager _modelManager;
-        private SkyboxRenderer _skyboxRenderer;
-        private SkyboxData _skyboxData;
-        private TerrainRenderer _terrainRenderer;
         private bool _usePlayerCamera = false;
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
@@ -48,11 +37,12 @@ namespace SiegeEngine.Scenes
             _flyCamera = new FlyCameraController(controlContext, window);
             DefaultDockingMode = DockingMode.Desktop;
             _modelRenderer = new ModelRenderer(renderContext);
+            _terrainWidth = 205;
+            _terrainHeight = 205;
+            _hasColorTexture = true;
+            _terrainWireframe = false;
             _heightmap = new float[_terrainWidth, _terrainHeight];
             for (int x = 0; x < _terrainWidth; x++) for (int y = 0; y < _terrainHeight; y++) _heightmap[x, y] = 5f + (float)Math.Sin(x * 0.1f + y * 0.1f) * 3f;
-            _skyboxRenderer = null;
-            _skyboxData = null;
-            _terrainRenderer = new TerrainRenderer(renderContext);
             string projectPath = "";
             string levelName = "NewTerrain";
             string snapshotPath = null;
@@ -88,19 +78,13 @@ namespace SiegeEngine.Scenes
         {
             base.Initialize(width, height);
             _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
-            _terrainBuffer = new VertexBuffer(_renderContext);
             _modelRenderer.Initialize();
-            _terrainRenderer.Initialize();
             SetupPureRuntimeWorld();
             _controlContext.SetScrollCallback(_window, (w, xoffset, yoffset) => { });
             _controlContext.SetWindowSizeCallback(_window, (w, newWidth, newHeight) =>
             {
                 if (newWidth > 0 && newHeight > 0)
-                {
-                    _width = newWidth;
-                    _height = newHeight;
-                    _renderContext.Viewport(0, 0, (uint)newWidth, (uint)newHeight);
-                }
+                    Resize(newWidth, newHeight);
             });
             _player?.InitializeCamera(_controlContext, _window);
             if (!_usePlayerCamera)
@@ -139,8 +123,7 @@ namespace SiegeEngine.Scenes
             if (_skyboxData != null && _skyboxData.Enabled)
             {
                 ResolveSkyboxPaths(_skyboxData, projectPath);
-                _skyboxRenderer = new SkyboxRenderer(_renderContext);
-                _skyboxRenderer.Initialize();
+                EnsureSkyboxRenderer();
                 _skyboxRenderer.LoadSkybox(_skyboxData);
             }
             LoadLevelData(levelName, projectPath);
@@ -479,13 +462,6 @@ namespace SiegeEngine.Scenes
             }
             _terrainBuffer.UpdateCustomWithUV(vertices, indices);
         }
-        public override void Render(IReadOnlyList<Entity> entities)
-        {
-            Matrix4x4 view = _usePlayerCamera && _player?.Camera != null
-                ? _player.Camera.ViewMatrix
-                : _flyCamera.ViewMatrix;
-            RenderGameplayContent(entities, view, Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f));
-        }
         public override void Update(float deltaTime)
         {
             // Movement first, then physics — contact corrections must be the last write to Position.
@@ -511,14 +487,15 @@ namespace SiegeEngine.Scenes
                     ForceVisibleOverheadCamera();
             }
         }
-        protected override void RenderGameplayContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
+        protected override void GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection)
         {
-            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-            if (_skyboxRenderer != null && _skyboxData != null && _skyboxData.Enabled)
-            {
-                _skyboxRenderer.RenderSkybox(_skyboxData, view, projection);
-            }
-            _terrainRenderer.RenderTerrain(view, projection, _hasColorTexture, _terrainTextureId, _terrainBuffer, _heightmap, false);
+            view = _usePlayerCamera && _player?.Camera != null
+                ? _player.Camera.ViewMatrix
+                : _flyCamera.ViewMatrix;
+            projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f);
+        }
+        protected override void RenderEntities(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
+        {
             Vector3 camPos = _usePlayerCamera && _player?.Camera != null
                 ? _player.Camera.Position
                 : _flyCamera.Position;
@@ -531,14 +508,15 @@ namespace SiegeEngine.Scenes
                     _modelRenderer.RenderEntityFully(modelComp, physics, view, projection, camPos);
                 }
             }
+        }
+
+        protected override void RenderOverlay(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
+        {
             PanelManager.Current?.Render();
         }
         public override void Dispose()
         {
-            _skyboxRenderer?.Dispose();
-            _terrainRenderer?.Dispose();
             _terrainShader?.Dispose();
-            _terrainBuffer?.Dispose();
             _modelRenderer?.Dispose();
             base.Dispose();
         }
