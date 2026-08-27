@@ -266,10 +266,8 @@ namespace SiegeEngine.Core.GPU
                     Console.WriteLine($"[TextureLoader] TexImage2D completed - error code: {error}");
                     if (crispPaintMode)
                     {
-                        // Crisp 1:1 paint mode - no blur
                         renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureMinFilter, renderContext.Enums.Nearest);
                         renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureMagFilter, renderContext.Enums.Nearest);
-                        // No mipmap for paint layer
                     }
                     else
                     {
@@ -299,7 +297,32 @@ namespace SiegeEngine.Core.GPU
                 return (0, 0);
             }
         }
-
+        public static void UpdateFromBitmap(IRenderContext renderContext, uint textureId, Bitmap bitmap)
+        {
+            if (renderContext == null || bitmap == null || textureId == 0) return;
+            renderContext.BindTexture(renderContext.Enums.Texture2D, textureId);
+            var data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
+            try
+            {
+                unsafe
+                {
+                    byte* ptr = (byte*)data.Scan0.ToPointer();
+                    renderContext.TexImage2D(renderContext.Enums.Texture2D, 0, renderContext.Enums.InternalRgba, (uint)bitmap.Width, (uint)bitmap.Height, 0, renderContext.Enums.PixelBgra, renderContext.Enums.UnsignedByte, ptr);
+                }
+            }
+            finally
+            {
+                bitmap.UnlockBits(data);
+            }
+            renderContext.GenerateMipmap(renderContext.Enums.Texture2D);
+            renderContext.BindTexture(renderContext.Enums.Texture2D, 0);
+        }
+        public static void DeleteTexture(IRenderContext renderContext, ref uint textureId)
+        {
+            if (renderContext == null || textureId == 0) return;
+            renderContext.DeleteTexture(textureId);
+            textureId = 0;
+        }
         public static uint LoadCubemap(IRenderContext renderContext, string path)
         {
             uint tex;
@@ -329,7 +352,6 @@ namespace SiegeEngine.Core.GPU
             renderContext.BindTexture(renderContext.Enums.TextureCubeMap, 0);
             return tex;
         }
-
         public static uint LoadSixFacesCubemap(IRenderContext renderContext, string[] faces)
         {
             uint tex;

@@ -1,17 +1,16 @@
+// Folder: SiegeEngine/Scenes
+// File: TerrainScene.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
-using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.GPU.Shaders;
 using SiegeEngine.Core.Terrain;
-using SiegeEngine.PlayerSystem;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 
@@ -101,22 +100,7 @@ namespace SiegeEngine.Scenes
             }
             else
             {
-                _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
-                var data = live.ColorBitmap.LockBits(new Rectangle(0, 0, live.ColorBitmap.Width, live.ColorBitmap.Height), ImageLockMode.ReadOnly, live.ColorBitmap.PixelFormat);
-                try
-                {
-                    unsafe
-                    {
-                        byte* ptr = (byte*)data.Scan0.ToPointer();
-                        _renderContext.TexImage2D(_renderContext.Enums.Texture2D, 0, _renderContext.Enums.InternalRgba, (uint)live.ColorBitmap.Width, (uint)live.ColorBitmap.Height, 0, _renderContext.Enums.PixelBgra, _renderContext.Enums.UnsignedByte, ptr);
-                    }
-                }
-                finally
-                {
-                    live.ColorBitmap.UnlockBits(data);
-                }
-                _renderContext.GenerateMipmap(_renderContext.Enums.Texture2D);
-                _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+                TextureLoader.UpdateFromBitmap(_renderContext, _terrainTextureId, live.ColorBitmap);
             }
             if (_hasColorTexture)
             {

@@ -1,3 +1,5 @@
+// Folder: MapRoom
+// File: TerrainCreatorScene.cs
 using Keystone;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -79,11 +81,7 @@ namespace MapRoom
         }
         public override void Dispose()
         {
-            if (_ghostMaterialTextureId != 0)
-            {
-                _renderContext.DeleteTexture(_ghostMaterialTextureId);
-                _ghostMaterialTextureId = 0;
-            }
+            TextureLoader.DeleteTexture(_renderContext, ref _ghostMaterialTextureId);
             _colorBitmapCache?.Dispose();
             _ghostBuffer?.Dispose();
             _spriteShader?.Dispose();
@@ -169,11 +167,7 @@ namespace MapRoom
                 _activeBrush = null;
                 _ghostVisible = false;
                 _activeMaterialPath = null;
-                if (_ghostMaterialTextureId != 0)
-                {
-                    _renderContext.DeleteTexture(_ghostMaterialTextureId);
-                    _ghostMaterialTextureId = 0;
-                }
+                TextureLoader.DeleteTexture(_renderContext, ref _ghostMaterialTextureId);
                 return;
             }
             if (_activeBrush == null)
@@ -427,11 +421,7 @@ namespace MapRoom
                 _colorBitmapCache.Dispose();
                 _colorBitmapCache = null;
             }
-            if (_terrainTextureId != 0)
-            {
-                _renderContext.DeleteTexture(_terrainTextureId);
-                _terrainTextureId = 0;
-            }
+            TextureLoader.DeleteTexture(_renderContext, ref _terrainTextureId);
             _hasColorTexture = false;
             if (string.IsNullOrEmpty(path))
             {
@@ -733,11 +723,7 @@ namespace MapRoom
         {
             if (!_enableBrush) return;
             _activeMaterialPath = albedoPath;
-            if (_ghostMaterialTextureId != 0)
-            {
-                _renderContext.DeleteTexture(_ghostMaterialTextureId);
-                _ghostMaterialTextureId = 0;
-            }
+            TextureLoader.DeleteTexture(_renderContext, ref _ghostMaterialTextureId);
             if (!string.IsNullOrEmpty(albedoPath))
             {
                 _ghostMaterialTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, ResolveFullPath(albedoPath));
@@ -792,22 +778,7 @@ namespace MapRoom
         private void UpdateGPUColorTexture()
         {
             if (_colorBitmapCache == null || _terrainTextureId == 0) return;
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
-            var data = _colorBitmapCache.LockBits(new Rectangle(0, 0, _colorBitmapCache.Width, _colorBitmapCache.Height), ImageLockMode.ReadOnly, _colorBitmapCache.PixelFormat);
-            try
-            {
-                unsafe
-                {
-                    byte* ptr = (byte*)data.Scan0.ToPointer();
-                    _renderContext.TexImage2D(_renderContext.Enums.Texture2D, 0, _renderContext.Enums.InternalRgba, (uint)_colorBitmapCache.Width, (uint)_colorBitmapCache.Height, 0, _renderContext.Enums.PixelBgra, _renderContext.Enums.UnsignedByte, ptr);
-                }
-            }
-            finally
-            {
-                _colorBitmapCache.UnlockBits(data);
-            }
-            _renderContext.GenerateMipmap(_renderContext.Enums.Texture2D);
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+            TextureLoader.UpdateFromBitmap(_renderContext, _terrainTextureId, _colorBitmapCache);
         }
         protected override void SyncColorTextureFromLiveState()
         {

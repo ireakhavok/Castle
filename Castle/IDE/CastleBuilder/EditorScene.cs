@@ -1,3 +1,5 @@
+// Folder: CastleBuilder
+// File: EditorScene.cs
 using Keystone;
 using MapRoom;
 using SiegeEngine.Core.Definitions;
@@ -5,17 +7,11 @@ using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Networking;
-using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Numerics;
 using System.Text.Json;
-using ToolChest;
 namespace CastleBuilder
 {
     public class EditorScene : Scene
@@ -517,15 +513,8 @@ namespace CastleBuilder
             _activeGameScene is TerrainCreatorScene
                 ? new Vector4(0.05f, 0.08f, 0.15f, 1f)
                 : new Vector4(0.12f, 0.12f, 0.18f, 1f);
-        public override void Render(IReadOnlyList<Entity> entities)
+        protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            if (_disposed) return;
-            if (OwnsFramebuffer)
-            {
-                Vector4 c = FrameClearColor;
-                _renderContext.ClearColor(c.X, c.Y, c.Z, c.W);
-                _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-            }
             var list = entities ?? GetEntities();
             if (_hostedCustomScene != null)
             {

@@ -105,11 +105,7 @@ namespace SiegeEngine.Scenes
 
         public override void Dispose()
         {
-            if (_terrainTextureId != 0)
-            {
-                _renderContext.DeleteTexture(_terrainTextureId);
-                _terrainTextureId = 0;
-            }
+            TextureLoader.DeleteTexture(_renderContext, ref _terrainTextureId);
             _skyboxRenderer?.Dispose();
             _skyboxRenderer = null;
             _terrainRenderer?.Dispose();

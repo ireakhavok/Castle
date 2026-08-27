@@ -1,3 +1,5 @@
+// Folder: ToolChest
+// File: SkyboxPreviewScene.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -6,8 +8,6 @@ using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.GPU.Shaders;
 using SiegeEngine.Scenes;
-using System;
-using System.Collections.Generic;
 using System.Numerics;
 namespace ToolChest
 {
@@ -85,9 +85,7 @@ void main() {
         public void SetCubemapTexture(uint tex)
         {
             if (_cubemapTex != 0 && _cubemapTex != tex)
-            {
-                _renderContext.DeleteTexture(_cubemapTex);
-            }
+                TextureLoader.DeleteTexture(_renderContext, ref _cubemapTex);
             _cubemapTex = tex;
         }
         public uint CubemapTexture => _cubemapTex;
@@ -109,23 +107,13 @@ void main() {
                 return;
             Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(Quaternion.Inverse(_orientation));
             Matrix4x4 mvp = orient * view * projection;
-            // Minimal state required for a closed cube under the depth buffer left dirty by LayeredUIRenderer.
-            // Clear is performed only when the panel size has actually changed so continuous docked resize
-            // does not pay a scissored Clear every frame (matches the pure-content cost model of ModelViewerScene).
-            _renderContext.Enable(_renderContext.Enums.DepthTest);
-            _renderContext.Disable(_renderContext.Enums.CullFace);
-            if (_width != _lastClearedW || _height != _lastClearedH)
+            bool clearDepth = _width != _lastClearedW || _height != _lastClearedH;
+            if (clearDepth)
             {
-                _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
                 _lastClearedW = _width;
                 _lastClearedH = _height;
             }
-            _previewShader.Use();
-            _previewShader.SetMatrix4("uMVP", mvp);
-            _renderContext.ActiveTexture(0);
-            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTex);
-            _previewCube.Bind();
-            _renderContext.DrawElements(_renderContext.Enums.Triangles, _previewCube.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            SkyboxRenderer.RenderPreviewCube(_renderContext, _cubemapTex, _previewCube, _previewShader, mvp, clearDepth);
             // Lines through the shared LineRenderer (owns its own Depth/LineWidth state)
             Matrix4x4 lineModel = orient;
             if (_axisBuffer != null)
@@ -308,11 +296,7 @@ void main() {
         }
         public override void Dispose()
         {
-            if (_cubemapTex != 0)
-            {
-                _renderContext.DeleteTexture(_cubemapTex);
-                _cubemapTex = 0;
-            }
+            TextureLoader.DeleteTexture(_renderContext, ref _cubemapTex);
             _previewCube?.Dispose();
             _axisBuffer?.Dispose();
             _ringBuffer?.Dispose();
