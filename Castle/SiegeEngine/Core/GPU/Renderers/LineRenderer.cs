@@ -9,7 +9,7 @@ namespace SiegeEngine.Core.GPU.Renderers
 {
     /// <summary>
     /// Generic line / gizmo / debug-line renderer.
-    /// Owns the PointShader and all GL state (DepthTest, LineWidth, Blend).
+    /// Owns the PointShader and all GL state (DepthTest, LineWidth, Blend, LineSmooth).
     /// All continuous 3-D line drawing (gizmos, physics debug, acoustic rays, skybox rings/axes)
     /// must go through this class so the cancer is not duplicated in every overlay or scene.
     /// </summary>
@@ -31,14 +31,20 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         /// <summary>
         /// Draw a line VertexBuffer with the supplied model/view/projection.
-        /// Handles all GL state; caller must not touch DepthTest / LineWidth / Blend.
+        /// Uses DrawElements when the buffer has indices, DrawArrays otherwise.
+        /// Handles all GL state; caller must not touch DepthTest / LineWidth / Blend / LineSmooth.
         /// </summary>
-        public void DrawLines(VertexBuffer buffer, Matrix4x4 model, Matrix4x4 view, Matrix4x4 projection, float lineWidth = 1f)
+        public void DrawLines(VertexBuffer buffer, Matrix4x4 model, Matrix4x4 view, Matrix4x4 projection, float lineWidth = 1f, bool lineSmooth = false)
         {
-            if (buffer == null || buffer.GetIndexCount() == 0) return;
+            if (buffer == null) return;
+            uint indexCount = buffer.GetIndexCount();
+            uint vertexCount = buffer.GetVertexCount();
+            if (indexCount == 0 && vertexCount == 0) return;
             if (_shader == null) Initialize();
 
             _renderContext.Disable(_renderContext.Enums.DepthTest);
+            if (lineSmooth)
+                _renderContext.Enable(_renderContext.Enums.LineSmooth);
             if (lineWidth != 1f)
                 _renderContext.LineWidth(lineWidth);
 
@@ -49,10 +55,15 @@ namespace SiegeEngine.Core.GPU.Renderers
             _shader.SetUniform("uPointSize", 6f);
 
             buffer.Bind();
-            _renderContext.DrawElements(_renderContext.Enums.Lines, buffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            if (indexCount > 0)
+                _renderContext.DrawElements(_renderContext.Enums.Lines, indexCount, _renderContext.Enums.UnsignedInt, null);
+            else
+                _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, vertexCount);
 
             if (lineWidth != 1f)
                 _renderContext.LineWidth(1f);
+            if (lineSmooth)
+                _renderContext.Disable(_renderContext.Enums.LineSmooth);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
 
@@ -62,6 +73,11 @@ namespace SiegeEngine.Core.GPU.Renderers
         public void DrawLines(VertexBuffer buffer, Matrix4x4 view, Matrix4x4 projection, float lineWidth = 1f)
         {
             DrawLines(buffer, Matrix4x4.Identity, view, projection, lineWidth);
+        }
+
+        public void DrawLines(VertexBuffer buffer, Matrix4x4 view, Matrix4x4 projection, float lineWidth, bool lineSmooth)
+        {
+            DrawLines(buffer, Matrix4x4.Identity, view, projection, lineWidth, lineSmooth);
         }
 
         public void Dispose()

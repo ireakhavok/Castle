@@ -6,7 +6,7 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
-using SiegeEngine.Core.GPU.Shaders;
+using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Systems;
 using System;
@@ -46,7 +46,7 @@ namespace SiegeEngine.Scenes.StartingPoints
         private readonly ModelManager _modelManager;
         private readonly IGameServer _server;
         private float _scrollDelta;
-        private ShaderProgram _gridShader;
+        private LineRenderer _lineRenderer;
 
         protected VertexBuffer _gridBuffer;
 
@@ -60,21 +60,21 @@ namespace SiegeEngine.Scenes.StartingPoints
             _scrollDelta = 0f;
         }
 
+        protected override Vector4 FrameClearColor => new Vector4(0.2f, 0.2f, 0.2f, 1.0f);
+
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
-            _renderContext.ClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 
-            _gridShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
+            _lineRenderer = new LineRenderer(_renderContext);
+            _lineRenderer.Initialize();
             _gridBuffer = new VertexBuffer(_renderContext);
             SetupGrid();
 
             _controlContext.SetScrollCallback(_window, (w, xoffset, yoffset) => _scrollDelta = (float)yoffset);
             _controlContext.SetWindowSizeCallback(_window, (w, newWidth, newHeight) =>
             {
-                _width = newWidth;
-                _height = newHeight;
-                _renderContext.Viewport(0, 0, (uint)newWidth, (uint)newHeight);
+                Resize(newWidth, newHeight);
             });
         }
 
@@ -109,14 +109,7 @@ namespace SiegeEngine.Scenes.StartingPoints
 
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            _gridShader.Use();
-            _gridShader.SetMatrix4("uModel", Matrix4x4.Identity);
-            _gridShader.SetMatrix4("uView", view);
-            _gridShader.SetMatrix4("uProjection", projection);
-            _renderContext.Disable(_renderContext.Enums.DepthTest);
-            _gridBuffer.Bind();
-            _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, _gridBuffer.GetVertexCount());
-            _renderContext.Enable(_renderContext.Enums.DepthTest);
+            _lineRenderer.DrawLines(_gridBuffer, view, projection);
 
             var playerEntity = _server.GetEntityById(_player.EntityId);
             var modelComp = playerEntity?.GetComponent<ModelComponent>();
@@ -130,7 +123,7 @@ namespace SiegeEngine.Scenes.StartingPoints
 
         public override void Dispose()
         {
-            _gridShader?.Dispose();
+            _lineRenderer?.Dispose();
             _gridBuffer?.Dispose();
             base.Dispose();
         }
