@@ -6,7 +6,6 @@ using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Renderers;
-using SiegeEngine.Core.GPU.Shaders;
 using SiegeEngine.Core.GPU.Compute;
 using System;
 using System.Collections.Generic;
@@ -23,7 +22,7 @@ namespace ToolChest
         private VertexBuffer _surfaceBuffer;
         private VertexBuffer _lineBuffer;
         private LineRenderer _lineRenderer;
-        private ShaderProgram _surfaceShader;
+        private DebugSurfaceRenderer _surfaceRenderer;
         private readonly List<Vertex> _surfaceVerts = new List<Vertex>(8192);
         private readonly List<uint> _surfaceIndices = new List<uint>(16384);
         private readonly List<Vertex> _lineVerts = new List<Vertex>(256);
@@ -70,6 +69,8 @@ namespace ToolChest
             _getHeightProvider = getHeightProvider ?? (() => null);
             _lineRenderer = new LineRenderer(_renderContext);
             _lineRenderer.Initialize();
+            _surfaceRenderer = new DebugSurfaceRenderer(_renderContext);
+            _surfaceRenderer.Initialize();
         }
         public void SetSharedFreeSurface(AcousticRayTracer tracer, AcousticGeometry geometry)
         {
@@ -185,25 +186,9 @@ namespace ToolChest
             }
             RebuildLineMesh(listener, sources);
 
-            // Surface triangles (keep minimal local state – not lines)
-            if (_surfaceBuffer != null && _surfaceIndices.Count > 0)
-            {
-                _renderContext.Disable(_renderContext.Enums.DepthTest);
-                _renderContext.Enable(_renderContext.Enums.Blend);
-                _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
-                if (_surfaceShader == null)
-                    _surfaceShader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
-                _surfaceShader.Use();
-                _surfaceShader.SetMatrix4("uView", view);
-                _surfaceShader.SetMatrix4("uProjection", projection);
-                _surfaceShader.SetMatrix4("uModel", Matrix4x4.Identity);
-                _surfaceBuffer.Bind();
-                _renderContext.DrawElements(_renderContext.Enums.Triangles, (uint)_surfaceIndices.Count, _renderContext.Enums.UnsignedInt, null);
-                _renderContext.Disable(_renderContext.Enums.Blend);
-                _renderContext.Enable(_renderContext.Enums.DepthTest);
-            }
+            if (_surfaceBuffer != null)
+                _surfaceRenderer.DrawTriangles(_surfaceBuffer, view, projection);
 
-            // All lines through the generic LineRenderer
             if (_lineBuffer != null && _lineIndices.Count > 0)
                 _lineRenderer.DrawLines(_lineBuffer, view, projection, 1f);
         }
