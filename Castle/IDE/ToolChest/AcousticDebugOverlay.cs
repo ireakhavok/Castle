@@ -6,14 +6,13 @@ using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Renderers;
-using SiegeEngine.Core.GPU.Shaders;
 using SiegeEngine.Core.GPU.Compute;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
 namespace ToolChest
 {
-    public class AcousticDebugOverlay : ICustomOverlay
+    public class AcousticDebugOverlay : ICustomOverlay, IWorldOverlay
     {
         private readonly IRenderContext _renderContext;
         private readonly Func<IReadOnlyList<Entity>> _getEntities;
@@ -23,7 +22,7 @@ namespace ToolChest
         private VertexBuffer _surfaceBuffer;
         private VertexBuffer _lineBuffer;
         private LineRenderer _lineRenderer;
-        private ShaderProgram _surfaceShader;
+        private DebugSurfaceRenderer _surfaceRenderer;
         private readonly List<Vertex> _surfaceVerts = new List<Vertex>(8192);
         private readonly List<uint> _surfaceIndices = new List<uint>(16384);
         private readonly List<Vertex> _lineVerts = new List<Vertex>(256);
@@ -42,6 +41,10 @@ namespace ToolChest
         private const float SpeedOfSound = 34300f;
         private AcousticRayTracer _sharedTracer;
         private AcousticGeometry _sharedGeometry;
+        private float _lastTransformSig = float.NaN;
+        private bool _hadHeightProvider;
+        private bool _awaitingRaster;
+        private uint _rasterVersionAtEnable = uint.MaxValue;
         private bool HasSharedProvider => _sharedTracer != null;
         public bool Enabled { get; set; } = false;
         public bool ShowListenerRays { get; set; } = true;
@@ -66,6 +69,8 @@ namespace ToolChest
             _getHeightProvider = getHeightProvider ?? (() => null);
             _lineRenderer = new LineRenderer(_renderContext);
             _lineRenderer.Initialize();
+            _surfaceRenderer = new DebugSurfaceRenderer(_renderContext);
+            _surfaceRenderer.Initialize();
         }
         public void SetSharedFreeSurface(AcousticRayTracer tracer, AcousticGeometry geometry)
         {
@@ -90,10 +95,35 @@ namespace ToolChest
                 _wasEnabled = true;
                 _lastPaintedVisibilityVersion = uint.MaxValue;
                 _lastPerceivedVersion = uint.MaxValue;
+                _awaitingRaster = true;
+                _rasterVersionAtEnable = uint.MaxValue;
+                _lastTransformSig = float.NaN;
+                _hadHeightProvider = false;
             }
             EnsureResources();
             var entities = _getEntities();
             if (entities == null) return;
+            IHeightProvider height = null;
+            try { height = _getHeightProvider(); } catch { }
+            if (height != null && !_hadHeightProvider)
+            {
+                _geometryDirty = true;
+                _hadHeightProvider = true;
+            }
+            float transformSig = entities.Count;
+            for (int i = 0; i < entities.Count; i++)
+            {
+                var physics = entities[i]?.GetComponent<PhysicsComponent>();
+                if (physics == null) continue;
+                transformSig += physics.Position.X + physics.Position.Y * 0.13f + physics.Position.Z * 0.37f
+                    + physics.Rotation.X + physics.Rotation.Y * 0.17f + physics.Rotation.Z * 0.29f + physics.Rotation.W;
+            }
+            if (transformSig != _lastTransformSig)
+            {
+                _geometryDirty = true;
+                _lastTransformSig = transformSig;
+                _lastPerceivedVersion = uint.MaxValue;
+            }
             if (entities.Count != _lastEntityCount)
             {
                 _geometryDirty = true;
@@ -101,12 +131,12 @@ namespace ToolChest
             }
             if (_geometryDirty)
             {
-                IHeightProvider height = null;
-                try { height = _getHeightProvider(); } catch { }
                 _geometry.Rebuild(entities, height);
                 _geometryDirty = false;
                 _lastPaintedVisibilityVersion = uint.MaxValue;
                 _lastPerceivedVersion = uint.MaxValue;
+                _awaitingRaster = true;
+                _rasterVersionAtEnable = uint.MaxValue;
             }
             Vector3 listener = _getListenerPos();
             var sources = _getSourcePositions() ?? Array.Empty<Vector3>();
@@ -119,12 +149,17 @@ namespace ToolChest
                 activeTracer.KickDebugBidirectional(listener, sources);
                 activeTracer.TryCompletePendingRaster();
             }
+            if (_rasterVersionAtEnable == uint.MaxValue)
+                _rasterVersionAtEnable = activeTracer.VisibilityVersion;
+            if (activeTracer.VisibilityVersion != _rasterVersionAtEnable)
+                _awaitingRaster = false;
             if (activeTracer.VisibilityVersion != _lastPaintedVisibilityVersion)
             {
                 RebuildSurfaceMesh(activeTracer, activeGeom);
                 _lastPaintedVisibilityVersion = activeTracer.VisibilityVersion;
             }
             bool needPerceived =
+                _awaitingRaster ||
                 activeTracer.VisibilityVersion != _lastPerceivedVersion ||
                 Vector3.DistanceSquared(listener, _lastPerceivedListener) > PerceivedMoveThreshold * PerceivedMoveThreshold ||
                 sources.Count != _lastPerceivedSources.Count;
@@ -151,25 +186,9 @@ namespace ToolChest
             }
             RebuildLineMesh(listener, sources);
 
-            // Surface triangles (keep minimal local state – not lines)
-            if (_surfaceBuffer != null && _surfaceIndices.Count > 0)
-            {
-                _renderContext.Disable(_renderContext.Enums.DepthTest);
-                _renderContext.Enable(_renderContext.Enums.Blend);
-                _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
-                if (_surfaceShader == null)
-                    _surfaceShader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
-                _surfaceShader.Use();
-                _surfaceShader.SetMatrix4("uView", view);
-                _surfaceShader.SetMatrix4("uProjection", projection);
-                _surfaceShader.SetMatrix4("uModel", Matrix4x4.Identity);
-                _surfaceBuffer.Bind();
-                _renderContext.DrawElements(_renderContext.Enums.Triangles, (uint)_surfaceIndices.Count, _renderContext.Enums.UnsignedInt, null);
-                _renderContext.Disable(_renderContext.Enums.Blend);
-                _renderContext.Enable(_renderContext.Enums.DepthTest);
-            }
+            if (_surfaceBuffer != null)
+                _surfaceRenderer.DrawTriangles(_surfaceBuffer, view, projection);
 
-            // All lines through the generic LineRenderer
             if (_lineBuffer != null && _lineIndices.Count > 0)
                 _lineRenderer.DrawLines(_lineBuffer, view, projection, 1f);
         }

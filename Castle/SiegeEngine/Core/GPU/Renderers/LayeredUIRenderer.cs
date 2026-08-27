@@ -27,9 +27,7 @@ namespace SiegeEngine.Core.GPU.Renderers
 
             _controlContext.GetWindowSize(panel.WindowHandle, out int winW, out int winH);
 
-            _renderContext.Disable(_renderContext.Enums.DepthTest);
-            _renderContext.Enable(_renderContext.Enums.Blend);
-            _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
+            _quadRenderer.EnsureUIState();
 
             int fullX = (int)panel.Position.X;
             int fullY = winH - (int)(panel.Position.Y + panel.Size.Y);
@@ -76,7 +74,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
             _renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
             _renderContext.Disable(_renderContext.Enums.ScissorTest);
-            _renderContext.Enable(_renderContext.Enums.DepthTest);
+            _quadRenderer.RestoreAfterUI();
         }
 
         public void Dispose()

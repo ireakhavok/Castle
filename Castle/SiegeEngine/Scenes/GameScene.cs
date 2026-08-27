@@ -3,6 +3,7 @@
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Renderers;
@@ -68,6 +69,16 @@ namespace SiegeEngine.Scenes
             _skyboxRenderer.Initialize();
         }
 
+        protected virtual Vector3 GetViewPosition()
+        {
+            return _player?.Camera?.Position ?? Vector3.Zero;
+        }
+
+        public void GetCameraViewProjection(out Matrix4x4 view, out Matrix4x4 projection)
+        {
+            GetViewProjection(out view, out projection);
+        }
+
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
             RenderGameplayContent(entities, view, projection);
@@ -97,6 +108,19 @@ namespace SiegeEngine.Scenes
 
         protected virtual void RenderEntities(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
+            if (_modelRenderer == null) return;
+            IReadOnlyList<Entity> list = entities;
+            if (list == null || list.Count == 0)
+                list = _server?.GetEntities();
+            if (list == null || list.Count == 0) return;
+            Vector3 viewPos = GetViewPosition();
+            foreach (var entity in list)
+            {
+                var modelComp = entity.GetComponent<ModelComponent>();
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (modelComp != null && physics != null && !string.IsNullOrEmpty(modelComp.Key))
+                    _modelRenderer.RenderEntityFully(modelComp, physics, view, projection, viewPos);
+            }
         }
 
         protected virtual void RenderOverlay(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)

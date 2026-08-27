@@ -12,7 +12,7 @@ using System.Collections.Generic;
 using System.Numerics;
 namespace ToolChest
 {
-    public class PhysicsDebugOverlay : ICustomOverlay
+    public class PhysicsDebugOverlay : ICustomOverlay, IWorldOverlay
     {
         private readonly IRenderContext _renderContext;
         private readonly Func<IReadOnlyList<Entity>> _getEntities;

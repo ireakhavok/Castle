@@ -7,6 +7,7 @@ using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Networking;
+using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
@@ -58,6 +59,18 @@ namespace CastleBuilder
             return _server.GetEntities().FirstOrDefault(e => e.Id == id);
         }
         public GameScene GetActiveGameScene() => _activeGameScene;
+        public IReadOnlyList<ContactManifold> GetContactManifolds()
+        {
+            if (_server is ClientGameServerProxy proxy)
+                return proxy.CurrentManifolds ?? (IReadOnlyList<ContactManifold>)Array.Empty<ContactManifold>();
+            return Array.Empty<ContactManifold>();
+        }
+        public IHeightProvider GetHeightProvider()
+        {
+            if (_server is ClientGameServerProxy proxy)
+                return proxy.PhysicsWorld?.HeightProvider;
+            return null;
+        }
         public bool TryGetPlacementPosition(out Vector3 position)
         {
             position = Vector3.Zero;

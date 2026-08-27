@@ -22,10 +22,7 @@ namespace SiegeEngine.Core.GPU.Renderers
         {
             if (owner == null || !owner.HasTitleBar || owner.chrome == null) return;
 
-            // FUTURE-PROOF: Completely isolated UI state for every chrome render (no bleed from content, NDC, terrain, live-state, or previous panels)
-            _renderContext.Disable(_renderContext.Enums.DepthTest);
-            _renderContext.Enable(_renderContext.Enums.Blend);
-            _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
+            _quadRenderer.EnsureUIState();
 
             // Title bar + close button
             owner.chrome.Render(_quadRenderer, panelWidth, panelHeight);
@@ -38,10 +35,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             _quadRenderer.DrawQuad(0, panelHeight - bw, panelWidth, bw, bc, panelWidth, panelHeight);
             _quadRenderer.DrawQuad(0, 0, panelWidth, 1.5f, bc, panelWidth, panelHeight);
 
-            // Explicit cleanup for next draw (prevents any vertex attrib / shader / buffer state leakage)
-            _renderContext.BindVertexArray(0);
-            _renderContext.DisableVertexAttribArray(0);
-            _renderContext.DisableVertexAttribArray(1);
+            _quadRenderer.FinishDraw();
         }
 
         public void Dispose()
