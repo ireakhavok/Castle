@@ -14,7 +14,7 @@ using System.Collections.Generic;
 using System.Numerics;
 namespace ToolChest
 {
-    public class TransformGizmoOverlay : ICustomOverlay
+    public class TransformGizmoOverlay : ICustomOverlay, IWorldOverlay
     {
         private readonly IRenderContext _renderContext;
         private readonly EventBus _eventBus;

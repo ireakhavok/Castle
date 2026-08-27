@@ -10,7 +10,6 @@ using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
-using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
@@ -79,6 +78,7 @@ namespace CastleBuilder
         private TransformGizmoOverlay _transformGizmo;
         private PhysicsDebugOverlay _physicsDebug;
         private AcousticDebugOverlay _acousticDebug;
+        private readonly List<IWorldOverlay> _worldOverlays = new List<IWorldOverlay>();
         private bool _fileSelectedSubscribed = false;
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
@@ -106,45 +106,15 @@ namespace CastleBuilder
                 id => _editorScene.GetEntityById(id)
             );
             CustomOverlays.Add(_transformGizmo);
+            _worldOverlays.Add(_transformGizmo);
             _physicsDebug = new PhysicsDebugOverlay(
                 renderContext,
                 () => GetLiveEntities(),
-                () =>
-                {
-                    try
-                    {
-                        var serverField = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance);
-                        if (serverField == null) return Array.Empty<ContactManifold>();
-                        var server = serverField.GetValue(_editorScene);
-                        if (server is ClientGameServerProxy proxy)
-                            return proxy.CurrentManifolds;
-                        if (server != null)
-                        {
-                            var physSysField = server.GetType().GetField("_physicsSystem", BindingFlags.NonPublic | BindingFlags.Instance);
-                            if (physSysField != null)
-                            {
-                                var physSys = physSysField.GetValue(server);
-                                if (physSys != null)
-                                {
-                                    var worldProp = physSys.GetType().GetProperty("World");
-                                    if (worldProp != null)
-                                    {
-                                        var world = worldProp.GetValue(physSys) as PhysicsWorld;
-                                        return world?.CurrentManifolds ?? (IReadOnlyList<ContactManifold>)Array.Empty<ContactManifold>();
-                                    }
-                                }
-                            }
-                        }
-                        return Array.Empty<ContactManifold>();
-                    }
-                    catch
-                    {
-                        return Array.Empty<ContactManifold>();
-                    }
-                },
+                () => _editorScene.GetContactManifolds(),
                 () => _selectedEntityIds
             );
             CustomOverlays.Add(_physicsDebug);
+            _worldOverlays.Add(_physicsDebug);
             _acousticDebug = new AcousticDebugOverlay(
                 renderContext,
                 () => GetLiveEntities(),
@@ -163,22 +133,10 @@ namespace CastleBuilder
                     }
                     return list;
                 },
-                () =>
-                {
-                    // Correct path: ClientGameServerProxy.PhysicsWorld.HeightProvider
-                    try
-                    {
-                        var serverField = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance);
-                        if (serverField == null) return null;
-                        var server = serverField.GetValue(_editorScene);
-                        if (server is ClientGameServerProxy proxy)
-                            return proxy.PhysicsWorld?.HeightProvider;
-                    }
-                    catch { }
-                    return null;
-                }
+                () => _editorScene.GetHeightProvider()
             );
             CustomOverlays.Add(_acousticDebug);
+            _worldOverlays.Add(_acousticDebug);
         }
         /// <summary>
         /// Exact same sources AudioSystem and RuntimeGameplayScene already trust.
@@ -243,12 +201,6 @@ namespace CastleBuilder
         {
             var ents = _editorScene.GetEntities();
             if (ents != null && ents.Count > 0) return ents;
-            var serverField = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (serverField != null)
-            {
-                var server = serverField.GetValue(_editorScene) as IGameServer;
-                return server?.GetEntities() ?? (IReadOnlyList<Entity>)Array.Empty<Entity>();
-            }
             return Array.Empty<Entity>();
         }
         public string ContentType => "SceneEditor";
@@ -725,18 +677,8 @@ namespace CastleBuilder
             var active = _editorScene.GetActiveGameScene();
             if (active != null)
                 active.GetCameraViewProjection(out view, out projection);
-            if (_transformGizmo != null)
-            {
-                _transformGizmo.RenderWorld(view, projection);
-            }
-            if (_physicsDebug != null)
-            {
-                _physicsDebug.RenderWorld(view, projection);
-            }
-            if (_acousticDebug != null)
-            {
-                _acousticDebug.RenderWorld(view, projection);
-            }
+            for (int i = 0; i < _worldOverlays.Count; i++)
+                _worldOverlays[i].RenderWorld(view, projection);
         }
         public override void OnLiveResize(float w, float h)
         {
