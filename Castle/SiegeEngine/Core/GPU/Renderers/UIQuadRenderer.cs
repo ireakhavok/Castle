@@ -39,11 +39,23 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.BindVertexArray(0);
         }
 
-        private void EnsureUIState()
+        public void EnsureUIState()
         {
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
+        }
+
+        public void RestoreAfterUI()
+        {
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
+        }
+
+        public void FinishDraw()
+        {
+            _renderContext.BindVertexArray(0);
+            _renderContext.DisableVertexAttribArray(0);
+            _renderContext.DisableVertexAttribArray(1);
         }
 
         // FUTURE-PROOF: Explicit VAO bind + disable extra attribs (prevents NDC quad leakage into simple DrawQuad/DrawLine)
