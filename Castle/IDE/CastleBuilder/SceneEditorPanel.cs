@@ -6,16 +6,16 @@ using ReadingChamber;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
+using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.Physics;
-using SiegeEngine.Core.GPU.ContextManagement;
-using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
-using SiegeEngine.Scenes;
 using SiegeEngine.PlayerSystem;
+using SiegeEngine.Scenes;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -69,7 +69,6 @@ namespace CastleBuilder
         private EditorScene _editorScene;
         private bool _cameraMode = false;
         private ModelManager _modelManager;
-        private ModelRenderer _modelRenderer;
         private bool _pendingSceneSelectorUpdate = false;
         private List<int> _selectedEntityIds = new List<int>();
         private bool _wasRightPressedLastFrame = false;
@@ -597,24 +596,9 @@ namespace CastleBuilder
             _wasRightPressedLastFrame = rightPressedThisFrame;
             Matrix4x4 view = Matrix4x4.Identity;
             Matrix4x4 projection = Matrix4x4.Identity;
-            var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
-            var active = activeField?.GetValue(_editorScene) as TerrainCreatorScene;
+            var active = _editorScene.GetActiveGameScene();
             if (active != null)
-            {
-                var flyField = active.GetType().GetField("_flyCamera", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
-                var fly = flyField?.GetValue(active) as FlyCameraController;
-                if (fly != null)
-                {
-                    view = fly.ViewMatrix;
-                }
-                float aspect = 16f / 9f;
-                var aspectField = active.GetType().GetProperty("AspectRatio", BindingFlags.NonPublic | BindingFlags.Instance);
-                if (aspectField != null)
-                {
-                    aspect = (float)aspectField.GetValue(active);
-                }
-                projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, aspect, 0.1f, 50000f);
-            }
+                active.GetCameraViewProjection(out view, out projection);
             _transformGizmo.UpdateMatrices(view, projection);
             if (!_cameraMode && isTopmost)
             {
@@ -736,63 +720,11 @@ namespace CastleBuilder
         protected override void RenderInnerContent()
         {
             _editorScene.Render(null);
-            if (_modelRenderer == null)
-            {
-                _modelRenderer = new ModelRenderer(_renderContext);
-                _modelRenderer.Initialize();
-            }
-            var entities = GetLiveEntities();
-            if (entities == null || entities.Count == 0) return;
-            var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
-            var active = activeField?.GetValue(_editorScene) as TerrainCreatorScene;
             Matrix4x4 view = Matrix4x4.Identity;
-            Vector3 viewPos = Vector3.Zero;
-            float aspect = 16f / 9f;
+            Matrix4x4 projection = Matrix4x4.Identity;
+            var active = _editorScene.GetActiveGameScene();
             if (active != null)
-            {
-                var flyField = active.GetType().GetField("_flyCamera", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
-                var fly = flyField?.GetValue(active) as FlyCameraController;
-                if (fly != null)
-                {
-                    view = fly.ViewMatrix;
-                    viewPos = fly.Position;
-                }
-                var aspectField = active.GetType().GetProperty("AspectRatio", BindingFlags.NonPublic | BindingFlags.Instance);
-                if (aspectField != null) aspect = (float)aspectField.GetValue(active);
-            }
-            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, aspect, 0.1f, 50000f);
-            foreach (var entity in entities)
-            {
-                var modelComp = entity.GetComponent<ModelComponent>();
-                var physics = entity.GetComponent<PhysicsComponent>();
-                if (modelComp != null && physics != null && !string.IsNullOrEmpty(modelComp.Key))
-                {
-                    FBXModel fbxModel = modelComp.Model;
-                    if (fbxModel == null)
-                    {
-                        if (ModelManager.Instance.TryGetModel(modelComp.Key, out fbxModel))
-                        {
-                            modelComp.Model = fbxModel;
-                            if (physics != null && modelComp.Model != null)
-                            {
-                                physics.Size = modelComp.Model.GetBoundingSize();
-                                physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
-                                physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
-                                physics.RebuildShape(modelComp.Model);
-                            }
-                        }
-                    }
-                    if (fbxModel != null && _modelManager.TryGetModelData(modelComp.Key, out var modelData))
-                    {
-                        Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
-                        Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.Position);
-                        float unitScale = fbxModel.UnitToMeters;
-                        Matrix4x4 scaleMat = Matrix4x4.CreateScale(unitScale * physics.Scale);
-                        Matrix4x4 modelMatrix = scaleMat * rotation * translation;
-                        _modelRenderer.RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix);
-                    }
-                }
-            }
+                active.GetCameraViewProjection(out view, out projection);
             if (_transformGizmo != null)
             {
                 _transformGizmo.RenderWorld(view, projection);

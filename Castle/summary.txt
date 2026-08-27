@@ -221,9 +221,7 @@ Folder: IDE
   - Class: BasicGameScene (Namespace: CastleBuilder)
     - Inherits: GameScene
         
-    - Dependencies: Keystone, MapRoom, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json, ToolChest
-    - Methods:
-      - void Render(IReadOnlyList<Entity> entities)
+    - Dependencies: Keystone, MapRoom, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Scenes, SiegeEngine.Systems, System.Numerics, System.Text.Json
 - File: FileSelectorPanel.cs
   - Class: FileSelectorUIOverlay (Namespace: ReadingChamber)
     - Inherits: UIOverlay
@@ -589,7 +587,7 @@ Folder: IDE
   - Class: SkyboxPreviewScene (Namespace: ToolChest)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Scenes, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Scenes, System.Numerics
     - Fields:
       - uint _cubemapTex
       - VertexBuffer _previewCube
@@ -603,6 +601,8 @@ Folder: IDE
       - float PreviewDist
       - Quaternion _orientation
       - int _selectedFace
+      - int _lastClearedW
+      - int _lastClearedH
       - uint CubemapTexture
     - Methods:
       - void Initialize( int height, int width)
@@ -613,9 +613,10 @@ Folder: IDE
       - void SetSelectedFace(int face)
         - Calls: BuildFaceOutline
       - void SetCubemapTexture(uint tex)
-        - Calls: _renderContext.DeleteTexture
-      - void Render(IReadOnlyList<Entity> entities)
-        - Calls: Quaternion.Inverse, _lineRenderer.DrawLines, _previewCube.Bind, _previewShader.SetMatrix4, _previewShader.Use, _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.Clear, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable
+        - Calls: TextureLoader.DeleteTexture
+      - void GetViewProjection( out Matrix4x4, out Matrix4x4 view)
+      - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
+        - Calls: LineRenderer, Quaternion.Inverse, SkyboxRenderer.RenderPreviewCube, _lineRenderer.DrawLines
       - void BuildPreviewCube()
         - Calls: _previewCube.UpdateCustomWithUV
       - void RebuildAxesAndRings()
@@ -630,7 +631,7 @@ Folder: IDE
         - Calls: WorldToScreen
       - Vector2 WorldToScreen( float header,  float vh,  float vw, Vector3 world)
       - void Dispose()
-        - Calls: _renderContext.DeleteTexture
+        - Calls: TextureLoader.DeleteTexture
 - File: SkyboxRotatePanel.cs
   - Class: SkyboxRotateUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -675,7 +676,6 @@ Folder: IDE
       - Vector3 _lastGhostPosition
       - float BrushUpdateInterval
       - float BrushMoveThreshold
-      - SceneData _sceneData
       - TerrainPaintData _paintData
       - string _activeMaterialPath
       - uint _ghostMaterialTextureId
@@ -683,23 +683,23 @@ Folder: IDE
       - Bitmap _colorBitmapCache
       - int ColorLayerResolution
       - bool _enableBrush
-      - TerrainRenderer _terrainRenderer
-      - SkyboxRenderer _skyboxRenderer
     - Methods:
       - void Initialize( int height, int width)
-        - Calls: SkyboxRenderer, VertexBuffer
-      - void Render(IReadOnlyList<Entity> entities)
-        - Calls: ComposeSkybox, _renderContext.Clear, _renderContext.ClearColor, _skyboxRenderer.RenderSkybox, _terrainRenderer.RenderGhost, _terrainRenderer.RenderTerrain
+        - Calls: EnsureSkyboxRenderer, VertexBuffer
+      - void RenderSkybox( Matrix4x4 projection, Matrix4x4 view)
+        - Calls: ComposeSkybox
+      - void RenderOverlay( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
+        - Calls: _terrainRenderer.RenderGhost
       - void Dispose()
-        - Calls: _renderContext.DeleteTexture
+        - Calls: TextureLoader.DeleteTexture
       - void BindLiveState(ISceneStateProvider liveState)
       - void RefreshFromLiveState(SceneData sd)
         - Calls: ComposeSkybox, LoadTerrain, RebuildTerrainMesh, SetColorTexture, SyncFromLiveState
       - void ComposeSkybox(SkyboxData skybox)
-        - Calls: ResolveSkyboxPaths, SkyboxRenderer, _skyboxRenderer.Initialize, _skyboxRenderer.LoadSkybox, live.SyncSkyboxIfNeeded
+        - Calls: EnsureSkyboxRenderer, ResolveSkyboxPaths, _skyboxRenderer.LoadSkybox, live.SyncSkyboxIfNeeded
       - void ResolveSkyboxPaths( string projectPath, SkyboxData skybox)
       - void OnSelectBrushEvent(SelectBrushEvent e)
-        - Calls: Enum.Parse, SetActiveMaterial, TryPerformPlacementRaycast, UpdateGhostMesh, _renderContext.DeleteTexture
+        - Calls: Enum.Parse, SetActiveMaterial, TextureLoader.DeleteTexture, TryPerformPlacementRaycast, UpdateGhostMesh
       - bool TryPerformPlacementRaycast(out Vector3 hitPoint)
         - Calls: GetLookDirection, RayTerrainIntersect
       - return RayTerrainIntersect( out hitPoint)
@@ -719,7 +719,7 @@ Folder: IDE
       - void LoadTerrain(string path)
         - Calls: RebuildTerrainMesh, ResolveFullPath, SyncFromLiveState
       - void SetColorTexture(string path)
-        - Calls: BuildTexturedMesh, Console.WriteLine, Dispose, ResolveFullPath, TerrainTextureParser.CreateColorTexture, _colorBitmapCache.Clone, _colorBitmapCache.Dispose, _renderContext.DeleteTexture, g.Clear, live.SyncColorTextureIfNeeded
+        - Calls: BuildTexturedMesh, Console.WriteLine, Dispose, ResolveFullPath, TerrainTextureParser.CreateColorTexture, TextureLoader.DeleteTexture, _colorBitmapCache.Clone, _colorBitmapCache.Dispose, g.Clear, live.SyncColorTextureIfNeeded
       - string GetColorTexturePath()
       - void SaveTerrain(string terrainName)
         - Calls: CustomTerrainParser.SaveFloatTiff, CustomTerrainParser.TryGetCustomScale, Dispose, RebuildTerrainMesh, ResolveFullPath, SaveAsPng, SaveSkybox, _colorBitmapCache.Clone, _paintData.SaveToDisk, live.SyncColorTextureIfNeeded
@@ -733,11 +733,11 @@ Folder: IDE
       - void UpdateGhostMesh()
         - Calls: GetInterpolatedHeight, _ghostBuffer.UpdateCustomWithUV, indices.Add, indicesFallback.Add, vertices.Add, verticesFallback.Add
       - void SetActiveMaterial(string albedoPath)
-        - Calls: ResolveFullPath, TerrainTextureParser.LoadColorTexture, UpdateGhostMesh, _renderContext.DeleteTexture
+        - Calls: ResolveFullPath, TerrainTextureParser.LoadColorTexture, TextureLoader.DeleteTexture, UpdateGhostMesh
       - void PaintAlbedo(Vector3 worldPos)
         - Calls: Dispose, ResolveFullPath, TerrainTextureParser.CreateColorTexture, UpdateGPUColorTexture, _colorBitmapCache.Clone, g.Clear, live.SyncColorTextureIfNeeded, materialBmp.Clone
       - void UpdateGPUColorTexture()
-        - Calls: _renderContext.BindTexture, _renderContext.GenerateMipmap, _renderContext.TexImage2D
+        - Calls: TextureLoader.UpdateFromBitmap
       - void SyncColorTextureFromLiveState()
         - Calls: Dispose, live.ColorBitmap.Clone
       - void Update( Vector2 relMousePos,  bool cameraMode,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
@@ -849,11 +849,11 @@ Folder: IDE
   - Class: TwoDCreatorScene (Namespace: MapRoom)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics
     - Fields:
       - AngledOrthoCamera _orthoCamera
-      - ShaderProgram _gridShader
-      - ShaderProgram _spriteShader
+      - LineRenderer _lineRenderer
+      - SpriteRenderer _spriteRenderer
       - VertexBuffer _gridBuffer
       - string _activeSpriteTexturePath
       - Vector2 _activeSpriteSize
@@ -867,22 +867,22 @@ Folder: IDE
     - Methods:
       - Vector3 ScreenToWorldPlane( out bool, Vector2 normalizedMouse)
       - void Initialize( int height, int width)
-        - Calls: SetupGrid, ShaderProgram, UpdateGhostMesh, VertexBuffer, _orthoCamera.Update
+        - Calls: LineRenderer, SetupGrid, SpriteRenderer, UpdateGhostMesh, VertexBuffer, _orthoCamera.Update
       - void Resize( int height, int width)
       - void SetupGrid()
         - Calls: Vertex, VertexBuffer, _gridBuffer.UpdateCustom, vertices.Add
       - void UpdateGhostMesh()
         - Calls: _ghostBuffer.UpdateCustomWithUV
       - void OnSpriteSelected(SelectSpriteEvent e)
-        - Calls: UpdateGhostMesh, _renderContext.DeleteTexture
+        - Calls: TextureLoader.DeleteTexture, UpdateGhostMesh
       - void OnEntityPlaced(EntityPlacedEvent e)
         - Calls: PhysicsComponent, _server.AddEntity, entity.AddComponent
       - void Update( Vector3 worldMousePos,  bool cameraActive,  bool mouseReleased, float deltaTime)
         - Calls: EntityPlacedEvent
       - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
-        - Calls: Bind, SetMatrix4, Use, _ghostBuffer.Bind, _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawArrays, _renderContext.DrawElements, _renderContext.Enable, _spriteShader.SetMatrix4, _spriteShader.Use
+        - Calls: _lineRenderer.DrawLines, _spriteRenderer.Begin, _spriteRenderer.Draw, _spriteRenderer.End
       - void Dispose()
-        - Calls: _placedTextureCache.Clear, _renderContext.DeleteTexture
+        - Calls: TextureLoader.DeleteTexture, _placedTextureCache.Clear
 
 Folder: Launcher
 - File: Launcher.cs
@@ -2102,18 +2102,38 @@ Folder: SiegeEngine
   - Class: GameScene (Namespace: SiegeEngine.Scenes)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Numerics
     - Fields:
-      - bool _baseLoadCalled
+      - SceneData _sceneData
+      - SkyboxRenderer _skyboxRenderer
+      - SkyboxData _skyboxData
+      - TerrainRenderer _terrainRenderer
+      - VertexBuffer _terrainBuffer
+      - int _terrainWidth
+      - int _terrainHeight
+      - uint _terrainTextureId
+      - bool _hasColorTexture
+      - bool _terrainWireframe
+      - string SceneName
     - Methods:
       - void LoadSceneData(SceneData data)
-        - Calls: LoadContentFromContext
       - void LoadContentFromContext(SceneContext ctx)
+        - Calls: LoadSceneData
       - void SetupPureRuntimeWorld()
-      - void RenderGameplayContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
+      - void Initialize( int height, int width)
+        - Calls: VertexBuffer
+      - void EnsureSkyboxRenderer()
+        - Calls: SkyboxRenderer, _skyboxRenderer.Initialize
       - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
         - Calls: RenderGameplayContent
+      - void RenderGameplayContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
+        - Calls: RenderEntities, RenderOverlay, RenderSkybox, RenderTerrain
+      - void RenderSkybox( Matrix4x4 projection, Matrix4x4 view)
+      - void RenderTerrain( Matrix4x4 projection, Matrix4x4 view)
+      - void RenderEntities( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
+      - void RenderOverlay( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
       - void Dispose()
+        - Calls: TextureLoader.DeleteTexture
 - File: GameSystem.cs
   - Class: GameSystem (Namespace: SiegeEngine.Systems)
     - Dependencies: SiegeEngine.Core.Interfaces
@@ -2506,9 +2526,10 @@ Folder: SiegeEngine
       - constructor LineRenderer(IRenderContext renderContext)
       - void Initialize()
         - Calls: ShaderProgram
-      - void DrawLines( Matrix4x4 model,  Matrix4x4 projection,  Matrix4x4 view,  float lineWidth = 1f, VertexBuffer buffer)
-        - Calls: Initialize, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _renderContext.LineWidth, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, buffer.Bind
+      - void DrawLines( Matrix4x4 model,  Matrix4x4 projection,  Matrix4x4 view,  bool lineSmooth = false,  float lineWidth = 1f, VertexBuffer buffer)
+        - Calls: Initialize, _renderContext.Disable, _renderContext.DrawArrays, _renderContext.DrawElements, _renderContext.Enable, _renderContext.LineWidth, _shader.SetMatrix4, _shader.SetUniform, _shader.Use, buffer.Bind
       - void DrawLines( Matrix4x4 projection,  Matrix4x4 view,  float lineWidth = 1f, VertexBuffer buffer)
+      - void DrawLines( Matrix4x4 projection,  Matrix4x4 view,  bool lineSmooth,  float lineWidth, VertexBuffer buffer)
       - void Dispose()
 - File: LiveSceneState.cs
   - Class: LiveSceneState (Namespace: SiegeEngine.Core.Definitions)
@@ -2724,7 +2745,8 @@ Folder: SiegeEngine
       - void Update(float deltaTime)
       - void Update( Vector2 relMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
         - Calls: ComputeBlendedTransforms, UpdateSkeletonVisualization, UpdateTransformsFromTime, _controlContext.GetKey, _controlContext.GetMouseButton
-      - void Render(IReadOnlyList<Entity> entities)
+      - void GetViewProjection( out Matrix4x4, out Matrix4x4 view)
+      - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
         - Calls: _modelRenderer.RenderModel, _modelRenderer.RenderSkeletonDebug
       - void Dispose()
 - File: MovementRequest.cs
@@ -3261,24 +3283,16 @@ Folder: SiegeEngine
       - PlayerMovement _playerMovement
       - FlyCameraController _flyCamera
       - ShaderProgram _terrainShader
-      - VertexBuffer _terrainBuffer
       - ModelRenderer _modelRenderer
-      - int _terrainWidth
-      - int _terrainHeight
-      - uint _terrainTextureId
-      - bool _hasColorTexture
       - bool _contentLoaded
       - bool _firstFrame
       - ModelManager _modelManager
-      - SkyboxRenderer _skyboxRenderer
-      - SkyboxData _skyboxData
-      - TerrainRenderer _terrainRenderer
       - bool _usePlayerCamera
     - Methods:
       - void LoadLevelData( string projectPath, string levelName)
         - Calls: InitializeCamera, LoadSceneData, SceneActivatedEvent
       - void Initialize( int height, int width)
-        - Calls: BuildTexturedMesh, EnsureHeightProvider, ForceVisibleOverheadCamera, InitializeCamera, SetupPureRuntimeWorld, ShaderProgram, VertexBuffer, _controlContext.SetScrollCallback, _controlContext.SetWindowSizeCallback, _renderContext.Viewport
+        - Calls: BuildTexturedMesh, EnsureHeightProvider, ForceVisibleOverheadCamera, InitializeCamera, Resize, SetupPureRuntimeWorld, ShaderProgram, _controlContext.SetScrollCallback, _controlContext.SetWindowSizeCallback
       - void ForceVisibleOverheadCamera()
         - Calls: _flyCamera.RefreshViewMatrix, _flyCamera.Update
       - void EnsureHeightProvider()
@@ -3290,25 +3304,26 @@ Folder: SiegeEngine
         - Calls: _server.AddEntity, terrainEntity.AddComponent
       - void BuildTexturedMesh()
         - Calls: VertexBuffer, _terrainBuffer.UpdateCustomWithUV, indices.Add, vertices.Add
-      - void Render(IReadOnlyList<Entity> entities)
-        - Calls: RenderGameplayContent
       - void Update(float deltaTime)
         - Calls: ForceVisibleOverheadCamera, _player.Camera.RefreshFromPhysics
-      - void RenderGameplayContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
-        - Calls: Render, _modelRenderer.RenderEntityFully, _renderContext.Clear, _server.GetEntities, _skyboxRenderer.RenderSkybox, _terrainRenderer.RenderTerrain
+      - void GetViewProjection( out Matrix4x4, out Matrix4x4 view)
+      - void RenderEntities( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
+        - Calls: _modelRenderer.RenderEntityFully, _server.GetEntities
+      - void RenderOverlay( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
+        - Calls: Render
       - void Dispose()
 - File: SandBoxScene.cs
   - Class: SandboxScene (Namespace: SiegeEngine.Scenes.StartingPoints)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
     - Fields:
       - Player _player
       - PlayerMovement _playerMovement
       - ModelManager _modelManager
       - IGameServer _server
       - float _scrollDelta
-      - ShaderProgram _gridShader
+      - LineRenderer _lineRenderer
       - VertexBuffer _gridBuffer
     - Methods:
       - constructor SandboxScene()
@@ -3318,12 +3333,12 @@ Folder: SiegeEngine
       - void Launch( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: SwitchSceneEvent
       - void Initialize( int height, int width)
-        - Calls: SetupGrid, ShaderProgram, VertexBuffer, _controlContext.SetScrollCallback, _controlContext.SetWindowSizeCallback, _renderContext.ClearColor, _renderContext.Viewport
+        - Calls: LineRenderer, Resize, SetupGrid, VertexBuffer, _controlContext.SetScrollCallback, _controlContext.SetWindowSizeCallback
       - void SetupGrid()
         - Calls: Vertex, _gridBuffer.UpdateCustom, indices.Add, vertices.Add
       - void Update(float deltaTime)
       - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
-        - Calls: _gridBuffer.Bind, _gridShader.SetMatrix4, _gridShader.Use, _modelRenderer.RenderModel, _renderContext.Disable, _renderContext.DrawArrays, _renderContext.Enable, _server.GetEntityById
+        - Calls: _lineRenderer.DrawLines, _modelRenderer.RenderModel, _server.GetEntityById
       - void Dispose()
 - File: Scene.cs
   - Class: Scene (Namespace: SiegeEngine.Scenes)
@@ -3345,6 +3360,7 @@ Folder: SiegeEngine
       - ModelRenderer _modelRenderer
       - float AspectRatio
     - Methods:
+      - void SetOwnsFramebuffer(bool owns)
       - constructor Scene( EventBus eventBus,  IControlContext controlContext,  IGameServer server,  IntPtr window, IRenderContext renderContext)
         - Calls: ModelRenderer
       - void Initialize( int height, int width)
@@ -3354,7 +3370,8 @@ Folder: SiegeEngine
       - void Update(float deltaTime)
         - Calls: audioSystem.SetListenerPosition
       - void Render(IReadOnlyList<Entity> entities)
-        - Calls: RenderContent, _renderContext.Clear
+        - Calls: GetViewProjection, RenderContent, _renderContext.Clear, _renderContext.ClearColor
+      - void GetViewProjection( out Matrix4x4, out Matrix4x4 view)
       - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
       - void AddSystem(GameSystem system)
         - Calls: _systems.Add
@@ -3546,11 +3563,13 @@ Folder: SiegeEngine
       - void BuildCubeMesh()
         - Calls: _cubeBuffer.UpdateCustomWithUV, indices.Add, vertices.Add
       - void LoadSkybox(SkyboxData skybox)
-        - Calls: TextureLoader.LoadCubemap, TextureLoader.LoadSixFacesCubemap, _renderContext.DeleteTexture
+        - Calls: TextureLoader.DeleteTexture, TextureLoader.LoadCubemap, TextureLoader.LoadSixFacesCubemap
       - void RenderSkybox( Matrix4x4 projection,  Matrix4x4 view, SkyboxData skybox)
         - Calls: _cubeBuffer.Bind, _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _skyShader.SetMatrix4, _skyShader.SetUniform, _skyShader.Use
+      - void RenderPreviewCube( Matrix4x4 mvp,  ShaderProgram shader,  VertexBuffer cube,  bool clearDepth,  uint cubemapTex, IRenderContext renderContext)
+        - Calls: cube.Bind, renderContext.ActiveTexture, renderContext.BindTexture, renderContext.Clear, renderContext.Disable, renderContext.DrawElements, renderContext.Enable, shader.SetMatrix4, shader.Use
       - void Dispose()
-        - Calls: _renderContext.DeleteTexture
+        - Calls: TextureLoader.DeleteTexture
 - File: SkyboxShader.cs
   - Class: SkyboxShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Dependencies: System
@@ -3599,6 +3618,27 @@ Folder: SiegeEngine
     - Inherits: IComponent
     
     - Dependencies: System.Numerics
+- File: SpriteRenderer.cs
+  - Class: SpriteRenderer (Namespace: SiegeEngine.Core.GPU.Renderers)
+    - Inherits: IDisposable
+    
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, System, System.Numerics
+    - Fields:
+      - IRenderContext _renderContext
+      - ShaderProgram _shader
+      - bool _batchOpen
+    - Methods:
+      - constructor SpriteRenderer(IRenderContext renderContext)
+      - void Initialize()
+        - Calls: ShaderProgram
+      - void Begin( Matrix4x4 projection, Matrix4x4 view)
+        - Calls: Initialize, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _shader.SetMatrix4, _shader.Use
+      - void Draw( Matrix4x4 model,  uint textureId, VertexBuffer buffer)
+        - Calls: _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.DrawElements, _shader.SetMatrix4, buffer.Bind
+      - void End()
+        - Calls: _renderContext.BindTexture, _renderContext.Disable, _renderContext.Enable
+      - void Dispose()
+        - Calls: End
 - File: SpriteShader.cs
   - Class: SpriteShader (Namespace: SiegeEngine.Core.GPU.Shaders)
     - Fields:
@@ -3683,19 +3723,14 @@ Folder: SiegeEngine
   - Class: TerrainScene (Namespace: SiegeEngine.Scenes)
     - Inherits: GameScene
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Terrain, SiegeEngine.PlayerSystem, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Terrain, System, System.Collections.Generic, System.Drawing, System.IO, System.Numerics
     - Fields:
       - FlyCameraController _flyCamera
-      - int _terrainWidth
-      - int _terrainHeight
       - float _minHeight
       - float _maxHeight
       - float VerticalExaggeration
       - int WireframeStep
-      - VertexBuffer _terrainBuffer
       - ShaderProgram _terrainShader
-      - uint _terrainTextureId
-      - bool _hasColorTexture
       - float _worldScaleX
       - float _worldScaleZ
       - bool _useCustomScale
@@ -3707,7 +3742,6 @@ Folder: SiegeEngine
       - bool _isEditorContext
       - ISceneStateProvider _liveState
       - int _lastColorVersion
-      - TerrainRenderer _terrainRenderer
     - Methods:
       - void BindLiveState(ISceneStateProvider liveState)
         - Calls: EnsureHeightProvider
@@ -3716,13 +3750,13 @@ Folder: SiegeEngine
       - void SyncFromLiveState()
         - Calls: EnsureHeightProvider, SyncColorTextureFromLiveState, _liveState.GetColorVersion, _liveState.GetHeightmap
       - void SyncColorTextureFromLiveState()
-        - Calls: BuildTexturedMesh, TerrainTextureParser.CreateColorTexture, _renderContext.BindTexture, _renderContext.GenerateMipmap, _renderContext.TexImage2D
+        - Calls: BuildTexturedMesh, TerrainTextureParser.CreateColorTexture, TextureLoader.UpdateFromBitmap
       - void LoadSceneData(SceneData data)
         - Calls: EnsureHeightProvider, InitializeBlankTerrain, LoadTerrain, SetColorTexture
       - void InitializeBlankTerrain()
         - Calls: BuildWireframeMesh, EnsureHeightProvider
       - void Initialize( int height, int width)
-        - Calls: EnsureHeightProvider, ShaderProgram, VertexBuffer
+        - Calls: EnsureHeightProvider, ShaderProgram
       - void BuildWireframeMesh(float step)
         - Calls: ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV, _terrainIndices.Add, _terrainIndices.Clear, _terrainVertices.Add, _terrainVertices.Clear
       - void RebuildTerrainMesh()
@@ -3743,10 +3777,8 @@ Folder: SiegeEngine
       - void Update( Vector2 relMousePos,  bool cameraMode,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
         - Calls: SyncFromLiveState
       - bool GetMouseRay( float viewportHeight,  float viewportWidth,  out Vector3, Vector2 normalizedMouse)
-      - void Render(IReadOnlyList<Entity> entities)
-        - Calls: _terrainRenderer.RenderTerrain
+      - void GetViewProjection( out Matrix4x4, out Matrix4x4 view)
       - void Dispose()
-        - Calls: _renderContext.DeleteTexture
 - File: TerrainTextureParser.cs
   - Class: TerrainTextureParser (Namespace: SiegeEngine.Core.Terrain)
     - Dependencies: SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, System, System.Drawing, System.IO
@@ -3795,13 +3827,17 @@ Folder: SiegeEngine
     - Dependencies: System
 - File: TextureLoader.cs
   - Class: TextureLoader (Namespace: SiegeEngine.Core.GPU)
-    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, Silk.NET.OpenGL, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.GPU.ContextManagement, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics
     - Fields:
       - byte[] PngSignature
       - HashSet<byte> ValidTgaTypes
     - Methods:
+      - int ResolveWrap( int wrap, IRenderContext renderContext)
       - return LoadTextureFromBitmap()
-        - Calls: Console.WriteLine, renderContext.BindTexture, renderContext.GenTextures, renderContext.GenerateMipmap, renderContext.GetError, renderContext.GetFloat, renderContext.IsExtensionPresent, renderContext.TexImage2D, renderContext.TexParameter, renderContext.TexParameterf
+        - Calls: Console.WriteLine, ResolveWrap, renderContext.BindTexture, renderContext.GenTextures, renderContext.GenerateMipmap, renderContext.GetError, renderContext.GetFloat, renderContext.IsExtensionPresent, renderContext.TexImage2D, renderContext.TexParameter, renderContext.TexParameterf
+      - void UpdateFromBitmap( Bitmap bitmap,  uint textureId, IRenderContext renderContext)
+        - Calls: renderContext.BindTexture, renderContext.GenerateMipmap, renderContext.TexImage2D
+      - void DeleteTexture( ref uint, IRenderContext renderContext)
       - uint LoadCubemap( string path, IRenderContext renderContext)
         - Calls: renderContext.BindTexture, renderContext.GenTextures, renderContext.GenerateMipmap, renderContext.TexImage2D, renderContext.TexParameter
       - uint LoadSixFacesCubemap( string[] faces, IRenderContext renderContext)
@@ -3853,20 +3889,20 @@ Folder: SiegeEngine
   - Class: TwoDSandboxScene (Namespace: SiegeEngine.Scenes.StartingPoints)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Projections, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Projections, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IProjectionProvider _projectionProvider
-      - ShaderProgram _gridShader
+      - LineRenderer _lineRenderer
       - VertexBuffer _gridBuffer
       - ModelManager _modelManager
     - Methods:
       - void Initialize( int height, int width)
-        - Calls: ModelManager, SetupGrid, ShaderProgram, VertexBuffer, _controlContext.SetScrollCallback, _controlContext.SetWindowSizeCallback, _renderContext.ClearColor, _renderContext.Viewport
+        - Calls: LineRenderer, ModelManager, Resize, SetupGrid, VertexBuffer, _controlContext.SetScrollCallback, _controlContext.SetWindowSizeCallback
       - void SetupGrid()
         - Calls: Vertex, _gridBuffer.UpdateCustom, vertices.Add
       - void Update(float deltaTime)
       - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
-        - Calls: _gridBuffer.Bind, _gridShader.SetMatrix4, _gridShader.Use, _modelRenderer.RenderModel, _projectionProvider.GetProjectionMatrix, _renderContext.Disable, _renderContext.DrawArrays, _renderContext.Enable, _server.GetEntityById
+        - Calls: _lineRenderer.DrawLines, _modelRenderer.RenderModel, _projectionProvider.GetProjectionMatrix, _server.GetEntityById
       - void Dispose()
 - File: UIInteractionLayer.cs
   - Class: UIInteractionLayer (Namespace: SiegeEngine.Core.UI)
@@ -4302,6 +4338,7 @@ SiegeEngine.Core.GPU.Renderers.LayeredUIRenderer
 SiegeEngine.Core.GPU.Renderers.LineRenderer
 SiegeEngine.Core.GPU.Renderers.ModelRenderer
 SiegeEngine.Core.GPU.Renderers.SkyboxRenderer
+SiegeEngine.Core.GPU.Renderers.SpriteRenderer
 SiegeEngine.Core.GPU.Renderers.TerrainRenderer
 SiegeEngine.Core.GPU.Renderers.UIQuadRenderer
 SiegeEngine.Core.GPU.Shaders.AcousticIdShader
