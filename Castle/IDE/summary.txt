@@ -18,9 +18,7 @@ Folder: CastleBuilder
   - Class: BasicGameScene (Namespace: CastleBuilder)
     - Inherits: GameScene
         
-    - Dependencies: Keystone, MapRoom, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json, ToolChest
-    - Methods:
-      - void Render(IReadOnlyList<Entity> entities)
+    - Dependencies: Keystone, MapRoom, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Physics, SiegeEngine.Scenes, SiegeEngine.Systems, System.Numerics, System.Text.Json
 - File: IDEBasePanel.cs
   - Class: IDEUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
@@ -158,7 +156,7 @@ Folder: CastleBuilder
   - Class: SelectionBoxOverlay (Namespace: CastleBuilder)
     - Inherits: ICustomOverlay
         
-    - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Physics, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
+    - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Physics, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
     - Fields:
       - SceneEditorPanel _parent
     - Methods:
@@ -318,7 +316,6 @@ Folder: MapRoom
       - Vector3 _lastGhostPosition
       - float BrushUpdateInterval
       - float BrushMoveThreshold
-      - SceneData _sceneData
       - TerrainPaintData _paintData
       - string _activeMaterialPath
       - uint _ghostMaterialTextureId
@@ -326,18 +323,17 @@ Folder: MapRoom
       - Bitmap _colorBitmapCache
       - int ColorLayerResolution
       - bool _enableBrush
-      - TerrainRenderer _terrainRenderer
-      - SkyboxRenderer _skyboxRenderer
     - Methods:
       - void Initialize( int height, int width)
-      - void Render(IReadOnlyList<Entity> entities)
-        - Calls: ComposeSkybox, _renderContext.Clear
+      - void RenderSkybox( Matrix4x4 projection, Matrix4x4 view)
+        - Calls: ComposeSkybox
+      - void RenderOverlay( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
       - void Dispose()
       - void BindLiveState(ISceneStateProvider liveState)
       - void RefreshFromLiveState(SceneData sd)
         - Calls: ComposeSkybox, LoadTerrain, SetColorTexture
       - void ComposeSkybox(SkyboxData skybox)
-        - Calls: ResolveSkyboxPaths, _skyboxRenderer.Initialize
+        - Calls: ResolveSkyboxPaths
       - void ResolveSkyboxPaths( string projectPath, SkyboxData skybox)
       - void OnSelectBrushEvent(SelectBrushEvent e)
         - Calls: SetActiveMaterial, TryPerformPlacementRaycast, UpdateGhostMesh
@@ -389,7 +385,7 @@ Folder: MapRoom
         - Calls: ComposeSkybox, Console.WriteLine
       - void SaveSkybox(string sceneName)
       - void OnSkyboxDataHook( GenericEvent evt = null, string hook)
-        - Calls: AddSkyboxPanel.Open, Console.WriteLine, RefreshFromLiveState, SetSkybox
+        - Calls: AddSkyboxPanel.Open, ComposeSkybox, Console.WriteLine, RefreshFromLiveState, SetSkybox
 - File: TerrainModifiedEvent.cs
   - Class: TerrainModifiedEvent (Namespace: MapRoom)
     - Inherits: IEvent
@@ -415,11 +411,11 @@ Folder: MapRoom
   - Class: TwoDCreatorScene (Namespace: MapRoom)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics
     - Fields:
       - AngledOrthoCamera _orthoCamera
-      - ShaderProgram _gridShader
-      - ShaderProgram _spriteShader
+      - LineRenderer _lineRenderer
+      - SpriteRenderer _spriteRenderer
       - VertexBuffer _gridBuffer
       - string _activeSpriteTexturePath
       - Vector2 _activeSpriteSize
@@ -442,6 +438,7 @@ Folder: MapRoom
       - void OnEntityPlaced(EntityPlacedEvent e)
       - void Update( Vector3 worldMousePos,  bool cameraActive,  bool mouseReleased, float deltaTime)
       - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
+        - Calls: _spriteRenderer.Draw
       - void Dispose()
         - Calls: _placedTextureCache.Clear
 
@@ -468,9 +465,9 @@ Folder: ReadingChamber
 Folder: ToolChest
 - File: AcousticDebugOverlay.cs
   - Class: AcousticDebugOverlay (Namespace: ToolChest)
-    - Inherits: ICustomOverlay
+    - Inherits: ICustomOverlay, IWorldOverlay
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.Compute, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.Compute, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - Func<IReadOnlyList<Entity>> _getEntities
@@ -479,7 +476,8 @@ Folder: ToolChest
       - Func<IHeightProvider> _getHeightProvider
       - VertexBuffer _surfaceBuffer
       - VertexBuffer _lineBuffer
-      - ShaderProgram _shader
+      - LineRenderer _lineRenderer
+      - DebugSurfaceRenderer _surfaceRenderer
       - List<Vertex> _surfaceVerts
       - List<uint> _surfaceIndices
       - List<Vertex> _lineVerts
@@ -497,6 +495,10 @@ Folder: ToolChest
       - float SpeedOfSound
       - AcousticRayTracer _sharedTracer
       - AcousticGeometry _sharedGeometry
+      - float _lastTransformSig
+      - bool _hadHeightProvider
+      - bool _awaitingRaster
+      - uint _rasterVersionAtEnable
       - bool HasSharedProvider
       - Vector4 ListenerFreeColor
       - Vector4 SourceFreeColor
@@ -510,6 +512,7 @@ Folder: ToolChest
             Func<IReadOnlyList<Vector3>> getSourcePositions, 
             Func<Vector3> getListenerPos, 
             IRenderContext renderContext)
+        - Calls: _lineRenderer.Initialize, _surfaceRenderer.Initialize
       - void SetSharedFreeSurface( AcousticGeometry geometry, AcousticRayTracer tracer)
       - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
@@ -633,7 +636,7 @@ Folder: ToolChest
         - Calls: Console.WriteLine, ProjectSettings.Current.GetPaintData, brushPanel.RefreshMaterialDropdown
 - File: PhysicsDebugOverlay.cs
   - Class: PhysicsDebugOverlay (Namespace: ToolChest)
-    - Inherits: ICustomOverlay
+    - Inherits: ICustomOverlay, IWorldOverlay
     
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, System, System.Collections.Generic, System.Numerics
     - Fields:
@@ -642,7 +645,7 @@ Folder: ToolChest
       - Func<IReadOnlyList<ContactManifold>> _getManifolds
       - Func<IReadOnlyList<int>> _getSelectedIds
       - VertexBuffer _dynamicBuffer
-      - ShaderProgram _shader
+      - LineRenderer _lineRenderer
       - List<Vertex> _dynVerts
       - List<uint> _dynIndices
       - List<Vector3> _triA
@@ -659,6 +662,7 @@ Folder: ToolChest
             Func<IReadOnlyList<Entity>> getEntities, 
             Func<IReadOnlyList<int>> getSelectedIds, 
             IRenderContext renderContext)
+        - Calls: _lineRenderer.Initialize
       - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
         - Calls: BuildLocalShapeBuffer, BuildModelMatrix, GetCacheKey, RebuildDynamicBuffer, _cacheWasSleeping.Remove, _shapeCaches.Remove, oldBuf.Dispose
@@ -703,15 +707,59 @@ Folder: ToolChest
       - void TriggerChange(HtmlElement elem)
         - Calls: _parent.ApplyComponentPropertyFromInput, _parent.FlushLiveSettings
       - bool OnContextMenuRequested( Vector2 mousePos, HtmlElement sourceElement)
+- File: SkyboxPreviewScene.cs
+  - Class: SkyboxPreviewScene (Namespace: ToolChest)
+    - Inherits: Scene
+    
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Scenes, System.Numerics
+    - Fields:
+      - uint _cubemapTex
+      - VertexBuffer _previewCube
+      - VertexBuffer _axisBuffer
+      - VertexBuffer _ringBuffer
+      - VertexBuffer _faceOutlineBuffer
+      - ShaderProgram _previewShader
+      - LineRenderer _lineRenderer
+      - float PreviewYaw
+      - float PreviewPitch
+      - float PreviewDist
+      - Quaternion _orientation
+      - int _selectedFace
+      - int _lastClearedW
+      - int _lastClearedH
+      - uint CubemapTexture
+    - Methods:
+      - void Initialize( int height, int width)
+        - Calls: BuildFaceOutline, BuildPreviewCube, RebuildAxesAndRings, main
+      - void main()
+      - void main()
+      - void SetOrientation(Quaternion orient)
+      - void SetSelectedFace(int face)
+        - Calls: BuildFaceOutline
+      - void SetCubemapTexture(uint tex)
+      - void GetViewProjection( out Matrix4x4, out Matrix4x4 view)
+      - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
+      - void BuildPreviewCube()
+      - void RebuildAxesAndRings()
+        - Calls: AddRing
+      - void AddRing( List<uint> indices,  Vector3 axis,  Vector4 color, List<Vertex> vertices)
+      - void BuildFaceOutline(int face)
+      - int PickRing( float contentH,  float contentW,  float header,  float tolerance, Vector2 relMouse)
+        - Calls: DistanceToSegment2D
+      - float DistanceToSegment2D( Vector3 a3,  Vector3 b3,  float header,  float vh,  float vw, Vector2 p)
+        - Calls: WorldToScreen
+      - Vector2 WorldToScreen( float header,  float vh,  float vw, Vector3 world)
+      - void Dispose()
 - File: SkyboxRotatePanel.cs
   - Class: SkyboxRotateUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics, System.Runtime.InteropServices
+    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics, System.Runtime.InteropServices
     - Fields:
       - SkyboxRotatePanel _parent
     - Methods:
       - bool HandleUIClick(HtmlElement elem)
+      - void HandleDataHook(string hook)
 - File: SpritePlacementPanel.cs
   - Class: SpritePlacementUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -724,7 +772,7 @@ Folder: ToolChest
       - bool HandleUIClick(HtmlElement elem)
 - File: TransformGizmoOverlay.cs
   - Class: TransformGizmoOverlay (Namespace: ToolChest)
-    - Inherits: ICustomOverlay
+    - Inherits: ICustomOverlay, IWorldOverlay
     
     - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.GPU, SiegeEngine.Core.GPU.ContextManagement, SiegeEngine.Core.GPU.Renderers, SiegeEngine.Core.GPU.Shaders, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, System, System.Collections.Generic, System.Numerics
     - Fields:
@@ -733,6 +781,7 @@ Folder: ToolChest
       - int _selectedEntityId
       - VertexBuffer _arrowBuffer
       - VertexBuffer _ringBuffer
+      - LineRenderer _lineRenderer
       - bool _isDragging
       - int _activeAxis
       - bool _isRotating
@@ -760,21 +809,19 @@ Folder: ToolChest
         - Calls: AddRing
       - void AddRing( List<uint> indices,  Vector3 axis,  Vector4 color, List<Vertex> vertices)
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
-        - Calls: arrowShader.Dispose
       - bool HandleMouseInput( bool mouseDown,  bool mousePressed,  bool mouseReleased,  float contentH,  float contentW, Vector2 contentMouse)
         - Calls: EndDrag, PerformDrag, PickAxisScreenSpace, PickRingScreenSpace, StartDrag
       - void StartDrag( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: ClosestPointOnInfiniteAxis, ClosestPointOnRingPlane, Console.WriteLine
+        - Calls: ClosestPointOnInfiniteAxis, ClosestPointOnRingPlane
       - void PerformDrag( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: ClosestPointOnInfiniteAxis, ClosestPointOnRingPlane, Console.WriteLine
+        - Calls: ClosestPointOnInfiniteAxis, ClosestPointOnRingPlane
       - void EndDrag()
-        - Calls: Console.WriteLine
       - Vector3 ClosestPointOnInfiniteAxis( Vector3 lineDir,  Vector3 linePoint,  Vector3 rayDir, Vector3 rayOrigin)
       - Vector3 ClosestPointOnRingPlane( Vector3 center,  Vector3 normal,  Vector3 rayDir, Vector3 rayOrigin)
       - int PickAxisScreenSpace( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: Console.WriteLine, DistanceToLineSegment2D
+        - Calls: DistanceToLineSegment2D
       - int PickRingScreenSpace( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: Console.WriteLine, DistanceToLineSegment2D
+        - Calls: DistanceToLineSegment2D
       - float DistanceToLineSegment2D( Vector3 a3,  Vector3 b3,  float viewportH,  float viewportW, Vector2 p)
         - Calls: WorldToScreen
       - Vector2 WorldToScreen( float viewportH,  float viewportW, Vector3 worldPos)
@@ -834,6 +881,7 @@ ToolChest.PhysicsDebugOverlay
 ToolChest.PlacementOverlay
 ToolChest.PropertiesUIOverlay
 ToolChest.ScriptEditorUIOverlay
+ToolChest.SkyboxPreviewScene
 ToolChest.SkyboxRotateUIOverlay
 ToolChest.SpritePlacementUIOverlay
 ToolChest.TimelineUIOverlay
