@@ -62,6 +62,12 @@ namespace SiegeEngine.Scenes
 
         protected virtual EnvironmentSettings GetEnvironmentSettings() => null;
 
+        /// <summary>
+        /// Play / runtime only. Editor scenes override this to false so a
+        /// placed Light entity is the only source of directional lighting.
+        /// </summary>
+        protected virtual bool AllowRuntimeDefaultSun => true;
+
         public virtual void Initialize(int width, int height)
         {
             _width = width;
@@ -185,10 +191,10 @@ namespace SiegeEngine.Scenes
             LightingSettings.BindAuthored(environment);
 
             IReadOnlyList<Entity> list = entities ?? _server?.GetEntities();
-            LightingFrame frame = LightingFrame.Build(list, environment, LightingFrame.DefaultSunDirection);
+            LightingFrame frame = LightingFrame.Build(list, environment, LightingFrame.DefaultSunDirection, AllowRuntimeDefaultSun);
             LightingFrame.Current = frame;
 
-            if (runShadows && frame.ShadowQuality != ShadowQuality.Off && frame.Sun.CastShadows)
+            if (runShadows && frame.ShadowQuality != ShadowQuality.Off && frame.Sun.CastShadows && frame.Sun.Intensity > 0.001f)
             {
                 if (_shadowMapRenderer == null)
                     _shadowMapRenderer = new ShadowMapRenderer(_renderContext);

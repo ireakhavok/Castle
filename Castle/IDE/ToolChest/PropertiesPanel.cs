@@ -276,7 +276,7 @@ namespace ToolChest
                 sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Fog Density</div><input type=\"text\" id=\"env-fogDensity\" value=\"{env.FogDensity.ToString(System.Globalization.CultureInfo.InvariantCulture)}\"></div>");
                 sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Shadow Quality</div><select id=\"env-shadowQuality\"><option{(env.ShadowQuality == "Off" ? " selected" : "")}>Off</option><option{(env.ShadowQuality == "Low" ? " selected" : "")}>Low</option><option{(env.ShadowQuality == "Medium" ? " selected" : "")}>Medium</option><option{(env.ShadowQuality == "High" ? " selected" : "")}>High</option><option{(env.ShadowQuality == "Ultra" ? " selected" : "")}>Ultra</option></select></div>");
                 sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Shadow Distance</div><input type=\"text\" id=\"env-shadowDistance\" value=\"{env.ShadowDistance.ToString(System.Globalization.CultureInfo.InvariantCulture)}\"></div>");
-                sb.Append("<div class=\"property-row\"><i>No light entity needed — a 3 o'clock sun is used until you Place Light.</i></div>");
+                sb.Append("<div class=\"property-row\"><div class=\"property-name\">Note</div><div>Editor lighting comes from placed Light entities. Play Game uses a 3 o'clock sun if none exist.</div></div>");
                 sb.Append("</details>");
             }
             else

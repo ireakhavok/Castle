@@ -505,14 +505,20 @@ namespace CastleBuilder
                     castShadows = castRaw != "0" && !string.Equals(castRaw, "false", StringComparison.OrdinalIgnoreCase);
             }
 
-            var entity = level.PlaceEntity(placePos, "Light");
-            entity.Type = "Light";
-            var physics = entity.GetComponent<PhysicsComponent>();
-            if (physics != null)
+            // Build the entity fully BEFORE Level.AddEntity. EntityAddedEvent
+            // subscribers snapshot the object; adding LightComponent afterwards
+            // left the runtime server with a bare Physics entity, so placed
+            // lights did nothing.
+            var entity = new Entity { Id = 0, Type = "Light" };
+            var physics = new PhysicsComponent
             {
-                physics.BodyType = BodyType.Static;
-                physics.CollisionEnabled = false;
-            }
+                Position = placePos,
+                Rotation = Quaternion.Identity,
+                Scale = Vector3.One,
+                BodyType = BodyType.Static,
+                CollisionEnabled = false
+            };
+            entity.AddComponent(physics);
             entity.AddComponent(new LightComponent
             {
                 Type = type,
@@ -525,6 +531,7 @@ namespace CastleBuilder
                 CastShadows = castShadows,
                 ShadowMode = ShadowMode.Auto
             });
+            level.AddEntity(entity);
             Console.WriteLine($"[SceneEditorPanel.PlaceLight] Placed {type} Light entity ID={entity.Id} at {placePos}");
             _editorScene.SyncCurrentLevelToRuntimeServer();
             NotifyHierarchyChanged();

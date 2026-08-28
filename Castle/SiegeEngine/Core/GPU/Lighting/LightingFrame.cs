@@ -98,7 +98,7 @@ namespace SiegeEngine.Core.GPU.Lighting
         public bool ShadowsReady;
         public float ShadowDistance = 80f;
 
-        public static LightingFrame Build(IReadOnlyList<Entity> entities, EnvironmentSettings environment, Vector3 fallbackSunDirection)
+        public static LightingFrame Build(IReadOnlyList<Entity> entities, EnvironmentSettings environment, Vector3 fallbackSunDirection, bool allowFallbackSun = true)
         {
             var frame = new LightingFrame();
             frame.ShadowQuality = LightingSettings.ResolveShadowQuality();
@@ -156,7 +156,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 }
             }
 
-            if (!hasSun)
+            if (!hasSun && allowFallbackSun)
             {
                 Vector3 dir = fallbackSunDirection.LengthSquared() > 1e-8f
                     ? Vector3.Normalize(fallbackSunDirection)
@@ -170,6 +170,19 @@ namespace SiegeEngine.Core.GPU.Lighting
                     ShadowBias = 0.002f,
                     ShadowNormalBias = 0.02f,
                     Technique = frame.ShadowQuality == ShadowQuality.Off ? ShadowTechnique.None : ShadowTechnique.ShadowMap
+                };
+            }
+            else if (!hasSun)
+            {
+                frame.Sun = new GpuDirectionalLight
+                {
+                    Direction = DefaultSunDirection,
+                    Color = Vector3.One,
+                    Intensity = 0f,
+                    CastShadows = false,
+                    ShadowBias = 0.002f,
+                    ShadowNormalBias = 0.02f,
+                    Technique = ShadowTechnique.None
                 };
             }
 

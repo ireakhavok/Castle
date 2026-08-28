@@ -63,11 +63,10 @@ namespace SiegeEngine.Systems
                         continue;
 
                     var physics = entity.GetComponent<PhysicsComponent>();
-                    if (physics != null)
+                    if (physics != null && light.Type != LightType.Directional)
                     {
-                        if (light.Type != LightType.Directional)
-                            light.Position = physics.Position;
-                        if (light.Type != LightType.Point)
+                        light.Position = physics.Position;
+                        if (light.Type == LightType.Spot && light.Direction.LengthSquared() < 1e-8f)
                         {
                             Vector3 forward = Vector3.Transform(Vector3.UnitY, physics.Rotation);
                             if (forward.LengthSquared() > 1e-8f)

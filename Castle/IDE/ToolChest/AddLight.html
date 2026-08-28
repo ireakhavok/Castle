@@ -71,13 +71,9 @@
             <input id="light-cast-shadows" type="checkbox" checked>
             <label style="margin:0">Cast shadows</label>
         </div>
-        <p class="hint">
-            Directional is the scene sun. Default direction is a 3 o'clock sun
-            in Z-up (from +X / east, down -Z). Leave type on Directional if you
-            just want daylight. Point and spot use the click position on the
-            terrain. If you place nothing, the engine already uses that
-            3 o'clock default.
-        </p>
+        <div class="hint">
+            Directional is the scene sun. Point and spot use the click position on the terrain. The editor has no default sun — lighting starts when you place a light. Play Game still uses a 3 o'clock fallback if the scene has no directional light.
+        </div>
         <div class="actions">
             <button data-hook="AddLightConfirm">Place Light</button>
             <button class="secondary" data-hook="CancelAddLight">Cancel</button>

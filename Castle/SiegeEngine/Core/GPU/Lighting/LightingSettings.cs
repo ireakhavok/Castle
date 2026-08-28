@@ -35,9 +35,14 @@ namespace SiegeEngine.Core.GPU.Lighting
             if (_fogModeOverride.HasValue) return _fogModeOverride.Value;
             if (_machine != null && _machine.HasFogOverride) return _machine.FogMode;
             if (FogModeParser.TryParse(_authored?.FogMode, out FogMode authored))
+            {
+                // Exponential is the cheap forward term. Volumetric keeps that
+                // and adds the shaft pass unless the author picked Off or Height.
+                if (authored == FogMode.Exponential)
+                    return FogMode.Volumetric;
                 return authored;
-            if ((_authored?.FogDensity ?? 0f) > 0.001f) return FogMode.Exponential;
-            return FogMode.Exponential;
+            }
+            return FogMode.Volumetric;
         }
 
         public static FogQuality ResolveFogQuality()

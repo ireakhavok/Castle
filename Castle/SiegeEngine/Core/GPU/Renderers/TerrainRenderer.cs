@@ -84,9 +84,17 @@ float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
     if (proj.x <= 0.0 || proj.x >= 1.0 || proj.y <= 0.0 || proj.y >= 1.0 || proj.z > 1.0)
         return 1.0;
     float cell = 0.5;
-    vec2 atlasUv = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell + proj.xy * cell;
-    float closest = texture(uShadowAtlas, atlasUv).r;
-    return (proj.z - uShadowBias > closest) ? 0.35 : 1.0;
+    vec2 atlasOrigin = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell;
+    vec2 atlasUv = atlasOrigin + proj.xy * cell;
+    float shadow = 0.0;
+    float texel = 1.0 / max(uShadowAtlasSize, 1.0);
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+            float closest = texture(uShadowAtlas, atlasUv + vec2(float(x), float(y)) * texel * cell).r;
+            shadow += (proj.z - uShadowBias > closest) ? 0.25 : 1.0;
+        }
+    }
+    return shadow / 9.0;
 }
 void main() {
     vec4 albedo = vColor;

@@ -3,33 +3,33 @@
 SiegeEngine owns the lighting pipeline. Games place lights and pick quality
 presets; the editor and Play Game share the same path.
 
-## Defaults (no setup required)
+## Defaults
 
-- If a scene has no enabled directional light, a **3 o'clock sun** is used.
-  World space is Z-up, so that sun shines from +X (east) downward along -Z.
-- **Shadows are on** at Medium quality. Every `ModelComponent` casts and
+- **Play Game / runtime:** if a scene has no enabled directional light, a
+  **3 o'clock sun** is used. World space is Z-up, so that sun shines from
+  +X (east) downward along -Z.
+- **Editor viewport:** no implicit sun. Place a Light entity with
+  **Add Light**. Until you do, the editor is ambient-only.
+- **Shadows are on** at Medium quality once a shadow-casting directional
+  (or the runtime fallback sun) exists. Every `ModelComponent` casts and
   receives shadows unless you turn those flags off.
-- **Fog is off** until you set `Environment.FogMode`. Density is already
-  `0.01` so switching the mode to Exponential is enough to see it.
+- **Fog is Volumetric** by default (forward exponential plus the shaft
+  pass). Set Fog Mode to Off in the Level properties for a clear day.
 
-You do not have to press Play Game to see lighting. The editor viewport
-builds `LightingFrame` and the cascaded shadow atlas on the same path Play
-uses.
+## Add Light button
 
-## Place Light button
-
-Scene Editor toolbar \u2192 **Place Light**.
+Scene Editor toolbar → **Add Light**.
 
 That drops a directional sun entity at the click point. Select it and the
 Properties panel shows Type, Color, Intensity, Direction, Range, cones,
 CastShadows, and ShadowMode.
 
-- `Directional` \u2014 scene sun. Direction is the travel vector (from the sun
+- `Directional` — scene sun. Direction is the travel vector (from the sun
   toward the ground).
-- `Point` / `Spot` \u2014 local lights. Position follows the entity transform.
+- `Point` / `Spot` — local lights. Position follows the entity transform.
 
-If you never place a light, the 3 o'clock default sun still lights and
-shadows the scene.
+If you never place a light, Play Game still uses the 3 o'clock sun.
+The editor does not.
 
 ## Environment toggles
 
@@ -45,7 +45,7 @@ exposes:
 | Shadow Distance | World units covered by the sun cascades. Default `400` so overhead editor / play cameras still see contact shadows. |
 
 These live on `EnvironmentSettings` in the scene payload (`fogMode`,
-`shadowQuality`, `shadowDistance`, \u2026). Machine-local overrides in
+`shadowQuality`, `shadowDistance`, …). Machine-local overrides in
 `UISettingsManager` win when set.
 
 ## How lighting is defined

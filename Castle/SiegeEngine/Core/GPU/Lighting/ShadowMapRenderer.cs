@@ -77,7 +77,7 @@ namespace SiegeEngine.Core.GPU.Lighting
 
             float near = 0.1f;
             float far = MathF.Max(frame.ShadowDistance, 10f);
-            ComputeCascades(frame, view, projection, cameraPos, near, far, cascadeCount, atlasSize);
+            ComputeCascades(frame, view, projection, cameraPos, near, far, cascadeCount, atlasSize, casters);
 
             int tile = atlasSize / 2;
             _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
@@ -146,11 +146,20 @@ namespace SiegeEngine.Core.GPU.Lighting
                 string modelKey = modelComp.Key?.ToLower();
                 FBXModel fbxModel = modelComp.Model;
                 ModelManager.ModelData modelData = null;
-                if (modelManager != null && !string.IsNullOrEmpty(modelKey))
+                if (modelManager != null)
                 {
-                    if (fbxModel == null)
-                        modelManager.TryGetModel(modelKey, out fbxModel);
-                    modelManager.TryGetModelData(modelKey, out modelData);
+                    void TryKey(string key)
+                    {
+                        if (string.IsNullOrEmpty(key) || modelData != null) return;
+                        if (fbxModel == null)
+                            modelManager.TryGetModel(key, out fbxModel);
+                        modelManager.TryGetModelData(key, out modelData);
+                    }
+                    TryKey(modelKey);
+                    if (modelData == null && !string.IsNullOrEmpty(modelKey) && !modelKey.EndsWith("_pack"))
+                        TryKey(modelKey + "_pack");
+                    if (modelData == null && !string.IsNullOrEmpty(modelKey) && modelKey.EndsWith("_pack"))
+                        TryKey(modelKey.Substring(0, modelKey.Length - 5));
                 }
                 if (modelData == null)
                     continue;
@@ -256,7 +265,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             return view * proj;
         }
 
-        private void ComputeCascades(LightingFrame frame, Matrix4x4 view, Matrix4x4 projection, Vector3 cameraPos, float near, float far, int cascadeCount, int atlasSize)
+        private void ComputeCascades(LightingFrame frame, Matrix4x4 view, Matrix4x4 projection, Vector3 cameraPos, float near, float far, int cascadeCount, int atlasSize, IReadOnlyList<ShadowCaster> casters)
         {
             float[] splits = new float[LightingFrame.MaxCascades];
             for (int i = 0; i < cascadeCount; i++)
@@ -303,7 +312,21 @@ namespace SiegeEngine.Core.GPU.Lighting
                     minY = MathF.Min(minY, ls.Y); maxY = MathF.Max(maxY, ls.Y);
                     minZ = MathF.Min(minZ, ls.Z); maxZ = MathF.Max(maxZ, ls.Z);
                 }
-                float zPad = (maxZ - minZ) * 0.5f + 10f;
+                if (casters != null)
+                {
+                    for (int c = 0; c < casters.Count; c++)
+                    {
+                        Vector3 world = casters[c].ModelMatrix.Translation;
+                        Vector3 ls = Vector3.Transform(world, lightView);
+                        const float radius = 4f;
+                        minX = MathF.Min(minX, ls.X - radius); maxX = MathF.Max(maxX, ls.X + radius);
+                        minY = MathF.Min(minY, ls.Y - radius); maxY = MathF.Max(maxY, ls.Y + radius);
+                        minZ = MathF.Min(minZ, ls.Z - radius); maxZ = MathF.Max(maxZ, ls.Z + radius);
+                    }
+                }
+                float pad = MathF.Max((maxX - minX), (maxY - minY)) * 0.08f + 2f;
+                minX -= pad; maxX += pad; minY -= pad; maxY += pad;
+                float zPad = (maxZ - minZ) * 0.5f + 20f;
                 Matrix4x4 lightProj = Matrix4x4.CreateOrthographicOffCenter(minX, maxX, minY, maxY, minZ - zPad, maxZ + zPad);
                 frame.CascadeVP[i] = lightView * lightProj;
             }

@@ -108,7 +108,7 @@ namespace SiegeEngine.Core.Definitions
         public string AntiAliasing { get; set; } = "SMAA";
 
         [JsonPropertyName("fogMode")]
-        public string FogMode { get; set; } = "Exponential";
+        public string FogMode { get; set; } = "Volumetric";
 
         [JsonPropertyName("fogQuality")]
         public string FogQuality { get; set; } = "Medium";

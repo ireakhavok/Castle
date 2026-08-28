@@ -27,6 +27,11 @@ namespace CastleBuilder
         private bool _scriptsActivatedForProject;
         private bool _coreSystemsRegistered;
         public static EditorScene Current { get; private set; }
+
+        // Editor viewport has no implicit sun. Place a Light entity.
+        // Play Game still injects LightingFrame.DefaultSunDirection.
+        protected override bool AllowRuntimeDefaultSun => false;
+
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus) { }
         public override void Initialize(int width, int height)
