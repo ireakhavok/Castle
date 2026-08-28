@@ -1,5 +1,6 @@
-﻿// Folder: SiegeEngine/Core/Managers
+// Folder: SiegeEngine/Core/Managers
 // File: UISettingsManager.cs
+using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -17,6 +18,8 @@ namespace SiegeEngine.Core.Managers
         private bool _allowResize;
         private string _currentRenderer;
         private List<string> _availableRenderers;
+        private AntiAliasingMode _antiAliasingMode = AntiAliasingMode.SMAA;
+        private bool _hasAntiAliasingOverride;
 
         public int WindowWidth => _windowWidth;
         public int WindowHeight => _windowHeight;
@@ -38,6 +41,9 @@ namespace SiegeEngine.Core.Managers
             set => _availableRenderers = value ?? new List<string> { "OpenGL" };
         }
 
+        public AntiAliasingMode AntiAliasingMode => _antiAliasingMode;
+        public bool HasAntiAliasingOverride => _hasAntiAliasingOverride;
+
         public UISettingsManager()
         {
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -57,6 +63,14 @@ namespace SiegeEngine.Core.Managers
                 { "Invite to Lobby", 15 },
                 { "Exit", 23 }
             };
+        }
+
+        public void SetAntiAliasingMode(AntiAliasingMode mode, bool save = true)
+        {
+            _antiAliasingMode = mode;
+            _hasAntiAliasingOverride = true;
+            if (save)
+                SaveSettings();
         }
 
         public void UpdateWindowSize(int width, int height, bool saveSettings = true)
@@ -164,7 +178,17 @@ namespace SiegeEngine.Core.Managers
                     {
                         _availableRenderers = new List<string> { "OpenGL" };
                     }
-                    Console.WriteLine($"UISettingsManager: Loaded settings: Window size {_windowWidth}x{_windowHeight}, Fullscreen: {_isFullscreen}, Renderer: {_currentRenderer}");
+                    if (settings.TryGetValue("AntiAliasing", out var aaObj) &&
+                        AntiAliasingModeParser.TryParse(aaObj?.ToString(), out AntiAliasingMode aaMode))
+                    {
+                        _antiAliasingMode = aaMode;
+                        _hasAntiAliasingOverride = true;
+                    }
+                    else
+                    {
+                        _hasAntiAliasingOverride = false;
+                    }
+                    Console.WriteLine($"UISettingsManager: Loaded settings: Window size {_windowWidth}x{_windowHeight}, Fullscreen: {_isFullscreen}, Renderer: {_currentRenderer}, AA: {(_hasAntiAliasingOverride ? _antiAliasingMode.ToString() : "unset")}");
                 }
                 catch (Exception ex)
                 {
@@ -174,6 +198,7 @@ namespace SiegeEngine.Core.Managers
                     _isFullscreen = false;
                     _currentRenderer = "OpenGL";
                     _availableRenderers = new List<string> { "OpenGL" };
+                    _hasAntiAliasingOverride = false;
                 }
             }
             else
@@ -184,6 +209,7 @@ namespace SiegeEngine.Core.Managers
                 _isFullscreen = false;
                 _currentRenderer = "OpenGL";
                 _availableRenderers = new List<string> { "OpenGL" };
+                _hasAntiAliasingOverride = false;
             }
         }
 
@@ -200,9 +226,11 @@ namespace SiegeEngine.Core.Managers
                     { "CurrentRenderer", CurrentRenderer },
                     { "AvailableRenderers", AvailableRenderers }
                 };
+                if (_hasAntiAliasingOverride)
+                    settings["AntiAliasing"] = AntiAliasingModeParser.ToPayloadString(_antiAliasingMode);
                 string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_settingsPath, json);
-                Console.WriteLine($"UISettingsManager: Saved settings: Window size {_windowWidth}x{_windowHeight}, Fullscreen: {_isFullscreen}, Renderer: {_currentRenderer}");
+                Console.WriteLine($"UISettingsManager: Saved settings: Window size {_windowWidth}x{_windowHeight}, Fullscreen: {_isFullscreen}, Renderer: {_currentRenderer}, AA: {(_hasAntiAliasingOverride ? _antiAliasingMode.ToString() : "unset")}");
             }
             catch (Exception ex)
             {
