@@ -188,12 +188,10 @@ vec2 WorldPlanarUV(vec3 worldPos, vec3 normal, int axis, vec2 tiling, vec2 offse
 
 float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
     vec3 n = normalize(normal);
-    vec3 offsetPos = worldPos + n * max(uShadowNormalBias, 0.08);
+    vec3 offsetPos = worldPos + n * max(uShadowNormalBias, 0.03);
     vec4 lightClip = uCascadeVP[cascade] * vec4(offsetPos, 1.0);
     vec3 proj = lightClip.xyz / max(lightClip.w, 0.0001);
     proj = proj * 0.5 + 0.5;
-    // Out of this tile: try the next cascade. Never clamp-sample the last tile
-    // (that is the square cutoff on the terrain).
     if (proj.x <= 0.002 || proj.x >= 0.998 || proj.y <= 0.002 || proj.y >= 0.998 || proj.z <= 0.0 || proj.z >= 1.0)
         return -1.0;
     float cell = 0.5;
@@ -206,7 +204,7 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
     float umbra = uShadowStrength;
     if (umbra < 0.0) umbra = 0.08;
     float nDotL = max(dot(n, normalize(-uLightDir)), 0.0);
-    float slopeBias = max(uShadowBias, 0.0025) * (1.0 + (1.0 - nDotL) * 8.0);
+    float bias = max(uShadowBias, 0.0005) * (1.0 + (1.0 - nDotL) * 2.0);
     vec2 tileMin = atlasOrigin + texel * cell;
     vec2 tileMax = atlasOrigin + cell - texel * cell;
     float shadow = 0.0;
@@ -217,14 +215,12 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
             if (abs(y) > kernel) continue;
             vec2 suv = clamp(atlasUv + vec2(float(x), float(y)) * texel * cell, tileMin, tileMax);
             float closest = texture(uShadowAtlas, suv).r;
-            // Empty texel (cleared far = 1, never-written = 0) is lit. That
-            // empty-as-shadow path painted the cascade box onto the terrain.
-            if (closest <= 0.001 || closest >= 0.999)
-                shadow += 1.0;
-            else if (proj.z <= closest + slopeBias)
+            // Never-written texel is 0. Cleared empty is 1, and proj.z < 1
+            // so the compare below already treats it as lit.
+            if (closest <= 0.0005)
                 shadow += 1.0;
             else
-                shadow += umbra;
+                shadow += (proj.z > closest + bias) ? umbra : 1.0;
             taps++;
         }
     }

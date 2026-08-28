@@ -89,13 +89,12 @@ namespace SiegeEngine.Core.GPU.Lighting
                 frame.CascadeCount = cascadeCount;
                 frame.ShadowAtlas = _atlasDepth;
 
-                float far = MathF.Max(frame.ShadowDistance, 8192f);
+                float far = MathF.Max(frame.ShadowDistance, 2048f);
                 ComputeCascades(frame, cameraPos, far, cascadeCount, atlasSize, casters);
 
-                // Back-face only. Front faces writing their own depth is what
-                // turned sunlit model sides gray (self-shadow into ambient).
-                _rc.Enable(_e.CullFace);
-                _rc.CullFace(GL_FRONT);
+                // Models render two-sided. Culling front faces emptied the
+                // atlas (winding is not reliable) and sun shadows vanished.
+                _rc.Disable(_e.CullFace);
 
                 int tile = atlasSize / 2;
                 _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
@@ -171,6 +170,8 @@ namespace SiegeEngine.Core.GPU.Lighting
                 // Light visualization meshes and editor gizmos must not write
                 // into the point cubemap or the sun atlas.
                 if (entity.GetComponent<LightComponent>() != null)
+                    continue;
+                if (entity.GetComponent<PreviewComponent>() != null)
                     continue;
                 if (IsEditorHelperKey(modelComp.Key))
                     continue;
@@ -333,38 +334,38 @@ namespace SiegeEngine.Core.GPU.Lighting
             // z=300 used to park the ortho in the sky; a caster-average focus
             // used to park a second box somewhere else on the map.
             Vector3 groundFocus = new Vector3(cameraPos.X, cameraPos.Y, 0f);
-            float worldRadius = MathF.Max(far, 8192f);
+            // 2048 covers a large map. 8192 made 24-bit depth coarser than a
+            // person, so model-on-terrain sun shadows disappeared.
+            float worldRadius = Math.Clamp(far, 1024f, 4096f);
 
             float camHeight = MathF.Max(MathF.Abs(cameraPos.Z), 8f);
-            // Keep the near tile large enough that an overhead view does not
-            // show a sharp square, but still tighter than the world tile.
-            float near = Math.Clamp(camHeight * 1.4f, 96f, 768f);
+            float near = Math.Clamp(camHeight * 1.2f, 64f, 384f);
             float[] radii = new float[LightingFrame.MaxCascades];
             if (frame.ShadowQuality == ShadowQuality.Ultra)
             {
                 radii[0] = near;
-                radii[1] = near * 2.5f;
-                radii[2] = near * 6.0f;
+                radii[1] = near * 2.4f;
+                radii[2] = near * 5.5f;
                 radii[3] = worldRadius;
             }
             else if (frame.ShadowQuality == ShadowQuality.High)
             {
                 radii[0] = near * 1.1f;
-                radii[1] = near * 2.8f;
-                radii[2] = near * 6.5f;
+                radii[1] = near * 2.6f;
+                radii[2] = near * 6.0f;
                 radii[3] = worldRadius;
             }
             else if (frame.ShadowQuality == ShadowQuality.Low)
             {
-                radii[0] = MathF.Max(near * 2.0f, 256f);
+                radii[0] = MathF.Max(near * 1.8f, 192f);
                 radii[1] = worldRadius;
                 radii[2] = worldRadius;
                 radii[3] = worldRadius;
             }
             else
             {
-                radii[0] = near * 1.35f;
-                radii[1] = near * 3.5f;
+                radii[0] = near * 1.25f;
+                radii[1] = near * 3.2f;
                 radii[2] = worldRadius;
                 radii[3] = worldRadius;
             }
@@ -376,14 +377,19 @@ namespace SiegeEngine.Core.GPU.Lighting
             Vector3 lightUp = MathF.Abs(Vector3.Dot(lightDir, Vector3.UnitZ)) > 0.95f ? Vector3.UnitX : Vector3.UnitZ;
 
             int tile = Math.Max(atlasSize / 2, 1);
-            float zBack = worldRadius + 256f;
-            float zFwd = worldRadius + 256f;
+            float heightPad = MathF.Max(camHeight, 64f);
 
             for (int i = 0; i < cascadeCount; i++)
             {
                 float radius = radii[i];
                 float texel = MathF.Max((radius * 2f) / tile, 0.05f);
                 Vector3 focus = SnapToTexel(groundFocus, texel);
+
+                // Tight Z per cascade so a 2m caster is several depth texels,
+                // not a rounding error on a 16km clip range.
+                float zExtent = radius * 2.2f + heightPad + 32f;
+                float zBack = zExtent;
+                float zFwd = zExtent;
 
                 Vector3 eye = focus - lightDir * zBack;
                 Matrix4x4 lightView = Matrix4x4.CreateLookAt(eye, focus, lightUp);

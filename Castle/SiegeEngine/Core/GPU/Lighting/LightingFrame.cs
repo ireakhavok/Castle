@@ -171,8 +171,8 @@ namespace SiegeEngine.Core.GPU.Lighting
                     Color = color,
                     Intensity = intensity,
                     CastShadows = cast,
-                    ShadowBias = 0.005f,
-                    ShadowNormalBias = 0.12f,
+                    ShadowBias = 0.0008f,
+                    ShadowNormalBias = 0.04f,
                     Technique = cast ? ShadowTechnique.ShadowMap : ShadowTechnique.None
                 };
                 hasSun = intensity > 0.001f;
@@ -261,8 +261,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             shader.SetUniform("uShadowsEnabled", shadows ? 1 : 0);
             shader.SetUniform("uCascadeCount", shadows ? CascadeCount : 0);
             shader.SetUniform("uCascadeSplits", CascadeSplits.X, CascadeSplits.Y, CascadeSplits.Z, CascadeSplits.W);
-            shader.SetUniform("uShadowBias", Sun.ShadowBias > 0f ? Sun.ShadowBias : 0.004f);
-            shader.SetUniform("uShadowNormalBias", Sun.ShadowNormalBias > 0f ? Sun.ShadowNormalBias : 0.06f);
+            shader.SetUniform("uShadowBias", Sun.ShadowBias > 0f ? Sun.ShadowBias : 0.0008f);
+            shader.SetUniform("uShadowNormalBias", Sun.ShadowNormalBias > 0f ? Sun.ShadowNormalBias : 0.04f);
             shader.SetUniform("uShadowAtlasSize", ShadowQuality switch
             {
                 ShadowQuality.Ultra => 4096f,
