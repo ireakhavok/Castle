@@ -106,6 +106,33 @@ namespace SiegeEngine.Core.Networking
                         existing.AddComponent(newSound);
                     }
                 }
+                var existingLight = existing.GetComponent<LightComponent>();
+                var newLight = entity.GetComponent<LightComponent>();
+                if (newLight != null)
+                {
+                    if (existingLight != null)
+                    {
+                        existingLight.Type = newLight.Type;
+                        existingLight.Color = newLight.Color;
+                        existingLight.Intensity = newLight.Intensity;
+                        existingLight.Position = newLight.Position;
+                        existingLight.Direction = newLight.Direction;
+                        existingLight.AttenuationLinear = newLight.AttenuationLinear;
+                        existingLight.AttenuationQuadratic = newLight.AttenuationQuadratic;
+                        existingLight.Enabled = newLight.Enabled;
+                        existingLight.Range = newLight.Range;
+                        existingLight.InnerConeDegrees = newLight.InnerConeDegrees;
+                        existingLight.OuterConeDegrees = newLight.OuterConeDegrees;
+                        existingLight.CastShadows = newLight.CastShadows;
+                        existingLight.ShadowMode = newLight.ShadowMode;
+                        existingLight.ShadowBias = newLight.ShadowBias;
+                        existingLight.ShadowNormalBias = newLight.ShadowNormalBias;
+                    }
+                    else
+                    {
+                        existing.AddComponent(newLight);
+                    }
+                }
                 Console.WriteLine($"[ClientGameServerProxy] Updated existing entity {entity.Id} (prevented duplicate from editor sync)");
                 return;
             }

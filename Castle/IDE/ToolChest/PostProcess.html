@@ -25,9 +25,21 @@
             width: 100%;
             box-sizing: border-box;
         }
+        input[type="range"] {
+            padding: 0;
+            height: 22px;
+        }
         .row { display: flex; gap: 8px; }
         .row > div { flex: 1; }
         .hint { font-size: 11px; color: #888; margin: 10px 0 14px; line-height: 1.4; }
+        .readout {
+            font-size: 12px;
+            color: #7CFFCB;
+            background: #1a1a1a;
+            border: 1px solid #383838;
+            padding: 6px 8px;
+            margin: 4px 0 8px;
+        }
         .actions { display: flex; gap: 8px; margin-top: 14px; }
         button {
             background: #c9a227;
@@ -51,8 +63,12 @@
             <input id="pp-sun-enabled" type="checkbox">
             <div class="field">Enable sun</div>
         </div>
-        <div class="field">Sun direction (travel vector, Z-up)</div>
-        <input id="pp-sun-direction" value="-0.85, 0.10, -0.52">
+        <div class="field">Sun azimuth (0 = +X / east, 90 = +Y)</div>
+        <input id="pp-sun-azimuth" type="range" min="0" max="360" step="1" value="187">
+        <div class="field">Sun elevation (5 = horizon, 90 = overhead)</div>
+        <input id="pp-sun-elevation" type="range" min="5" max="85" step="1" value="31">
+        <div class="field">Travel vector (unit, Z-up)</div>
+        <div id="pp-sun-vector" class="readout">-0.850, 0.100, -0.520</div>
         <div class="row">
             <div>
                 <div class="field">Sun intensity</div>
@@ -98,7 +114,7 @@
         <div class="field">Fog start distance</div>
         <input id="pp-fog-start" value="40">
         <div class="hint">
-            Sun off keeps the editor dark. Turn sun on to light the scene and cast model shadows onto terrain. Fog stays off until you pick a mode.
+            Sun stays off until you check Enable sun and click Apply. Shadows from models onto terrain need Enable sun plus Sun casts shadows. Fog stays off until you pick a mode. Play Game uses these settings; the editor does not invent a default sun.
         </div>
         <div class="actions">
             <button data-hook="PostProcessApply">Apply</button>

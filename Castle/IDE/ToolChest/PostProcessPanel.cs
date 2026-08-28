@@ -4,6 +4,7 @@ using Keystone;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Lighting;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
 using System;
@@ -50,7 +51,7 @@ namespace ToolChest
             IsModal = true;
             RenderOrder = 1200;
             Scaling = ScalingMode.Fill;
-            Size = new Vector2(440, 560);
+            Size = new Vector2(460, 640);
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -72,10 +73,14 @@ namespace ToolChest
 
         private void Prefill()
         {
-            var env = ProjectSettings.Current?.CurrentLevel?.Environment;
-            if (env == null)
-                return;
-            SetInput("pp-sun-direction", FormatVec3(env.SunDirection.LengthSquared() > 1e-8f ? env.SunDirection : new Vector3(-0.85f, 0.10f, -0.52f)));
+            var env = ResolveEnvironment() ?? new EnvironmentSettings();
+            Vector3 dir = env.SunDirection.LengthSquared() > 1e-8f
+                ? Vector3.Normalize(env.SunDirection)
+                : LightingFrame.DefaultSunDirection;
+            DirectionToAzEl(dir, out float azimuth, out float elevation);
+            SetInput("pp-sun-azimuth", azimuth.ToString("0", CultureInfo.InvariantCulture));
+            SetInput("pp-sun-elevation", elevation.ToString("0", CultureInfo.InvariantCulture));
+            SetReadout("pp-sun-vector", FormatVec3(dir));
             SetInput("pp-sun-intensity", env.SunIntensity.ToString(CultureInfo.InvariantCulture));
             SetInput("pp-fog-density", env.FogDensity.ToString(CultureInfo.InvariantCulture));
             SetInput("pp-fog-start", env.FogStart.ToString(CultureInfo.InvariantCulture));
@@ -88,38 +93,74 @@ namespace ToolChest
 
         private void Apply()
         {
-            var dirElem = _uiOverlay.FindElementById("pp-sun-direction") as InputElement;
-            var intensityElem = _uiOverlay.FindElementById("pp-sun-intensity") as InputElement;
-            var shadowElem = _uiOverlay.FindElementById("pp-shadow-quality") as SelectElement;
-            var fogModeElem = _uiOverlay.FindElementById("pp-fog-mode") as SelectElement;
-            var fogQualityElem = _uiOverlay.FindElementById("pp-fog-quality") as SelectElement;
-            var densityElem = _uiOverlay.FindElementById("pp-fog-density") as InputElement;
-            var startElem = _uiOverlay.FindElementById("pp-fog-start") as InputElement;
-            var sunEnabledElem = _uiOverlay.FindElementById("pp-sun-enabled") as InputElement;
-            var sunCastElem = _uiOverlay.FindElementById("pp-sun-cast-shadows") as InputElement;
+            float azimuth = ParseFloat(GetInputValue("pp-sun-azimuth"), 187f);
+            float elevation = ParseFloat(GetInputValue("pp-sun-elevation"), 31f);
+            Vector3 direction = AzElToDirection(azimuth, elevation);
+            SetReadout("pp-sun-vector", FormatVec3(direction));
 
-            Vector3 direction = ParseVec3(dirElem?.Value, new Vector3(-0.85f, 0.10f, -0.52f));
-            if (direction.LengthSquared() < 1e-8f)
-                direction = new Vector3(-0.85f, 0.10f, -0.52f);
-            direction = Vector3.Normalize(direction);
+            float intensity = ParseFloat(GetInputValue("pp-sun-intensity"), 1f);
+            float density = ParseFloat(GetInputValue("pp-fog-density"), 0.003f);
+            float start = ParseFloat(GetInputValue("pp-fog-start"), 40f);
+            string shadowQuality = GetSelectValue("pp-shadow-quality") ?? "Medium";
+            string fogMode = GetSelectValue("pp-fog-mode") ?? "Off";
+            string fogQuality = GetSelectValue("pp-fog-quality") ?? "Off";
+            bool sunEnabled = GetChecked("pp-sun-enabled");
+            bool sunCast = GetChecked("pp-sun-cast-shadows");
+
+            var env = CommitEnvironment(direction, intensity, sunEnabled, sunCast, shadowQuality, fogMode, fogQuality, density, start);
+            LightingSettings.BindAuthored(env);
+            LightingFrame.Current = null;
 
             _eventBus?.Publish(new GenericEvent
             {
                 Hook = "PostProcessSet",
                 Data = new Dictionary<string, string>
                 {
-                    { "sunEnabled", IsChecked(sunEnabledElem?.Value) ? "true" : "false" },
+                    { "sunEnabled", sunEnabled ? "true" : "false" },
                     { "sunDirection", FormatVec3(direction) },
-                    { "sunIntensity", ParseFloat(intensityElem?.Value, 1f).ToString(CultureInfo.InvariantCulture) },
-                    { "sunCastShadows", IsChecked(sunCastElem?.Value) ? "true" : "false" },
-                    { "shadowQuality", shadowElem?.Value ?? "Medium" },
-                    { "fogMode", fogModeElem?.Value ?? "Off" },
-                    { "fogQuality", fogQualityElem?.Value ?? "Off" },
-                    { "fogDensity", ParseFloat(densityElem?.Value, 0.003f).ToString(CultureInfo.InvariantCulture) },
-                    { "fogStart", ParseFloat(startElem?.Value, 40f).ToString(CultureInfo.InvariantCulture) }
+                    { "sunIntensity", intensity.ToString(CultureInfo.InvariantCulture) },
+                    { "sunCastShadows", sunCast ? "true" : "false" },
+                    { "shadowQuality", shadowQuality },
+                    { "fogMode", fogMode },
+                    { "fogQuality", fogQuality },
+                    { "fogDensity", density.ToString(CultureInfo.InvariantCulture) },
+                    { "fogStart", start.ToString(CultureInfo.InvariantCulture) }
                 }
             });
             _eventBus?.Publish(new ClosePanelEvent(this));
+        }
+
+        public static EnvironmentSettings CommitEnvironment(
+            Vector3 direction,
+            float intensity,
+            bool sunEnabled,
+            bool sunCastShadows,
+            string shadowQuality,
+            string fogMode,
+            string fogQuality,
+            float fogDensity,
+            float fogStart)
+        {
+            var env = ResolveEnvironment() ?? new EnvironmentSettings();
+            env.SunEnabled = sunEnabled;
+            env.SunDirection = direction.LengthSquared() > 1e-8f ? Vector3.Normalize(direction) : LightingFrame.DefaultSunDirection;
+            env.SunIntensity = intensity < 0f ? 0f : intensity;
+            env.SunCastShadows = sunCastShadows;
+            env.ShadowQuality = string.IsNullOrWhiteSpace(shadowQuality) ? "Medium" : shadowQuality.Trim();
+            env.FogMode = string.IsNullOrWhiteSpace(fogMode) ? "Off" : fogMode.Trim();
+            env.FogQuality = string.IsNullOrWhiteSpace(fogQuality) ? "Off" : fogQuality.Trim();
+            env.FogDensity = fogDensity < 0f ? 0f : fogDensity;
+            env.FogStart = fogStart < 0f ? 0f : fogStart;
+
+            var level = ProjectSettings.Current?.CurrentLevel;
+            if (level != null)
+                level.Environment = env;
+
+            var sceneData = ProjectSettings.Current?.CurrentSceneData;
+            if (sceneData != null)
+                sceneData.Environment = env;
+
+            return env;
         }
 
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -128,9 +169,56 @@ namespace ToolChest
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Overlay });
         }
 
+        private static EnvironmentSettings ResolveEnvironment()
+        {
+            var levelEnv = ProjectSettings.Current?.CurrentLevel?.Environment;
+            if (levelEnv != null)
+                return levelEnv;
+            return ProjectSettings.Current?.CurrentSceneData?.Environment;
+        }
+
+        /// <summary>
+        /// Travel vector (light travels along this, Z-up) from compass azimuth + elevation.
+        /// Azimuth 0 = +X, 90 = +Y. Elevation 90 = +Z (overhead).
+        /// </summary>
+        public static Vector3 AzElToDirection(float azimuthDeg, float elevationDeg)
+        {
+            float az = azimuthDeg * MathF.PI / 180f;
+            float el = Math.Clamp(elevationDeg, 5f, 85f) * MathF.PI / 180f;
+            Vector3 sunPos = new Vector3(
+                MathF.Cos(el) * MathF.Cos(az),
+                MathF.Cos(el) * MathF.Sin(az),
+                MathF.Sin(el));
+            Vector3 travel = -sunPos;
+            if (travel.LengthSquared() < 1e-8f)
+                return LightingFrame.DefaultSunDirection;
+            return Vector3.Normalize(travel);
+        }
+
+        public static void DirectionToAzEl(Vector3 travel, out float azimuthDeg, out float elevationDeg)
+        {
+            Vector3 sunPos = travel.LengthSquared() > 1e-8f ? Vector3.Normalize(-travel) : -LightingFrame.DefaultSunDirection;
+            float el = MathF.Asin(Math.Clamp(sunPos.Z, -1f, 1f));
+            float az = MathF.Atan2(sunPos.Y, sunPos.X);
+            if (az < 0f) az += MathF.PI * 2f;
+            azimuthDeg = az * 180f / MathF.PI;
+            elevationDeg = Math.Clamp(el * 180f / MathF.PI, 5f, 85f);
+        }
+
         private void SetInput(string id, string value)
         {
-            if (_uiOverlay.FindElementById(id) is InputElement input)
+            var elem = _uiOverlay.FindElementById(id);
+            if (elem is RangeElement range)
+            {
+                if (float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out float parsed))
+                {
+                    range.Value = parsed;
+                    range.Attributes["value"] = parsed.ToString(CultureInfo.InvariantCulture);
+                    ((InputElement)range).Value = parsed.ToString(CultureInfo.InvariantCulture);
+                }
+                return;
+            }
+            if (elem is InputElement input)
                 input.Value = value;
         }
 
@@ -143,7 +231,58 @@ namespace ToolChest
         private void SetCheckbox(string id, bool value)
         {
             if (_uiOverlay.FindElementById(id) is InputElement input)
+            {
                 input.Value = value ? "true" : "false";
+                input.Checked = value;
+                if (input.Attributes != null)
+                    input.Attributes["checked"] = value ? "checked" : "";
+            }
+        }
+
+        private void SetReadout(string id, string value)
+        {
+            var elem = _uiOverlay.FindElementById(id);
+            if (elem == null) return;
+            try
+            {
+                var textProp = elem.GetType().GetProperty("Text");
+                if (textProp != null && textProp.CanWrite)
+                    textProp.SetValue(elem, value);
+                var inner = elem.GetType().GetProperty("InnerText");
+                if (inner != null && inner.CanWrite)
+                    inner.SetValue(elem, value);
+                if (elem is InputElement input)
+                    input.Value = value;
+            }
+            catch { }
+            if (elem.Attributes != null)
+                elem.Attributes["text"] = value;
+        }
+
+        private string GetInputValue(string id)
+        {
+            var elem = _uiOverlay.FindElementById(id);
+            if (elem is RangeElement range)
+                return range.Value.ToString(CultureInfo.InvariantCulture);
+            if (elem is InputElement input)
+                return input.Value;
+            return null;
+        }
+
+        private string GetSelectValue(string id)
+        {
+            return (_uiOverlay.FindElementById(id) as SelectElement)?.Value;
+        }
+
+        private bool GetChecked(string id)
+        {
+            if (_uiOverlay.FindElementById(id) is InputElement input)
+            {
+                if (input.Checked)
+                    return true;
+                return IsChecked(input.Value);
+            }
+            return false;
         }
 
         private static bool IsChecked(string value)
@@ -159,21 +298,9 @@ namespace ToolChest
             return fallback;
         }
 
-        private static Vector3 ParseVec3(string raw, Vector3 fallback)
-        {
-            if (string.IsNullOrWhiteSpace(raw)) return fallback;
-            var parts = raw.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length < 3) return fallback;
-            if (float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out float x) &&
-                float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float y) &&
-                float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out float z))
-                return new Vector3(x, y, z);
-            return fallback;
-        }
-
         private static string FormatVec3(Vector3 v)
         {
-            return string.Format(CultureInfo.InvariantCulture, "{0}, {1}, {2}", v.X, v.Y, v.Z);
+            return string.Format(CultureInfo.InvariantCulture, "{0:0.000}, {1:0.000}, {2:0.000}", v.X, v.Y, v.Z);
         }
     }
 }

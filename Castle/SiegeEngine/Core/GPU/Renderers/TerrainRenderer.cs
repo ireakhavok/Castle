@@ -149,7 +149,7 @@ void main() {
         }
     }
     if (uUnlit == 1) {
-        FragColor = vec4(0.42, 0.42, 0.42, 1.0);
+        FragColor = vec4(0.486, 1.0, 0.796, 1.0);
         gl_FragDepth = gl_FragCoord.z;
         return;
     }

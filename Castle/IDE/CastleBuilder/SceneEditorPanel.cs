@@ -7,6 +7,7 @@ using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Lighting;
 using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
@@ -80,6 +81,9 @@ namespace CastleBuilder
         private AcousticDebugOverlay _acousticDebug;
         private readonly List<IWorldOverlay> _worldOverlays = new List<IWorldOverlay>();
         private bool _fileSelectedSubscribed = false;
+        private bool _genericSubscribed = false;
+        private bool _entitySelectedSubscribed = false;
+        private long _lastLightPlaceTick;
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
@@ -222,8 +226,16 @@ namespace CastleBuilder
                 _eventBus.Subscribe<FileSelectedEvent>(OnFileSelectedForPlacement);
                 _fileSelectedSubscribed = true;
             }
-            _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
-            _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
+            if (!_entitySelectedSubscribed)
+            {
+                _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
+                _entitySelectedSubscribed = true;
+            }
+            if (!_genericSubscribed)
+            {
+                _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
+                _genericSubscribed = true;
+            }
         }
         private void OnGenericEvent(GenericEvent e)
         {
@@ -445,14 +457,17 @@ namespace CastleBuilder
                 PostProcessPanel.Open(_renderContext, _controlContext, _window, _eventBus);
                 Console.WriteLine("[SceneEditorPanel] Opened PostProcessPanel");
             }
-            else if (hook == "PlaceLight")
-            {
-                PlaceLightFromPanel(null);
-            }
         }
 
         private void PlaceLightFromPanel(GenericEvent evt)
         {
+            long now = Environment.TickCount64;
+            if (now - _lastLightPlaceTick < 250)
+            {
+                Console.WriteLine("[SceneEditorPanel.PlaceLight] Ignored duplicate place within 250ms");
+                return;
+            }
+            _lastLightPlaceTick = now;
             if (!_editorScene.TryGetPlacementPosition(out var hitPoint))
             {
                 Console.WriteLine("[SceneEditorPanel.PlaceLight] Raycast failed - no valid placement position");
@@ -543,6 +558,7 @@ namespace CastleBuilder
                 ShadowMode = ShadowMode.Auto
             });
             level.AddEntity(entity);
+            LightingFrame.Current = null;
             Console.WriteLine($"[SceneEditorPanel.PlaceLight] Placed {type} Light entity ID={entity.Id} at {placePos}");
             _editorScene.SyncCurrentLevelToRuntimeServer();
             NotifyHierarchyChanged();
@@ -552,7 +568,11 @@ namespace CastleBuilder
         {
             var level = ProjectSettings.Current.CurrentLevel;
             if (level == null)
-                return;
+            {
+                string sceneNameFallback = _editorScene?.CurrentGameScene ?? "Main";
+                level = new Level(_eventBus) { Name = sceneNameFallback };
+                ProjectSettings.Current.SetCurrentLevel(level);
+            }
             var env = level.Environment ?? new EnvironmentSettings();
             string Read(string key) => evt?.Data != null && evt.Data.ContainsKey(key) ? evt.Data[key]?.ToString() : null;
             string fogMode = Read("fogMode");
@@ -592,7 +612,12 @@ namespace CastleBuilder
             string sceneName = _editorScene.CurrentGameScene;
             if (project?.Scenes != null && !string.IsNullOrEmpty(sceneName) && project.Scenes.TryGetValue(sceneName, out var sd) && sd != null)
                 sd.Environment = env;
-            Console.WriteLine($"[SceneEditorPanel] PostProcess sun={env.SunEnabled} fog={env.FogMode}/{env.FogQuality} shadows={env.ShadowQuality}");
+            var currentScene = ProjectSettings.Current?.CurrentSceneData;
+            if (currentScene != null)
+                currentScene.Environment = env;
+            LightingSettings.BindAuthored(env);
+            LightingFrame.Current = null;
+            Console.WriteLine($"[SceneEditorPanel] PostProcess sun={env.SunEnabled} dir={env.SunDirection} fog={env.FogMode}/{env.FogQuality} shadows={env.ShadowQuality}");
         }
 
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
@@ -858,6 +883,16 @@ namespace CastleBuilder
             {
                 _eventBus.Unsubscribe<FileSelectedEvent>(OnFileSelectedForPlacement);
                 _fileSelectedSubscribed = false;
+            }
+            if (_entitySelectedSubscribed)
+            {
+                _eventBus.Unsubscribe<EntitySelectedEvent>(OnEntitySelected);
+                _entitySelectedSubscribed = false;
+            }
+            if (_genericSubscribed)
+            {
+                _eventBus.Unsubscribe<GenericEvent>(OnGenericEvent);
+                _genericSubscribed = false;
             }
             PanelManager.Current.ReleasePanelCapture();
             _editorScene?.Dispose();

@@ -318,7 +318,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                     {
                         Vector3 world = casters[c].ModelMatrix.Translation;
                         Vector3 ls = Vector3.Transform(world, lightView);
-                        const float radius = 4f;
+                        const float radius = 32f;
                         minX = MathF.Min(minX, ls.X - radius); maxX = MathF.Max(maxX, ls.X + radius);
                         minY = MathF.Min(minY, ls.Y - radius); maxY = MathF.Max(maxY, ls.Y + radius);
                         minZ = MathF.Min(minZ, ls.Z - radius); maxZ = MathF.Max(maxZ, ls.Z + radius);
@@ -326,7 +326,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 }
                 float pad = MathF.Max((maxX - minX), (maxY - minY)) * 0.08f + 2f;
                 minX -= pad; maxX += pad; minY -= pad; maxY += pad;
-                float zPad = (maxZ - minZ) * 0.5f + 20f;
+                float zPad = (maxZ - minZ) * 0.75f + 80f;
                 Matrix4x4 lightProj = Matrix4x4.CreateOrthographicOffCenter(minX, maxX, minY, maxY, minZ - zPad, maxZ + zPad);
                 frame.CascadeVP[i] = lightView * lightProj;
             }

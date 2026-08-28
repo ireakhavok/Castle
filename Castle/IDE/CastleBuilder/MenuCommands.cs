@@ -126,6 +126,7 @@ namespace CastleBuilder
         public static void PlayGame(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             Console.WriteLine("[MenuCommands.PlayGame] Launching CURRENT project Level in NEW isolated window (pure runtime client - pure in-memory payload via temp transfer file, no forced disk write)");
+            EditorScene.Current?.FlushActiveSceneData();
             string projectPath = ProjectSettings.Current.ActiveProject ?? string.Empty;
             string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
             string payloadFile = BlueprintManager.BuildPlayPayloadFile();
