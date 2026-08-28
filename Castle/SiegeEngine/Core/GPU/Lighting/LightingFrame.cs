@@ -171,14 +171,17 @@ namespace SiegeEngine.Core.GPU.Lighting
                     Color = color,
                     Intensity = intensity,
                     CastShadows = cast,
-                    ShadowBias = 0.002f,
-                    ShadowNormalBias = 0.02f,
+                    ShadowBias = 0.0015f,
+                    ShadowNormalBias = 0.035f,
                     Technique = cast ? ShadowTechnique.ShadowMap : ShadowTechnique.None
                 };
                 hasSun = intensity > 0.001f;
             }
 
-            if (!hasSun && allowFallbackSun)
+            // Do not drown authored point/spot lights (or an explicit sun-off)
+            // with the runtime default directional. Fallback only when the
+            // scene has no sun and no local lights.
+            if (!hasSun && allowFallbackSun && frame.PointCount == 0 && frame.SpotCount == 0)
             {
                 Vector3 dir = fallbackSunDirection.LengthSquared() > 1e-8f
                     ? Vector3.Normalize(fallbackSunDirection)
@@ -216,10 +219,11 @@ namespace SiegeEngine.Core.GPU.Lighting
             if (shader == null) return;
 
             shader.SetUniform("uAmbientColor", AmbientColor.X, AmbientColor.Y, AmbientColor.Z);
-            shader.SetUniform("uAmbientStrength", 0.30f);
+            shader.SetUniform("uAmbientStrength", 0.16f);
             shader.SetUniform("uLightDir", Sun.Direction.X, Sun.Direction.Y, Sun.Direction.Z);
             shader.SetUniform("uLightColor", Sun.Color.X, Sun.Color.Y, Sun.Color.Z);
-            shader.SetUniform("uLightIntensity", Sun.Intensity);
+            float sunPunch = Sun.Intensity <= 0f ? 0f : MathF.Min(Sun.Intensity * 1.5f, 4f);
+            shader.SetUniform("uLightIntensity", sunPunch);
 
             shader.SetUniform("uPointCount", PointCount);
             for (int i = 0; i < MaxPointLights; i++)
@@ -257,13 +261,26 @@ namespace SiegeEngine.Core.GPU.Lighting
             shader.SetUniform("uShadowsEnabled", shadows ? 1 : 0);
             shader.SetUniform("uCascadeCount", shadows ? CascadeCount : 0);
             shader.SetUniform("uCascadeSplits", CascadeSplits.X, CascadeSplits.Y, CascadeSplits.Z, CascadeSplits.W);
-            shader.SetUniform("uShadowBias", Sun.ShadowBias);
-            shader.SetUniform("uShadowNormalBias", Sun.ShadowNormalBias);
+            shader.SetUniform("uShadowBias", Sun.ShadowBias > 0f ? Sun.ShadowBias : 0.0015f);
+            shader.SetUniform("uShadowNormalBias", Sun.ShadowNormalBias > 0f ? Sun.ShadowNormalBias : 0.035f);
             shader.SetUniform("uShadowAtlasSize", ShadowQuality switch
             {
                 ShadowQuality.Ultra => 4096f,
+                ShadowQuality.High => 4096f,
                 ShadowQuality.Low => 1024f,
                 _ => 2048f
+            });
+            shader.SetUniform("uShadowStrength", ShadowQuality switch
+            {
+                ShadowQuality.Low => 0.14f,
+                ShadowQuality.Ultra => 0.05f,
+                _ => 0.08f
+            });
+            shader.SetUniform("uShadowPcfRadius", ShadowQuality switch
+            {
+                ShadowQuality.Ultra => 3,
+                ShadowQuality.High => 2,
+                _ => 1
             });
 
             for (int i = 0; i < MaxCascades; i++)

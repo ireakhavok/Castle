@@ -70,7 +70,13 @@ namespace SiegeEngine.Scenes
         }
         public void LoadLevelData(string levelName, string projectPath)
         {
-            LoadSceneData(new SceneData { Name = levelName ?? "Main" });
+            // Never replace authored Environment / Skybox with a name-only SceneData.
+            // Play Game was dropping Post Process sun + fog here and falling back
+            // to LightingFrame.DefaultSunDirection.
+            if (_sceneData == null)
+                LoadSceneData(new SceneData { Name = levelName ?? "Main" });
+            else if (string.IsNullOrWhiteSpace(_sceneData.Name))
+                _sceneData.Name = levelName ?? "Main";
             _eventBus.Publish(new SceneActivatedEvent(levelName));
             _player?.InitializeCamera(_controlContext, _window);
         }
@@ -119,7 +125,10 @@ namespace SiegeEngine.Scenes
                 level = new Level();
                 Console.WriteLine("[RuntimeGameplayScene] Fallback empty Level detected - using ctx from registry");
             }
-            _skyboxData = level.Skybox;
+            if (ctx?.SceneData != null)
+                LoadSceneData(ctx.SceneData);
+            ApplyAuthoredEnvironment(level.Environment ?? ctx?.SceneData?.Environment, level.Skybox ?? ctx?.SceneData?.Skybox);
+            _skyboxData = _sceneData?.Skybox ?? level.Skybox;
             if (_skyboxData != null && _skyboxData.Enabled)
             {
                 ResolveSkyboxPaths(_skyboxData, projectPath);

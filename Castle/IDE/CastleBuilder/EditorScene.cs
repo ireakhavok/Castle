@@ -497,6 +497,10 @@ namespace CastleBuilder
             if (level != null && _projectData?.Scenes != null && _projectData.Scenes.TryGetValue(_currentGameSceneName, out var sd))
             {
                 sd.Entities = level.Entities.ConvertAll(e => e.ToData());
+                if (level.Environment != null)
+                    sd.Environment = level.Environment;
+                if (level.Skybox != null)
+                    sd.Skybox = level.Skybox;
             }
             RegisterAllAssetPacks(level);
         }

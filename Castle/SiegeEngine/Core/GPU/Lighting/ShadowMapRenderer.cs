@@ -276,10 +276,28 @@ namespace SiegeEngine.Core.GPU.Lighting
         private void ComputeCascades(LightingFrame frame, Vector3 cameraPos, float far, int cascadeCount, int atlasSize, IReadOnlyList<ShadowCaster> casters)
         {
             float[] radii = new float[LightingFrame.MaxCascades];
-            radii[0] = MathF.Max(far * 0.20f, 8f);
-            radii[1] = MathF.Max(far * 0.45f, radii[0] + 4f);
-            radii[2] = MathF.Max(far * 0.75f, radii[1] + 4f);
-            radii[3] = MathF.Max(far, radii[2] + 4f);
+            // High/Ultra pull cascade 0 in so the near tile has more texels/meter.
+            if (frame.ShadowQuality == ShadowQuality.Ultra)
+            {
+                radii[0] = MathF.Max(far * 0.08f, 10f);
+                radii[1] = MathF.Max(far * 0.22f, radii[0] + 6f);
+                radii[2] = MathF.Max(far * 0.50f, radii[1] + 6f);
+                radii[3] = MathF.Max(far, radii[2] + 6f);
+            }
+            else if (frame.ShadowQuality == ShadowQuality.High)
+            {
+                radii[0] = MathF.Max(far * 0.10f, 12f);
+                radii[1] = MathF.Max(far * 0.28f, radii[0] + 6f);
+                radii[2] = MathF.Max(far * 0.55f, radii[1] + 6f);
+                radii[3] = MathF.Max(far, radii[2] + 6f);
+            }
+            else
+            {
+                radii[0] = MathF.Max(far * 0.20f, 12f);
+                radii[1] = MathF.Max(far * 0.45f, radii[0] + 4f);
+                radii[2] = MathF.Max(far * 0.75f, radii[1] + 4f);
+                radii[3] = MathF.Max(far, radii[2] + 4f);
+            }
             frame.CascadeSplits = new Vector4(
                 cascadeCount > 0 ? radii[0] : far,
                 cascadeCount > 1 ? radii[1] : far,
@@ -391,6 +409,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             return quality switch
             {
                 ShadowQuality.Low => 1024,
+                ShadowQuality.High => 4096,
                 ShadowQuality.Ultra => 4096,
                 _ => 2048
             };

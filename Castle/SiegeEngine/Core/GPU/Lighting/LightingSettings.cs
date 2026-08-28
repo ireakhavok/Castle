@@ -25,8 +25,10 @@ namespace SiegeEngine.Core.GPU.Lighting
         public static ShadowQuality ResolveShadowQuality()
         {
             if (_shadowOverride.HasValue) return _shadowOverride.Value;
-            if (_machine != null && _machine.HasShadowQualityOverride) return _machine.ShadowQuality;
+            // Authored Post Process quality wins over the launcher machine cap
+            // so High/Ultra set on the scene actually reach the shadow atlas.
             if (ShadowQualityParser.TryParse(_authored?.ShadowQuality, out ShadowQuality authored)) return authored;
+            if (_machine != null && _machine.HasShadowQualityOverride) return _machine.ShadowQuality;
             return ShadowQuality.Medium;
         }
 

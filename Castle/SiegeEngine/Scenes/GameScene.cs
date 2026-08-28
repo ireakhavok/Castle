@@ -40,12 +40,54 @@ namespace SiegeEngine.Scenes
 
         public virtual void LoadSceneData(SceneData data)
         {
-            _sceneData = data;
-            if (data?.Skybox != null)
+            if (data == null)
+                return;
+            if (_sceneData == null)
+            {
+                _sceneData = data;
+            }
+            else
+            {
+                if (!string.IsNullOrWhiteSpace(data.Name))
+                    _sceneData.Name = data.Name;
+                if (data.Environment != null)
+                    _sceneData.Environment = data.Environment;
+                if (data.Skybox != null)
+                    _sceneData.Skybox = data.Skybox;
+                if (data.Terrain != null)
+                    _sceneData.Terrain = data.Terrain;
+                if (data.Settings != null)
+                    _sceneData.Settings = data.Settings;
+                if (data.Entities != null && data.Entities.Count > 0)
+                    _sceneData.Entities = data.Entities;
+            }
+            if (data.Skybox != null)
                 _skyboxData = data.Skybox;
         }
 
-        protected override EnvironmentSettings GetEnvironmentSettings() => _sceneData?.Environment;
+        protected override EnvironmentSettings GetEnvironmentSettings()
+        {
+            if (_sceneData?.Environment != null)
+                return _sceneData.Environment;
+            return null;
+        }
+
+        /// <summary>
+        /// Play applies the authored Post Process / Level environment so the
+        /// runtime window matches the editor instead of the fallback sun.
+        /// </summary>
+        protected void ApplyAuthoredEnvironment(EnvironmentSettings environment, SkyboxData skybox = null)
+        {
+            if (_sceneData == null)
+                _sceneData = new SceneData { Name = SceneName };
+            if (environment != null)
+                _sceneData.Environment = environment;
+            if (skybox != null)
+            {
+                _sceneData.Skybox = skybox;
+                _skyboxData = skybox;
+            }
+        }
 
         protected virtual void LoadContentFromContext(SceneContext ctx)
         {

@@ -130,6 +130,8 @@ uniform sampler2D uShadowAtlas;
 uniform float uShadowBias;
 uniform float uShadowNormalBias;
 uniform float uShadowAtlasSize;
+uniform float uShadowStrength;
+uniform int uShadowPcfRadius;
 
 vec3 SampleAlbedo(int matIdx, vec2 uv) {
     if (matIdx == 1) return texture(uAlbedoMap[1], uv).rgb;
@@ -181,6 +183,36 @@ vec2 WorldPlanarUV(vec3 worldPos, vec3 normal, int axis, vec2 tiling, vec2 offse
     return uv * tiling + offset;
 }
 
+float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
+    vec3 offsetPos = worldPos + normal * uShadowNormalBias;
+    vec4 lightClip = uCascadeVP[cascade] * vec4(offsetPos, 1.0);
+    vec3 proj = lightClip.xyz / max(lightClip.w, 0.0001);
+    proj = proj * 0.5 + 0.5;
+    if (proj.x <= 0.001 || proj.x >= 0.999 || proj.y <= 0.001 || proj.y >= 0.999 || proj.z <= 0.0 || proj.z >= 1.0)
+        return -1.0;
+    float cell = 0.5;
+    vec2 atlasOrigin = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell;
+    vec2 atlasUv = atlasOrigin + proj.xy * cell;
+    float shadow = 0.0;
+    float texel = 1.0 / max(uShadowAtlasSize, 1.0);
+    int kernel = uShadowPcfRadius;
+    if (kernel < 1) kernel = 1;
+    if (kernel > 3) kernel = 3;
+    int taps = 0;
+    float umbra = uShadowStrength;
+    if (umbra < 0.0) umbra = 0.08;
+    for (int x = -3; x <= 3; x++) {
+        if (abs(x) > kernel) continue;
+        for (int y = -3; y <= 3; y++) {
+            if (abs(y) > kernel) continue;
+            float closest = texture(uShadowAtlas, atlasUv + vec2(float(x), float(y)) * texel * cell).r;
+            shadow += (proj.z - uShadowBias > closest) ? umbra : 1.0;
+            taps++;
+        }
+    }
+    return shadow / float(max(taps, 1));
+}
+
 float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
     if (uShadowsEnabled == 0 || uReceiveShadows == 0 || uCascadeCount <= 0)
         return 1.0;
@@ -189,25 +221,14 @@ float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
     if (uCascadeCount > 1 && dist > uCascadeSplits.x) cascade = 1;
     if (uCascadeCount > 2 && dist > uCascadeSplits.y) cascade = 2;
     if (uCascadeCount > 3 && dist > uCascadeSplits.z) cascade = 3;
-    vec3 offsetPos = worldPos + normal * uShadowNormalBias;
-    vec4 lightClip = uCascadeVP[cascade] * vec4(offsetPos, 1.0);
-    vec3 proj = lightClip.xyz / max(lightClip.w, 0.0001);
-    proj = proj * 0.5 + 0.5;
-    if (proj.x <= 0.0 || proj.x >= 1.0 || proj.y <= 0.0 || proj.y >= 1.0 || proj.z <= 0.0 || proj.z >= 1.0)
-        return 1.0;
-    float cell = 0.5;
-    vec2 atlasOrigin = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell;
-    vec2 atlasUv = atlasOrigin + proj.xy * cell;
-    float bias = uShadowBias;
-    float shadow = 0.0;
-    float texel = 1.0 / max(uShadowAtlasSize, 1.0);
-    for (int x = -1; x <= 1; x++) {
-        for (int y = -1; y <= 1; y++) {
-            float closest = texture(uShadowAtlas, atlasUv + vec2(float(x), float(y)) * texel * cell).r;
-            shadow += (proj.z - bias > closest) ? 0.0 : 1.0;
-        }
+    float s = SampleCascadeAt(cascade, worldPos, normal);
+    if (s >= 0.0) return s;
+    for (int i = 0; i < 4; i++) {
+        if (i <= cascade || i >= uCascadeCount) continue;
+        s = SampleCascadeAt(i, worldPos, normal);
+        if (s >= 0.0) return s;
     }
-    return shadow / 9.0;
+    return 1.0;
 }
 
 vec3 PointLighting(vec3 albedo, vec3 norm, vec3 viewDir) {

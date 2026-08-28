@@ -126,7 +126,11 @@ namespace SiegeEngine.Core.Managers
                     if (reconstructedSceneData != null)
                     {
                         if (level.Terrain == null) level.Terrain = reconstructedSceneData.Terrain;
-                        if (level.Environment == null) level.Environment = reconstructedSceneData.Environment;
+                        // Level.Environment is never null (defaults to an empty
+                        // EnvironmentSettings). Always take the authored payload
+                        // environment so Play Game uses Post Process sun/fog.
+                        if (reconstructedSceneData.Environment != null)
+                            level.Environment = reconstructedSceneData.Environment;
                         if (level.Skybox == null) level.Skybox = reconstructedSceneData.Skybox;
                         if (reconstructedSceneData.CustomData != null)
                         {
@@ -134,7 +138,7 @@ namespace SiegeEngine.Core.Managers
                                 level.CustomData[kv.Key] = kv.Value;
                         }
                     }
-                    Console.WriteLine($"[SceneManager] SceneData applied - Entities: {level.Entities.Count}, Skybox={(level.Skybox != null)}, Settings={(reconstructedSceneData?.Settings != null)}");
+                    Console.WriteLine($"[SceneManager] SceneData applied - Entities: {level.Entities.Count}, Skybox={(level.Skybox != null)}, Settings={(reconstructedSceneData?.Settings != null)}, SunEnabled={level.Environment?.SunEnabled}, SunIntensity={level.Environment?.SunIntensity}, Shadows={level.Environment?.ShadowQuality}");
                 }
                 catch (Exception ex)
                 {
