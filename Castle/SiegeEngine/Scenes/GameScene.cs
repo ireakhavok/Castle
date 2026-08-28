@@ -75,10 +75,7 @@ namespace SiegeEngine.Scenes
 
         protected override List<ShadowCaster> CollectShadowCasters(IReadOnlyList<Entity> entities)
         {
-            var list = ShadowMapRenderer.CollectCasters(entities);
-            if (_terrainBuffer != null && _heightmap != null && _terrainBuffer.GetIndexCount() > 0)
-                ShadowMapRenderer.AppendTerrainCaster(list, _terrainBuffer);
-            return list;
+            return ShadowMapRenderer.CollectCasters(entities);
         }
 
         /// <summary>
