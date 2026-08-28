@@ -27,7 +27,7 @@
             border: 1px solid #555566; border-radius: 6px; font-size: 14px; outline: none;
         }
         #sceneSelect:focus { border-color: #777799; }
-        .new-scene-btn, .place-entity-btn, .place-sound-btn, .place-light-btn, .physics-debug-btn, .acoustic-debug-btn {
+        .new-scene-btn, .place-entity-btn, .place-sound-btn, .place-light-btn, .post-process-btn, .physics-debug-btn, .acoustic-debug-btn {
             padding: 8px 18px; color: white; border: none; border-radius: 6px; cursor: pointer;
             font-size: 13.5px; font-weight: 500; transition: all 0.2s; margin-left: 12px;
         }
@@ -39,6 +39,8 @@
         .place-sound-btn:hover { background: #6a4a9a; transform: translateY(-1px); }
         .place-light-btn { background: #8a6a2a; }
         .place-light-btn:hover { background: #9a7a3a; transform: translateY(-1px); }
+        .post-process-btn { background: #2a4a7a; }
+        .post-process-btn:hover { background: #3a5a8a; transform: translateY(-1px); }
         .physics-debug-btn { background: #2a5a4a; }
         .physics-debug-btn:hover { background: #3a6a5a; transform: translateY(-1px); }
         .acoustic-debug-btn { background: #4a2a6a; }
@@ -47,7 +49,7 @@
 </head>
 <body>
     <div class="scene-toolbar">
-        <span class="scene-label">Active Scene:</span>
+        <div class="scene-label">Active Scene:</div>
         <select id="sceneSelect" data-hook="SceneSelected">
             <!-- Populated dynamically -->
         </select>
@@ -55,6 +57,7 @@
         <button class="place-entity-btn" data-hook="OpenPlaceEntityBrowser">Place Entity</button>
         <button class="place-sound-btn" data-hook="PlaceSoundSource">Place Sound</button>
         <button class="place-light-btn" data-hook="OpenAddLight">Add Light</button>
+        <button class="post-process-btn" data-hook="OpenPostProcess">Post Process</button>
         <button class="physics-debug-btn" data-hook="TogglePhysicsDebug">Physics Debug</button>
         <button class="acoustic-debug-btn" data-hook="ToggleAcousticDebug">Acoustic Debug</button>
     </div>

@@ -258,6 +258,10 @@ namespace CastleBuilder
             {
                 PlaceLightFromPanel(e);
             }
+            else if (e.Hook == "PostProcessSet")
+            {
+                ApplyPostProcess(e);
+            }
             else if (e.Hook == "OutlinerSelectionChanged")
             {
                 string nodeId = e.Data != null && e.Data.ContainsKey("nodeId") ? e.Data["nodeId"]?.ToString() ?? "" : "";
@@ -436,6 +440,11 @@ namespace CastleBuilder
                 AddLightPanel.Open(_renderContext, _controlContext, _window, _eventBus);
                 Console.WriteLine("[SceneEditorPanel] Opened AddLightPanel");
             }
+            else if (hook == "OpenPostProcess")
+            {
+                PostProcessPanel.Open(_renderContext, _controlContext, _window, _eventBus);
+                Console.WriteLine("[SceneEditorPanel] Opened PostProcessPanel");
+            }
             else if (hook == "PlaceLight")
             {
                 PlaceLightFromPanel(null);
@@ -458,10 +467,10 @@ namespace CastleBuilder
                 ProjectSettings.Current.SetCurrentLevel(level);
             }
 
-            LightType type = LightType.Directional;
+            LightType type = LightType.Point;
             Vector3 color = Vector3.One;
             float intensity = 1f;
-            Vector3 direction = Vector3.Normalize(new Vector3(-0.85f, 0.10f, -0.52f));
+            Vector3 direction = Vector3.Normalize(new Vector3(0f, 0f, -1f));
             float range = 25f;
             bool castShadows = true;
             if (evt?.Data != null)
@@ -470,6 +479,8 @@ namespace CastleBuilder
                 string typeRaw = Read("type");
                 if (!string.IsNullOrWhiteSpace(typeRaw) && Enum.TryParse(typeRaw, true, out LightType parsedType))
                     type = parsedType;
+                if (type == LightType.Directional)
+                    type = LightType.Point;
                 string colorRaw = Read("color");
                 if (!string.IsNullOrWhiteSpace(colorRaw))
                 {
@@ -536,6 +547,54 @@ namespace CastleBuilder
             _editorScene.SyncCurrentLevelToRuntimeServer();
             NotifyHierarchyChanged();
         }
+
+        private void ApplyPostProcess(GenericEvent evt)
+        {
+            var level = ProjectSettings.Current.CurrentLevel;
+            if (level == null)
+                return;
+            var env = level.Environment ?? new EnvironmentSettings();
+            string Read(string key) => evt?.Data != null && evt.Data.ContainsKey(key) ? evt.Data[key]?.ToString() : null;
+            string fogMode = Read("fogMode");
+            if (!string.IsNullOrWhiteSpace(fogMode)) env.FogMode = fogMode.Trim();
+            string fogQuality = Read("fogQuality");
+            if (!string.IsNullOrWhiteSpace(fogQuality)) env.FogQuality = fogQuality.Trim();
+            if (float.TryParse(Read("fogDensity"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float density))
+                env.FogDensity = density;
+            if (float.TryParse(Read("fogStart"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float start))
+                env.FogStart = start;
+            string shadowQuality = Read("shadowQuality");
+            if (!string.IsNullOrWhiteSpace(shadowQuality)) env.ShadowQuality = shadowQuality.Trim();
+            string sunEnabled = Read("sunEnabled");
+            if (!string.IsNullOrWhiteSpace(sunEnabled))
+                env.SunEnabled = sunEnabled != "0" && !string.Equals(sunEnabled, "false", StringComparison.OrdinalIgnoreCase);
+            string dirRaw = Read("sunDirection");
+            if (!string.IsNullOrWhiteSpace(dirRaw))
+            {
+                var parts = dirRaw.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 3
+                    && float.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dx)
+                    && float.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dy)
+                    && float.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dz))
+                {
+                    Vector3 d = new Vector3(dx, dy, dz);
+                    if (d.LengthSquared() > 1e-8f)
+                        env.SunDirection = Vector3.Normalize(d);
+                }
+            }
+            if (float.TryParse(Read("sunIntensity"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float sunIntensity))
+                env.SunIntensity = sunIntensity;
+            string sunCast = Read("sunCastShadows");
+            if (!string.IsNullOrWhiteSpace(sunCast))
+                env.SunCastShadows = sunCast != "0" && !string.Equals(sunCast, "false", StringComparison.OrdinalIgnoreCase);
+            level.Environment = env;
+            var project = _editorScene.GetProjectData();
+            string sceneName = _editorScene.CurrentGameScene;
+            if (project?.Scenes != null && !string.IsNullOrEmpty(sceneName) && project.Scenes.TryGetValue(sceneName, out var sd) && sd != null)
+                sd.Environment = env;
+            Console.WriteLine($"[SceneEditorPanel] PostProcess sun={env.SunEnabled} fog={env.FogMode}/{env.FogQuality} shadows={env.ShadowQuality}");
+        }
+
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
         {
             if (e.UserData?.ToString() != "PlaceEntity" || string.IsNullOrEmpty(e.Path)) return;

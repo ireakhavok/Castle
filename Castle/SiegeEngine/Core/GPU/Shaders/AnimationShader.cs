@@ -114,6 +114,7 @@ uniform float uSpotOuter[2];
 uniform int uFogMode;
 uniform vec3 uFogColor;
 uniform float uFogDensity;
+uniform float uFogStart;
 uniform float uFogHeight;
 uniform float uFogHeightFalloff;
 uniform int uShadowsEnabled;
@@ -176,26 +177,56 @@ float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
     if (proj.x <= 0.0 || proj.x >= 1.0 || proj.y <= 0.0 || proj.y >= 1.0 || proj.z > 1.0)
         return 1.0;
     float cell = 0.5;
-    vec2 atlasOrigin = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell;
-    vec2 atlasUv = atlasOrigin + proj.xy * cell;
-    float shadow = 0.0;
-    float texel = 1.0 / max(uShadowAtlasSize, 1.0);
-    for (int x = -1; x <= 1; x++) {
-        for (int y = -1; y <= 1; y++) {
-            float closest = texture(uShadowAtlas, atlasUv + vec2(float(x), float(y)) * texel * cell).r;
-            shadow += (proj.z - uShadowBias > closest) ? 0.25 : 1.0;
-        }
+    vec2 atlasUv = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell + proj.xy * cell;
+    float closest = texture(uShadowAtlas, atlasUv).r;
+    return (proj.z - uShadowBias > closest) ? 0.35 : 1.0;
+}
+
+vec3 PointLighting(vec3 albedo, vec3 norm, vec3 viewDir) {
+    vec3 sum = vec3(0.0);
+    for (int i = 0; i < 4; i++) {
+        if (i >= uPointCount) break;
+        vec3 toLight = uPointPos[i] - FragPos;
+        float dist = length(toLight);
+        float range = max(uPointRange[i], 0.01);
+        if (dist > range) continue;
+        vec3 L = toLight / max(dist, 0.0001);
+        float att = 1.0 - clamp(dist / range, 0.0, 1.0);
+        att *= att;
+        float diff = max(dot(norm, L), 0.0);
+        sum += diff * albedo * uPointColor[i] * uPointIntensity[i] * att;
     }
-    return shadow / 9.0;
+    return sum;
+}
+
+vec3 SpotLighting(vec3 albedo, vec3 norm, vec3 viewDir) {
+    vec3 sum = vec3(0.0);
+    for (int i = 0; i < 2; i++) {
+        if (i >= uSpotCount) break;
+        vec3 toLight = uSpotPos[i] - FragPos;
+        float dist = length(toLight);
+        float range = max(uSpotRange[i], 0.01);
+        if (dist > range) continue;
+        vec3 L = toLight / max(dist, 0.0001);
+        float theta = dot(L, normalize(-uSpotDir[i]));
+        float epsilon = max(uSpotInner[i] - uSpotOuter[i], 0.001);
+        float cone = clamp((theta - uSpotOuter[i]) / epsilon, 0.0, 1.0);
+        float att = 1.0 - clamp(dist / range, 0.0, 1.0);
+        att *= att * cone;
+        float diff = max(dot(norm, L), 0.0);
+        sum += diff * albedo * uSpotColor[i] * uSpotIntensity[i] * att;
+    }
+    return sum;
 }
 
 vec3 ApplyFog(vec3 color) {
     if (uFogMode == 0) return color;
     float dist = length(uViewPos - FragPos);
-    float fogFactor = exp(-uFogDensity * dist);
+    float d = max(dist - uFogStart, 0.0);
+    float fogFactor = exp(-uFogDensity * uFogDensity * d * d);
     if (uFogMode == 2) {
         float heightTerm = exp(-uFogHeightFalloff * max(FragPos.z - uFogHeight, 0.0));
-        fogFactor = exp(-uFogDensity * dist * heightTerm);
+        fogFactor = exp(-uFogDensity * uFogDensity * d * d * heightTerm);
     }
     return mix(uFogColor, color, clamp(fogFactor, 0.0, 1.0));
 }
@@ -236,6 +267,8 @@ void main()
     float spec = pow(max(dot(normal, halfwayDir), 0.0), max(uShininess, 1.0));
     vec3 specular = uSpecularStrength * spec * uLightColor * uLightIntensity * metallic * shadow;
     vec3 color = ambient + diffuse + specular;
+    color += PointLighting(albedo, normal, viewDir);
+    color += SpotLighting(albedo, normal, viewDir);
     FragColor = vec4(ApplyFog(color), 1.0);
 }";
     }

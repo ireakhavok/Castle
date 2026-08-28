@@ -28,6 +28,7 @@ uniform vec3 uLightColor;
 uniform float uLightIntensity;
 uniform vec3 uFogColor;
 uniform float uFogDensity;
+uniform float uFogStart;
 uniform float uFogHeight;
 uniform float uFogHeightFalloff;
 uniform float uIntensity;
@@ -36,6 +37,8 @@ uniform vec2 uInvResolution;
 uniform int uHasDepth;
 
 float cascadeShadow(vec3 worldPos, float viewZ) {
+    if (uCascadeCount <= 0)
+        return 1.0;
     int cascade = 0;
     if (uCascadeCount > 1 && viewZ > uCascadeSplits.x) cascade = 1;
     if (uCascadeCount > 2 && viewZ > uCascadeSplits.y) cascade = 2;
@@ -61,7 +64,7 @@ vec3 reconstructWorld(vec2 uv, float depth) {
 
 void main() {
     vec3 scene = texture(uColor, vUv).rgb;
-    if (uHasDepth == 0 || uSteps < 1 || uIntensity <= 0.0) {
+    if (uHasDepth == 0 || uSteps < 1 || uIntensity <= 0.0 || uLightIntensity <= 0.001) {
         FragColor = vec4(scene, 1.0);
         return;
     }
@@ -75,9 +78,15 @@ void main() {
         return;
     }
     vec3 dir = delta / dist;
+    float start = max(uFogStart, 0.0);
+    if (dist <= start) {
+        FragColor = vec4(scene, 1.0);
+        return;
+    }
     int steps = max(uSteps, 1);
-    float stepLen = dist / float(steps);
-    vec3 pos = camPos + dir * stepLen * 0.5;
+    float usable = dist - start;
+    float stepLen = usable / float(steps);
+    vec3 pos = camPos + dir * (start + stepLen * 0.5);
     vec3 accum = vec3(0.0);
     float transmittance = 1.0;
     vec3 lightDir = normalize(-uLightDir);
@@ -89,10 +98,10 @@ void main() {
         float lit = cascadeShadow(pos, abs(viewPos.z));
         float scatter = density * stepLen * lit * uIntensity;
         accum += transmittance * scatter * uLightColor * uLightIntensity * uFogColor;
-        transmittance *= exp(-density * stepLen);
+        transmittance *= exp(-density * density * stepLen * stepLen);
         pos += dir * stepLen;
     }
-    vec3 result = scene * transmittance + accum + (1.0 - transmittance) * uFogColor * 0.25;
+    vec3 result = scene * transmittance + accum;
     FragColor = vec4(result, 1.0);
 }";
     }

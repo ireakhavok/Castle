@@ -59,7 +59,7 @@ namespace MapRoom
             _ghostBuffer = new VertexBuffer(_renderContext);
             EnsureSkyboxRenderer();
         }
-        protected override Vector4 FrameClearColor => new Vector4(0.05f, 0.08f, 0.15f, 1.0f);
+        protected override Vector4 FrameClearColor => new Vector4(0.35f, 0.35f, 0.35f, 1.0f);
         protected override void RenderSkybox(Matrix4x4 view, Matrix4x4 projection)
         {
             if (_liveState is LiveSceneState live && live.Skybox != null && _sceneData?.Skybox != live.Skybox)

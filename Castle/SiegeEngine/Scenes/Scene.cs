@@ -58,13 +58,14 @@ namespace SiegeEngine.Scenes
 
         protected float AspectRatio => _aspectRatio;
 
-        protected virtual Vector4 FrameClearColor => new Vector4(0.1f, 0.1f, 0.1f, 1f);
+        protected virtual Vector4 FrameClearColor => new Vector4(0.35f, 0.35f, 0.35f, 1f);
 
         protected virtual EnvironmentSettings GetEnvironmentSettings() => null;
 
         /// <summary>
         /// Play / runtime only. Editor scenes override this to false so a
-        /// placed Light entity is the only source of directional lighting.
+        /// placed Light entity or the Post Process sun toggle is the only
+        /// source of directional lighting.
         /// </summary>
         protected virtual bool AllowRuntimeDefaultSun => true;
 
@@ -103,7 +104,6 @@ namespace SiegeEngine.Scenes
                 }
                 system.Update(deltaTime);
             }
-            // Drive systems registered on the IGameServer (AnimationSystem, ClientPredictionSystem, etc.)
             _server.Update(deltaTime);
         }
 
@@ -114,10 +114,11 @@ namespace SiegeEngine.Scenes
 
         public void RenderWorldOnly(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            // Parent RenderPresentRoot already packed LightingFrame + CSM.
-            // Only build here when this is the first lighting pass (hosted
-            // preview, model viewer, or a caller that skipped Render()).
-            if (LightingFrame.Current == null || !LightingFrame.Current.ShadowsReady)
+            // Parent RenderPresentRoot already packed LightingFrame.
+            // Only build here when this is the first lighting pass.
+            // Do not rebuild just because ShadowsReady is false — that
+            // re-injected the runtime default sun into the editor.
+            if (LightingFrame.Current == null)
                 PrepareLightingFrame(entities, view, projection, runShadows: true);
             RenderContent(entities, view, projection);
         }
@@ -149,8 +150,6 @@ namespace SiegeEngine.Scenes
                 if (_aaLastMode != aaMode)
                     _aaPass.DiscardHistory();
                 _aaLastMode = aaMode;
-                // BeginWorld rejects Off; when only volumetric needs a world target, capture
-                // with FXAA internals then Resolve(Off) copies the fogged color with no AA.
                 AntiAliasingMode wrapMode = aaMode != AntiAliasingMode.Off ? aaMode : AntiAliasingMode.FXAA;
                 wrapped = _aaPass.BeginWorld(wrapMode, _width, _height, FrameClearColor);
             }

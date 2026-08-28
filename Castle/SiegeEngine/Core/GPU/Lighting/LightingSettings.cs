@@ -35,14 +35,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             if (_fogModeOverride.HasValue) return _fogModeOverride.Value;
             if (_machine != null && _machine.HasFogOverride) return _machine.FogMode;
             if (FogModeParser.TryParse(_authored?.FogMode, out FogMode authored))
-            {
-                // Exponential is the cheap forward term. Volumetric keeps that
-                // and adds the shaft pass unless the author picked Off or Height.
-                if (authored == FogMode.Exponential)
-                    return FogMode.Volumetric;
                 return authored;
-            }
-            return FogMode.Volumetric;
+            return FogMode.Off;
         }
 
         public static FogQuality ResolveFogQuality()
@@ -50,14 +44,12 @@ namespace SiegeEngine.Core.GPU.Lighting
             if (_fogQualityOverride.HasValue) return _fogQualityOverride.Value;
             if (_machine != null && _machine.HasFogOverride) return _machine.FogQuality;
             if (FogQualityParser.TryParse(_authored?.FogQuality, out FogQuality authored)) return authored;
-            return FogQuality.Medium;
+            return FogQuality.Off;
         }
 
         public static float ResolveShadowDistance()
         {
             float authored = _authored?.ShadowDistance ?? 0f;
-            // 80 was the previous engine default and is too short for the
-            // overhead editor / play cameras (~300-500 units). Treat it as unset.
             if (authored <= 1f || MathF.Abs(authored - 80f) < 0.01f)
                 return 400f;
             return authored;
@@ -72,8 +64,14 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         public static float ResolveFogDensity()
         {
-            float density = _authored?.FogDensity ?? 0.01f;
+            float density = _authored?.FogDensity ?? 0.003f;
             return density < 0f ? 0f : density;
+        }
+
+        public static float ResolveFogStart()
+        {
+            float start = _authored?.FogStart ?? 40f;
+            return start < 0f ? 0f : start;
         }
 
         public static float ResolveFogHeight() => _authored?.FogHeight ?? 8f;
@@ -86,8 +84,39 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         public static float ResolveVolumetricIntensity()
         {
-            float intensity = _authored?.VolumetricIntensity ?? 0.45f;
+            float intensity = _authored?.VolumetricIntensity ?? 0.25f;
             return intensity < 0f ? 0f : intensity;
+        }
+
+        public static bool ResolveSunEnabled()
+        {
+            return _authored != null && _authored.SunEnabled;
+        }
+
+        public static Vector3 ResolveSunDirection()
+        {
+            Vector3 dir = _authored?.SunDirection ?? default;
+            if (dir.LengthSquared() < 1e-8f)
+                return LightingFrame.DefaultSunDirection;
+            return Vector3.Normalize(dir);
+        }
+
+        public static Vector3 ResolveSunColor()
+        {
+            Vector3 color = _authored?.SunColor ?? default;
+            if (color.LengthSquared() < 1e-6f) return Vector3.One;
+            return color;
+        }
+
+        public static float ResolveSunIntensity()
+        {
+            float intensity = _authored?.SunIntensity ?? 1f;
+            return intensity < 0f ? 0f : intensity;
+        }
+
+        public static bool ResolveSunCastShadows()
+        {
+            return _authored == null || _authored.SunCastShadows;
         }
 
         public static ShadowTechnique ResolveTechnique(LightComponent light)

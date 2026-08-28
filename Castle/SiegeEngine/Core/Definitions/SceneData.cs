@@ -99,19 +99,19 @@ namespace SiegeEngine.Core.Definitions
         public string Weather { get; set; } = "Clear";
 
         [JsonPropertyName("ambientColor")]
-        public Vector3 AmbientColor { get; set; } = new Vector3(0.8f, 0.8f, 0.95f);
+        public Vector3 AmbientColor { get; set; } = new Vector3(0.45f, 0.45f, 0.48f);
 
         [JsonPropertyName("fogDensity")]
-        public float FogDensity { get; set; } = 0.01f;
+        public float FogDensity { get; set; } = 0.003f;
 
         [JsonPropertyName("antiAliasing")]
         public string AntiAliasing { get; set; } = "SMAA";
 
         [JsonPropertyName("fogMode")]
-        public string FogMode { get; set; } = "Volumetric";
+        public string FogMode { get; set; } = "Off";
 
         [JsonPropertyName("fogQuality")]
-        public string FogQuality { get; set; } = "Medium";
+        public string FogQuality { get; set; } = "Off";
 
         [JsonPropertyName("fogColor")]
         public Vector3 FogColor { get; set; } = new Vector3(0.62f, 0.70f, 0.82f);
@@ -122,14 +122,32 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("fogHeightFalloff")]
         public float FogHeightFalloff { get; set; } = 0.08f;
 
+        [JsonPropertyName("fogStart")]
+        public float FogStart { get; set; } = 40f;
+
         [JsonPropertyName("volumetricIntensity")]
-        public float VolumetricIntensity { get; set; } = 0.45f;
+        public float VolumetricIntensity { get; set; } = 0.25f;
 
         [JsonPropertyName("shadowQuality")]
         public string ShadowQuality { get; set; } = "Medium";
 
         [JsonPropertyName("shadowDistance")]
         public float ShadowDistance { get; set; } = 400f;
+
+        [JsonPropertyName("sunEnabled")]
+        public bool SunEnabled { get; set; } = false;
+
+        [JsonPropertyName("sunDirection")]
+        public Vector3 SunDirection { get; set; } = new Vector3(-0.85f, 0.10f, -0.52f);
+
+        [JsonPropertyName("sunColor")]
+        public Vector3 SunColor { get; set; } = new Vector3(1f, 1f, 1f);
+
+        [JsonPropertyName("sunIntensity")]
+        public float SunIntensity { get; set; } = 1f;
+
+        [JsonPropertyName("sunCastShadows")]
+        public bool SunCastShadows { get; set; } = true;
     }
 
     public class SkyboxData

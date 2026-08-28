@@ -10,15 +10,13 @@ namespace SiegeEngine.Systems
         private readonly List<LightComponent> _directionalLights = new List<LightComponent>();
         private readonly List<LightComponent> _pointLights = new List<LightComponent>();
         private readonly List<LightComponent> _spotLights = new List<LightComponent>();
-        private readonly LightComponent _defaultSun;
+
+        public LightComponent DefaultSun { get; }
 
         public LightingSystem(IGameServer server) : base(server)
         {
-            _defaultSun = new LightComponent(LightType.Directional, new Vector3(1f, 1f, 1f), 1.0f, new Vector3(-0.85f, 0.10f, -0.52f));
-            AddLight(_defaultSun);
+            DefaultSun = new LightComponent(LightType.Directional, new Vector3(1f, 1f, 1f), 1.0f, new Vector3(-0.85f, 0.10f, -0.52f));
         }
-
-        public LightComponent DefaultSun => _defaultSun;
 
         public void AddLight(LightComponent light)
         {
@@ -54,32 +52,29 @@ namespace SiegeEngine.Systems
             _spotLights.Clear();
 
             var entities = _server?.GetEntities();
-            if (entities != null)
+            if (entities == null)
+                return;
+
+            foreach (var entity in entities)
             {
-                foreach (var entity in entities)
+                var light = entity.GetComponent<LightComponent>();
+                if (light == null || !light.Enabled)
+                    continue;
+
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (physics != null && light.Type != LightType.Directional)
                 {
-                    var light = entity.GetComponent<LightComponent>();
-                    if (light == null || !light.Enabled)
-                        continue;
-
-                    var physics = entity.GetComponent<PhysicsComponent>();
-                    if (physics != null && light.Type != LightType.Directional)
+                    light.Position = physics.Position;
+                    if (light.Type == LightType.Spot && light.Direction.LengthSquared() < 1e-8f)
                     {
-                        light.Position = physics.Position;
-                        if (light.Type == LightType.Spot && light.Direction.LengthSquared() < 1e-8f)
-                        {
-                            Vector3 forward = Vector3.Transform(Vector3.UnitY, physics.Rotation);
-                            if (forward.LengthSquared() > 1e-8f)
-                                light.Direction = Vector3.Normalize(forward);
-                        }
+                        Vector3 forward = Vector3.Transform(Vector3.UnitY, physics.Rotation);
+                        if (forward.LengthSquared() > 1e-8f)
+                            light.Direction = Vector3.Normalize(forward);
                     }
-
-                    AddLight(light);
                 }
-            }
 
-            if (_directionalLights.Count == 0)
-                _directionalLights.Add(_defaultSun);
+                AddLight(light);
+            }
         }
 
         public List<LightComponent> GetDirectionalLights() => _directionalLights;

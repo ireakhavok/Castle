@@ -48,7 +48,7 @@ namespace ToolChest
             IsModal = true;
             RenderOrder = 1200;
             Scaling = ScalingMode.Fill;
-            Size = new Vector2(420, 460);
+            Size = new Vector2(420, 420);
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -76,12 +76,14 @@ namespace ToolChest
             var rangeElem = _uiOverlay.FindElementById("light-range") as InputElement;
             var castElem = _uiOverlay.FindElementById("light-cast-shadows") as InputElement;
 
-            string type = typeElem?.Value ?? "Directional";
+            string type = typeElem?.Value ?? "Point";
+            if (string.Equals(type, "Directional", StringComparison.OrdinalIgnoreCase))
+                type = "Point";
             Vector3 color = ParseVec3(colorElem?.Value, Vector3.One);
             float intensity = ParseFloat(intensityElem?.Value, 1f);
-            Vector3 direction = ParseVec3(dirElem?.Value, new Vector3(-0.85f, 0.10f, -0.52f));
+            Vector3 direction = ParseVec3(dirElem?.Value, new Vector3(0f, 0f, -1f));
             if (direction.LengthSquared() < 1e-8f)
-                direction = new Vector3(-0.85f, 0.10f, -0.52f);
+                direction = new Vector3(0f, 0f, -1f);
             direction = Vector3.Normalize(direction);
             float range = ParseFloat(rangeElem?.Value, 25f);
             bool castShadows = castElem == null || IsChecked(castElem.Value);

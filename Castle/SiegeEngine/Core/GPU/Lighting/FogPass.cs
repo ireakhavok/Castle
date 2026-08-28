@@ -75,6 +75,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             _volumetric.SetUniform("uLightIntensity", frame.Sun.Intensity);
             _volumetric.SetUniform("uFogColor", frame.Fog.Color.X, frame.Fog.Color.Y, frame.Fog.Color.Z);
             _volumetric.SetUniform("uFogDensity", frame.Fog.Density);
+            _volumetric.SetUniform("uFogStart", frame.Fog.Start);
             _volumetric.SetUniform("uFogHeight", frame.Fog.Height);
             _volumetric.SetUniform("uFogHeightFalloff", frame.Fog.HeightFalloff);
             _volumetric.SetUniform("uIntensity", frame.Fog.VolumetricIntensity);

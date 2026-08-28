@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Segoe UI, system-ui, sans-serif;
+            background: #1e1e1e;
+            color: #ddd;
+            padding: 16px;
+            margin: 0;
+        }
+        .panel {
+            background: #252526;
+            border: 1px solid #383838;
+            padding: 16px;
+        }
+        .title { color: #f0f0f0; margin: 0 0 12px 0; }
+        .field { font-size: 12px; color: #aaa; margin: 8px 0 3px; }
+        select, input {
+            background: #3c3c3c;
+            color: #ddd;
+            border: 1px solid #555;
+            padding: 6px 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .row { display: flex; gap: 8px; }
+        .row > div { flex: 1; }
+        .hint { font-size: 11px; color: #888; margin: 10px 0 14px; line-height: 1.4; }
+        .actions { display: flex; gap: 8px; margin-top: 14px; }
+        button {
+            background: #c9a227;
+            color: #111;
+            padding: 8px 16px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        button:hover { background: #e0b83a; }
+        button.secondary { background: #444; color: #ddd; font-weight: 500; }
+        button.secondary:hover { background: #555; }
+        .check { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+        .check input { width: auto; }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <div class="title">Post Process</div>
+        <div class="check">
+            <input id="pp-sun-enabled" type="checkbox">
+            <div class="field">Enable sun</div>
+        </div>
+        <div class="field">Sun direction (travel vector, Z-up)</div>
+        <input id="pp-sun-direction" value="-0.85, 0.10, -0.52">
+        <div class="row">
+            <div>
+                <div class="field">Sun intensity</div>
+                <input id="pp-sun-intensity" value="1">
+            </div>
+            <div>
+                <div class="field">Shadow quality</div>
+                <select id="pp-shadow-quality">
+                    <option value="Off">Off</option>
+                    <option value="Low">Low</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="High">High</option>
+                    <option value="Ultra">Ultra</option>
+                </select>
+            </div>
+        </div>
+        <div class="check">
+            <input id="pp-sun-cast-shadows" type="checkbox" checked>
+            <div class="field">Sun casts shadows</div>
+        </div>
+        <div class="field">Fog mode</div>
+        <select id="pp-fog-mode">
+            <option value="Off" selected>Off</option>
+            <option value="Exponential">Exponential</option>
+            <option value="Height">Height</option>
+            <option value="Volumetric">Volumetric</option>
+        </select>
+        <div class="row">
+            <div>
+                <div class="field">Fog quality</div>
+                <select id="pp-fog-quality">
+                    <option value="Off" selected>Off</option>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                </select>
+            </div>
+            <div>
+                <div class="field">Fog density</div>
+                <input id="pp-fog-density" value="0.003">
+            </div>
+        </div>
+        <div class="field">Fog start distance</div>
+        <input id="pp-fog-start" value="40">
+        <div class="hint">
+            Sun off keeps the editor dark. Turn sun on to light the scene and cast model shadows onto terrain. Fog stays off until you pick a mode.
+        </div>
+        <div class="actions">
+            <button data-hook="PostProcessApply">Apply</button>
+            <button class="secondary" data-hook="CancelPostProcess">Cancel</button>
+        </div>
+    </div>
+</body>
+</html>

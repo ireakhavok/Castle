@@ -169,7 +169,7 @@ namespace SiegeEngine.Scenes
                     float wy = y * effectiveStep * _worldScaleZ;
                     float z = GetHeight(wx, wy) * VerticalExaggeration;
                     _terrainVertices.Add(wx); _terrainVertices.Add(wy); _terrainVertices.Add(z);
-                    _terrainVertices.Add(0.7f); _terrainVertices.Add(0.9f); _terrainVertices.Add(1.0f); _terrainVertices.Add(1.0f);
+                    _terrainVertices.Add(0.42f); _terrainVertices.Add(0.42f); _terrainVertices.Add(0.42f); _terrainVertices.Add(1.0f);
                     float u = (float)x / stepsX;
                     float v = (float)y / stepsY;
                     _terrainVertices.Add(u); _terrainVertices.Add(v);
@@ -245,7 +245,7 @@ namespace SiegeEngine.Scenes
                     float wy = y * step * _worldScaleZ;
                     float z = GetHeight(wx, wy) * VerticalExaggeration;
                     _terrainVertices.Add(wx); _terrainVertices.Add(wy); _terrainVertices.Add(z);
-                    _terrainVertices.Add(0.7f); _terrainVertices.Add(0.9f); _terrainVertices.Add(1.0f); _terrainVertices.Add(1.0f);
+                    _terrainVertices.Add(0.42f); _terrainVertices.Add(0.42f); _terrainVertices.Add(0.42f); _terrainVertices.Add(1.0f);
                     float fracX = (float)x / stepsX;
                     float fracY = (float)y / stepsY;
                     float meshEastMeters, meshNorthMeters;

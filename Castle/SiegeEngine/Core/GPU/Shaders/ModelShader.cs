@@ -114,6 +114,7 @@ uniform float uSpotOuter[2];
 uniform int uFogMode;
 uniform vec3 uFogColor;
 uniform float uFogDensity;
+uniform float uFogStart;
 uniform float uFogHeight;
 uniform float uFogHeightFalloff;
 
@@ -250,12 +251,11 @@ vec3 SpotLighting(vec3 albedo, vec3 norm, vec3 viewDir) {
 vec3 ApplyFog(vec3 color) {
     if (uFogMode == 0) return color;
     float dist = length(uViewPos - vPosition);
-    float fogFactor = 1.0;
-    if (uFogMode == 1 || uFogMode == 3) {
-        fogFactor = exp(-uFogDensity * dist);
-    } else if (uFogMode == 2) {
+    float d = max(dist - uFogStart, 0.0);
+    float fogFactor = exp(-uFogDensity * uFogDensity * d * d);
+    if (uFogMode == 2) {
         float heightTerm = exp(-uFogHeightFalloff * max(vPosition.z - uFogHeight, 0.0));
-        fogFactor = exp(-uFogDensity * dist * heightTerm);
+        fogFactor = exp(-uFogDensity * uFogDensity * d * d * heightTerm);
     }
     fogFactor = clamp(fogFactor, 0.0, 1.0);
     return mix(uFogColor, color, fogFactor);

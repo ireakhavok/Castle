@@ -15,8 +15,8 @@
             border: 1px solid #383838;
             padding: 16px;
         }
-        h3 { margin: 0 0 12px 0; color: #f0f0f0; }
-        label { display: block; font-size: 12px; color: #aaa; margin: 8px 0 3px; }
+        .title { color: #f0f0f0; margin: 0 0 12px 0; }
+        .field { font-size: 12px; color: #aaa; margin: 8px 0 3px; }
         select, input {
             background: #3c3c3c;
             color: #ddd;
@@ -46,33 +46,32 @@
 </head>
 <body>
     <div class="panel">
-        <h3>Add Light</h3>
-        <label>Type</label>
+        <div class="title">Add Light</div>
+        <div class="field">Type</div>
         <select id="light-type">
-            <option value="Directional" selected>Directional (sun)</option>
-            <option value="Point">Point</option>
-            <option value="Spot">Spot</option>
+            <option value="Point" selected>Point</option>
+            <option value="Spot">Spot (cone)</option>
         </select>
         <div class="row">
             <div>
-                <label>Color R,G,B</label>
+                <div class="field">Color R,G,B</div>
                 <input id="light-color" value="1, 1, 1">
             </div>
             <div>
-                <label>Intensity</label>
+                <div class="field">Intensity</div>
                 <input id="light-intensity" value="1">
             </div>
         </div>
-        <label>Direction (travel vector, Z-up)</label>
-        <input id="light-direction" value="-0.85, 0.10, -0.52">
-        <label>Range (point / spot)</label>
+        <div class="field">Spot direction (travel vector, Z-up)</div>
+        <input id="light-direction" value="0, 0, -1">
+        <div class="field">Range</div>
         <input id="light-range" value="25">
         <div class="check">
             <input id="light-cast-shadows" type="checkbox" checked>
-            <label style="margin:0">Cast shadows</label>
+            <div class="field">Cast shadows</div>
         </div>
         <div class="hint">
-            Directional is the scene sun. Point and spot use the click position on the terrain. The editor has no default sun — lighting starts when you place a light. Play Game still uses a 3 o'clock fallback if the scene has no directional light.
+            Point and spot lights are placed on the click position. Sun / fog / shadow quality are in Post Process.
         </div>
         <div class="actions">
             <button data-hook="AddLightConfirm">Place Light</button>

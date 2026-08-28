@@ -51,6 +51,7 @@ namespace SiegeEngine.Core.GPU.Lighting
         public FogQuality Quality;
         public Vector3 Color;
         public float Density;
+        public float Start;
         public float Height;
         public float HeightFalloff;
         public float VolumetricIntensity;
@@ -73,14 +74,13 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         /// <summary>
         /// Z-up world, 3 o'clock sun: light travels from +X (east) slightly
-        /// forward of the origin and downward along -Z. Used whenever a scene
-        /// has no enabled directional light.
+        /// forward of the origin and downward along -Z.
         /// </summary>
         public static readonly Vector3 DefaultSunDirection = Vector3.Normalize(new Vector3(-0.85f, 0.10f, -0.52f));
 
         public static LightingFrame Current { get; set; }
 
-        public Vector3 AmbientColor = new Vector3(0.30f, 0.30f, 0.34f);
+        public Vector3 AmbientColor = new Vector3(0.45f, 0.45f, 0.48f);
         public GpuDirectionalLight Sun;
         public GpuPointLight[] Points = new GpuPointLight[MaxPointLights];
         public GpuSpotLight[] Spots = new GpuSpotLight[MaxSpotLights];
@@ -103,9 +103,9 @@ namespace SiegeEngine.Core.GPU.Lighting
             var frame = new LightingFrame();
             frame.ShadowQuality = LightingSettings.ResolveShadowQuality();
             frame.ShadowDistance = LightingSettings.ResolveShadowDistance();
-            frame.AmbientColor = environment?.AmbientColor ?? new Vector3(0.30f, 0.30f, 0.34f);
+            frame.AmbientColor = environment?.AmbientColor ?? new Vector3(0.45f, 0.45f, 0.48f);
             if (frame.AmbientColor.LengthSquared() < 1e-6f)
-                frame.AmbientColor = new Vector3(0.30f, 0.30f, 0.34f);
+                frame.AmbientColor = new Vector3(0.45f, 0.45f, 0.48f);
 
             frame.Fog = new GpuFogState
             {
@@ -113,6 +113,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 Quality = LightingSettings.ResolveFogQuality(),
                 Color = LightingSettings.ResolveFogColor(),
                 Density = LightingSettings.ResolveFogDensity(),
+                Start = LightingSettings.ResolveFogStart(),
                 Height = LightingSettings.ResolveFogHeight(),
                 HeightFalloff = LightingSettings.ResolveFogHeightFalloff(),
                 VolumetricIntensity = LightingSettings.ResolveVolumetricIntensity(),
@@ -154,6 +155,27 @@ namespace SiegeEngine.Core.GPU.Lighting
                         frame.Spots[frame.SpotCount++] = PackSpot(light);
                     }
                 }
+            }
+
+            if (!hasSun && environment != null && environment.SunEnabled)
+            {
+                Vector3 dir = environment.SunDirection.LengthSquared() > 1e-8f
+                    ? Vector3.Normalize(environment.SunDirection)
+                    : DefaultSunDirection;
+                float intensity = environment.SunIntensity < 0f ? 0f : environment.SunIntensity;
+                Vector3 color = environment.SunColor.LengthSquared() < 1e-6f ? Vector3.One : environment.SunColor;
+                bool cast = environment.SunCastShadows && frame.ShadowQuality != ShadowQuality.Off && intensity > 0.001f;
+                frame.Sun = new GpuDirectionalLight
+                {
+                    Direction = dir,
+                    Color = color,
+                    Intensity = intensity,
+                    CastShadows = cast,
+                    ShadowBias = 0.002f,
+                    ShadowNormalBias = 0.02f,
+                    Technique = cast ? ShadowTechnique.ShadowMap : ShadowTechnique.None
+                };
+                hasSun = intensity > 0.001f;
             }
 
             if (!hasSun && allowFallbackSun)
@@ -226,6 +248,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             shader.SetUniform("uFogMode", fogMode);
             shader.SetUniform("uFogColor", Fog.Color.X, Fog.Color.Y, Fog.Color.Z);
             shader.SetUniform("uFogDensity", Fog.Density);
+            shader.SetUniform("uFogStart", Fog.Start);
             shader.SetUniform("uFogHeight", Fog.Height);
             shader.SetUniform("uFogHeightFalloff", Fog.HeightFalloff);
 

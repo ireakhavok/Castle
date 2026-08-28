@@ -527,10 +527,7 @@ namespace CastleBuilder
                 _activeGameScene.Update(deltaTime);
             _hostedCustomScene?.Update(deltaTime);
         }
-        protected override Vector4 FrameClearColor =>
-            _activeGameScene is TerrainCreatorScene
-                ? new Vector4(0.05f, 0.08f, 0.15f, 1f)
-                : new Vector4(0.12f, 0.12f, 0.18f, 1f);
+        protected override Vector4 FrameClearColor => new Vector4(0.35f, 0.35f, 0.35f, 1f);
 
         protected override EnvironmentSettings GetEnvironmentSettings()
         {

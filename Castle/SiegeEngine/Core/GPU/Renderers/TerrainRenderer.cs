@@ -13,13 +13,6 @@ namespace SiegeEngine.Core.GPU.Renderers
 {
     public unsafe sealed class TerrainRenderer : IDisposable
     {
-        // Terrain-only program. SceneShader stays untouched so ModelRenderer
-        // does not pick up gl_FragDepth or any bias.
-        //
-        // Fill is pushed away from the camera by a slope-scaled window-Z
-        // offset (same math as glPolygonOffset). Lattice is drawn at true
-        // depth with the test on. No constant NDC pull - that is what
-        // punched through hills once the camera backed up.
         private const string TerrainVertex = @"#version 330 core
 layout(location = 0) in vec3 aPosition;
 layout(location = 1) in vec4 aColor;
@@ -67,8 +60,23 @@ uniform float uShadowAtlasSize;
 uniform int uFogMode;
 uniform vec3 uFogColor;
 uniform float uFogDensity;
+uniform float uFogStart;
 uniform float uFogHeight;
 uniform float uFogHeightFalloff;
+uniform int uUnlit;
+uniform int uPointCount;
+uniform vec3 uPointPos[4];
+uniform vec3 uPointColor[4];
+uniform float uPointIntensity[4];
+uniform float uPointRange[4];
+uniform int uSpotCount;
+uniform vec3 uSpotPos[2];
+uniform vec3 uSpotDir[2];
+uniform vec3 uSpotColor[2];
+uniform float uSpotIntensity[2];
+uniform float uSpotRange[2];
+uniform float uSpotInner[2];
+uniform float uSpotOuter[2];
 float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
     if (uShadowsEnabled == 0 || uReceiveShadows == 0 || uCascadeCount <= 0)
         return 1.0;
@@ -96,6 +104,41 @@ float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
     }
     return shadow / 9.0;
 }
+vec3 PointLighting(vec3 albedo, vec3 norm) {
+    vec3 sum = vec3(0.0);
+    for (int i = 0; i < 4; i++) {
+        if (i >= uPointCount) break;
+        vec3 toLight = uPointPos[i] - vWorldPos;
+        float dist = length(toLight);
+        float range = max(uPointRange[i], 0.01);
+        if (dist > range) continue;
+        vec3 L = toLight / max(dist, 0.0001);
+        float att = 1.0 - clamp(dist / range, 0.0, 1.0);
+        att *= att;
+        float diff = max(dot(norm, L), 0.0);
+        sum += diff * albedo * uPointColor[i] * uPointIntensity[i] * att;
+    }
+    return sum;
+}
+vec3 SpotLighting(vec3 albedo, vec3 norm) {
+    vec3 sum = vec3(0.0);
+    for (int i = 0; i < 2; i++) {
+        if (i >= uSpotCount) break;
+        vec3 toLight = uSpotPos[i] - vWorldPos;
+        float dist = length(toLight);
+        float range = max(uSpotRange[i], 0.01);
+        if (dist > range) continue;
+        vec3 L = toLight / max(dist, 0.0001);
+        float theta = dot(L, normalize(-uSpotDir[i]));
+        float epsilon = max(uSpotInner[i] - uSpotOuter[i], 0.001);
+        float cone = clamp((theta - uSpotOuter[i]) / epsilon, 0.0, 1.0);
+        float att = 1.0 - clamp(dist / range, 0.0, 1.0);
+        att *= att * cone;
+        float diff = max(dot(norm, L), 0.0);
+        sum += diff * albedo * uSpotColor[i] * uSpotIntensity[i] * att;
+    }
+    return sum;
+}
 void main() {
     vec4 albedo = vColor;
     if (uHasTexture == 1) {
@@ -104,6 +147,11 @@ void main() {
         } else {
             discard;
         }
+    }
+    if (uUnlit == 1) {
+        FragColor = vec4(0.42, 0.42, 0.42, 1.0);
+        gl_FragDepth = gl_FragCoord.z;
+        return;
     }
     vec3 dx = dFdx(vWorldPos);
     vec3 dy = dFdy(vWorldPos);
@@ -115,12 +163,15 @@ void main() {
     float diff = max(dot(normal, lightDir), 0.0);
     vec3 ambient = uAmbientStrength * albedo.rgb * uAmbientColor;
     vec3 lit = ambient + diff * albedo.rgb * uLightColor * uLightIntensity * shadow;
+    lit += PointLighting(albedo.rgb, normal);
+    lit += SpotLighting(albedo.rgb, normal);
     if (uFogMode != 0) {
         float dist = length(vViewPos.xyz);
-        float fogFactor = exp(-uFogDensity * dist);
+        float d = max(dist - uFogStart, 0.0);
+        float fogFactor = exp(-uFogDensity * uFogDensity * d * d);
         if (uFogMode == 2) {
             float heightTerm = exp(-uFogHeightFalloff * max(vWorldPos.z - uFogHeight, 0.0));
-            fogFactor = exp(-uFogDensity * dist * heightTerm);
+            fogFactor = exp(-uFogDensity * uFogDensity * d * d * heightTerm);
         }
         lit = mix(uFogColor, lit, clamp(fogFactor, 0.0, 1.0));
     }
@@ -167,15 +218,17 @@ void main() {
             _terrainShader.SetMatrix4("uModel", Matrix4x4.Identity);
             _terrainShader.SetUniform("uLightDir", LightingFrame.DefaultSunDirection.X, LightingFrame.DefaultSunDirection.Y, LightingFrame.DefaultSunDirection.Z);
             _terrainShader.SetUniform("uLightColor", 1f, 1f, 1f);
-            _terrainShader.SetUniform("uLightIntensity", 1f);
-            _terrainShader.SetUniform("uAmbientColor", 0.30f, 0.30f, 0.34f);
+            _terrainShader.SetUniform("uLightIntensity", 0f);
+            _terrainShader.SetUniform("uAmbientColor", 0.45f, 0.45f, 0.48f);
             _terrainShader.SetUniform("uAmbientStrength", 0.30f);
+            _terrainShader.SetUniform("uUnlit", 0);
             LightingFrame.Current?.ApplyTo(_terrainShader, _renderContext);
             _terrainShader.SetUniform("uReceiveShadows", 1);
+            _terrainShader.SetUniform("uUnlit", 0);
 
             bool textured = hasColorTexture && terrainTextureId != 0 && terrainBuffer != null;
 
-            if (textured || (drawWireframe && terrainBuffer != null))
+            if (terrainBuffer != null)
             {
                 if (textured)
                 {
@@ -187,7 +240,7 @@ void main() {
                 }
                 else
                 {
-                    _renderContext.ColorMask(false, false, false, false);
+                    _renderContext.Disable(_renderContext.Enums.CullFace);
                     _terrainShader.SetUniform("uHasTexture", 0);
                 }
 
@@ -195,7 +248,6 @@ void main() {
                 _terrainShader.SetUniform("uPolyUnits", 2f);
                 terrainBuffer.Bind();
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-                _renderContext.ColorMask(true, true, true, true);
                 _renderContext.Enable(_renderContext.Enums.CullFace);
                 _renderContext.CullFace(_renderContext.Enums.Back);
             }
@@ -208,21 +260,19 @@ void main() {
                     _renderContext.Enable(_renderContext.Enums.DepthTest);
                     _renderContext.DepthMask(false);
                     _renderContext.DepthFunc(_renderContext.Enums.Less);
-                    _renderContext.Enable(_renderContext.Enums.Blend);
-                    _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
-                    _renderContext.Enable(_renderContext.Enums.LineSmooth);
+                    _renderContext.Disable(_renderContext.Enums.Blend);
+                    _renderContext.Disable(_renderContext.Enums.LineSmooth);
                     _renderContext.Disable(_renderContext.Enums.CullFace);
-                    _renderContext.LineWidth(1.25f);
+                    _renderContext.LineWidth(1f);
 
                     _terrainShader.SetUniform("uHasTexture", 0);
+                    _terrainShader.SetUniform("uUnlit", 1);
                     _terrainShader.SetUniform("uPolyFactor", 0f);
                     _terrainShader.SetUniform("uPolyUnits", 0f);
                     lines.Bind();
                     _renderContext.DrawElements(_renderContext.Enums.Lines, lines.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
 
-                    _renderContext.LineWidth(1f);
-                    _renderContext.Disable(_renderContext.Enums.LineSmooth);
-                    _renderContext.Disable(_renderContext.Enums.Blend);
+                    _terrainShader.SetUniform("uUnlit", 0);
                     _renderContext.Enable(_renderContext.Enums.CullFace);
                     _renderContext.DepthMask(true);
                     _renderContext.Enable(_renderContext.Enums.DepthTest);
@@ -259,12 +309,13 @@ void main() {
                 _terrainShader.Use();
                 _terrainShader.SetMatrix4("uModel", ghostModel);
                 _terrainShader.SetUniform("uHasTexture", 0);
+                _terrainShader.SetUniform("uUnlit", 1);
                 _terrainShader.SetUniform("uPolyFactor", 0f);
                 _terrainShader.SetUniform("uPolyUnits", 0f);
                 ghostBuffer.Bind();
-                _renderContext.Enable(_renderContext.Enums.LineSmooth);
-                _renderContext.DrawElements(_renderContext.Enums.Lines, ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
                 _renderContext.Disable(_renderContext.Enums.LineSmooth);
+                _renderContext.DrawElements(_renderContext.Enums.Lines, ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                _terrainShader.SetUniform("uUnlit", 0);
             }
 
             _renderContext.Enable(_renderContext.Enums.DepthTest);
