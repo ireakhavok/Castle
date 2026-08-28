@@ -183,6 +183,10 @@ namespace SiegeEngine.Scenes
                 var placedLight = e.GetComponent<LightComponent>();
                 Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Light={(placedLight != null ? placedLight.Type.ToString() : "none")} Position from Level (exact match, no spoof)");
             }
+            if (_player != null)
+                SetPlayer(_player);
+            ModelManager.EnsurePacksLoaded(projectPath, level);
+            Console.WriteLine($"[RuntimeGameplayScene] Server entities={_server.GetEntities()?.Count ?? 0} InstanceModels={(ModelManager.Instance != null)}");
             var existingPlayerEntity = level.Entities.FirstOrDefault(e => e.Id == 1 || (e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase)));
             if (existingPlayerEntity != null && _player == null)
             {

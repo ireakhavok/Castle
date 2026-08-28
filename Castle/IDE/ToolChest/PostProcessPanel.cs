@@ -51,9 +51,9 @@ namespace ToolChest
             AllowDragging = true;
             IsModal = false;
             DockingMode = DockingMode.IDE;
-            BaseWidth = 460f;
-            BaseHeight = 640f;
-            Size = new Vector2(460f, 640f);
+            BaseWidth = 420f;
+            BaseHeight = 620f;
+            Size = new Vector2(420f, 620f);
             RenderOrder = 0;
             Scaling = ScalingMode.Fill;
         }
@@ -75,6 +75,12 @@ namespace ToolChest
             _uiOverlay.RefreshUI();
         }
 
+        public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
+        {
+            base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+            SyncSliderReadouts();
+        }
+
         private void Prefill()
         {
             var env = ResolveEnvironment() ?? new EnvironmentSettings();
@@ -84,6 +90,8 @@ namespace ToolChest
             DirectionToAzEl(dir, out float azimuth, out float elevation);
             SetInput("pp-sun-azimuth", azimuth.ToString("0", CultureInfo.InvariantCulture));
             SetInput("pp-sun-elevation", elevation.ToString("0", CultureInfo.InvariantCulture));
+            SetReadout("pp-sun-azimuth-val", azimuth.ToString("0", CultureInfo.InvariantCulture));
+            SetReadout("pp-sun-elevation-val", elevation.ToString("0", CultureInfo.InvariantCulture));
             SetReadout("pp-sun-vector", FormatVec3(dir));
             SetInput("pp-sun-intensity", env.SunIntensity.ToString(CultureInfo.InvariantCulture));
             SetInput("pp-fog-density", env.FogDensity.ToString(CultureInfo.InvariantCulture));
@@ -95,16 +103,44 @@ namespace ToolChest
             SetCheckbox("pp-sun-cast-shadows", env.SunCastShadows);
         }
 
-        private void Apply()
+        private string _lastAzimuthText;
+        private string _lastElevationText;
+        private string _lastVectorText;
+
+        private void SyncSliderReadouts()
         {
             float azimuth = ParseFloat(GetInputValue("pp-sun-azimuth"), 187f);
             float elevation = ParseFloat(GetInputValue("pp-sun-elevation"), 31f);
+            string azText = azimuth.ToString("0", CultureInfo.InvariantCulture);
+            string elText = elevation.ToString("0", CultureInfo.InvariantCulture);
+            string vecText = FormatVec3(AzElToDirection(azimuth, elevation));
+            if (azText != _lastAzimuthText)
+            {
+                _lastAzimuthText = azText;
+                SetReadout("pp-sun-azimuth-val", azText);
+            }
+            if (elText != _lastElevationText)
+            {
+                _lastElevationText = elText;
+                SetReadout("pp-sun-elevation-val", elText);
+            }
+            if (vecText != _lastVectorText)
+            {
+                _lastVectorText = vecText;
+                SetReadout("pp-sun-vector", vecText);
+            }
+        }
+
+        private void Apply()
+        {
+            SyncSliderReadouts();
+            float azimuth = ParseFloat(GetInputValue("pp-sun-azimuth"), 187f);
+            float elevation = ParseFloat(GetInputValue("pp-sun-elevation"), 31f);
             Vector3 direction = AzElToDirection(azimuth, elevation);
-            SetReadout("pp-sun-vector", FormatVec3(direction));
 
             float intensity = ParseFloat(GetInputValue("pp-sun-intensity"), 1f);
             float density = ParseFloat(GetInputValue("pp-fog-density"), 0.003f);
-            float start = ParseFloat(GetInputValue("pp-fog-start"), 40f);
+            float start = ParseFloat(GetInputValue("pp-fog-start"), 0f);
             string shadowQuality = GetSelectValue("pp-shadow-quality") ?? "Medium";
             string fogMode = GetSelectValue("pp-fog-mode") ?? "Off";
             string fogQuality = GetSelectValue("pp-fog-quality") ?? "Off";
@@ -180,10 +216,6 @@ namespace ToolChest
             return ProjectSettings.Current?.CurrentSceneData?.Environment;
         }
 
-        /// <summary>
-        /// Travel vector (light travels along this, Z-up) from compass azimuth + elevation.
-        /// Azimuth 0 = +X, 90 = +Y. Elevation 90 = +Z (overhead).
-        /// </summary>
         public static Vector3 AzElToDirection(float azimuthDeg, float elevationDeg)
         {
             float az = azimuthDeg * MathF.PI / 180f;
@@ -248,7 +280,7 @@ namespace ToolChest
             if (elem == null) return;
             if (elem is TextElement selfText)
             {
-                selfText.Content = value;
+                selfText.Content = value ?? "";
                 return;
             }
             if (elem.Children != null)
@@ -257,13 +289,13 @@ namespace ToolChest
                 {
                     if (child is TextElement textChild)
                     {
-                        textChild.Content = value;
+                        textChild.Content = value ?? "";
                         return;
                     }
                 }
             }
             if (elem.Attributes != null)
-                elem.Attributes["text"] = value;
+                elem.Attributes["text"] = value ?? "";
         }
 
         private string GetInputValue(string id)
@@ -283,18 +315,9 @@ namespace ToolChest
 
         private bool GetChecked(string id)
         {
-            // Checkboxes report state via Checked. Value is the prefill string
-            // ("true"/"on") and does not flip when the box is unchecked — that
-            // is why Post Process Sun Enabled could never turn back off.
             if (_uiOverlay.FindElementById(id) is InputElement input)
                 return input.Checked;
             return false;
-        }
-
-        private static bool IsChecked(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value)) return false;
-            return value == "on" || value == "1" || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
         }
 
         private static float ParseFloat(string raw, float fallback)

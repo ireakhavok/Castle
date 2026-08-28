@@ -222,7 +222,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             shader.SetUniform("uAmbientStrength", 0.16f);
             shader.SetUniform("uLightDir", Sun.Direction.X, Sun.Direction.Y, Sun.Direction.Z);
             shader.SetUniform("uLightColor", Sun.Color.X, Sun.Color.Y, Sun.Color.Z);
-            float sunPunch = Sun.Intensity <= 0f ? 0f : MathF.Min(Sun.Intensity * 1.5f, 4f);
+            float sunPunch = Sun.Intensity <= 0f ? 0f : MathF.Min(Sun.Intensity * 1.85f, 5f);
             shader.SetUniform("uLightIntensity", sunPunch);
 
             shader.SetUniform("uPointCount", PointCount);
@@ -279,8 +279,9 @@ namespace SiegeEngine.Core.GPU.Lighting
             shader.SetUniform("uShadowPcfRadius", ShadowQuality switch
             {
                 ShadowQuality.Ultra => 3,
-                ShadowQuality.High => 2,
-                _ => 1
+                ShadowQuality.High => 3,
+                ShadowQuality.Low => 1,
+                _ => 2
             });
 
             for (int i = 0; i < MaxCascades; i++)

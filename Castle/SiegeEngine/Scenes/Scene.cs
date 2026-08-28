@@ -131,9 +131,8 @@ namespace SiegeEngine.Scenes
         public void RenderWorldOnly(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
             // Parent RenderPresentRoot already packed LightingFrame.
-            // Only build here when this is the first lighting pass.
-            // Do not rebuild just because ShadowsReady is false — that
-            // re-injected the runtime default sun into the editor.
+            // Rebuild only when nothing is packed yet. ShadowsReady stays
+            // on that frame so we do not double-draw the atlas.
             if (LightingFrame.Current == null)
                 PrepareLightingFrame(entities, view, projection, runShadows: true);
             RenderContent(entities, view, projection);
@@ -222,8 +221,13 @@ namespace SiegeEngine.Scenes
             {
                 if (_shadowMapRenderer == null)
                     _shadowMapRenderer = new ShadowMapRenderer(_renderContext);
-                Vector3 cameraPos = _player?.Camera?.Position ?? ExtractCameraPosition(view);
-                _shadowMapRenderer.Render(frame, CollectShadowCasters(list), view, projection, cameraPos);
+                Vector3 cameraPos = ExtractCameraPosition(view);
+                if (_player?.Camera != null)
+                    cameraPos = _player.Camera.Position;
+                var casters = CollectShadowCasters(list);
+                if (casters.Count == 0)
+                    Console.WriteLine($"[Scene] CollectShadowCasters returned 0 (entities={list?.Count ?? 0}, points={frame.PointCount}). Point shadows will be empty.");
+                _shadowMapRenderer.Render(frame, casters, view, projection, cameraPos);
             }
 
             return frame;

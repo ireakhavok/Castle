@@ -70,12 +70,11 @@ namespace SiegeEngine.Core.GPU.Lighting
             if (density <= 0f)
                 return 0f;
             FogMode mode = ResolveFogMode();
-            // Exponential used to stay crystal-clear across the map because
-            // 0.003 * dist^2 barely accumulated. Floor it so the horizon fogs out.
+            // Exponential needs a usable floor so the horizon actually fogs.
+            // Volumetric must NOT be floored -- a 0.012 density over a long
+            // march became a solid fog wall past a fixed distance.
             if (mode == FogMode.Exponential && density < 0.012f)
                 return 0.018f;
-            if (mode == FogMode.Volumetric && density < 0.008f)
-                return 0.012f;
             return density;
         }
 

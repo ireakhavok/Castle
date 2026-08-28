@@ -162,24 +162,26 @@ namespace SiegeEngine.Core.GPU.Lighting
                 if (modelComp.Material != null && !modelComp.Material.CastShadows)
                     continue;
 
-                string modelKey = modelComp.Key?.ToLower();
+                string modelKey = modelComp.Key?.ToLowerInvariant();
                 FBXModel fbxModel = modelComp.Model;
                 ModelManager.ModelData modelData = null;
-                if (modelManager != null)
+                void TryKey(ModelManager mgr, string key)
                 {
-                    void TryKey(string key)
-                    {
-                        if (string.IsNullOrEmpty(key) || modelData != null) return;
-                        if (fbxModel == null)
-                            modelManager.TryGetModel(key, out fbxModel);
-                        modelManager.TryGetModelData(key, out modelData);
-                    }
-                    TryKey(modelKey);
-                    if (modelData == null && !string.IsNullOrEmpty(modelKey) && !modelKey.EndsWith("_pack"))
-                        TryKey(modelKey + "_pack");
-                    if (modelData == null && !string.IsNullOrEmpty(modelKey) && modelKey.EndsWith("_pack"))
-                        TryKey(modelKey.Substring(0, modelKey.Length - 5));
+                    if (mgr == null || string.IsNullOrEmpty(key) || modelData != null) return;
+                    if (fbxModel == null)
+                        mgr.TryGetModel(key, out fbxModel);
+                    mgr.TryGetModelData(key, out modelData);
                 }
+                void TryAllKeys(ModelManager mgr)
+                {
+                    TryKey(mgr, modelKey);
+                    TryKey(mgr, modelComp.Key);
+                    if (!string.IsNullOrEmpty(modelKey) && !modelKey.EndsWith("_pack"))
+                        TryKey(mgr, modelKey + "_pack");
+                    if (!string.IsNullOrEmpty(modelKey) && modelKey.EndsWith("_pack"))
+                        TryKey(mgr, modelKey.Substring(0, modelKey.Length - 5));
+                }
+                TryAllKeys(modelManager);
                 if (modelData == null)
                     continue;
 
@@ -329,33 +331,37 @@ namespace SiegeEngine.Core.GPU.Lighting
             sceneRadius = MathF.Max(sceneRadius, 256f);
             float worldRadius = MathF.Max(far, MathF.Max(sceneRadius * 2f, 2048f));
 
+            // Near cascade grows with camera height so an editor overhead
+            // view still lands in the high-res tile instead of the 2km one.
+            float camHeight = MathF.Max(MathF.Abs(cameraPos.Z), 8f);
+            float near = Math.Clamp(camHeight * 0.9f, 40f, 360f);
             float[] radii = new float[LightingFrame.MaxCascades];
             if (frame.ShadowQuality == ShadowQuality.Ultra)
             {
-                radii[0] = 96f;
-                radii[1] = 280f;
-                radii[2] = 720f;
+                radii[0] = near;
+                radii[1] = near * 2.4f;
+                radii[2] = near * 5.5f;
                 radii[3] = worldRadius;
             }
             else if (frame.ShadowQuality == ShadowQuality.High)
             {
-                radii[0] = 120f;
-                radii[1] = 320f;
-                radii[2] = 800f;
+                radii[0] = near * 1.1f;
+                radii[1] = near * 2.6f;
+                radii[2] = near * 6.0f;
                 radii[3] = worldRadius;
             }
             else if (frame.ShadowQuality == ShadowQuality.Low)
             {
-                radii[0] = 240f;
+                radii[0] = near * 1.6f;
                 radii[1] = worldRadius;
                 radii[2] = worldRadius;
                 radii[3] = worldRadius;
             }
             else
             {
-                radii[0] = 160f;
-                radii[1] = 400f;
-                radii[2] = 900f;
+                radii[0] = near * 1.25f;
+                radii[1] = near * 3.2f;
+                radii[2] = worldRadius;
                 radii[3] = worldRadius;
             }
             frame.CascadeSplits = new Vector4(radii[0], radii[1], radii[2], radii[3]);
@@ -452,7 +458,13 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private static int CascadeCount(ShadowQuality quality)
         {
-            return quality == ShadowQuality.Low ? 1 : 2;
+            return quality switch
+            {
+                ShadowQuality.Low => 2,
+                ShadowQuality.High => 4,
+                ShadowQuality.Ultra => 4,
+                _ => 3
+            };
         }
 
         private static int AtlasSize(ShadowQuality quality)

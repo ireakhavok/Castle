@@ -7,21 +7,29 @@
             font-family: Segoe UI, system-ui, sans-serif;
             background: #1e1e1e;
             color: #ddd;
-            padding: 16px;
+            padding: 12px;
             margin: 0;
+            overflow: hidden;
         }
         .panel {
             background: #252526;
             border: 1px solid #383838;
-            padding: 16px;
+            padding: 12px;
+            overflow: hidden;
         }
-        .title { color: #f0f0f0; margin: 0 0 12px 0; }
-        .field { font-size: 12px; color: #aaa; margin: 8px 0 3px; display: block; }
+        .title { color: #f0f0f0; margin: 0 0 8px 0; }
+        .field {
+            font-size: 12px;
+            color: #aaa;
+            margin: 6px 0 2px;
+            display: block;
+            white-space: nowrap;
+        }
         select, input {
             background: #3c3c3c;
             color: #ddd;
             border: 1px solid #555;
-            padding: 6px 8px;
+            padding: 4px 6px;
             width: 100%;
             box-sizing: border-box;
         }
@@ -33,12 +41,11 @@
         .row > div { flex: 1; }
         .hint {
             display: block;
-            white-space: normal;
+            white-space: nowrap;
             font-size: 11px;
             color: #888;
-            margin: 10px 0 14px;
-            line-height: 1.4;
-            width: 100%;
+            margin: 2px 0;
+            line-height: 1.2;
         }
         .readout {
             display: block;
@@ -46,11 +53,11 @@
             color: #7CFFCB;
             background: #1a1a1a;
             border: 1px solid #383838;
-            padding: 6px 8px;
-            margin: 4px 0 8px;
-            white-space: normal;
+            padding: 4px 6px;
+            margin: 2px 0 6px;
+            white-space: nowrap;
         }
-        .actions { display: flex; gap: 8px; margin-top: 14px; }
+        .actions { display: flex; gap: 8px; margin-top: 10px; }
         button {
             background: #c9a227;
             color: #111;
@@ -62,7 +69,7 @@
         button:hover { background: #e0b83a; }
         button.secondary { background: #444; color: #ddd; font-weight: 500; }
         button.secondary:hover { background: #555; }
-        .check { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+        .check { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
         .check input { width: auto; }
     </style>
 </head>
@@ -73,19 +80,21 @@
             <input id="pp-sun-enabled" type="checkbox">
             <div class="field">Enable sun</div>
         </div>
-        <div class="field">Sun azimuth (0 = +X / east, 90 = +Y)</div>
+        <div class="field">Azimuth</div>
         <input id="pp-sun-azimuth" type="range" min="0" max="360" step="1" value="187">
-        <div class="field">Sun elevation (5 = horizon, 90 = overhead)</div>
+        <div id="pp-sun-azimuth-val" class="readout">187</div>
+        <div class="field">Elevation</div>
         <input id="pp-sun-elevation" type="range" min="5" max="85" step="1" value="31">
-        <div class="field">Travel vector (unit, Z-up)</div>
+        <div id="pp-sun-elevation-val" class="readout">31</div>
+        <div class="field">Travel vector</div>
         <div id="pp-sun-vector" class="readout">-0.850, 0.100, -0.520</div>
         <div class="row">
             <div>
-                <div class="field">Sun intensity</div>
+                <div class="field">Intensity</div>
                 <input id="pp-sun-intensity" value="1">
             </div>
             <div>
-                <div class="field">Shadow quality</div>
+                <div class="field">Shadows</div>
                 <select id="pp-shadow-quality">
                     <option value="Off">Off</option>
                     <option value="Low">Low</option>
@@ -117,15 +126,14 @@
                 </select>
             </div>
             <div>
-                <div class="field">Fog density</div>
+                <div class="field">Density</div>
                 <input id="pp-fog-density" value="0.003">
             </div>
         </div>
-        <div class="field">Fog start distance</div>
-        <input id="pp-fog-start" value="40">
-        <div class="hint">
-            Sun stays off until you check Enable sun and click Apply. Shadows from models onto terrain need Enable sun plus Sun casts shadows. Fog stays off until you pick a mode. Play Game uses these settings; the editor does not invent a default sun.
-        </div>
+        <div class="field">Fog start</div>
+        <input id="pp-fog-start" value="0">
+        <div class="hint">Check Enable sun, then Apply.</div>
+        <div class="hint">Play Game uses these settings.</div>
         <div class="actions">
             <button data-hook="PostProcessApply">Apply</button>
             <button class="secondary" data-hook="CancelPostProcess">Cancel</button>
