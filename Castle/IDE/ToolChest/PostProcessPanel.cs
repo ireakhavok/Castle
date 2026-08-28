@@ -48,10 +48,14 @@ namespace ToolChest
             _eventBus = eventBus;
             HasTitleBar = true;
             IsClosable = true;
-            IsModal = true;
-            RenderOrder = 1200;
+            AllowDragging = true;
+            IsModal = false;
+            DockingMode = DockingMode.IDE;
+            BaseWidth = 460f;
+            BaseHeight = 640f;
+            Size = new Vector2(460f, 640f);
+            RenderOrder = 0;
             Scaling = ScalingMode.Fill;
-            Size = new Vector2(460, 640);
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -127,7 +131,6 @@ namespace ToolChest
                     { "fogStart", start.ToString(CultureInfo.InvariantCulture) }
                 }
             });
-            _eventBus?.Publish(new ClosePanelEvent(this));
         }
 
         public static EnvironmentSettings CommitEnvironment(
@@ -243,18 +246,22 @@ namespace ToolChest
         {
             var elem = _uiOverlay.FindElementById(id);
             if (elem == null) return;
-            try
+            if (elem is TextElement selfText)
             {
-                var textProp = elem.GetType().GetProperty("Text");
-                if (textProp != null && textProp.CanWrite)
-                    textProp.SetValue(elem, value);
-                var inner = elem.GetType().GetProperty("InnerText");
-                if (inner != null && inner.CanWrite)
-                    inner.SetValue(elem, value);
-                if (elem is InputElement input)
-                    input.Value = value;
+                selfText.Content = value;
+                return;
             }
-            catch { }
+            if (elem.Children != null)
+            {
+                foreach (var child in elem.Children)
+                {
+                    if (child is TextElement textChild)
+                    {
+                        textChild.Content = value;
+                        return;
+                    }
+                }
+            }
             if (elem.Attributes != null)
                 elem.Attributes["text"] = value;
         }

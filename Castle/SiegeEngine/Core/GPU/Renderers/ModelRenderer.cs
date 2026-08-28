@@ -113,6 +113,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             ShaderProgram shader = hasBones ? _animationShader : _modelShader;
             shader.Use();
             shader.SetMatrix4("uModel", modelMatrix);
+            shader.SetMatrix4("uNormalMatrix", BuildNormalMatrix(modelMatrix));
             shader.SetMatrix4("uView", view);
             shader.SetMatrix4("uProjection", projection);
             shader.SetUniform("uViewPos", viewPos.X, viewPos.Y, viewPos.Z);
@@ -231,6 +232,25 @@ namespace SiegeEngine.Core.GPU.Renderers
         public void RenderModelForEntity(ModelComponent modelComp, PhysicsComponent physics, Matrix4x4 view, Matrix4x4 projection)
         {
             RenderEntityFully(modelComp, physics, view, projection, physics.Position);
+        }
+
+        /// <summary>
+        /// Inverse-transpose of the linear part of the model matrix. Drops the
+        /// mid-chain CoM translations so normals follow entity rotation/scale only.
+        /// </summary>
+        private static Matrix4x4 BuildNormalMatrix(Matrix4x4 model)
+        {
+            Matrix4x4 linear = model;
+            linear.M14 = 0f;
+            linear.M24 = 0f;
+            linear.M34 = 0f;
+            linear.M41 = 0f;
+            linear.M42 = 0f;
+            linear.M43 = 0f;
+            linear.M44 = 1f;
+            if (!Matrix4x4.Invert(linear, out Matrix4x4 inv))
+                return linear;
+            return Matrix4x4.Transpose(inv);
         }
 
         public void Dispose()

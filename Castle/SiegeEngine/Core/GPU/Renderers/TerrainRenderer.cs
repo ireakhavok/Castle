@@ -80,16 +80,16 @@ uniform float uSpotOuter[2];
 float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
     if (uShadowsEnabled == 0 || uReceiveShadows == 0 || uCascadeCount <= 0)
         return 1.0;
-    float viewZ = abs(vViewPos.z);
+    float dist = length(vViewPos.xyz);
     int cascade = 0;
-    if (uCascadeCount > 1 && viewZ > uCascadeSplits.x) cascade = 1;
-    if (uCascadeCount > 2 && viewZ > uCascadeSplits.y) cascade = 2;
-    if (uCascadeCount > 3 && viewZ > uCascadeSplits.z) cascade = 3;
+    if (uCascadeCount > 1 && dist > uCascadeSplits.x) cascade = 1;
+    if (uCascadeCount > 2 && dist > uCascadeSplits.y) cascade = 2;
+    if (uCascadeCount > 3 && dist > uCascadeSplits.z) cascade = 3;
     vec3 offsetPos = worldPos + normal * uShadowNormalBias;
     vec4 lightClip = uCascadeVP[cascade] * vec4(offsetPos, 1.0);
     vec3 proj = lightClip.xyz / max(lightClip.w, 0.0001);
     proj = proj * 0.5 + 0.5;
-    if (proj.x <= 0.0 || proj.x >= 1.0 || proj.y <= 0.0 || proj.y >= 1.0 || proj.z > 1.0)
+    if (proj.x <= 0.0 || proj.x >= 1.0 || proj.y <= 0.0 || proj.y >= 1.0 || proj.z <= 0.0 || proj.z >= 1.0)
         return 1.0;
     float cell = 0.5;
     vec2 atlasOrigin = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell;

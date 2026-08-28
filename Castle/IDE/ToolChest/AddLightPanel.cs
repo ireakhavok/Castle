@@ -45,10 +45,14 @@ namespace ToolChest
             _eventBus = eventBus;
             HasTitleBar = true;
             IsClosable = true;
-            IsModal = true;
-            RenderOrder = 1200;
+            AllowDragging = true;
+            IsModal = false;
+            DockingMode = SiegeEngine.Core.Definitions.DockingMode.IDE;
+            BaseWidth = 420f;
+            BaseHeight = 420f;
+            Size = new Vector2(420f, 420f);
+            RenderOrder = 0;
             Scaling = ScalingMode.Fill;
-            Size = new Vector2(420, 420);
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -86,7 +90,9 @@ namespace ToolChest
                 direction = new Vector3(0f, 0f, -1f);
             direction = Vector3.Normalize(direction);
             float range = ParseFloat(rangeElem?.Value, 25f);
-            bool castShadows = castElem == null || IsChecked(castElem.Value);
+            bool castShadows = true;
+            if (castElem != null)
+                castShadows = castElem.Checked || IsChecked(castElem.Value);
 
             _eventBus?.Publish(new GenericEvent
             {

@@ -95,6 +95,26 @@ namespace SiegeEngine.Core.UI
                                 elem = new ButtonElement();
                                 break;
                             case "div":
+                            case "p":
+                            case "span":
+                            case "label":
+                            case "h1":
+                            case "h2":
+                            case "h3":
+                            case "h4":
+                            case "h5":
+                            case "h6":
+                            case "section":
+                            case "article":
+                            case "header":
+                            case "footer":
+                            case "main":
+                            case "i":
+                            case "em":
+                            case "strong":
+                            case "b":
+                            case "small":
+                            case "pre":
                                 elem = new DivElement();
                                 break;
                             case "select":

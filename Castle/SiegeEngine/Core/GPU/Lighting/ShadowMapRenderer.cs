@@ -24,6 +24,10 @@ namespace SiegeEngine.Core.GPU.Lighting
     /// Core-owned shadow map generation. CSM atlas for the sun, cubemap for
     /// the primary point light, 2D map for the primary spot light. Games only
     /// place lights and pick a quality preset.
+    ///
+    /// Cascades are nested WORLD-SPACE orthographic boxes around a texel-snapped
+    /// focus (the camera position). They do not fit the camera frustum, so yaw,
+    /// pitch, and zoom cannot flip a world point in or out of shadow.
     /// </summary>
     public unsafe class ShadowMapRenderer : IDisposable
     {
@@ -75,9 +79,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             frame.CascadeCount = cascadeCount;
             frame.ShadowAtlas = _atlasDepth;
 
-            float near = 0.1f;
-            float far = MathF.Max(frame.ShadowDistance, 10f);
-            ComputeCascades(frame, view, projection, cameraPos, near, far, cascadeCount, atlasSize, casters);
+            float far = MathF.Max(frame.ShadowDistance, 24f);
+            ComputeCascades(frame, cameraPos, far, cascadeCount, atlasSize, casters);
 
             int tile = atlasSize / 2;
             _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
@@ -265,98 +268,112 @@ namespace SiegeEngine.Core.GPU.Lighting
             return view * proj;
         }
 
-        private void ComputeCascades(LightingFrame frame, Matrix4x4 view, Matrix4x4 projection, Vector3 cameraPos, float near, float far, int cascadeCount, int atlasSize, IReadOnlyList<ShadowCaster> casters)
+        /// <summary>
+        /// Nested world-space orthos around a texel-snapped focus. Camera orientation
+        /// and zoom are ignored. CascadeSplits are world radii so the shaders can
+        /// pick a cascade by distance from the camera, not by view-space Z.
+        /// </summary>
+        private void ComputeCascades(LightingFrame frame, Vector3 cameraPos, float far, int cascadeCount, int atlasSize, IReadOnlyList<ShadowCaster> casters)
         {
-            float[] splits = new float[LightingFrame.MaxCascades];
-            for (int i = 0; i < cascadeCount; i++)
-            {
-                float p = (i + 1f) / cascadeCount;
-                float logSplit = near * MathF.Pow(far / near, p);
-                float uniSplit = near + (far - near) * p;
-                splits[i] = logSplit * 0.75f + uniSplit * 0.25f;
-            }
+            float[] radii = new float[LightingFrame.MaxCascades];
+            radii[0] = MathF.Max(far * 0.20f, 8f);
+            radii[1] = MathF.Max(far * 0.45f, radii[0] + 4f);
+            radii[2] = MathF.Max(far * 0.75f, radii[1] + 4f);
+            radii[3] = MathF.Max(far, radii[2] + 4f);
             frame.CascadeSplits = new Vector4(
-                cascadeCount > 0 ? splits[0] : far,
-                cascadeCount > 1 ? splits[1] : far,
-                cascadeCount > 2 ? splits[2] : far,
-                cascadeCount > 3 ? splits[3] : far);
-
-            if (!Matrix4x4.Invert(view, out Matrix4x4 invView))
-                invView = Matrix4x4.Identity;
+                cascadeCount > 0 ? radii[0] : far,
+                cascadeCount > 1 ? radii[1] : far,
+                cascadeCount > 2 ? radii[2] : far,
+                cascadeCount > 3 ? radii[3] : far);
 
             Vector3 lightDir = frame.Sun.Direction.LengthSquared() > 1e-8f
                 ? Vector3.Normalize(frame.Sun.Direction)
                 : LightingFrame.DefaultSunDirection;
             Vector3 lightUp = MathF.Abs(Vector3.Dot(lightDir, Vector3.UnitZ)) > 0.95f ? Vector3.UnitX : Vector3.UnitZ;
 
-            float last = near;
+            // Pull the light eye far enough "upstream" that casters between the sun
+            // and the focus still land inside the ortho Z range.
+            float casterPad = 40f;
+            if (casters != null)
+            {
+                for (int c = 0; c < casters.Count; c++)
+                {
+                    Vector3 world = casters[c].ModelMatrix.Translation;
+                    float away = Vector3.Distance(world, cameraPos);
+                    if (away > casterPad)
+                        casterPad = away;
+                }
+                casterPad = MathF.Min(casterPad + 32f, far * 3f);
+            }
+
+            int tile = Math.Max(atlasSize / 2, 1);
+            float zBack = far + casterPad + 80f;
+            float zFwd = far + casterPad + 80f;
+
             for (int i = 0; i < cascadeCount; i++)
             {
-                float splitFar = splits[i];
-                Vector3[] corners = FrustumCorners(invView, projection, last, splitFar);
-                last = splitFar;
+                float radius = radii[i];
+                float texel = MathF.Max((radius * 2f) / tile, 0.05f);
+                Vector3 focus = SnapToTexel(cameraPos, texel);
 
-                Vector3 center = Vector3.Zero;
-                for (int c = 0; c < 8; c++)
-                    center += corners[c];
-                center /= 8f;
+                Vector3 eye = focus - lightDir * zBack;
+                Matrix4x4 lightView = Matrix4x4.CreateLookAt(eye, focus, lightUp);
 
-                Matrix4x4 lightView = Matrix4x4.CreateLookAt(center - lightDir * (splitFar * 2f), center, lightUp);
-                float minX = float.MaxValue, maxX = float.MinValue;
-                float minY = float.MaxValue, maxY = float.MinValue;
-                float minZ = float.MaxValue, maxZ = float.MinValue;
-                for (int c = 0; c < 8; c++)
-                {
-                    Vector3 ls = Vector3.Transform(corners[c], lightView);
-                    minX = MathF.Min(minX, ls.X); maxX = MathF.Max(maxX, ls.X);
-                    minY = MathF.Min(minY, ls.Y); maxY = MathF.Max(maxY, ls.Y);
-                    minZ = MathF.Min(minZ, ls.Z); maxZ = MathF.Max(maxZ, ls.Z);
-                }
-                if (casters != null)
-                {
-                    for (int c = 0; c < casters.Count; c++)
-                    {
-                        Vector3 world = casters[c].ModelMatrix.Translation;
-                        Vector3 ls = Vector3.Transform(world, lightView);
-                        const float radius = 32f;
-                        minX = MathF.Min(minX, ls.X - radius); maxX = MathF.Max(maxX, ls.X + radius);
-                        minY = MathF.Min(minY, ls.Y - radius); maxY = MathF.Max(maxY, ls.Y + radius);
-                        minZ = MathF.Min(minZ, ls.Z - radius); maxZ = MathF.Max(maxZ, ls.Z + radius);
-                    }
-                }
-                float pad = MathF.Max((maxX - minX), (maxY - minY)) * 0.08f + 2f;
-                minX -= pad; maxX += pad; minY -= pad; maxY += pad;
-                float zPad = (maxZ - minZ) * 0.75f + 80f;
-                Matrix4x4 lightProj = Matrix4x4.CreateOrthographicOffCenter(minX, maxX, minY, maxY, minZ - zPad, maxZ + zPad);
+                // Snap the light-space XY origin so the projection does not swim
+                // when the camera moves by a fraction of a texel.
+                Vector3 lsFocus = Vector3.Transform(focus, lightView);
+                lsFocus.X = MathF.Round(lsFocus.X / texel) * texel;
+                lsFocus.Y = MathF.Round(lsFocus.Y / texel) * texel;
+                Vector3 snappedWorld = TransformByInverse(lightView, new Vector3(lsFocus.X, lsFocus.Y, lsFocus.Z));
+                eye = snappedWorld - lightDir * zBack;
+                lightView = Matrix4x4.CreateLookAt(eye, snappedWorld, lightUp);
+
+                Matrix4x4 lightProj = CreateGLOrtho(-radius, radius, -radius, radius, 1f, zBack + zFwd);
                 frame.CascadeVP[i] = lightView * lightProj;
             }
             for (int i = cascadeCount; i < LightingFrame.MaxCascades; i++)
                 frame.CascadeVP[i] = Matrix4x4.Identity;
         }
 
-        private static Vector3[] FrustumCorners(Matrix4x4 invView, Matrix4x4 projection, float near, float far)
+        private static Vector3 SnapToTexel(Vector3 p, float texel)
         {
-            float tanHalfFovY = 1f / projection.M22;
-            float aspect = projection.M22 / MathF.Max(projection.M11, 1e-5f);
-            float ny = tanHalfFovY * near;
-            float nx = ny * aspect;
-            float fy = tanHalfFovY * far;
-            float fx = fy * aspect;
-
-            Vector3 n0 = TransformPoint(invView, new Vector3(-nx, -ny, -near));
-            Vector3 n1 = TransformPoint(invView, new Vector3(nx, -ny, -near));
-            Vector3 n2 = TransformPoint(invView, new Vector3(nx, ny, -near));
-            Vector3 n3 = TransformPoint(invView, new Vector3(-nx, ny, -near));
-            Vector3 f0 = TransformPoint(invView, new Vector3(-fx, -fy, -far));
-            Vector3 f1 = TransformPoint(invView, new Vector3(fx, -fy, -far));
-            Vector3 f2 = TransformPoint(invView, new Vector3(fx, fy, -far));
-            Vector3 f3 = TransformPoint(invView, new Vector3(-fx, fy, -far));
-            return new[] { n0, n1, n2, n3, f0, f1, f2, f3 };
+            if (texel < 1e-4f) return p;
+            return new Vector3(
+                MathF.Round(p.X / texel) * texel,
+                MathF.Round(p.Y / texel) * texel,
+                MathF.Round(p.Z / texel) * texel);
         }
 
-        private static Vector3 TransformPoint(Matrix4x4 m, Vector3 p)
+        private static Vector3 TransformByInverse(Matrix4x4 m, Vector3 p)
         {
-            return Vector3.Transform(p, m);
+            if (!Matrix4x4.Invert(m, out Matrix4x4 inv))
+                return p;
+            return Vector3.Transform(p, inv);
+        }
+
+        /// <summary>
+        /// OpenGL clip-space ortho (Z in [-1, 1]) expressed as a System.Numerics
+        /// row-vector matrix. Matches the engine's SetMatrix4 upload convention
+        /// so shader `proj * 0.5 + 0.5` covers the full depth buffer.
+        /// </summary>
+        private static Matrix4x4 CreateGLOrtho(float left, float right, float bottom, float top, float zNear, float zFar)
+        {
+            float rl = right - left;
+            float tb = top - bottom;
+            float fn = zFar - zNear;
+            if (MathF.Abs(rl) < 1e-5f) rl = 1f;
+            if (MathF.Abs(tb) < 1e-5f) tb = 1f;
+            if (MathF.Abs(fn) < 1e-5f) fn = 1f;
+
+            Matrix4x4 m = Matrix4x4.Identity;
+            m.M11 = 2f / rl;
+            m.M22 = 2f / tb;
+            m.M33 = -2f / fn;
+            m.M41 = -(right + left) / rl;
+            m.M42 = -(top + bottom) / tb;
+            m.M43 = -(zFar + zNear) / fn;
+            m.M44 = 1f;
+            return m;
         }
 
         private static int CascadeCount(ShadowQuality quality)

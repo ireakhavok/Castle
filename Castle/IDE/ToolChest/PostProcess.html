@@ -16,7 +16,7 @@
             padding: 16px;
         }
         .title { color: #f0f0f0; margin: 0 0 12px 0; }
-        .field { font-size: 12px; color: #aaa; margin: 8px 0 3px; }
+        .field { font-size: 12px; color: #aaa; margin: 8px 0 3px; display: block; }
         select, input {
             background: #3c3c3c;
             color: #ddd;
@@ -31,14 +31,24 @@
         }
         .row { display: flex; gap: 8px; }
         .row > div { flex: 1; }
-        .hint { font-size: 11px; color: #888; margin: 10px 0 14px; line-height: 1.4; }
+        .hint {
+            display: block;
+            white-space: normal;
+            font-size: 11px;
+            color: #888;
+            margin: 10px 0 14px;
+            line-height: 1.4;
+            width: 100%;
+        }
         .readout {
+            display: block;
             font-size: 12px;
             color: #7CFFCB;
             background: #1a1a1a;
             border: 1px solid #383838;
             padding: 6px 8px;
             margin: 4px 0 8px;
+            white-space: normal;
         }
         .actions { display: flex; gap: 8px; margin-top: 14px; }
         button {

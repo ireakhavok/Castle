@@ -21,6 +21,7 @@ out vec4 vViewPos;
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
+uniform mat4 uNormalMatrix;
 uniform int uHasBones;
 uniform mat4 uBoneMatrices[100];
 uniform mat3 uNormalMatrices[100];
@@ -59,9 +60,11 @@ void main()
         totalNormal = aNormal;
         totalTangent = aTangent;
     }
-    mat3 normalMatrix = mat3(uModel);
-    Normal = normalize(normalMatrix * totalNormal);
-    vTangent = normalize(normalMatrix * totalTangent);
+    mat3 nMat = mat3(uNormalMatrix);
+    if (dot(nMat[0], nMat[0]) < 0.0001)
+        nMat = mat3(uModel);
+    Normal = normalize(nMat * totalNormal);
+    vTangent = normalize(nMat * totalTangent);
     FragPos = vec3(uModel * totalPosition);
     TexCoord = aTexCoord;
     MaterialIndex = aMaterialIndex;
@@ -165,16 +168,16 @@ int MetallicWidth(int matIdx) {
 float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
     if (uShadowsEnabled == 0 || uReceiveShadows == 0 || uCascadeCount <= 0)
         return 1.0;
-    float viewZ = abs(vViewPos.z);
+    float dist = length(worldPos - uViewPos);
     int cascade = 0;
-    if (uCascadeCount > 1 && viewZ > uCascadeSplits.x) cascade = 1;
-    if (uCascadeCount > 2 && viewZ > uCascadeSplits.y) cascade = 2;
-    if (uCascadeCount > 3 && viewZ > uCascadeSplits.z) cascade = 3;
+    if (uCascadeCount > 1 && dist > uCascadeSplits.x) cascade = 1;
+    if (uCascadeCount > 2 && dist > uCascadeSplits.y) cascade = 2;
+    if (uCascadeCount > 3 && dist > uCascadeSplits.z) cascade = 3;
     vec3 offsetPos = worldPos + normal * uShadowNormalBias;
     vec4 lightClip = uCascadeVP[cascade] * vec4(offsetPos, 1.0);
     vec3 proj = lightClip.xyz / max(lightClip.w, 0.0001);
     proj = proj * 0.5 + 0.5;
-    if (proj.x <= 0.0 || proj.x >= 1.0 || proj.y <= 0.0 || proj.y >= 1.0 || proj.z > 1.0)
+    if (proj.x <= 0.0 || proj.x >= 1.0 || proj.y <= 0.0 || proj.y >= 1.0 || proj.z <= 0.0 || proj.z >= 1.0)
         return 1.0;
     float cell = 0.5;
     vec2 atlasOrigin = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell;
@@ -250,19 +253,25 @@ void main()
     if (MetallicWidth(matIdx) > 1)
         metallic = SampleMetallic(matIdx, TexCoord);
 
-    vec3 normal = normalize(Normal);
-    // FBX/DirectX normal maps store +Y up. OpenGL TBN expects +Y down.
-    // Skip the map when the tangent is degenerate or no normal texture is bound.
-    if (length(vTangent) > 0.001 && NormalWidth(matIdx) > 1)
+    vec3 geoN = normalize(Normal);
+    if (dot(geoN, geoN) < 0.001)
+        geoN = vec3(0.0, 0.0, 1.0);
+    vec3 toCam = uViewPos - FragPos;
+    if (dot(geoN, toCam) < 0.0)
+        geoN = -geoN;
+    vec3 normal = geoN;
+    if (length(vTangent) > 0.001 && NormalWidth(matIdx) > 4)
     {
         vec3 T = normalize(vTangent);
-        T = normalize(T - dot(T, normal) * normal);
-        vec3 B = cross(normal, T);
+        T = normalize(T - dot(T, geoN) * geoN);
+        vec3 B = cross(geoN, T);
         vec3 tangentNormal = SampleNormalMap(matIdx, TexCoord) * 2.0 - 1.0;
         tangentNormal.y = -tangentNormal.y;
-        vec3 mapped = mat3(T, B, normal) * tangentNormal;
-        if (dot(mapped, mapped) > 0.001)
-            normal = normalize(mapped);
+        vec3 mapped = normalize(mat3(T, B, geoN) * tangentNormal);
+        if (dot(mapped, geoN) < 0.0)
+            mapped = -mapped;
+        if (dot(mapped, geoN) > 0.15)
+            normal = mapped;
     }
 
     vec3 ambient = uAmbientStrength * albedo * uAmbientColor;

@@ -31,6 +31,7 @@ namespace SiegeEngine.Core.UI.Elements
         {
             Tag = "text";
             Style.Display = "inline";
+            Style.WhiteSpace = "normal";
         }
 
         public void MarkTextDirty()
