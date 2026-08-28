@@ -87,8 +87,7 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
     vec4 lightClip = uCascadeVP[cascade] * vec4(offsetPos, 1.0);
     vec3 proj = lightClip.xyz / max(lightClip.w, 0.0001);
     proj = proj * 0.5 + 0.5;
-    // Out of this tile → try the next cascade. Never clamp-sample the
-    // last tile (that darkened sun-facing receivers).
+    // Out of this tile: try the next cascade. Do not clamp-sample the last tile.
     if (proj.x <= 0.001 || proj.x >= 0.999 || proj.y <= 0.001 || proj.y >= 0.999 || proj.z <= 0.0 || proj.z >= 1.0)
         return -1.0;
     float cell = 0.5;
