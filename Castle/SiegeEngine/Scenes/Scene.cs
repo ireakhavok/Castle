@@ -108,6 +108,11 @@ namespace SiegeEngine.Scenes
 
         public void RenderWorldOnly(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
+            // Parent RenderPresentRoot already packed LightingFrame + CSM.
+            // Only build here when this is the first lighting pass (hosted
+            // preview, model viewer, or a caller that skipped Render()).
+            if (LightingFrame.Current == null || !LightingFrame.Current.ShadowsReady)
+                PrepareLightingFrame(entities, view, projection, runShadows: true);
             RenderContent(entities, view, projection);
         }
 
@@ -126,22 +131,7 @@ namespace SiegeEngine.Scenes
             if (_disposed) return;
 
             GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection);
-            EnvironmentSettings environment = GetEnvironmentSettings();
-            AntiAliasingSettings.BindAuthored(environment);
-            LightingSettings.BindAuthored(environment);
-
-            IReadOnlyList<Entity> list = entities ?? _server?.GetEntities();
-            Vector3 fallbackSun = Vector3.Normalize(new Vector3(-0.5f, -1.0f, -0.5f));
-            LightingFrame frame = LightingFrame.Build(list, environment, fallbackSun);
-            LightingFrame.Current = frame;
-
-            if (presentRoot && frame.ShadowQuality != ShadowQuality.Off && frame.Sun.CastShadows)
-            {
-                if (_shadowMapRenderer == null)
-                    _shadowMapRenderer = new ShadowMapRenderer(_renderContext);
-                Vector3 cameraPos = _player?.Camera?.Position ?? Vector3.Zero;
-                _shadowMapRenderer.Render(frame, ShadowMapRenderer.CollectCasters(list), view, projection, cameraPos);
-            }
+            LightingFrame frame = PrepareLightingFrame(entities, view, projection, runShadows: presentRoot);
 
             bool wrapped = false;
             AntiAliasingMode aaMode = AntiAliasingSettings.Resolve();
@@ -186,6 +176,39 @@ namespace SiegeEngine.Scenes
 
             if (presentRoot)
                 RenderOverlay(entities, view, projection);
+        }
+
+        protected LightingFrame PrepareLightingFrame(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection, bool runShadows)
+        {
+            EnvironmentSettings environment = GetEnvironmentSettings();
+            AntiAliasingSettings.BindAuthored(environment);
+            LightingSettings.BindAuthored(environment);
+
+            IReadOnlyList<Entity> list = entities ?? _server?.GetEntities();
+            LightingFrame frame = LightingFrame.Build(list, environment, LightingFrame.DefaultSunDirection);
+            LightingFrame.Current = frame;
+
+            if (runShadows && frame.ShadowQuality != ShadowQuality.Off && frame.Sun.CastShadows)
+            {
+                if (_shadowMapRenderer == null)
+                    _shadowMapRenderer = new ShadowMapRenderer(_renderContext);
+                Vector3 cameraPos = _player?.Camera?.Position ?? ExtractCameraPosition(view);
+                _shadowMapRenderer.Render(frame, CollectShadowCasters(list), view, projection, cameraPos);
+            }
+
+            return frame;
+        }
+
+        protected virtual List<ShadowCaster> CollectShadowCasters(IReadOnlyList<Entity> entities)
+        {
+            return ShadowMapRenderer.CollectCasters(entities);
+        }
+
+        private static Vector3 ExtractCameraPosition(Matrix4x4 view)
+        {
+            if (Matrix4x4.Invert(view, out Matrix4x4 inv))
+                return inv.Translation;
+            return Vector3.Zero;
         }
 
         protected virtual void GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection)

@@ -34,7 +34,7 @@ namespace SiegeEngine.Core.Definitions
             Type = LightType.Point;
             Color = Vector3.One;
             Intensity = 1f;
-            Direction = Vector3.Normalize(new Vector3(-0.5f, -1f, -0.5f));
+            Direction = Vector3.Normalize(new Vector3(-0.85f, 0.10f, -0.52f));
         }
 
         public LightComponent(LightType type, Vector3 color, float intensity, Vector3 positionOrDirection, float attLinear = 0f, float attQuadratic = 0f)
@@ -57,7 +57,7 @@ namespace SiegeEngine.Core.Definitions
         public Vector3 ResolvedDirection()
         {
             if (Direction.LengthSquared() < 1e-8f)
-                return Vector3.UnitY;
+                return Vector3.Normalize(new Vector3(-0.85f, 0.10f, -0.52f));
             return Vector3.Normalize(Direction);
         }
 
