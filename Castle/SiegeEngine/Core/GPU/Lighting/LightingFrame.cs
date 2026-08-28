@@ -71,6 +71,13 @@ namespace SiegeEngine.Core.GPU.Lighting
         public const int PointShadowUnit = 13;
         public const int SpotShadowUnit = 14;
 
+        /// <summary>
+        /// Z-up world, 3 o'clock sun: light travels from +X (east) slightly
+        /// forward of the origin and downward along -Z. Used whenever a scene
+        /// has no enabled directional light.
+        /// </summary>
+        public static readonly Vector3 DefaultSunDirection = Vector3.Normalize(new Vector3(-0.85f, 0.10f, -0.52f));
+
         public static LightingFrame Current { get; set; }
 
         public Vector3 AmbientColor = new Vector3(0.30f, 0.30f, 0.34f);
@@ -153,7 +160,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             {
                 Vector3 dir = fallbackSunDirection.LengthSquared() > 1e-8f
                     ? Vector3.Normalize(fallbackSunDirection)
-                    : Vector3.Normalize(new Vector3(-0.5f, -1.0f, -0.5f));
+                    : DefaultSunDirection;
                 frame.Sun = new GpuDirectionalLight
                 {
                     Direction = dir,
