@@ -81,7 +81,6 @@ namespace SiegeEngine.Core.GPU.Lighting
             _rc.Enable(_e.DepthTest);
             _rc.DepthMask(true);
             _rc.DepthFunc(_e.Less);
-            _rc.Disable(_e.CullFace);
 
             if (sunMaps)
             {
@@ -90,8 +89,13 @@ namespace SiegeEngine.Core.GPU.Lighting
                 frame.CascadeCount = cascadeCount;
                 frame.ShadowAtlas = _atlasDepth;
 
-                float far = MathF.Max(frame.ShadowDistance, 2048f);
+                float far = MathF.Max(frame.ShadowDistance, 8192f);
                 ComputeCascades(frame, cameraPos, far, cascadeCount, atlasSize, casters);
+
+                // Back-face only. Front faces writing their own depth is what
+                // turned sunlit model sides gray (self-shadow into ambient).
+                _rc.Enable(_e.CullFace);
+                _rc.CullFace(GL_FRONT);
 
                 int tile = atlasSize / 2;
                 _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
@@ -111,6 +115,9 @@ namespace SiegeEngine.Core.GPU.Lighting
                 frame.CascadeCount = 0;
                 frame.ShadowAtlas = 0;
             }
+
+            // Point / spot cubemaps see every side; two-sided depth.
+            _rc.Disable(_e.CullFace);
 
             if (frame.SpotCount > 0 && frame.Spots[0].CastShadows && frame.Spots[0].Technique == ShadowTechnique.ShadowMap)
             {
@@ -161,6 +168,12 @@ namespace SiegeEngine.Core.GPU.Lighting
                     continue;
                 if (modelComp.Material != null && !modelComp.Material.CastShadows)
                     continue;
+                // Light visualization meshes and editor gizmos must not write
+                // into the point cubemap or the sun atlas.
+                if (entity.GetComponent<LightComponent>() != null)
+                    continue;
+                if (IsEditorHelperKey(modelComp.Key))
+                    continue;
 
                 string modelKey = modelComp.Key?.ToLowerInvariant();
                 FBXModel fbxModel = modelComp.Model;
@@ -202,6 +215,24 @@ namespace SiegeEngine.Core.GPU.Lighting
                 });
             }
             return list;
+        }
+
+        private static bool IsEditorHelperKey(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                return false;
+            string k = key.ToLowerInvariant();
+            return k.Contains("gizmo")
+                || k.Contains("helper")
+                || k.Contains("preview")
+                || k.Contains("widget")
+                || k.Contains("axis")
+                || k.Contains("light_icon")
+                || k.Contains("lighticon")
+                || k.Contains("editoronly")
+                || k.Contains("editor_only")
+                || k.StartsWith("gizmo_")
+                || k.EndsWith("_gizmo");
         }
 
         public void Dispose()
@@ -249,7 +280,7 @@ namespace SiegeEngine.Core.GPU.Lighting
         {
             float near = 0.05f;
             float far = MathF.Max(light.Range, 1f);
-            // 90° GL clip-space perspective so each cubemap face is the
+            // 90-degree GL clip-space perspective so each cubemap face is the
             // light's actual view of the subject, not a DX-style frustum.
             Matrix4x4 proj = CreateGLPerspective(MathF.PI / 2f, 1f, near, far);
             Vector3[] targets =
@@ -292,75 +323,48 @@ namespace SiegeEngine.Core.GPU.Lighting
         }
 
         /// <summary>
-        /// World-covering orthos. Cascade 0 is a tight high-detail tile around
-        /// the camera; cascade 1 covers the whole scene. Shaders pick by
-        /// whether the world point is inside a tile — never by camera distance,
-        /// which drew a visible circle on the terrain.
+        /// Nested world-space orthos that all share ONE focus (ground under the
+        /// camera). Split centers were projecting a visible box onto the terrain
+        /// whenever sun shadows were enabled. Shaders pick by UV containment.
         /// </summary>
         private void ComputeCascades(LightingFrame frame, Vector3 cameraPos, float far, int cascadeCount, int atlasSize, IReadOnlyList<ShadowCaster> casters)
         {
-            Vector3 sceneMin = cameraPos;
-            Vector3 sceneMax = cameraPos;
-            bool haveCaster = false;
-            if (casters != null)
-            {
-                for (int c = 0; c < casters.Count; c++)
-                {
-                    Vector3 world = casters[c].ModelMatrix.Translation;
-                    if (!haveCaster)
-                    {
-                        sceneMin = world;
-                        sceneMax = world;
-                        haveCaster = true;
-                    }
-                    else
-                    {
-                        sceneMin = Vector3.Min(sceneMin, world);
-                        sceneMax = Vector3.Max(sceneMax, world);
-                    }
-                }
-            }
-            // Focus on the ground under the camera. Centering on a flying
-            // camera at z=300 parked the ortho volume in the sky and the
-            // terrain fell out of every cascade (visible circle, no ground shadows).
-            Vector3 groundCam = new Vector3(cameraPos.X, cameraPos.Y, 0f);
-            Vector3 sceneCenter = haveCaster
-                ? new Vector3((sceneMin.X + sceneMax.X) * 0.5f, (sceneMin.Y + sceneMax.Y) * 0.5f, 0f)
-                : groundCam;
-            float sceneRadius = haveCaster ? Vector3.Distance(sceneMin, sceneMax) * 0.5f + 80f : 256f;
-            sceneRadius = MathF.Max(sceneRadius, 256f);
-            float worldRadius = MathF.Max(far, MathF.Max(sceneRadius * 2f, 2048f));
+            // Always the ground under the camera. A flying editor camera at
+            // z=300 used to park the ortho in the sky; a caster-average focus
+            // used to park a second box somewhere else on the map.
+            Vector3 groundFocus = new Vector3(cameraPos.X, cameraPos.Y, 0f);
+            float worldRadius = MathF.Max(far, 8192f);
 
-            // Near cascade grows with camera height so an editor overhead
-            // view still lands in the high-res tile instead of the 2km one.
             float camHeight = MathF.Max(MathF.Abs(cameraPos.Z), 8f);
-            float near = Math.Clamp(camHeight * 0.9f, 40f, 360f);
+            // Keep the near tile large enough that an overhead view does not
+            // show a sharp square, but still tighter than the world tile.
+            float near = Math.Clamp(camHeight * 1.4f, 96f, 768f);
             float[] radii = new float[LightingFrame.MaxCascades];
             if (frame.ShadowQuality == ShadowQuality.Ultra)
             {
                 radii[0] = near;
-                radii[1] = near * 2.4f;
-                radii[2] = near * 5.5f;
+                radii[1] = near * 2.5f;
+                radii[2] = near * 6.0f;
                 radii[3] = worldRadius;
             }
             else if (frame.ShadowQuality == ShadowQuality.High)
             {
                 radii[0] = near * 1.1f;
-                radii[1] = near * 2.6f;
-                radii[2] = near * 6.0f;
+                radii[1] = near * 2.8f;
+                radii[2] = near * 6.5f;
                 radii[3] = worldRadius;
             }
             else if (frame.ShadowQuality == ShadowQuality.Low)
             {
-                radii[0] = near * 1.6f;
+                radii[0] = MathF.Max(near * 2.0f, 256f);
                 radii[1] = worldRadius;
                 radii[2] = worldRadius;
                 radii[3] = worldRadius;
             }
             else
             {
-                radii[0] = near * 1.25f;
-                radii[1] = near * 3.2f;
+                radii[0] = near * 1.35f;
+                radii[1] = near * 3.5f;
                 radii[2] = worldRadius;
                 radii[3] = worldRadius;
             }
@@ -371,18 +375,15 @@ namespace SiegeEngine.Core.GPU.Lighting
                 : LightingFrame.DefaultSunDirection;
             Vector3 lightUp = MathF.Abs(Vector3.Dot(lightDir, Vector3.UnitZ)) > 0.95f ? Vector3.UnitX : Vector3.UnitZ;
 
-            float casterPad = MathF.Max(sceneRadius + 80f, 120f);
             int tile = Math.Max(atlasSize / 2, 1);
-            float zBack = worldRadius + casterPad + 80f;
-            float zFwd = worldRadius + casterPad + 80f;
+            float zBack = worldRadius + 256f;
+            float zFwd = worldRadius + 256f;
 
             for (int i = 0; i < cascadeCount; i++)
             {
                 float radius = radii[i];
                 float texel = MathF.Max((radius * 2f) / tile, 0.05f);
-                Vector3 focus = i == 0 && cascadeCount > 1
-                    ? SnapToTexel(groundCam, texel)
-                    : SnapToTexel(sceneCenter, texel);
+                Vector3 focus = SnapToTexel(groundFocus, texel);
 
                 Vector3 eye = focus - lightDir * zBack;
                 Matrix4x4 lightView = Matrix4x4.CreateLookAt(eye, focus, lightUp);

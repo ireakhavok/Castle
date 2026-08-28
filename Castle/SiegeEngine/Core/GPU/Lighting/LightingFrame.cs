@@ -171,8 +171,8 @@ namespace SiegeEngine.Core.GPU.Lighting
                     Color = color,
                     Intensity = intensity,
                     CastShadows = cast,
-                    ShadowBias = 0.004f,
-                    ShadowNormalBias = 0.06f,
+                    ShadowBias = 0.005f,
+                    ShadowNormalBias = 0.12f,
                     Technique = cast ? ShadowTechnique.ShadowMap : ShadowTechnique.None
                 };
                 hasSun = intensity > 0.001f;
