@@ -235,6 +235,11 @@ namespace SiegeEngine.Scenes
             return ShadowMapRenderer.CollectCasters(entities);
         }
 
+        public List<ShadowCaster> GatherShadowCasters(IReadOnlyList<Entity> entities)
+        {
+            return CollectShadowCasters(entities);
+        }
+
         private static Vector3 ExtractCameraPosition(Matrix4x4 view)
         {
             if (Matrix4x4.Invert(view, out Matrix4x4 inv))

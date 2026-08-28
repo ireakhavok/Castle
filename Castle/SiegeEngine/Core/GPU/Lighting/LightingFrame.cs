@@ -289,6 +289,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 ShadowQuality.Low => 1,
                 _ => 2
             });
+            shader.SetUniform("uPointShadowStrength", 0.15f);
 
             for (int i = 0; i < MaxCascades; i++)
                 shader.SetMatrix4($"uCascadeVP[{i}]", CascadeVP[i]);

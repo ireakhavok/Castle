@@ -6,6 +6,7 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Lighting;
 using SiegeEngine.Core.GPU.Renderers;
 using System;
 using System.Collections.Generic;
@@ -70,6 +71,14 @@ namespace SiegeEngine.Scenes
             if (_sceneData?.Environment != null)
                 return _sceneData.Environment;
             return null;
+        }
+
+        protected override List<ShadowCaster> CollectShadowCasters(IReadOnlyList<Entity> entities)
+        {
+            var list = ShadowMapRenderer.CollectCasters(entities);
+            if (_terrainBuffer != null && _heightmap != null && _terrainBuffer.GetIndexCount() > 0)
+                ShadowMapRenderer.AppendTerrainCaster(list, _terrainBuffer);
+            return list;
         }
 
         /// <summary>

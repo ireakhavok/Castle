@@ -9,6 +9,7 @@ using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Lighting;
 using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
 using System.Numerics;
@@ -31,6 +32,16 @@ namespace CastleBuilder
         // Editor viewport has no implicit sun. Place a Light entity.
         // Play Game still injects LightingFrame.DefaultSunDirection.
         protected override bool AllowRuntimeDefaultSun => false;
+
+        protected override List<ShadowCaster> CollectShadowCasters(IReadOnlyList<Entity> entities)
+        {
+            var list = entities ?? GetEntities();
+            if (_hostedCustomScene != null)
+                return _hostedCustomScene.GatherShadowCasters(list);
+            if (_activeGameScene != null)
+                return _activeGameScene.GatherShadowCasters(list);
+            return ShadowMapRenderer.CollectCasters(list);
+        }
 
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus) { }

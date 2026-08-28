@@ -76,10 +76,10 @@
 <body>
     <div class="panel">
         <div class="title">Post Process</div>
-        <label class="check" for="pp-sun-enabled">
+        <div class="check">
             <input id="pp-sun-enabled" type="checkbox">
             <div class="field">Enable sun</div>
-        </label>
+        </div>
         <div class="field">Azimuth</div>
         <input id="pp-sun-azimuth" type="range" min="0" max="360" step="1" value="187">
         <div id="pp-sun-azimuth-val" class="readout">187</div>
@@ -104,10 +104,10 @@
                 </select>
             </div>
         </div>
-        <label class="check" for="pp-sun-cast-shadows">
+        <div class="check">
             <input id="pp-sun-cast-shadows" type="checkbox" checked>
             <div class="field">Sun casts shadows</div>
-        </label>
+        </div>
         <div class="field">Fog mode</div>
         <select id="pp-fog-mode">
             <option value="Off" selected>Off</option>
