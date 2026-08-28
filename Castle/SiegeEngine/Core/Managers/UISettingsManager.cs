@@ -225,10 +225,12 @@ namespace SiegeEngine.Core.Managers
                     {
                         _hasShadowQualityOverride = false;
                     }
+                    FogMode fm = FogMode.Off;
+                    FogQuality fq = FogQuality.Medium;
                     bool fogModeOk = settings.TryGetValue("FogMode", out var fmObj) &&
-                        FogModeParser.TryParse(fmObj?.ToString(), out FogMode fm);
+                        FogModeParser.TryParse(fmObj?.ToString(), out fm);
                     bool fogQualityOk = settings.TryGetValue("FogQuality", out var fqObj) &&
-                        FogQualityParser.TryParse(fqObj?.ToString(), out FogQuality fq);
+                        FogQualityParser.TryParse(fqObj?.ToString(), out fq);
                     if (fogModeOk || fogQualityOk)
                     {
                         if (fogModeOk) _fogMode = fm;
