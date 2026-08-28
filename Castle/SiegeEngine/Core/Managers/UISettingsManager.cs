@@ -20,6 +20,11 @@ namespace SiegeEngine.Core.Managers
         private List<string> _availableRenderers;
         private AntiAliasingMode _antiAliasingMode = AntiAliasingMode.SMAA;
         private bool _hasAntiAliasingOverride;
+        private ShadowQuality _shadowQuality = ShadowQuality.Medium;
+        private bool _hasShadowQualityOverride;
+        private FogMode _fogMode = FogMode.Off;
+        private FogQuality _fogQuality = FogQuality.Medium;
+        private bool _hasFogOverride;
 
         public int WindowWidth => _windowWidth;
         public int WindowHeight => _windowHeight;
@@ -43,6 +48,11 @@ namespace SiegeEngine.Core.Managers
 
         public AntiAliasingMode AntiAliasingMode => _antiAliasingMode;
         public bool HasAntiAliasingOverride => _hasAntiAliasingOverride;
+        public ShadowQuality ShadowQuality => _shadowQuality;
+        public bool HasShadowQualityOverride => _hasShadowQualityOverride;
+        public FogMode FogMode => _fogMode;
+        public FogQuality FogQuality => _fogQuality;
+        public bool HasFogOverride => _hasFogOverride;
 
         public UISettingsManager()
         {
@@ -69,6 +79,23 @@ namespace SiegeEngine.Core.Managers
         {
             _antiAliasingMode = mode;
             _hasAntiAliasingOverride = true;
+            if (save)
+                SaveSettings();
+        }
+
+        public void SetShadowQuality(ShadowQuality quality, bool save = true)
+        {
+            _shadowQuality = quality;
+            _hasShadowQualityOverride = true;
+            if (save)
+                SaveSettings();
+        }
+
+        public void SetFogSettings(FogMode mode, FogQuality quality, bool save = true)
+        {
+            _fogMode = mode;
+            _fogQuality = quality;
+            _hasFogOverride = true;
             if (save)
                 SaveSettings();
         }
@@ -188,7 +215,31 @@ namespace SiegeEngine.Core.Managers
                     {
                         _hasAntiAliasingOverride = false;
                     }
-                    Console.WriteLine($"UISettingsManager: Loaded settings: Window size {_windowWidth}x{_windowHeight}, Fullscreen: {_isFullscreen}, Renderer: {_currentRenderer}, AA: {(_hasAntiAliasingOverride ? _antiAliasingMode.ToString() : "unset")}");
+                    if (settings.TryGetValue("ShadowQuality", out var sqObj) &&
+                        ShadowQualityParser.TryParse(sqObj?.ToString(), out ShadowQuality sq))
+                    {
+                        _shadowQuality = sq;
+                        _hasShadowQualityOverride = true;
+                    }
+                    else
+                    {
+                        _hasShadowQualityOverride = false;
+                    }
+                    bool fogModeOk = settings.TryGetValue("FogMode", out var fmObj) &&
+                        FogModeParser.TryParse(fmObj?.ToString(), out FogMode fm);
+                    bool fogQualityOk = settings.TryGetValue("FogQuality", out var fqObj) &&
+                        FogQualityParser.TryParse(fqObj?.ToString(), out FogQuality fq);
+                    if (fogModeOk || fogQualityOk)
+                    {
+                        if (fogModeOk) _fogMode = fm;
+                        if (fogQualityOk) _fogQuality = fq;
+                        _hasFogOverride = true;
+                    }
+                    else
+                    {
+                        _hasFogOverride = false;
+                    }
+                    Console.WriteLine($"UISettingsManager: Loaded settings: Window size {_windowWidth}x{_windowHeight}, Fullscreen: {_isFullscreen}, Renderer: {_currentRenderer}, AA: {(_hasAntiAliasingOverride ? _antiAliasingMode.ToString() : "unset")}, Shadows: {(_hasShadowQualityOverride ? _shadowQuality.ToString() : "unset")}, Fog: {(_hasFogOverride ? _fogMode.ToString() : "unset")}");
                 }
                 catch (Exception ex)
                 {
@@ -228,9 +279,16 @@ namespace SiegeEngine.Core.Managers
                 };
                 if (_hasAntiAliasingOverride)
                     settings["AntiAliasing"] = AntiAliasingModeParser.ToPayloadString(_antiAliasingMode);
+                if (_hasShadowQualityOverride)
+                    settings["ShadowQuality"] = ShadowQualityParser.ToPayloadString(_shadowQuality);
+                if (_hasFogOverride)
+                {
+                    settings["FogMode"] = FogModeParser.ToPayloadString(_fogMode);
+                    settings["FogQuality"] = FogQualityParser.ToPayloadString(_fogQuality);
+                }
                 string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_settingsPath, json);
-                Console.WriteLine($"UISettingsManager: Saved settings: Window size {_windowWidth}x{_windowHeight}, Fullscreen: {_isFullscreen}, Renderer: {_currentRenderer}, AA: {(_hasAntiAliasingOverride ? _antiAliasingMode.ToString() : "unset")}");
+                Console.WriteLine($"UISettingsManager: Saved settings: Window size {_windowWidth}x{_windowHeight}, Fullscreen: {_isFullscreen}, Renderer: {_currentRenderer}, AA: {(_hasAntiAliasingOverride ? _antiAliasingMode.ToString() : "unset")}, Shadows: {(_hasShadowQualityOverride ? _shadowQuality.ToString() : "unset")}");
             }
             catch (Exception ex)
             {

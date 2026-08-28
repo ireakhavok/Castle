@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.GPU.Shaders
+// Folder: SiegeEngine.Core.GPU.Shaders
 // File: AnimationShader.cs
 namespace SiegeEngine.Core.GPU.Shaders
 {
@@ -18,6 +18,7 @@ out vec3 Normal;
 out vec3 FragPos;
 out float MaterialIndex;
 out mat3 TBN;
+out vec4 vViewPos;
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
@@ -69,6 +70,7 @@ void main()
     FragPos = vec3(uModel * totalPosition);
     TexCoord = aTexCoord;
     MaterialIndex = aMaterialIndex;
+    vViewPos = uView * vec4(FragPos, 1.0);
     gl_Position = uProjection * uView * uModel * totalPosition;
 }";
         public const string FragmentShaderSource = @"
@@ -78,6 +80,7 @@ in vec3 Normal;
 in vec3 FragPos;
 in float MaterialIndex;
 in mat3 TBN;
+in vec4 vViewPos;
 out vec4 FragColor;
 
 uniform sampler2D uAlbedoMap[4];
@@ -91,14 +94,42 @@ uniform vec3 uViewPos;
 uniform float uAmbientStrength;
 uniform float uSpecularStrength;
 uniform float uShininess;
+uniform vec3 uAmbientColor;
 
-// NEW world-aligned uniforms (required by ModelRenderer)
 uniform int uHasWorldAligned;
 uniform int uMappingMode[4];
 uniform vec2 uTiling[4];
 uniform vec2 uOffset[4];
 uniform float uRotation[4];
 uniform float uBlendSharpness[4];
+
+uniform int uPointCount;
+uniform vec3 uPointPos[4];
+uniform vec3 uPointColor[4];
+uniform float uPointIntensity[4];
+uniform float uPointRange[4];
+uniform int uSpotCount;
+uniform vec3 uSpotPos[2];
+uniform vec3 uSpotDir[2];
+uniform vec3 uSpotColor[2];
+uniform float uSpotIntensity[2];
+uniform float uSpotRange[2];
+uniform float uSpotInner[2];
+uniform float uSpotOuter[2];
+uniform int uFogMode;
+uniform vec3 uFogColor;
+uniform float uFogDensity;
+uniform float uFogHeight;
+uniform float uFogHeightFalloff;
+uniform int uShadowsEnabled;
+uniform int uReceiveShadows;
+uniform int uCascadeCount;
+uniform mat4 uCascadeVP[4];
+uniform vec4 uCascadeSplits;
+uniform sampler2D uShadowAtlas;
+uniform float uShadowBias;
+uniform float uShadowNormalBias;
+uniform float uShadowAtlasSize;
 
 vec2 WorldPlanarUV(vec3 worldPos, vec3 normal, int axis, vec2 tiling, vec2 offset)
 {
@@ -115,15 +146,44 @@ vec3 TriplanarSample(sampler2D tex, vec3 worldPos, vec3 normal, vec2 tiling, vec
     blend /= blend.x + blend.y + blend.z + 0.0001;
     blend = pow(blend, vec3(sharpness));
     blend /= blend.x + blend.y + blend.z;
-
     vec2 uvX = worldPos.yz * tiling + offset;
     vec2 uvY = worldPos.xz * tiling + offset;
     vec2 uvZ = worldPos.xy * tiling + offset;
-
     vec3 colX = texture(tex, uvX).rgb;
     vec3 colY = texture(tex, uvY).rgb;
     vec3 colZ = texture(tex, uvZ).rgb;
     return colX * blend.x + colY * blend.y + colZ * blend.z;
+}
+
+float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
+    if (uShadowsEnabled == 0 || uReceiveShadows == 0 || uCascadeCount <= 0)
+        return 1.0;
+    float viewZ = abs(vViewPos.z);
+    int cascade = 0;
+    if (uCascadeCount > 1 && viewZ > uCascadeSplits.x) cascade = 1;
+    if (uCascadeCount > 2 && viewZ > uCascadeSplits.y) cascade = 2;
+    if (uCascadeCount > 3 && viewZ > uCascadeSplits.z) cascade = 3;
+    vec3 offsetPos = worldPos + normal * uShadowNormalBias;
+    vec4 lightClip = uCascadeVP[cascade] * vec4(offsetPos, 1.0);
+    vec3 proj = lightClip.xyz / max(lightClip.w, 0.0001);
+    proj = proj * 0.5 + 0.5;
+    if (proj.x <= 0.0 || proj.x >= 1.0 || proj.y <= 0.0 || proj.y >= 1.0 || proj.z > 1.0)
+        return 1.0;
+    float cell = 0.5;
+    vec2 atlasUv = vec2(float(cascade % 2), float(cascade / 2)) * cell + proj.xy * cell;
+    float closest = texture(uShadowAtlas, atlasUv).r;
+    return (proj.z - uShadowBias > closest) ? 0.35 : 1.0;
+}
+
+vec3 ApplyFog(vec3 color) {
+    if (uFogMode == 0) return color;
+    float dist = length(uViewPos - FragPos);
+    float fogFactor = exp(-uFogDensity * dist);
+    if (uFogMode == 2) {
+        float heightTerm = exp(-uFogHeightFalloff * max(FragPos.z - uFogHeight, 0.0));
+        fogFactor = exp(-uFogDensity * dist * heightTerm);
+    }
+    return mix(uFogColor, color, clamp(fogFactor, 0.0, 1.0));
 }
 
 void main()
@@ -135,14 +195,13 @@ void main()
 
     vec3 normal = normalize(TBN * normalMap);
 
-    // World-aligned texturing (if enabled)
     if (uHasWorldAligned == 1 && uMappingMode[matIdx] != 0)
     {
-        if (uMappingMode[matIdx] == 2) // Triplanar
+        if (uMappingMode[matIdx] == 2)
         {
             albedo = TriplanarSample(uAlbedoMap[matIdx], FragPos, normal, uTiling[matIdx], uOffset[matIdx], uBlendSharpness[matIdx]);
         }
-        else // WorldPlanar
+        else
         {
             int axis = abs(normal.x) > abs(normal.y) && abs(normal.x) > abs(normal.z) ? 0 : (abs(normal.y) > abs(normal.z) ? 1 : 2);
             vec2 worldUV = WorldPlanarUV(FragPos, normal, axis, uTiling[matIdx], uOffset[matIdx]);
@@ -150,18 +209,17 @@ void main()
         }
     }
 
-    vec3 ambient = uAmbientStrength * albedo;
-
+    vec3 ambient = uAmbientStrength * albedo * uAmbientColor;
     vec3 lightDir = normalize(-uLightDir);
+    float shadow = SampleCascadeShadow(FragPos, normal);
     float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = diff * albedo * uLightColor * uLightIntensity;
-
+    vec3 diffuse = diff * albedo * uLightColor * uLightIntensity * shadow;
     vec3 viewDir = normalize(uViewPos - FragPos);
     vec3 halfwayDir = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), uShininess);
-    vec3 specular = uSpecularStrength * spec * uLightColor * uLightIntensity * metallic;
-
-    FragColor = vec4(ambient + diffuse + specular, 1.0);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), max(uShininess, 1.0));
+    vec3 specular = uSpecularStrength * spec * uLightColor * uLightIntensity * metallic * shadow;
+    vec3 color = ambient + diffuse + specular;
+    FragColor = vec4(ApplyFog(color), 1.0);
 }";
     }
 }

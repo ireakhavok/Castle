@@ -1,6 +1,7 @@
 // Folder: Launcher
 // File: Launcher.cs
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Lighting;
 using SiegeEngine.Core.GPU.PostProcess;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -57,6 +58,7 @@ namespace Trebuchet
                     _settingsManager.UpdateWindowSize(1280, 720);
                     _settingsManager.LoadSettings();
                     AntiAliasingSettings.BindMachine(_settingsManager);
+                    LightingSettings.BindMachine(_settingsManager);
                     _panelManager = null;
                     _menuPanel = null;
                 }
@@ -111,6 +113,7 @@ namespace Trebuchet
                     _settingsManager = _settingsManager ?? new UISettingsManager();
                     _settingsManager.LoadSettings();
                     AntiAliasingSettings.BindMachine(_settingsManager);
+                    LightingSettings.BindMachine(_settingsManager);
                     if (_settingsManager.WindowWidth == 0 || _settingsManager.WindowHeight == 0)
                     {
                         _settingsManager.UpdateWindowSize(1280, 720);
