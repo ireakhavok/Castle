@@ -59,6 +59,9 @@ uniform float uShadowNormalBias;
 uniform float uShadowAtlasSize;
 uniform float uShadowStrength;
 uniform int uShadowPcfRadius;
+uniform samplerCube uPointShadowCube;
+uniform int uPointShadowsEnabled;
+uniform float uPointShadowFar;
 uniform int uFogMode;
 uniform vec3 uFogColor;
 uniform float uFogDensity;
@@ -84,8 +87,10 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
     vec4 lightClip = uCascadeVP[cascade] * vec4(offsetPos, 1.0);
     vec3 proj = lightClip.xyz / max(lightClip.w, 0.0001);
     proj = proj * 0.5 + 0.5;
-    if (proj.x <= 0.001 || proj.x >= 0.999 || proj.y <= 0.001 || proj.y >= 0.999 || proj.z <= 0.0 || proj.z >= 1.0)
+    bool last = cascade == uCascadeCount - 1;
+    if (!last && (proj.x <= 0.001 || proj.x >= 0.999 || proj.y <= 0.001 || proj.y >= 0.999 || proj.z <= 0.0 || proj.z >= 1.0))
         return -1.0;
+    proj = clamp(proj, vec3(0.001, 0.001, 0.0), vec3(0.999, 0.999, 1.0));
     float cell = 0.5;
     vec2 atlasOrigin = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell;
     vec2 atlasUv = atlasOrigin + proj.xy * cell;
@@ -111,19 +116,37 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
 float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
     if (uShadowsEnabled == 0 || uReceiveShadows == 0 || uCascadeCount <= 0)
         return 1.0;
-    float dist = length(vViewPos.xyz);
-    int cascade = 0;
-    if (uCascadeCount > 1 && dist > uCascadeSplits.x) cascade = 1;
-    if (uCascadeCount > 2 && dist > uCascadeSplits.y) cascade = 2;
-    if (uCascadeCount > 3 && dist > uCascadeSplits.z) cascade = 3;
-    float s = SampleCascadeAt(cascade, worldPos, normal);
-    if (s >= 0.0) return s;
     for (int i = 0; i < 4; i++) {
-        if (i <= cascade || i >= uCascadeCount) continue;
-        s = SampleCascadeAt(i, worldPos, normal);
+        if (i >= uCascadeCount) break;
+        float s = SampleCascadeAt(i, worldPos, normal);
         if (s >= 0.0) return s;
     }
     return 1.0;
+}
+float SamplePointShadow(vec3 worldPos, vec3 lightPos, float range) {
+    if (uPointShadowsEnabled == 0)
+        return 1.0;
+    vec3 L = worldPos - lightPos;
+    float dist = length(L);
+    if (dist > range || dist < 0.001)
+        return 1.0;
+    vec3 dir = L / dist;
+    vec3 up = abs(dir.z) < 0.99 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
+    vec3 tangent = normalize(cross(up, dir));
+    vec3 bitangent = cross(dir, tangent);
+    float current = dist / max(uPointShadowFar, 0.001);
+    float umbra = uShadowStrength;
+    if (umbra < 0.0) umbra = 0.05;
+    float disk = 0.006;
+    float shadow = 0.0;
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+            vec3 sdir = normalize(dir + tangent * float(x) * disk + bitangent * float(y) * disk);
+            float closest = texture(uPointShadowCube, sdir).r;
+            shadow += current > closest + 0.003 ? umbra : 1.0;
+        }
+    }
+    return shadow / 9.0;
 }
 vec3 PointLighting(vec3 albedo, vec3 norm) {
     vec3 sum = vec3(0.0);
@@ -137,7 +160,8 @@ vec3 PointLighting(vec3 albedo, vec3 norm) {
         float att = 1.0 - clamp(dist / range, 0.0, 1.0);
         att *= att;
         float diff = max(dot(norm, L), 0.0);
-        sum += diff * albedo * uPointColor[i] * uPointIntensity[i] * att;
+        float shadow = (i == 0) ? SamplePointShadow(vWorldPos, uPointPos[i], range) : 1.0;
+        sum += diff * albedo * uPointColor[i] * uPointIntensity[i] * att * shadow;
     }
     return sum;
 }
@@ -188,11 +212,10 @@ void main() {
     lit += SpotLighting(albedo.rgb, normal);
     if (uFogMode != 0) {
         float dist = length(vViewPos.xyz);
-        float d = max(dist - uFogStart, 0.0);
-        float fogFactor = exp(-uFogDensity * uFogDensity * d * d);
+        float fogFactor = exp(-uFogDensity * uFogDensity * dist * dist);
         if (uFogMode == 2) {
             float heightTerm = exp(-uFogHeightFalloff * max(vWorldPos.z - uFogHeight, 0.0));
-            fogFactor = exp(-uFogDensity * uFogDensity * d * d * heightTerm);
+            fogFactor = exp(-uFogDensity * uFogDensity * dist * dist * heightTerm);
         }
         lit = mix(uFogColor, lit, clamp(fogFactor, 0.0, 1.0));
     }

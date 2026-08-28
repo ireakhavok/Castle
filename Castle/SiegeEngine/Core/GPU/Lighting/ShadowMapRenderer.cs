@@ -66,40 +66,50 @@ namespace SiegeEngine.Core.GPU.Lighting
             if (_disposed || frame == null)
                 return;
 
-            if (frame.ShadowQuality == ShadowQuality.Off || !frame.Sun.CastShadows || frame.Sun.Technique != ShadowTechnique.ShadowMap)
+            bool sunMaps = frame.Sun.CastShadows && frame.Sun.Technique == ShadowTechnique.ShadowMap && frame.Sun.Intensity > 0.001f;
+            bool pointMaps = frame.PointCount > 0 && frame.Points[0].CastShadows && frame.Points[0].Technique == ShadowTechnique.ShadowMap;
+            bool spotMaps = frame.SpotCount > 0 && frame.Spots[0].CastShadows && frame.Spots[0].Technique == ShadowTechnique.ShadowMap;
+            if (frame.ShadowQuality == ShadowQuality.Off || (!sunMaps && !pointMaps && !spotMaps))
             {
                 frame.ShadowsReady = false;
                 return;
             }
 
             Capture();
-            int cascadeCount = CascadeCount(frame.ShadowQuality);
             int atlasSize = AtlasSize(frame.ShadowQuality);
-            EnsureAtlas(atlasSize);
-            frame.CascadeCount = cascadeCount;
-            frame.ShadowAtlas = _atlasDepth;
-
-            float far = MathF.Max(frame.ShadowDistance, 24f);
-            ComputeCascades(frame, cameraPos, far, cascadeCount, atlasSize, casters);
-
-            int tile = atlasSize / 2;
-            _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
-            _rc.DrawBuffer(GL_NONE);
             _rc.ColorMask(false, false, false, false);
             _rc.Enable(_e.DepthTest);
             _rc.DepthMask(true);
             _rc.DepthFunc(_e.Less);
-            // Two-sided depth. Front-face cull made self-shadows vanish when a
-            // skinned mesh yawed so its winding faced the sun.
             _rc.Disable(_e.CullFace);
-            _rc.Clear(_e.DepthBufferBit);
 
-            for (int i = 0; i < cascadeCount; i++)
+            if (sunMaps)
             {
-                int x = (i % 2) * tile;
-                int y = (i / 2) * tile;
-                _rc.Viewport(x, y, (uint)tile, (uint)tile);
-                DrawCasters(frame.CascadeVP[i], casters);
+                int cascadeCount = CascadeCount(frame.ShadowQuality);
+                EnsureAtlas(atlasSize);
+                frame.CascadeCount = cascadeCount;
+                frame.ShadowAtlas = _atlasDepth;
+
+                float far = MathF.Max(frame.ShadowDistance, 2048f);
+                ComputeCascades(frame, cameraPos, far, cascadeCount, atlasSize, casters);
+
+                int tile = atlasSize / 2;
+                _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
+                _rc.DrawBuffer(GL_NONE);
+                _rc.Clear(_e.DepthBufferBit);
+
+                for (int i = 0; i < cascadeCount; i++)
+                {
+                    int x = (i % 2) * tile;
+                    int y = (i / 2) * tile;
+                    _rc.Viewport(x, y, (uint)tile, (uint)tile);
+                    DrawCasters(frame.CascadeVP[i], casters, linearDepth: false, lightPos: default, farPlane: 1f);
+                }
+            }
+            else
+            {
+                frame.CascadeCount = 0;
+                frame.ShadowAtlas = 0;
             }
 
             if (frame.SpotCount > 0 && frame.Spots[0].CastShadows && frame.Spots[0].Technique == ShadowTechnique.ShadowMap)
@@ -112,12 +122,18 @@ namespace SiegeEngine.Core.GPU.Lighting
                 _rc.DrawBuffer(GL_NONE);
                 _rc.Viewport(0, 0, (uint)size, (uint)size);
                 _rc.Clear(_e.DepthBufferBit);
-                DrawCasters(frame.SpotVP, casters);
+                DrawCasters(frame.SpotVP, casters, linearDepth: false, lightPos: default, farPlane: 1f);
             }
 
             if (frame.PointCount > 0 && frame.Points[0].CastShadows && frame.Points[0].Technique == ShadowTechnique.ShadowMap)
             {
-                int size = frame.ShadowQuality == ShadowQuality.Low ? 256 : 512;
+                int size = frame.ShadowQuality switch
+                {
+                    ShadowQuality.Low => 512,
+                    ShadowQuality.High => 2048,
+                    ShadowQuality.Ultra => 2048,
+                    _ => 1024
+                };
                 EnsurePoint(size);
                 frame.PointShadowCube = _pointDepth;
                 RenderPointFaces(frame.Points[0], casters, size);
@@ -200,11 +216,14 @@ namespace SiegeEngine.Core.GPU.Lighting
             DeleteTex(ref _pointDepth);
         }
 
-        private void DrawCasters(Matrix4x4 lightVp, IReadOnlyList<ShadowCaster> casters)
+        private void DrawCasters(Matrix4x4 lightVp, IReadOnlyList<ShadowCaster> casters, bool linearDepth, Vector3 lightPos, float farPlane)
         {
             if (casters == null) return;
             _depthShader.Use();
             _depthShader.SetMatrix4("uLightVP", lightVp);
+            _depthShader.SetUniform("uLinearDepth", linearDepth ? 1 : 0);
+            _depthShader.SetUniform("uLightPos", lightPos.X, lightPos.Y, lightPos.Z);
+            _depthShader.SetUniform("uFarPlane", farPlane > 0f ? farPlane : 1f);
             foreach (var caster in casters)
             {
                 if (caster.ModelData?.MeshRenders == null) continue;
@@ -228,7 +247,9 @@ namespace SiegeEngine.Core.GPU.Lighting
         {
             float near = 0.05f;
             float far = MathF.Max(light.Range, 1f);
-            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 2f, 1f, near, far);
+            // 90° GL clip-space perspective so each cubemap face is the
+            // light's actual view of the subject, not a DX-style frustum.
+            Matrix4x4 proj = CreateGLPerspective(MathF.PI / 2f, 1f, near, far);
             Vector3[] targets =
             {
                 light.Position + Vector3.UnitX,
@@ -253,7 +274,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 _rc.Viewport(0, 0, (uint)size, (uint)size);
                 _rc.Clear(_e.DepthBufferBit);
                 Matrix4x4 view = Matrix4x4.CreateLookAt(light.Position, targets[face], ups[face]);
-                DrawCasters(view * proj, casters);
+                DrawCasters(view * proj, casters, linearDepth: true, lightPos: light.Position, farPlane: far);
             }
         }
 
@@ -264,81 +285,102 @@ namespace SiegeEngine.Core.GPU.Lighting
             Matrix4x4 view = Matrix4x4.CreateLookAt(spot.Position, spot.Position + dir, up);
             float outer = MathF.Acos(Math.Clamp(spot.OuterConeCos, 0.01f, 0.99f));
             float fov = MathF.Max(outer * 2f, 0.1f);
-            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(fov, 1f, 0.05f, MathF.Max(spot.Range, 1f));
+            Matrix4x4 proj = CreateGLPerspective(fov, 1f, 0.05f, MathF.Max(spot.Range, 1f));
             return view * proj;
         }
 
         /// <summary>
-        /// Nested world-space orthos around a texel-snapped focus. Camera orientation
-        /// and zoom are ignored. CascadeSplits are world radii so the shaders can
-        /// pick a cascade by distance from the camera, not by view-space Z.
+        /// World-covering orthos. Cascade 0 is a tight high-detail tile around
+        /// the camera; cascade 1 covers the whole scene. Shaders pick by
+        /// whether the world point is inside a tile — never by camera distance,
+        /// which drew a visible circle on the terrain.
         /// </summary>
         private void ComputeCascades(LightingFrame frame, Vector3 cameraPos, float far, int cascadeCount, int atlasSize, IReadOnlyList<ShadowCaster> casters)
         {
+            Vector3 sceneMin = cameraPos;
+            Vector3 sceneMax = cameraPos;
+            bool haveCaster = false;
+            if (casters != null)
+            {
+                for (int c = 0; c < casters.Count; c++)
+                {
+                    Vector3 world = casters[c].ModelMatrix.Translation;
+                    if (!haveCaster)
+                    {
+                        sceneMin = world;
+                        sceneMax = world;
+                        haveCaster = true;
+                    }
+                    else
+                    {
+                        sceneMin = Vector3.Min(sceneMin, world);
+                        sceneMax = Vector3.Max(sceneMax, world);
+                    }
+                }
+            }
+            // Focus on the ground under the camera. Centering on a flying
+            // camera at z=300 parked the ortho volume in the sky and the
+            // terrain fell out of every cascade (visible circle, no ground shadows).
+            Vector3 groundCam = new Vector3(cameraPos.X, cameraPos.Y, 0f);
+            Vector3 sceneCenter = haveCaster
+                ? new Vector3((sceneMin.X + sceneMax.X) * 0.5f, (sceneMin.Y + sceneMax.Y) * 0.5f, 0f)
+                : groundCam;
+            float sceneRadius = haveCaster ? Vector3.Distance(sceneMin, sceneMax) * 0.5f + 80f : 256f;
+            sceneRadius = MathF.Max(sceneRadius, 256f);
+            float worldRadius = MathF.Max(far, MathF.Max(sceneRadius * 2f, 2048f));
+
             float[] radii = new float[LightingFrame.MaxCascades];
-            // High/Ultra pull cascade 0 in so the near tile has more texels/meter.
             if (frame.ShadowQuality == ShadowQuality.Ultra)
             {
-                radii[0] = MathF.Max(far * 0.08f, 10f);
-                radii[1] = MathF.Max(far * 0.22f, radii[0] + 6f);
-                radii[2] = MathF.Max(far * 0.50f, radii[1] + 6f);
-                radii[3] = MathF.Max(far, radii[2] + 6f);
+                radii[0] = 48f;
+                radii[1] = 160f;
+                radii[2] = 512f;
+                radii[3] = worldRadius;
             }
             else if (frame.ShadowQuality == ShadowQuality.High)
             {
-                radii[0] = MathF.Max(far * 0.10f, 12f);
-                radii[1] = MathF.Max(far * 0.28f, radii[0] + 6f);
-                radii[2] = MathF.Max(far * 0.55f, radii[1] + 6f);
-                radii[3] = MathF.Max(far, radii[2] + 6f);
+                radii[0] = 64f;
+                radii[1] = 192f;
+                radii[2] = 640f;
+                radii[3] = worldRadius;
+            }
+            else if (frame.ShadowQuality == ShadowQuality.Low)
+            {
+                radii[0] = 160f;
+                radii[1] = worldRadius;
+                radii[2] = worldRadius;
+                radii[3] = worldRadius;
             }
             else
             {
-                radii[0] = MathF.Max(far * 0.20f, 12f);
-                radii[1] = MathF.Max(far * 0.45f, radii[0] + 4f);
-                radii[2] = MathF.Max(far * 0.75f, radii[1] + 4f);
-                radii[3] = MathF.Max(far, radii[2] + 4f);
+                radii[0] = 80f;
+                radii[1] = 240f;
+                radii[2] = 720f;
+                radii[3] = worldRadius;
             }
-            frame.CascadeSplits = new Vector4(
-                cascadeCount > 0 ? radii[0] : far,
-                cascadeCount > 1 ? radii[1] : far,
-                cascadeCount > 2 ? radii[2] : far,
-                cascadeCount > 3 ? radii[3] : far);
+            frame.CascadeSplits = new Vector4(radii[0], radii[1], radii[2], radii[3]);
 
             Vector3 lightDir = frame.Sun.Direction.LengthSquared() > 1e-8f
                 ? Vector3.Normalize(frame.Sun.Direction)
                 : LightingFrame.DefaultSunDirection;
             Vector3 lightUp = MathF.Abs(Vector3.Dot(lightDir, Vector3.UnitZ)) > 0.95f ? Vector3.UnitX : Vector3.UnitZ;
 
-            // Pull the light eye far enough "upstream" that casters between the sun
-            // and the focus still land inside the ortho Z range.
-            float casterPad = 40f;
-            if (casters != null)
-            {
-                for (int c = 0; c < casters.Count; c++)
-                {
-                    Vector3 world = casters[c].ModelMatrix.Translation;
-                    float away = Vector3.Distance(world, cameraPos);
-                    if (away > casterPad)
-                        casterPad = away;
-                }
-                casterPad = MathF.Min(casterPad + 32f, far * 3f);
-            }
-
+            float casterPad = MathF.Max(sceneRadius + 80f, 120f);
             int tile = Math.Max(atlasSize / 2, 1);
-            float zBack = far + casterPad + 80f;
-            float zFwd = far + casterPad + 80f;
+            float zBack = worldRadius + casterPad + 80f;
+            float zFwd = worldRadius + casterPad + 80f;
 
             for (int i = 0; i < cascadeCount; i++)
             {
                 float radius = radii[i];
                 float texel = MathF.Max((radius * 2f) / tile, 0.05f);
-                Vector3 focus = SnapToTexel(cameraPos, texel);
+                Vector3 focus = i == 0 && cascadeCount > 1
+                    ? SnapToTexel(groundCam, texel)
+                    : SnapToTexel(sceneCenter, texel);
 
                 Vector3 eye = focus - lightDir * zBack;
                 Matrix4x4 lightView = Matrix4x4.CreateLookAt(eye, focus, lightUp);
 
-                // Snap the light-space XY origin so the projection does not swim
-                // when the camera moves by a fraction of a texel.
                 Vector3 lsFocus = Vector3.Transform(focus, lightView);
                 lsFocus.X = MathF.Round(lsFocus.X / texel) * texel;
                 lsFocus.Y = MathF.Round(lsFocus.Y / texel) * texel;
@@ -394,14 +436,23 @@ namespace SiegeEngine.Core.GPU.Lighting
             return m;
         }
 
+        private static Matrix4x4 CreateGLPerspective(float fovY, float aspect, float zNear, float zFar)
+        {
+            float f = 1f / MathF.Tan(fovY * 0.5f);
+            float fn = zFar - zNear;
+            if (MathF.Abs(fn) < 1e-5f) fn = 1f;
+            Matrix4x4 m = new Matrix4x4();
+            m.M11 = f / MathF.Max(aspect, 0.0001f);
+            m.M22 = f;
+            m.M33 = -(zFar + zNear) / fn;
+            m.M34 = -1f;
+            m.M43 = -(2f * zFar * zNear) / fn;
+            return m;
+        }
+
         private static int CascadeCount(ShadowQuality quality)
         {
-            return quality switch
-            {
-                ShadowQuality.Low => 2,
-                ShadowQuality.Medium => 3,
-                _ => 4
-            };
+            return quality == ShadowQuality.Low ? 1 : 2;
         }
 
         private static int AtlasSize(ShadowQuality quality)

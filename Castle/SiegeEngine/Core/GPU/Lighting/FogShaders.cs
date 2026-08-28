@@ -69,24 +69,23 @@ void main() {
         return;
     }
     float depth = texture(uDepth, vUv).r;
+    if (depth >= 0.999) {
+        FragColor = vec4(uFogColor, 1.0);
+        return;
+    }
     vec3 worldEnd = reconstructWorld(vUv, depth);
     vec3 camPos = (uInvView * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
     vec3 delta = worldEnd - camPos;
     float dist = length(delta);
     if (dist < 0.01) {
-        FragColor = vec4(scene, 1.0);
+        FragColor = vec4(uFogColor, 1.0);
         return;
     }
     vec3 dir = delta / dist;
-    float start = max(uFogStart, 0.0);
-    if (dist <= start) {
-        FragColor = vec4(scene, 1.0);
-        return;
-    }
     int steps = max(uSteps, 1);
-    float usable = dist - start;
+    float usable = dist;
     float stepLen = usable / float(steps);
-    vec3 pos = camPos + dir * (start + stepLen * 0.5);
+    vec3 pos = camPos + dir * (stepLen * 0.5);
     vec3 accum = vec3(0.0);
     float transmittance = 1.0;
     vec3 lightDir = normalize(-uLightDir);

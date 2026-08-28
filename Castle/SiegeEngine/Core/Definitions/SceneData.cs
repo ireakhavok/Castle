@@ -102,7 +102,7 @@ namespace SiegeEngine.Core.Definitions
         public Vector3 AmbientColor { get; set; } = new Vector3(0.45f, 0.45f, 0.48f);
 
         [JsonPropertyName("fogDensity")]
-        public float FogDensity { get; set; } = 0.003f;
+        public float FogDensity { get; set; } = 0.018f;
 
         [JsonPropertyName("antiAliasing")]
         public string AntiAliasing { get; set; } = "SMAA";
@@ -123,7 +123,7 @@ namespace SiegeEngine.Core.Definitions
         public float FogHeightFalloff { get; set; } = 0.08f;
 
         [JsonPropertyName("fogStart")]
-        public float FogStart { get; set; } = 40f;
+        public float FogStart { get; set; } = 0f;
 
         [JsonPropertyName("volumetricIntensity")]
         public float VolumetricIntensity { get; set; } = 0.25f;
@@ -132,7 +132,7 @@ namespace SiegeEngine.Core.Definitions
         public string ShadowQuality { get; set; } = "Medium";
 
         [JsonPropertyName("shadowDistance")]
-        public float ShadowDistance { get; set; } = 400f;
+        public float ShadowDistance { get; set; } = 2048f;
 
         [JsonPropertyName("sunEnabled")]
         public bool SunEnabled { get; set; } = false;

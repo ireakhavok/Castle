@@ -180,7 +180,8 @@ namespace SiegeEngine.Scenes
                     phys.RebuildShape(null);
                 }
                 _server.AddEntity(e);
-                Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Position from Level (exact match, no spoof)");
+                var placedLight = e.GetComponent<LightComponent>();
+                Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Light={(placedLight != null ? placedLight.Type.ToString() : "none")} Position from Level (exact match, no spoof)");
             }
             var existingPlayerEntity = level.Entities.FirstOrDefault(e => e.Id == 1 || (e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase)));
             if (existingPlayerEntity != null && _player == null)
@@ -501,7 +502,7 @@ namespace SiegeEngine.Scenes
             view = _usePlayerCamera && _player?.Camera != null
                 ? _player.Camera.ViewMatrix
                 : _flyCamera.ViewMatrix;
-            projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f);
+            projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 20000f);
         }
         protected override void RenderEntities(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {

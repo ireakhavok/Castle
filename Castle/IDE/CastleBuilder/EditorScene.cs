@@ -531,7 +531,7 @@ namespace CastleBuilder
                 _activeGameScene.Update(deltaTime);
             _hostedCustomScene?.Update(deltaTime);
         }
-        protected override Vector4 FrameClearColor => new Vector4(0.35f, 0.35f, 0.35f, 1f);
+        // Inherit Scene.FrameClearColor so a fogged horizon is fog color, not a gray wall.
 
         protected override EnvironmentSettings GetEnvironmentSettings()
         {

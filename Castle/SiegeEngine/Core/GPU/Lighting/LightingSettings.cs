@@ -52,8 +52,8 @@ namespace SiegeEngine.Core.GPU.Lighting
         public static float ResolveShadowDistance()
         {
             float authored = _authored?.ShadowDistance ?? 0f;
-            if (authored <= 1f || MathF.Abs(authored - 80f) < 0.01f)
-                return 400f;
+            if (authored < 512f)
+                return 2048f;
             return authored;
         }
 
@@ -66,14 +66,23 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         public static float ResolveFogDensity()
         {
-            float density = _authored?.FogDensity ?? 0.003f;
-            return density < 0f ? 0f : density;
+            float density = _authored?.FogDensity ?? 0.018f;
+            if (density <= 0f)
+                return 0f;
+            FogMode mode = ResolveFogMode();
+            // Exponential used to stay crystal-clear across the map because
+            // 0.003 * dist^2 barely accumulated. Floor it so the horizon fogs out.
+            if (mode == FogMode.Exponential && density < 0.012f)
+                return 0.018f;
+            if (mode == FogMode.Volumetric && density < 0.008f)
+                return 0.012f;
+            return density;
         }
 
         public static float ResolveFogStart()
         {
-            float start = _authored?.FogStart ?? 40f;
-            return start < 0f ? 0f : start;
+            // A non-zero start drew a hard clear circle around the camera.
+            return 0f;
         }
 
         public static float ResolveFogHeight() => _authored?.FogHeight ?? 8f;

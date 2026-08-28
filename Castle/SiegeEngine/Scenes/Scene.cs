@@ -58,7 +58,23 @@ namespace SiegeEngine.Scenes
 
         protected float AspectRatio => _aspectRatio;
 
-        protected virtual Vector4 FrameClearColor => new Vector4(0.35f, 0.35f, 0.35f, 1f);
+        protected virtual Vector4 FrameClearColor
+        {
+            get
+            {
+                // Past-the-map pixels used to show the dark clear color as a
+                // hard black fog wall. When fog is on, the backdrop IS the fog.
+                // GpuFogState is a struct — do not use Current?.Fog (GpuFogState?).
+                LightingFrame frame = LightingFrame.Current;
+                if (frame != null)
+                {
+                    GpuFogState fog = frame.Fog;
+                    if (fog.Mode != FogMode.Off && fog.Quality != FogQuality.Off)
+                        return new Vector4(fog.Color, 1f);
+                }
+                return new Vector4(0.35f, 0.35f, 0.35f, 1f);
+            }
+        }
 
         protected virtual EnvironmentSettings GetEnvironmentSettings() => null;
 
@@ -189,11 +205,20 @@ namespace SiegeEngine.Scenes
             AntiAliasingSettings.BindAuthored(environment);
             LightingSettings.BindAuthored(environment);
 
-            IReadOnlyList<Entity> list = entities ?? _server?.GetEntities();
+            // Play Game used to pass Array.Empty<Entity>() (not null) because
+            // SceneManager._server was unset. Treat an empty list the same as
+            // null and fall back to the scene's live server — that is where
+            // placed Light entities actually live.
+            IReadOnlyList<Entity> list = entities;
+            if (list == null || list.Count == 0)
+                list = _server?.GetEntities();
             LightingFrame frame = LightingFrame.Build(list, environment, LightingFrame.DefaultSunDirection, AllowRuntimeDefaultSun);
             LightingFrame.Current = frame;
 
-            if (runShadows && frame.ShadowQuality != ShadowQuality.Off && frame.Sun.CastShadows && frame.Sun.Intensity > 0.001f)
+            bool wantSunShadows = runShadows && frame.ShadowQuality != ShadowQuality.Off && frame.Sun.CastShadows && frame.Sun.Intensity > 0.001f;
+            bool wantLocalShadows = runShadows && frame.ShadowQuality != ShadowQuality.Off &&
+                ((frame.PointCount > 0 && frame.Points[0].CastShadows) || (frame.SpotCount > 0 && frame.Spots[0].CastShadows));
+            if (wantSunShadows || wantLocalShadows)
             {
                 if (_shadowMapRenderer == null)
                     _shadowMapRenderer = new ShadowMapRenderer(_renderContext);
@@ -219,7 +244,7 @@ namespace SiegeEngine.Scenes
         protected virtual void GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection)
         {
             view = _player?.Camera?.ViewMatrix ?? Matrix4x4.Identity;
-            projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f);
+            projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 20000f);
         }
 
         protected virtual void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)

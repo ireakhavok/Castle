@@ -96,7 +96,7 @@ namespace SiegeEngine.Core.GPU.Lighting
         public uint SpotShadowMap;
         public Matrix4x4 SpotVP = Matrix4x4.Identity;
         public bool ShadowsReady;
-        public float ShadowDistance = 80f;
+        public float ShadowDistance = 2048f;
 
         public static LightingFrame Build(IReadOnlyList<Entity> entities, EnvironmentSettings environment, Vector3 fallbackSunDirection, bool allowFallbackSun = true)
         {
@@ -287,8 +287,11 @@ namespace SiegeEngine.Core.GPU.Lighting
                 shader.SetMatrix4($"uCascadeVP[{i}]", CascadeVP[i]);
 
             shader.SetMatrix4("uSpotVP", SpotVP);
-            shader.SetUniform("uSpotShadowsEnabled", shadows && SpotShadowMap != 0 && SpotCount > 0 && Spots[0].CastShadows ? 1 : 0);
-            shader.SetUniform("uPointShadowsEnabled", shadows && PointShadowCube != 0 && PointCount > 0 && Points[0].CastShadows ? 1 : 0);
+            bool pointShadows = ShadowsReady && ShadowQuality != ShadowQuality.Off && PointShadowCube != 0 && PointCount > 0 && Points[0].CastShadows;
+            bool spotShadows = ShadowsReady && ShadowQuality != ShadowQuality.Off && SpotShadowMap != 0 && SpotCount > 0 && Spots[0].CastShadows;
+            shader.SetUniform("uSpotShadowsEnabled", spotShadows ? 1 : 0);
+            shader.SetUniform("uPointShadowsEnabled", pointShadows ? 1 : 0);
+            shader.SetUniform("uPointShadowFar", PointCount > 0 && Points[0].Range > 0f ? Points[0].Range : 1f);
 
             if (renderContext == null)
                 return;

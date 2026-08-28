@@ -12,6 +12,7 @@ uniform mat4 uLightVP;
 uniform mat4 uModel;
 uniform int uHasBones;
 uniform mat4 uBoneTransforms[128];
+out vec3 vWorldPos;
 void main() {
     vec4 local = vec4(aPosition, 1.0);
     if (uHasBones == 1) {
@@ -24,12 +25,22 @@ void main() {
         if (dot(skinned, skinned) > 0.0001)
             local = skinned;
     }
-    gl_Position = uLightVP * uModel * local;
+    vec4 world = uModel * local;
+    vWorldPos = world.xyz;
+    gl_Position = uLightVP * world;
 }";
 
         public const string DepthFragment = @"#version 330 core
+in vec3 vWorldPos;
+uniform int uLinearDepth;
+uniform vec3 uLightPos;
+uniform float uFarPlane;
 out vec4 FragColor;
 void main() {
+    if (uLinearDepth == 1) {
+        float dist = length(vWorldPos - uLightPos);
+        gl_FragDepth = clamp(dist / max(uFarPlane, 0.001), 0.0, 1.0);
+    }
     FragColor = vec4(1.0);
 }";
     }
