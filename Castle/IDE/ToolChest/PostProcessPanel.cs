@@ -144,8 +144,12 @@ namespace ToolChest
             string shadowQuality = GetSelectValue("pp-shadow-quality") ?? "Medium";
             string fogMode = GetSelectValue("pp-fog-mode") ?? "Off";
             string fogQuality = GetSelectValue("pp-fog-quality") ?? "Off";
-            bool sunEnabled = GetChecked("pp-sun-enabled");
             bool sunCast = GetChecked("pp-sun-cast-shadows");
+            // Casting shadows requires a sun. The Enable-sun checkbox is easy
+            // to miss (the label is not a <label for=>) so treat cast as on.
+            bool sunEnabled = GetChecked("pp-sun-enabled") || sunCast;
+            if (!string.Equals(shadowQuality, "Off", StringComparison.OrdinalIgnoreCase) && sunCast)
+                sunEnabled = true;
 
             var env = CommitEnvironment(direction, intensity, sunEnabled, sunCast, shadowQuality, fogMode, fogQuality, density, start);
             LightingSettings.BindAuthored(env);

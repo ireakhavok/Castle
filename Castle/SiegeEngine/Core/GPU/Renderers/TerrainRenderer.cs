@@ -83,40 +83,31 @@ uniform float uSpotRange[2];
 uniform float uSpotInner[2];
 uniform float uSpotOuter[2];
 float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
-    vec3 n = normalize(normal);
-    vec3 offsetPos = worldPos + n * max(uShadowNormalBias, 0.03);
+    vec3 offsetPos = worldPos + normal * uShadowNormalBias;
     vec4 lightClip = uCascadeVP[cascade] * vec4(offsetPos, 1.0);
     vec3 proj = lightClip.xyz / max(lightClip.w, 0.0001);
     proj = proj * 0.5 + 0.5;
-    // Out of this tile: try the next cascade. Never clamp-sample the last tile
-    // (that is the square cutoff on the terrain).
-    if (proj.x <= 0.002 || proj.x >= 0.998 || proj.y <= 0.002 || proj.y >= 0.998 || proj.z <= 0.0 || proj.z >= 1.0)
+    bool last = cascade == uCascadeCount - 1;
+    if (!last && (proj.x <= 0.001 || proj.x >= 0.999 || proj.y <= 0.001 || proj.y >= 0.999 || proj.z <= 0.0 || proj.z >= 1.0))
         return -1.0;
+    proj = clamp(proj, vec3(0.001, 0.001, 0.0), vec3(0.999, 0.999, 1.0));
     float cell = 0.5;
     vec2 atlasOrigin = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell;
     vec2 atlasUv = atlasOrigin + proj.xy * cell;
+    float shadow = 0.0;
     float texel = 1.0 / max(uShadowAtlasSize, 1.0);
     int kernel = uShadowPcfRadius;
     if (kernel < 1) kernel = 1;
     if (kernel > 3) kernel = 3;
-    float umbra = uShadowStrength;
-    if (umbra < 0.0) umbra = 0.05;
-    float nDotL = max(dot(n, normalize(-uLightDir)), 0.0);
-    float bias = max(uShadowBias, 0.0005) * (1.0 + (1.0 - nDotL) * 2.0);
-    vec2 tileMin = atlasOrigin + texel * cell;
-    vec2 tileMax = atlasOrigin + cell - texel * cell;
-    float shadow = 0.0;
     int taps = 0;
+    float umbra = uShadowStrength;
+    if (umbra < 0.0) umbra = 0.08;
     for (int x = -3; x <= 3; x++) {
         if (abs(x) > kernel) continue;
         for (int y = -3; y <= 3; y++) {
             if (abs(y) > kernel) continue;
-            vec2 suv = clamp(atlasUv + vec2(float(x), float(y)) * texel * cell, tileMin, tileMax);
-            float closest = texture(uShadowAtlas, suv).r;
-            if (closest <= 0.0005)
-                shadow += 1.0;
-            else
-                shadow += (proj.z > closest + bias) ? umbra : 1.0;
+            float closest = texture(uShadowAtlas, atlasUv + vec2(float(x), float(y)) * texel * cell).r;
+            shadow += (proj.z - uShadowBias > closest) ? umbra : 1.0;
             taps++;
         }
     }

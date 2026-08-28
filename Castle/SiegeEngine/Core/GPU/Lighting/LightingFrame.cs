@@ -157,31 +157,37 @@ namespace SiegeEngine.Core.GPU.Lighting
                 }
             }
 
-            if (!hasSun && environment != null && environment.SunEnabled)
+            // Editor has no implicit sun (AllowRuntimeDefaultSun = false).
+            // Apply persists SunEnabled. Casting shadows without the
+            // Enable-sun checkbox used to leave this branch dead and the
+            // atlas was never drawn.
+            bool wantEnvSun = environment != null && environment.SunEnabled;
+            if (!hasSun && wantEnvSun)
             {
                 Vector3 dir = environment.SunDirection.LengthSquared() > 1e-8f
                     ? Vector3.Normalize(environment.SunDirection)
                     : DefaultSunDirection;
                 float intensity = environment.SunIntensity < 0f ? 0f : environment.SunIntensity;
+                if (intensity <= 0.001f)
+                    intensity = 1f;
                 Vector3 color = environment.SunColor.LengthSquared() < 1e-6f ? Vector3.One : environment.SunColor;
-                bool cast = environment.SunCastShadows && frame.ShadowQuality != ShadowQuality.Off && intensity > 0.001f;
+                bool cast = environment.SunCastShadows && frame.ShadowQuality != ShadowQuality.Off;
                 frame.Sun = new GpuDirectionalLight
                 {
                     Direction = dir,
                     Color = color,
                     Intensity = intensity,
                     CastShadows = cast,
-                    ShadowBias = 0.0008f,
-                    ShadowNormalBias = 0.04f,
+                    ShadowBias = 0.0015f,
+                    ShadowNormalBias = 0.035f,
                     Technique = cast ? ShadowTechnique.ShadowMap : ShadowTechnique.None
                 };
-                hasSun = intensity > 0.001f;
+                hasSun = true;
             }
 
-            // Do not drown authored point/spot lights (or an explicit sun-off)
-            // with the runtime default directional. Fallback only when the
-            // scene has no sun and no local lights.
-            if (!hasSun && allowFallbackSun && frame.PointCount == 0 && frame.SpotCount == 0)
+            // Play Game still gets a directional sun even when point lights
+            // exist. Point lights must not suppress the cascade atlas.
+            if (!hasSun && allowFallbackSun)
             {
                 Vector3 dir = fallbackSunDirection.LengthSquared() > 1e-8f
                     ? Vector3.Normalize(fallbackSunDirection)
@@ -192,8 +198,8 @@ namespace SiegeEngine.Core.GPU.Lighting
                     Color = Vector3.One,
                     Intensity = 1f,
                     CastShadows = frame.ShadowQuality != ShadowQuality.Off,
-                    ShadowBias = 0.002f,
-                    ShadowNormalBias = 0.02f,
+                    ShadowBias = 0.0015f,
+                    ShadowNormalBias = 0.035f,
                     Technique = frame.ShadowQuality == ShadowQuality.Off ? ShadowTechnique.None : ShadowTechnique.ShadowMap
                 };
             }
@@ -219,10 +225,10 @@ namespace SiegeEngine.Core.GPU.Lighting
             if (shader == null) return;
 
             shader.SetUniform("uAmbientColor", AmbientColor.X, AmbientColor.Y, AmbientColor.Z);
-            shader.SetUniform("uAmbientStrength", 0.34f);
+            shader.SetUniform("uAmbientStrength", 0.16f);
             shader.SetUniform("uLightDir", Sun.Direction.X, Sun.Direction.Y, Sun.Direction.Z);
             shader.SetUniform("uLightColor", Sun.Color.X, Sun.Color.Y, Sun.Color.Z);
-            float sunPunch = Sun.Intensity <= 0f ? 0f : MathF.Min(Sun.Intensity * 1.85f, 5f);
+            float sunPunch = Sun.Intensity <= 0f ? 0f : MathF.Min(Sun.Intensity * 1.5f, 4f);
             shader.SetUniform("uLightIntensity", sunPunch);
 
             shader.SetUniform("uPointCount", PointCount);
@@ -261,8 +267,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             shader.SetUniform("uShadowsEnabled", shadows ? 1 : 0);
             shader.SetUniform("uCascadeCount", shadows ? CascadeCount : 0);
             shader.SetUniform("uCascadeSplits", CascadeSplits.X, CascadeSplits.Y, CascadeSplits.Z, CascadeSplits.W);
-            shader.SetUniform("uShadowBias", Sun.ShadowBias > 0f ? Sun.ShadowBias : 0.0008f);
-            shader.SetUniform("uShadowNormalBias", Sun.ShadowNormalBias > 0f ? Sun.ShadowNormalBias : 0.04f);
+            shader.SetUniform("uShadowBias", Sun.ShadowBias > 0f ? Sun.ShadowBias : 0.0015f);
+            shader.SetUniform("uShadowNormalBias", Sun.ShadowNormalBias > 0f ? Sun.ShadowNormalBias : 0.035f);
             shader.SetUniform("uShadowAtlasSize", ShadowQuality switch
             {
                 ShadowQuality.Ultra => 4096f,

@@ -324,49 +324,69 @@ namespace SiegeEngine.Core.GPU.Lighting
         }
 
         /// <summary>
-        /// Nested world-space orthos that all share ONE focus (ground under the
-        /// camera). Split centers were projecting a visible box onto the terrain
-        /// whenever sun shadows were enabled. Shaders pick by UV containment.
+        /// World-covering orthos from the last commit where sun shadows
+        /// actually drew (baebf3ea). Cascade 0 is a tight tile around the
+        /// camera; later cascades cover the caster centroid so a wrong
+        /// camera extract still hits the models.
         /// </summary>
         private void ComputeCascades(LightingFrame frame, Vector3 cameraPos, float far, int cascadeCount, int atlasSize, IReadOnlyList<ShadowCaster> casters)
         {
-            // Always the ground under the camera. A flying editor camera at
-            // z=300 used to park the ortho in the sky; a caster-average focus
-            // used to park a second box somewhere else on the map.
-            Vector3 groundFocus = new Vector3(cameraPos.X, cameraPos.Y, 0f);
-            // 2048 covers a large map. 8192 made 24-bit depth coarser than a
-            // person, so model-on-terrain sun shadows disappeared.
-            float worldRadius = Math.Clamp(far, 1024f, 4096f);
+            Vector3 sceneMin = cameraPos;
+            Vector3 sceneMax = cameraPos;
+            bool haveCaster = false;
+            if (casters != null)
+            {
+                for (int c = 0; c < casters.Count; c++)
+                {
+                    Vector3 world = casters[c].ModelMatrix.Translation;
+                    if (!haveCaster)
+                    {
+                        sceneMin = world;
+                        sceneMax = world;
+                        haveCaster = true;
+                    }
+                    else
+                    {
+                        sceneMin = Vector3.Min(sceneMin, world);
+                        sceneMax = Vector3.Max(sceneMax, world);
+                    }
+                }
+            }
+            Vector3 groundCam = new Vector3(cameraPos.X, cameraPos.Y, 0f);
+            Vector3 sceneCenter = haveCaster
+                ? new Vector3((sceneMin.X + sceneMax.X) * 0.5f, (sceneMin.Y + sceneMax.Y) * 0.5f, 0f)
+                : groundCam;
+            float sceneRadius = haveCaster ? Vector3.Distance(sceneMin, sceneMax) * 0.5f + 80f : 256f;
+            sceneRadius = MathF.Max(sceneRadius, 256f);
+            float worldRadius = Math.Clamp(MathF.Max(far, MathF.Max(sceneRadius * 2f, 2048f)), 1024f, 4096f);
 
-            float camHeight = MathF.Max(MathF.Abs(cameraPos.Z), 8f);
-            float near = Math.Clamp(camHeight * 1.2f, 64f, 384f);
             float[] radii = new float[LightingFrame.MaxCascades];
             if (frame.ShadowQuality == ShadowQuality.Ultra)
             {
-                radii[0] = near;
-                radii[1] = near * 2.4f;
-                radii[2] = near * 5.5f;
+                radii[0] = 48f;
+                radii[1] = 160f;
+                radii[2] = 512f;
                 radii[3] = worldRadius;
             }
             else if (frame.ShadowQuality == ShadowQuality.High)
             {
-                radii[0] = near * 1.1f;
-                radii[1] = near * 2.6f;
-                radii[2] = near * 6.0f;
+                radii[0] = 64f;
+                radii[1] = 192f;
+                radii[2] = 640f;
                 radii[3] = worldRadius;
             }
             else if (frame.ShadowQuality == ShadowQuality.Low)
             {
-                radii[0] = MathF.Max(near * 1.8f, 192f);
+                radii[0] = 160f;
                 radii[1] = worldRadius;
                 radii[2] = worldRadius;
                 radii[3] = worldRadius;
             }
             else
             {
-                radii[0] = near * 1.25f;
-                radii[1] = near * 3.2f;
-                radii[2] = worldRadius;
+                radii[0] = 80f;
+                radii[1] = 240f;
+                radii[2] = 720f;
                 radii[3] = worldRadius;
             }
             frame.CascadeSplits = new Vector4(radii[0], radii[1], radii[2], radii[3]);
@@ -376,20 +396,18 @@ namespace SiegeEngine.Core.GPU.Lighting
                 : LightingFrame.DefaultSunDirection;
             Vector3 lightUp = MathF.Abs(Vector3.Dot(lightDir, Vector3.UnitZ)) > 0.95f ? Vector3.UnitX : Vector3.UnitZ;
 
+            float casterPad = MathF.Max(sceneRadius + 80f, 120f);
             int tile = Math.Max(atlasSize / 2, 1);
-            float heightPad = MathF.Max(camHeight, 64f);
+            float zBack = worldRadius + casterPad + 80f;
+            float zFwd = worldRadius + casterPad + 80f;
 
             for (int i = 0; i < cascadeCount; i++)
             {
                 float radius = radii[i];
                 float texel = MathF.Max((radius * 2f) / tile, 0.05f);
-                Vector3 focus = SnapToTexel(groundFocus, texel);
-
-                // Tight Z per cascade so a 2m caster is several depth texels,
-                // not a rounding error on a 16km clip range.
-                float zExtent = radius * 2.2f + heightPad + 32f;
-                float zBack = zExtent;
-                float zFwd = zExtent;
+                Vector3 focus = i == 0 && cascadeCount > 1
+                    ? SnapToTexel(groundCam, texel)
+                    : SnapToTexel(sceneCenter, texel);
 
                 Vector3 eye = focus - lightDir * zBack;
                 Matrix4x4 lightView = Matrix4x4.CreateLookAt(eye, focus, lightUp);
@@ -465,13 +483,9 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private static int CascadeCount(ShadowQuality quality)
         {
-            return quality switch
-            {
-                ShadowQuality.Low => 2,
-                ShadowQuality.High => 4,
-                ShadowQuality.Ultra => 4,
-                _ => 3
-            };
+            // baebf3ea: one tight tile + one scene tile. Extra cascades were
+            // empty-rejected by the sampler and produced no sun shadows.
+            return quality == ShadowQuality.Low ? 1 : 2;
         }
 
         private static int AtlasSize(ShadowQuality quality)
