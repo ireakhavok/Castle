@@ -190,10 +190,23 @@ void main()
 {
     int matIdx = int(MaterialIndex);
     vec3 albedo = texture(uAlbedoMap[matIdx], TexCoord).rgb;
-    vec3 normalMap = texture(uNormalMap[matIdx], TexCoord).rgb * 2.0 - 1.0;
-    float metallic = texture(uMetallicMap[matIdx], TexCoord).r;
+    float metallic = 0.0;
+    if (textureSize(uMetallicMap[matIdx], 0).x > 1)
+        metallic = texture(uMetallicMap[matIdx], TexCoord).r;
 
-    vec3 normal = normalize(TBN * normalMap);
+    vec3 normal = normalize(Normal);
+    // FBX/DirectX normal maps store +Y up. OpenGL TBN expects +Y down, so
+    // flip the green channel. Skip the map when the tangent basis is
+    // degenerate (UV seams on a sphere) or no normal texture is bound —
+    // otherwise TBN * (-1,-1,-1) paints a bright/black split across the head.
+    if (length(TBN[0]) > 0.001 && textureSize(uNormalMap[matIdx], 0).x > 1)
+    {
+        vec3 tangentNormal = texture(uNormalMap[matIdx], TexCoord).rgb * 2.0 - 1.0;
+        tangentNormal.y = -tangentNormal.y;
+        vec3 mapped = TBN * tangentNormal;
+        if (dot(mapped, mapped) > 0.001)
+            normal = normalize(mapped);
+    }
 
     if (uHasWorldAligned == 1 && uMappingMode[matIdx] != 0)
     {

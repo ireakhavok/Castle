@@ -1,4 +1,4 @@
-// Folder: SiegeEngine/Core/GPU/Lighting
+﻿// Folder: SiegeEngine/Core/GPU/Lighting
 // File: ShadowMapRenderer.cs
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
@@ -86,8 +86,9 @@ namespace SiegeEngine.Core.GPU.Lighting
             _rc.Enable(_e.DepthTest);
             _rc.DepthMask(true);
             _rc.DepthFunc(_e.Less);
-            _rc.Enable(_e.CullFace);
-            _rc.CullFace(GL_FRONT);
+            // Two-sided depth. Front-face cull made self-shadows vanish when a
+            // skinned mesh yawed so its winding faced the sun.
+            _rc.Disable(_e.CullFace);
             _rc.Clear(_e.DepthBufferBit);
 
             for (int i = 0; i < cascadeCount; i++)
@@ -130,22 +131,28 @@ namespace SiegeEngine.Core.GPU.Lighting
             var list = new List<ShadowCaster>();
             if (entities == null) return list;
             var modelManager = ModelManager.Instance;
-            if (modelManager == null) return list;
 
             foreach (var entity in entities)
             {
                 var modelComp = entity.GetComponent<ModelComponent>();
                 var physics = entity.GetComponent<PhysicsComponent>();
-                if (modelComp == null || physics == null || string.IsNullOrEmpty(modelComp.Key))
+                if (modelComp == null || physics == null)
                     continue;
                 if (!modelComp.CastShadows)
                     continue;
                 if (modelComp.Material != null && !modelComp.Material.CastShadows)
                     continue;
 
-                string modelKey = modelComp.Key.ToLower();
-                if (!modelManager.TryGetModel(modelKey, out FBXModel fbxModel) ||
-                    !modelManager.TryGetModelData(modelKey, out ModelManager.ModelData modelData))
+                string modelKey = modelComp.Key?.ToLower();
+                FBXModel fbxModel = modelComp.Model;
+                ModelManager.ModelData modelData = null;
+                if (modelManager != null && !string.IsNullOrEmpty(modelKey))
+                {
+                    if (fbxModel == null)
+                        modelManager.TryGetModel(modelKey, out fbxModel);
+                    modelManager.TryGetModelData(modelKey, out modelData);
+                }
+                if (modelData == null)
                     continue;
 
                 float unitScale = fbxModel != null ? fbxModel.UnitToMeters : 0.01f;
@@ -270,7 +277,7 @@ namespace SiegeEngine.Core.GPU.Lighting
 
             Vector3 lightDir = frame.Sun.Direction.LengthSquared() > 1e-8f
                 ? Vector3.Normalize(frame.Sun.Direction)
-                : Vector3.Normalize(new Vector3(-0.5f, -1f, -0.5f));
+                : LightingFrame.DefaultSunDirection;
             Vector3 lightUp = MathF.Abs(Vector3.Dot(lightDir, Vector3.UnitZ)) > 0.95f ? Vector3.UnitX : Vector3.UnitZ;
 
             float last = near;

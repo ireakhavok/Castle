@@ -72,10 +72,10 @@ in vec4 vViewPos;
 
 out vec4 FragColor;
 
-uniform vec4 uLightDir;
-uniform vec4 uLightColor;
+uniform vec3 uLightDir;
+uniform vec3 uLightColor;
 uniform float uLightIntensity;
-uniform vec4 uViewPos;
+uniform vec3 uViewPos;
 uniform float uAmbientStrength;
 uniform float uSpecularStrength;
 uniform float uShininess;
@@ -228,7 +228,7 @@ vec3 SpotLighting(vec3 albedo, vec3 norm, vec3 viewDir) {
 
 vec3 ApplyFog(vec3 color) {
     if (uFogMode == 0) return color;
-    float dist = length(uViewPos.xyz - vPosition);
+    float dist = length(uViewPos - vPosition);
     float fogFactor = 1.0;
     if (uFogMode == 1 || uFogMode == 3) {
         fogFactor = exp(-uFogDensity * dist);
@@ -278,13 +278,16 @@ void main() {
     }
 
     vec3 norm = N;
-    if (length(vTangent) > 0.001f && textureSize(uNormalMap[matIdx], 0).x > 0) {
+    if (length(vTangent) > 0.001 && textureSize(uNormalMap[matIdx], 0).x > 1) {
         vec3 T = normalize(vTangent);
         T = normalize(T - dot(T, N) * N);
         vec3 B = cross(N, T);
         mat3 TBN = mat3(T, B, N);
         vec3 tangentNormal = texture(uNormalMap[matIdx], vTexCoord).rgb * 2.0 - 1.0;
-        norm = normalize(TBN * tangentNormal);
+        tangentNormal.y = -tangentNormal.y;
+        vec3 mapped = TBN * tangentNormal;
+        if (dot(mapped, mapped) > 0.001)
+            norm = normalize(mapped);
     }
 
     float metallic = 0.0;
@@ -292,19 +295,19 @@ void main() {
         metallic = texture(uMetallicMap[matIdx], vTexCoord).r;
     }
 
-    vec3 lightDir = normalize(-uLightDir.xyz);
+    vec3 lightDir = normalize(-uLightDir);
     float shadow = SampleCascadeShadow(vWorldPos, norm);
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * uLightColor.xyz * uLightIntensity * materialDiffuse * shadow;
+    vec3 diffuse = diff * uLightColor * uLightIntensity * materialDiffuse * shadow;
 
     vec3 ambient = uAmbientStrength * materialDiffuse * uAmbientColor;
 
-    vec3 viewDir = normalize(uViewPos.xyz - vPosition);
+    vec3 viewDir = normalize(uViewPos - vPosition);
     vec3 reflectDir = reflect(-lightDir, norm);
     float specStrength = uSpecularStrength * (1.0 - metallic);
     float shininess = uShininess * (1.0 - metallic);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), max(shininess, 1.0));
-    vec3 specular = specStrength * spec * uLightColor.xyz * uLightIntensity * (1.0 - metallic) * shadow;
+    vec3 specular = specStrength * spec * uLightColor * uLightIntensity * (1.0 - metallic) * shadow;
 
     vec3 result = ambient + diffuse + specular;
     result += PointLighting(materialDiffuse, norm, viewDir);

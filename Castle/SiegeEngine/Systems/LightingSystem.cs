@@ -14,7 +14,7 @@ namespace SiegeEngine.Systems
 
         public LightingSystem(IGameServer server) : base(server)
         {
-            _defaultSun = new LightComponent(LightType.Directional, new Vector3(1f, 1f, 1f), 1.0f, new Vector3(-0.5f, -1.0f, -0.5f));
+            _defaultSun = new LightComponent(LightType.Directional, new Vector3(1f, 1f, 1f), 1.0f, new Vector3(-0.85f, 0.10f, -0.52f));
             AddLight(_defaultSun);
         }
 

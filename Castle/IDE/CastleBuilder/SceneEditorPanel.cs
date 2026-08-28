@@ -254,6 +254,10 @@ namespace CastleBuilder
                     Console.WriteLine("[SceneEditorPanel] SkyboxSet event → forced RefreshFromLiveState on active TerrainCreatorScene");
                 }
             }
+            else if (e.Hook == "AddLight")
+            {
+                PlaceLightFromPanel(e);
+            }
             else if (e.Hook == "OutlinerSelectionChanged")
             {
                 string nodeId = e.Data != null && e.Data.ContainsKey("nodeId") ? e.Data["nodeId"]?.ToString() ?? "" : "";
@@ -427,6 +431,103 @@ namespace CastleBuilder
                 _editorScene.SyncCurrentLevelToRuntimeServer();
                 NotifyHierarchyChanged();
             }
+            else if (hook == "OpenAddLight")
+            {
+                AddLightPanel.Open(_renderContext, _controlContext, _window, _eventBus);
+                Console.WriteLine("[SceneEditorPanel] Opened AddLightPanel");
+            }
+            else if (hook == "PlaceLight")
+            {
+                PlaceLightFromPanel(null);
+            }
+        }
+
+        private void PlaceLightFromPanel(GenericEvent evt)
+        {
+            if (!_editorScene.TryGetPlacementPosition(out var hitPoint))
+            {
+                Console.WriteLine("[SceneEditorPanel.PlaceLight] Raycast failed - no valid placement position");
+                return;
+            }
+            Vector3 placePos = hitPoint + new Vector3(0f, 0f, 2f);
+            var level = ProjectSettings.Current.CurrentLevel;
+            if (level == null)
+            {
+                string sceneName = _editorScene.CurrentGameScene ?? "Main";
+                level = new Level(_eventBus) { Name = sceneName };
+                ProjectSettings.Current.SetCurrentLevel(level);
+            }
+
+            LightType type = LightType.Directional;
+            Vector3 color = Vector3.One;
+            float intensity = 1f;
+            Vector3 direction = Vector3.Normalize(new Vector3(-0.85f, 0.10f, -0.52f));
+            float range = 25f;
+            bool castShadows = true;
+            if (evt?.Data != null)
+            {
+                string Read(string key) => evt.Data.ContainsKey(key) ? evt.Data[key]?.ToString() : null;
+                string typeRaw = Read("type");
+                if (!string.IsNullOrWhiteSpace(typeRaw) && Enum.TryParse(typeRaw, true, out LightType parsedType))
+                    type = parsedType;
+                string colorRaw = Read("color");
+                if (!string.IsNullOrWhiteSpace(colorRaw))
+                {
+                    var parts = colorRaw.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 3
+                        && float.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float cr)
+                        && float.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float cg)
+                        && float.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float cb))
+                        color = new Vector3(cr, cg, cb);
+                }
+                string intensityRaw = Read("intensity");
+                if (float.TryParse(intensityRaw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedIntensity))
+                    intensity = parsedIntensity;
+                string dirRaw = Read("direction");
+                if (!string.IsNullOrWhiteSpace(dirRaw))
+                {
+                    var parts = dirRaw.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 3
+                        && float.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dx)
+                        && float.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dy)
+                        && float.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dz))
+                    {
+                        Vector3 d = new Vector3(dx, dy, dz);
+                        if (d.LengthSquared() > 1e-8f)
+                            direction = Vector3.Normalize(d);
+                    }
+                }
+                string rangeRaw = Read("range");
+                if (float.TryParse(rangeRaw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedRange))
+                    range = parsedRange;
+                string castRaw = Read("castShadows");
+                if (!string.IsNullOrWhiteSpace(castRaw))
+                    castShadows = castRaw != "0" && !string.Equals(castRaw, "false", StringComparison.OrdinalIgnoreCase);
+            }
+
+            var entity = level.PlaceEntity(placePos, "Light");
+            entity.Type = "Light";
+            var physics = entity.GetComponent<PhysicsComponent>();
+            if (physics != null)
+            {
+                physics.BodyType = BodyType.Static;
+                physics.CollisionEnabled = false;
+            }
+            entity.AddComponent(new LightComponent
+            {
+                Type = type,
+                Color = color,
+                Intensity = intensity,
+                Direction = direction,
+                Position = placePos,
+                Range = range,
+                Enabled = true,
+                CastShadows = castShadows,
+                ShadowMode = ShadowMode.Auto
+            });
+            Console.WriteLine($"[SceneEditorPanel.PlaceLight] Placed {type} Light entity ID={entity.Id} at {placePos}");
+            _editorScene.SyncCurrentLevelToRuntimeServer();
+            NotifyHierarchyChanged();
         }
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
         {
