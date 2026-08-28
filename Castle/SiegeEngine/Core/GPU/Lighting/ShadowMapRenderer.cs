@@ -332,30 +332,30 @@ namespace SiegeEngine.Core.GPU.Lighting
             float[] radii = new float[LightingFrame.MaxCascades];
             if (frame.ShadowQuality == ShadowQuality.Ultra)
             {
-                radii[0] = 48f;
-                radii[1] = 160f;
-                radii[2] = 512f;
+                radii[0] = 96f;
+                radii[1] = 280f;
+                radii[2] = 720f;
                 radii[3] = worldRadius;
             }
             else if (frame.ShadowQuality == ShadowQuality.High)
             {
-                radii[0] = 64f;
-                radii[1] = 192f;
-                radii[2] = 640f;
+                radii[0] = 120f;
+                radii[1] = 320f;
+                radii[2] = 800f;
                 radii[3] = worldRadius;
             }
             else if (frame.ShadowQuality == ShadowQuality.Low)
             {
-                radii[0] = 160f;
+                radii[0] = 240f;
                 radii[1] = worldRadius;
                 radii[2] = worldRadius;
                 radii[3] = worldRadius;
             }
             else
             {
-                radii[0] = 80f;
-                radii[1] = 240f;
-                radii[2] = 720f;
+                radii[0] = 160f;
+                radii[1] = 400f;
+                radii[2] = 900f;
                 radii[3] = worldRadius;
             }
             frame.CascadeSplits = new Vector4(radii[0], radii[1], radii[2], radii[3]);

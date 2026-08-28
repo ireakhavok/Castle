@@ -535,11 +535,16 @@ namespace CastleBuilder
 
         protected override EnvironmentSettings GetEnvironmentSettings()
         {
+            // Post Process Apply writes CurrentLevel.Environment. Prefer that
+            // so SunEnabled / intensity take effect the same frame.
+            var levelEnv = ProjectSettings.Current?.CurrentLevel?.Environment;
+            if (levelEnv != null)
+                return levelEnv;
             if (_projectData?.Scenes != null &&
                 _projectData.Scenes.TryGetValue(_currentGameSceneName, out SceneData sd) &&
                 sd?.Environment != null)
                 return sd.Environment;
-            return ProjectSettings.Current.CurrentLevel?.Environment;
+            return null;
         }
 
         protected override void GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection)

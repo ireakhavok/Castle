@@ -283,12 +283,11 @@ namespace ToolChest
 
         private bool GetChecked(string id)
         {
+            // Checkboxes report state via Checked. Value is the prefill string
+            // ("true"/"on") and does not flip when the box is unchecked — that
+            // is why Post Process Sun Enabled could never turn back off.
             if (_uiOverlay.FindElementById(id) is InputElement input)
-            {
-                if (input.Checked)
-                    return true;
-                return IsChecked(input.Value);
-            }
+                return input.Checked;
             return false;
         }
 
