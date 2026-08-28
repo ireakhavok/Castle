@@ -1,9 +1,9 @@
-﻿namespace SiegeEngine.Core.Definitions
+namespace SiegeEngine.Core.Definitions
 {
     public enum LightType
     {
         Directional,
-        Point
-        // Add more like Spot, Area, etc.
+        Point,
+        Spot
     }
 }
