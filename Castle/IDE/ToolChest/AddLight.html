@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Segoe UI, system-ui, sans-serif;
+            background: #1e1e1e;
+            color: #ddd;
+            padding: 16px;
+            margin: 0;
+        }
+        .panel {
+            background: #252526;
+            border: 1px solid #383838;
+            padding: 16px;
+        }
+        h3 { margin: 0 0 12px 0; color: #f0f0f0; }
+        label { display: block; font-size: 12px; color: #aaa; margin: 8px 0 3px; }
+        select, input {
+            background: #3c3c3c;
+            color: #ddd;
+            border: 1px solid #555;
+            padding: 6px 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .row { display: flex; gap: 8px; }
+        .row > div { flex: 1; }
+        .hint { font-size: 11px; color: #888; margin: 10px 0 14px; line-height: 1.4; }
+        .actions { display: flex; gap: 8px; margin-top: 14px; }
+        button {
+            background: #c9a227;
+            color: #111;
+            padding: 8px 16px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        button:hover { background: #e0b83a; }
+        button.secondary { background: #444; color: #ddd; font-weight: 500; }
+        button.secondary:hover { background: #555; }
+        .check { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+        .check input { width: auto; }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <h3>Add Light</h3>
+        <label>Type</label>
+        <select id="light-type">
+            <option value="Directional" selected>Directional (sun)</option>
+            <option value="Point">Point</option>
+            <option value="Spot">Spot</option>
+        </select>
+        <div class="row">
+            <div>
+                <label>Color R,G,B</label>
+                <input id="light-color" value="1, 1, 1">
+            </div>
+            <div>
+                <label>Intensity</label>
+                <input id="light-intensity" value="1">
+            </div>
+        </div>
+        <label>Direction (travel vector, Z-up)</label>
+        <input id="light-direction" value="-0.85, 0.10, -0.52">
+        <label>Range (point / spot)</label>
+        <input id="light-range" value="25">
+        <div class="check">
+            <input id="light-cast-shadows" type="checkbox" checked>
+            <label style="margin:0">Cast shadows</label>
+        </div>
+        <p class="hint">
+            Directional is the scene sun. Default direction is a 3 o'clock sun
+            in Z-up (from +X / east, down -Z). Leave type on Directional if you
+            just want daylight. Point and spot use the click position on the
+            terrain. If you place nothing, the engine already uses that
+            3 o'clock default.
+        </p>
+        <div class="actions">
+            <button data-hook="AddLightConfirm">Place Light</button>
+            <button class="secondary" data-hook="CancelAddLight">Cancel</button>
+        </div>
+    </div>
+</body>
+</html>
