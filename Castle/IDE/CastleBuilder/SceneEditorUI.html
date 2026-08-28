@@ -21,128 +21,40 @@
             z-index: 300;
             font-family: system-ui, sans-serif;
         }
-
-        .scene-label {
-            color: #d0d0d0;
-            font-size: 14px;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-
+        .scene-label { color: #d0d0d0; font-size: 14px; font-weight: 500; white-space: nowrap; }
         #sceneSelect {
-            min-width: 220px;
-            padding: 8px 12px;
-            background: #222228;
-            color: #f0f0f0;
-            border: 1px solid #555566;
-            border-radius: 6px;
-            font-size: 14px;
-            outline: none;
+            min-width: 220px; padding: 8px 12px; background: #222228; color: #f0f0f0;
+            border: 1px solid #555566; border-radius: 6px; font-size: 14px; outline: none;
         }
-
-            #sceneSelect:focus {
-                border-color: #777799;
-            }
-
-        .new-scene-btn {
-            padding: 8px 18px;
-            background: #444455;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13.5px;
-            font-weight: 500;
-            transition: all 0.2s;
+        #sceneSelect:focus { border-color: #777799; }
+        .new-scene-btn, .place-entity-btn, .place-sound-btn, .place-light-btn, .physics-debug-btn, .acoustic-debug-btn {
+            padding: 8px 18px; color: white; border: none; border-radius: 6px; cursor: pointer;
+            font-size: 13.5px; font-weight: 500; transition: all 0.2s; margin-left: 12px;
         }
-
-            .new-scene-btn:hover {
-                background: #555566;
-                transform: translateY(-1px);
-            }
-
-        .place-entity-btn {
-            padding: 8px 18px;
-            background: #3a5a8a;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13.5px;
-            font-weight: 500;
-            transition: all 0.2s;
-            margin-left: 12px;
-        }
-
-            .place-entity-btn:hover {
-                background: #4a6a9a;
-                transform: translateY(-1px);
-            }
-
-        .place-sound-btn {
-            padding: 8px 18px;
-            background: #5a3a8a;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13.5px;
-            font-weight: 500;
-            transition: all 0.2s;
-            margin-left: 12px;
-        }
-
-            .place-sound-btn:hover {
-                background: #6a4a9a;
-                transform: translateY(-1px);
-            }
-
-        .physics-debug-btn {
-            padding: 8px 18px;
-            background: #2a5a4a;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13.5px;
-            font-weight: 500;
-            transition: all 0.2s;
-            margin-left: 12px;
-        }
-
-            .physics-debug-btn:hover {
-                background: #3a6a5a;
-                transform: translateY(-1px);
-            }
-
-        .acoustic-debug-btn {
-            padding: 8px 18px;
-            background: #4a2a6a;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13.5px;
-            font-weight: 500;
-            transition: all 0.2s;
-            margin-left: 12px;
-        }
-
-            .acoustic-debug-btn:hover {
-                background: #5a3a7a;
-                transform: translateY(-1px);
-            }
+        .new-scene-btn { background: #444455; margin-left: 0; }
+        .new-scene-btn:hover { background: #555566; transform: translateY(-1px); }
+        .place-entity-btn { background: #3a5a8a; }
+        .place-entity-btn:hover { background: #4a6a9a; transform: translateY(-1px); }
+        .place-sound-btn { background: #5a3a8a; }
+        .place-sound-btn:hover { background: #6a4a9a; transform: translateY(-1px); }
+        .place-light-btn { background: #8a6a2a; }
+        .place-light-btn:hover { background: #9a7a3a; transform: translateY(-1px); }
+        .physics-debug-btn { background: #2a5a4a; }
+        .physics-debug-btn:hover { background: #3a6a5a; transform: translateY(-1px); }
+        .acoustic-debug-btn { background: #4a2a6a; }
+        .acoustic-debug-btn:hover { background: #5a3a7a; transform: translateY(-1px); }
     </style>
 </head>
 <body>
     <div class="scene-toolbar">
-        <span class="scene-label">Active Scene:</span>
+        <div class="scene-label">Active Scene:</div>
         <select id="sceneSelect" data-hook="SceneSelected">
             <!-- Populated dynamically -->
         </select>
         <button class="new-scene-btn" data-hook="CreateNewScene">+ New Scene</button>
         <button class="place-entity-btn" data-hook="OpenPlaceEntityBrowser">Place Entity</button>
         <button class="place-sound-btn" data-hook="PlaceSoundSource">Place Sound</button>
+        <button class="place-light-btn" data-hook="OpenAddLight">Add Light</button>
         <button class="physics-debug-btn" data-hook="TogglePhysicsDebug">Physics Debug</button>
         <button class="acoustic-debug-btn" data-hook="ToggleAcousticDebug">Acoustic Debug</button>
     </div>

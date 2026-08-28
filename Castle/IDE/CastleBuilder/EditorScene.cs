@@ -9,6 +9,7 @@ using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Lighting;
 using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
 using System.Numerics;
@@ -27,6 +28,21 @@ namespace CastleBuilder
         private bool _scriptsActivatedForProject;
         private bool _coreSystemsRegistered;
         public static EditorScene Current { get; private set; }
+
+        // Editor viewport has no implicit sun. Place a Light entity.
+        // Play Game still injects LightingFrame.DefaultSunDirection.
+        protected override bool AllowRuntimeDefaultSun => false;
+
+        protected override List<ShadowCaster> CollectShadowCasters(IReadOnlyList<Entity> entities)
+        {
+            var list = entities ?? GetEntities();
+            if (_hostedCustomScene != null)
+                return _hostedCustomScene.GatherShadowCasters(list);
+            if (_activeGameScene != null)
+                return _activeGameScene.GatherShadowCasters(list);
+            return ShadowMapRenderer.CollectCasters(list);
+        }
+
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus) { }
         public override void Initialize(int width, int height)
@@ -492,6 +508,10 @@ namespace CastleBuilder
             if (level != null && _projectData?.Scenes != null && _projectData.Scenes.TryGetValue(_currentGameSceneName, out var sd))
             {
                 sd.Entities = level.Entities.ConvertAll(e => e.ToData());
+                if (level.Environment != null)
+                    sd.Environment = level.Environment;
+                if (level.Skybox != null)
+                    sd.Skybox = level.Skybox;
             }
             RegisterAllAssetPacks(level);
         }
@@ -522,18 +542,20 @@ namespace CastleBuilder
                 _activeGameScene.Update(deltaTime);
             _hostedCustomScene?.Update(deltaTime);
         }
-        protected override Vector4 FrameClearColor =>
-            _activeGameScene is TerrainCreatorScene
-                ? new Vector4(0.05f, 0.08f, 0.15f, 1f)
-                : new Vector4(0.12f, 0.12f, 0.18f, 1f);
+        // Inherit Scene.FrameClearColor so a fogged horizon is fog color, not a gray wall.
 
         protected override EnvironmentSettings GetEnvironmentSettings()
         {
+            // Post Process Apply writes CurrentLevel.Environment. Prefer that
+            // so SunEnabled / intensity take effect the same frame.
+            var levelEnv = ProjectSettings.Current?.CurrentLevel?.Environment;
+            if (levelEnv != null)
+                return levelEnv;
             if (_projectData?.Scenes != null &&
                 _projectData.Scenes.TryGetValue(_currentGameSceneName, out SceneData sd) &&
                 sd?.Environment != null)
                 return sd.Environment;
-            return ProjectSettings.Current.CurrentLevel?.Environment;
+            return null;
         }
 
         protected override void GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection)

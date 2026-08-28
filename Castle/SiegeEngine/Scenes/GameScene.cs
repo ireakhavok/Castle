@@ -6,6 +6,7 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Lighting;
 using SiegeEngine.Core.GPU.Renderers;
 using System;
 using System.Collections.Generic;
@@ -40,12 +41,59 @@ namespace SiegeEngine.Scenes
 
         public virtual void LoadSceneData(SceneData data)
         {
-            _sceneData = data;
-            if (data?.Skybox != null)
+            if (data == null)
+                return;
+            if (_sceneData == null)
+            {
+                _sceneData = data;
+            }
+            else
+            {
+                if (!string.IsNullOrWhiteSpace(data.Name))
+                    _sceneData.Name = data.Name;
+                if (data.Environment != null)
+                    _sceneData.Environment = data.Environment;
+                if (data.Skybox != null)
+                    _sceneData.Skybox = data.Skybox;
+                if (data.Terrain != null)
+                    _sceneData.Terrain = data.Terrain;
+                if (data.Settings != null)
+                    _sceneData.Settings = data.Settings;
+                if (data.Entities != null && data.Entities.Count > 0)
+                    _sceneData.Entities = data.Entities;
+            }
+            if (data.Skybox != null)
                 _skyboxData = data.Skybox;
         }
 
-        protected override EnvironmentSettings GetEnvironmentSettings() => _sceneData?.Environment;
+        protected override EnvironmentSettings GetEnvironmentSettings()
+        {
+            if (_sceneData?.Environment != null)
+                return _sceneData.Environment;
+            return null;
+        }
+
+        protected override List<ShadowCaster> CollectShadowCasters(IReadOnlyList<Entity> entities)
+        {
+            return ShadowMapRenderer.CollectCasters(entities);
+        }
+
+        /// <summary>
+        /// Play applies the authored Post Process / Level environment so the
+        /// runtime window matches the editor instead of the fallback sun.
+        /// </summary>
+        protected void ApplyAuthoredEnvironment(EnvironmentSettings environment, SkyboxData skybox = null)
+        {
+            if (_sceneData == null)
+                _sceneData = new SceneData { Name = SceneName };
+            if (environment != null)
+                _sceneData.Environment = environment;
+            if (skybox != null)
+            {
+                _sceneData.Skybox = skybox;
+                _skyboxData = skybox;
+            }
+        }
 
         protected virtual void LoadContentFromContext(SceneContext ctx)
         {
@@ -76,7 +124,18 @@ namespace SiegeEngine.Scenes
 
         protected virtual Vector3 GetViewPosition()
         {
-            return _player?.Camera?.Position ?? Vector3.Zero;
+            if (_player?.Camera != null)
+                return _player.Camera.Position;
+            return Vector3.Zero;
+        }
+
+        protected static Vector3 ViewPositionFromMatrix(Matrix4x4 view, Vector3 fallback)
+        {
+            if (fallback.LengthSquared() > 1e-6f)
+                return fallback;
+            if (Matrix4x4.Invert(view, out Matrix4x4 inv))
+                return inv.Translation;
+            return fallback;
         }
 
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
@@ -112,7 +171,7 @@ namespace SiegeEngine.Scenes
             if (list == null || list.Count == 0)
                 list = _server?.GetEntities();
             if (list == null || list.Count == 0) return;
-            Vector3 viewPos = GetViewPosition();
+            Vector3 viewPos = ViewPositionFromMatrix(view, GetViewPosition());
             foreach (var entity in list)
             {
                 var modelComp = entity.GetComponent<ModelComponent>();

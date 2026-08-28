@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Segoe UI, system-ui, sans-serif;
+            background: #1e1e1e;
+            color: #ddd;
+            padding: 16px;
+            margin: 0;
+        }
+        .panel {
+            background: #252526;
+            border: 1px solid #383838;
+            padding: 16px;
+        }
+        .title { color: #f0f0f0; margin: 0 0 12px 0; }
+        .field { font-size: 12px; color: #aaa; margin: 8px 0 3px; display: block; }
+        select, input {
+            background: #3c3c3c;
+            color: #ddd;
+            border: 1px solid #555;
+            padding: 6px 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .row { display: flex; gap: 8px; }
+        .row > div { flex: 1; }
+        .hint {
+            display: block;
+            white-space: normal;
+            font-size: 11px;
+            color: #888;
+            margin: 10px 0 14px;
+            line-height: 1.4;
+            width: 100%;
+        }
+        .actions { display: flex; gap: 8px; margin-top: 14px; }
+        button {
+            background: #c9a227;
+            color: #111;
+            padding: 8px 16px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        button:hover { background: #e0b83a; }
+        button.secondary { background: #444; color: #ddd; font-weight: 500; }
+        button.secondary:hover { background: #555; }
+        .check { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+        .check input { width: auto; }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <div class="title">Add Light</div>
+        <div class="field">Type</div>
+        <select id="light-type">
+            <option value="Point" selected>Point</option>
+            <option value="Spot">Spot (cone)</option>
+        </select>
+        <div class="row">
+            <div>
+                <div class="field">Color R,G,B</div>
+                <input id="light-color" value="1, 1, 1">
+            </div>
+            <div>
+                <div class="field">Intensity</div>
+                <input id="light-intensity" value="1">
+            </div>
+        </div>
+        <div class="field">Spot direction (travel vector, Z-up)</div>
+        <input id="light-direction" value="0, 0, -1">
+        <div class="field">Range</div>
+        <input id="light-range" value="25">
+        <div class="check">
+            <input id="light-cast-shadows" type="checkbox" checked>
+            <div class="field">Cast shadows</div>
+        </div>
+        <div class="hint">
+            Point and spot lights are placed on the click position. Sun / fog / shadow quality are in Post Process.
+        </div>
+        <div class="actions">
+            <button data-hook="AddLightConfirm">Place Light</button>
+            <button class="secondary" data-hook="CancelAddLight">Cancel</button>
+        </div>
+    </div>
+</body>
+</html>

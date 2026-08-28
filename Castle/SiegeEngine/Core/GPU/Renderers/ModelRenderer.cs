@@ -1,9 +1,10 @@
-﻿// Folder: SiegeEngine/Core/Rendering
+// Folder: SiegeEngine/Core/Rendering
 // File: ModelRenderer.cs
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Lighting;
 using SiegeEngine.Core.GPU.Shaders;
 using System;
 using System.Numerics;
@@ -53,7 +54,8 @@ namespace SiegeEngine.Core.GPU.Renderers
 
                 Matrix4x4[] boneMatrices = modelComp.BoneMatrices;
                 Matrix3x3[] normalMatrices = modelComp.NormalBoneTransforms;
-                RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices);
+                bool receiveShadows = modelComp.ReceiveShadows && (modelComp.Material == null || modelComp.Material.ReceiveShadows);
+                RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices, receiveShadows);
             }
             else
             {
@@ -90,13 +92,19 @@ namespace SiegeEngine.Core.GPU.Renderers
             {
                 Matrix4x4[] boneMatrices = modelComp.BoneMatrices;
                 Matrix3x3[] normalMatrices = modelComp.NormalBoneTransforms;
-                RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices);
+                bool receiveShadows = modelComp.ReceiveShadows && (modelComp.Material == null || modelComp.Material.ReceiveShadows);
+                RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices, receiveShadows);
             }
 
             _renderContext.Disable(_renderContext.Enums.CullFace);
         }
 
         public void RenderModel(FBXModel fbxModel, ModelManager.ModelData modelData, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, Matrix4x4 modelMatrix = default, Matrix4x4[] boneMatrices = null, Matrix3x3[] normalMatrices = null)
+        {
+            RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices, receiveShadows: true);
+        }
+
+        public void RenderModel(FBXModel fbxModel, ModelManager.ModelData modelData, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, Matrix4x4 modelMatrix, Matrix4x4[] boneMatrices, Matrix3x3[] normalMatrices, bool receiveShadows)
         {
             if (modelData == null) return;
             if (modelMatrix == default) modelMatrix = Matrix4x4.Identity;
@@ -105,21 +113,25 @@ namespace SiegeEngine.Core.GPU.Renderers
             ShaderProgram shader = hasBones ? _animationShader : _modelShader;
             shader.Use();
             shader.SetMatrix4("uModel", modelMatrix);
+            shader.SetMatrix4("uNormalMatrix", BuildNormalMatrix(modelMatrix));
             shader.SetMatrix4("uView", view);
             shader.SetMatrix4("uProjection", projection);
             shader.SetUniform("uViewPos", viewPos.X, viewPos.Y, viewPos.Z);
             shader.SetUniform("uAmbientStrength", 0.3f);
             shader.SetUniform("uSpecularStrength", 0.05f);
             shader.SetUniform("uShininess", 4.0f);
-            shader.SetUniform("uLightDir", -0.707f, -0.707f, 0.707f);
+            shader.SetUniform("uLightDir", LightingFrame.DefaultSunDirection.X, LightingFrame.DefaultSunDirection.Y, LightingFrame.DefaultSunDirection.Z);
             shader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
-            shader.SetUniform("uLightIntensity", 1.0f);
+            shader.SetUniform("uLightIntensity", 0.0f);
             shader.SetUniform("uHasWorldAligned", 0);
+            LightingFrame.Current?.ApplyTo(shader, _renderContext);
+            shader.SetUniform("uReceiveShadows", receiveShadows ? 1 : 0);
 
             if (hasBones)
             {
                 shader.SetUniform("uHasBones", 1);
                 shader.SetMatrix4Array("uBoneMatrices", boneMatrices);
+                shader.SetMatrix4Array("uBoneTransforms", boneMatrices);
                 if (normalMatrices != null) shader.SetMatrix3Array("uNormalMatrices", normalMatrices);
             }
             else
@@ -201,6 +213,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             shader.SetMatrix4("uView", view);
             shader.SetMatrix4("uProjection", projection);
             shader.SetMatrix4("uModel", Matrix4x4.Identity);
+            LightingFrame.Current?.ApplyTo(shader, _renderContext);
             if (hasTexture && textureId != 0)
             {
                 _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
@@ -219,6 +232,25 @@ namespace SiegeEngine.Core.GPU.Renderers
         public void RenderModelForEntity(ModelComponent modelComp, PhysicsComponent physics, Matrix4x4 view, Matrix4x4 projection)
         {
             RenderEntityFully(modelComp, physics, view, projection, physics.Position);
+        }
+
+        /// <summary>
+        /// Inverse-transpose of the linear part of the model matrix. Drops the
+        /// mid-chain CoM translations so normals follow entity rotation/scale only.
+        /// </summary>
+        private static Matrix4x4 BuildNormalMatrix(Matrix4x4 model)
+        {
+            Matrix4x4 linear = model;
+            linear.M14 = 0f;
+            linear.M24 = 0f;
+            linear.M34 = 0f;
+            linear.M41 = 0f;
+            linear.M42 = 0f;
+            linear.M43 = 0f;
+            linear.M44 = 1f;
+            if (!Matrix4x4.Invert(linear, out Matrix4x4 inv))
+                return linear;
+            return Matrix4x4.Transpose(inv);
         }
 
         public void Dispose()

@@ -1,4 +1,4 @@
-﻿// Folder: CastleBuilder
+// Folder: CastleBuilder
 // File: MenuCommands.cs
 using CastleBuilder.Events;
 using Keystone;
@@ -113,9 +113,20 @@ namespace CastleBuilder
             AddSkyboxPanel.Open(renderContext, controlContext, window, eventBus);
             Console.WriteLine("[MenuCommands] Opened AddSkyboxPanel");
         }
+        public static void OpenAddLight(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            AddLightPanel.Open(renderContext, controlContext, window, eventBus);
+            Console.WriteLine("[MenuCommands] Opened AddLightPanel");
+        }
+        public static void OpenPostProcess(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            PostProcessPanel.Open(renderContext, controlContext, window, eventBus);
+            Console.WriteLine("[MenuCommands] Opened PostProcessPanel");
+        }
         public static void PlayGame(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             Console.WriteLine("[MenuCommands.PlayGame] Launching CURRENT project Level in NEW isolated window (pure runtime client - pure in-memory payload via temp transfer file, no forced disk write)");
+            EditorScene.Current?.FlushActiveSceneData();
             string projectPath = ProjectSettings.Current.ActiveProject ?? string.Empty;
             string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
             string payloadFile = BlueprintManager.BuildPlayPayloadFile();

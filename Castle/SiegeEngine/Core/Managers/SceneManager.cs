@@ -9,6 +9,7 @@ using SiegeEngine.PlayerSystem;
 using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Text.Json;
 
@@ -46,7 +47,16 @@ namespace SiegeEngine.Core.Managers
         }
 
         public void Update(float deltaTime) => _currentScene?.Update(deltaTime);
-        public void Render() => _currentScene?.Render(_server?.GetEntities() ?? Array.Empty<Entity>());
+        public void Render()
+        {
+            // Always draw from the live scene server. Play Game used to pass
+            // SceneManager._server which SwitchToRuntimeGameplay never assigned,
+            // so LightingFrame.Build saw an empty list and dropped point lights.
+            IReadOnlyList<Entity> list = _currentScene?.GetEntities();
+            if (list == null || list.Count == 0)
+                list = _server?.GetEntities();
+            _currentScene?.Render(list ?? Array.Empty<Entity>());
+        }
         public void Resize(int width, int height) => _currentScene?.Resize(width, height);
 
         public void Dispose()
@@ -126,15 +136,20 @@ namespace SiegeEngine.Core.Managers
                     if (reconstructedSceneData != null)
                     {
                         if (level.Terrain == null) level.Terrain = reconstructedSceneData.Terrain;
-                        if (level.Environment == null) level.Environment = reconstructedSceneData.Environment;
+                        // Level.Environment is never null (defaults to an empty
+                        // EnvironmentSettings). Always take the authored payload
+                        // environment so Play Game uses Post Process sun/fog.
+                        if (reconstructedSceneData.Environment != null)
+                            level.Environment = reconstructedSceneData.Environment;
                         if (level.Skybox == null) level.Skybox = reconstructedSceneData.Skybox;
                         if (reconstructedSceneData.CustomData != null)
                         {
                             foreach (var kv in reconstructedSceneData.CustomData)
                                 level.CustomData[kv.Key] = kv.Value;
                         }
+                        MergeLightEntities(level, reconstructedSceneData);
                     }
-                    Console.WriteLine($"[SceneManager] SceneData applied - Entities: {level.Entities.Count}, Skybox={(level.Skybox != null)}, Settings={(reconstructedSceneData?.Settings != null)}");
+                    Console.WriteLine($"[SceneManager] SceneData applied - Entities: {level.Entities.Count}, Lights={CountLights(level)}, Skybox={(level.Skybox != null)}, Settings={(reconstructedSceneData?.Settings != null)}, SunEnabled={level.Environment?.SunEnabled}, SunIntensity={level.Environment?.SunIntensity}, Shadows={level.Environment?.ShadowQuality}");
                 }
                 catch (Exception ex)
                 {
@@ -142,7 +157,11 @@ namespace SiegeEngine.Core.Managers
                 }
             }
             level = level ?? new Level { Name = levelName };
-            var ctx = SceneContext.CreateForRuntime(level, reconstructedSceneData ?? new SceneData { Name = levelName }, _renderContext, _controlContext, _window, new ClientGameServerProxy(_eventBus), _eventBus);
+            // Play Game was building LightingFrame from SceneManager._server,
+            // which this path never assigned. Render() then passed an empty
+            // entity list so placed point/spot lights never reached the GPU.
+            _server = new ClientGameServerProxy(_eventBus);
+            var ctx = SceneContext.CreateForRuntime(level, reconstructedSceneData ?? new SceneData { Name = levelName }, _renderContext, _controlContext, _window, _server, _eventBus);
             ctx.PlayProjectPath = projectPath;
             ctx.LoadLevelName = levelName;
             ctx.CurrentLevel = level;
@@ -188,7 +207,48 @@ namespace SiegeEngine.Core.Managers
             Console.WriteLine($"[SceneManager] Resolved preferred scene '{preferred}' (level='{levelName}', CustomSceneClass='{reconstructedSceneData?.CustomSceneClass}')");
             _currentScene = (Scene)SceneRegistry.Create(preferred, ctx);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
-            Console.WriteLine($"[SceneManager] '{preferred}' active with FULL editor snapshot - entities rehydrated and added");
+            // Custom scenes sometimes skip rehydrate. If the server is still
+            // empty, push the Level snapshot so lights and casters exist.
+            if ((_server?.GetEntities()?.Count ?? 0) == 0 && level?.Entities != null)
+            {
+                foreach (var e in level.Entities)
+                    _server.AddEntity(e);
+            }
+            Console.WriteLine($"[SceneManager] '{preferred}' active with FULL editor snapshot - entities rehydrated and added, serverEntities={_server?.GetEntities()?.Count ?? 0}, lights={CountLights(level)}");
+        }
+
+        private static void MergeLightEntities(Level level, SceneData sceneData)
+        {
+            if (level == null || sceneData?.Entities == null)
+                return;
+            foreach (var ed in sceneData.Entities)
+            {
+                if (ed == null) continue;
+                var incoming = Entity.FromData(ed);
+                var light = incoming.GetComponent<LightComponent>();
+                if (light == null)
+                    continue;
+                var existing = level.Entities.Find(e => e.Id == incoming.Id && incoming.Id > 0);
+                if (existing != null)
+                {
+                    if (existing.GetComponent<LightComponent>() == null)
+                        existing.AddComponent(light);
+                    continue;
+                }
+                level.AddEntity(incoming);
+            }
+        }
+
+        private static int CountLights(Level level)
+        {
+            if (level?.Entities == null) return 0;
+            int n = 0;
+            foreach (var e in level.Entities)
+            {
+                if (e?.GetComponent<LightComponent>() != null)
+                    n++;
+            }
+            return n;
         }
     }
 }

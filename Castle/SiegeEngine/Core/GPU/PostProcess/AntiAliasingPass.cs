@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/GPU/PostProcess
+// Folder: SiegeEngine/Core/GPU/PostProcess
 // File: AntiAliasingPass.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.GPU.ContextManagement;
@@ -85,6 +85,26 @@ namespace SiegeEngine.Core.GPU.PostProcess
         public void DiscardHistory()
         {
             _hasHistory = false;
+        }
+
+        public uint WorldColor => _worldColor;
+        public uint WorldDepth => _worldDepthTex;
+        public bool WorldDepthIsTexture => _worldDepthIsTexture;
+        public int TargetWidth => _width;
+        public int TargetHeight => _height;
+        public bool IsWrappingWorld => _insideWorld;
+
+        public void ReplaceWorldColor(uint sourceColor)
+        {
+            if (_disposed || _worldFbo == 0 || sourceColor == 0 || _width <= 0 || _height <= 0)
+                return;
+            _rc.BindFramebuffer(_e.Framebuffer, _worldFbo);
+            _rc.Viewport(0, 0, (uint)_width, (uint)_height);
+            _rc.Disable(_e.DepthTest);
+            _rc.DepthMask(false);
+            _rc.Disable(_e.Blend);
+            _rc.ColorMask(true, true, true, true);
+            DrawCopy(sourceColor);
         }
 
         public bool BeginWorld(AntiAliasingMode mode, int width, int height, Vector4 clearColor)

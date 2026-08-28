@@ -70,7 +70,13 @@ namespace SiegeEngine.Scenes
         }
         public void LoadLevelData(string levelName, string projectPath)
         {
-            LoadSceneData(new SceneData { Name = levelName ?? "Main" });
+            // Never replace authored Environment / Skybox with a name-only SceneData.
+            // Play Game was dropping Post Process sun + fog here and falling back
+            // to LightingFrame.DefaultSunDirection.
+            if (_sceneData == null)
+                LoadSceneData(new SceneData { Name = levelName ?? "Main" });
+            else if (string.IsNullOrWhiteSpace(_sceneData.Name))
+                _sceneData.Name = levelName ?? "Main";
             _eventBus.Publish(new SceneActivatedEvent(levelName));
             _player?.InitializeCamera(_controlContext, _window);
         }
@@ -119,7 +125,10 @@ namespace SiegeEngine.Scenes
                 level = new Level();
                 Console.WriteLine("[RuntimeGameplayScene] Fallback empty Level detected - using ctx from registry");
             }
-            _skyboxData = level.Skybox;
+            if (ctx?.SceneData != null)
+                LoadSceneData(ctx.SceneData);
+            ApplyAuthoredEnvironment(level.Environment ?? ctx?.SceneData?.Environment, level.Skybox ?? ctx?.SceneData?.Skybox);
+            _skyboxData = _sceneData?.Skybox ?? level.Skybox;
             if (_skyboxData != null && _skyboxData.Enabled)
             {
                 ResolveSkyboxPaths(_skyboxData, projectPath);
@@ -171,13 +180,19 @@ namespace SiegeEngine.Scenes
                     phys.RebuildShape(null);
                 }
                 _server.AddEntity(e);
-                Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Position from Level (exact match, no spoof)");
+                var placedLight = e.GetComponent<LightComponent>();
+                Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Light={(placedLight != null ? placedLight.Type.ToString() : "none")} Position from Level (exact match, no spoof)");
             }
+            if (_player != null)
+                SetPlayer(_player);
+            ModelManager.EnsurePacksLoaded(projectPath, level);
+            Console.WriteLine($"[RuntimeGameplayScene] Server entities={_server.GetEntities()?.Count ?? 0} InstanceModels={(ModelManager.Instance != null)}");
             var existingPlayerEntity = level.Entities.FirstOrDefault(e => e.Id == 1 || (e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase)));
             if (existingPlayerEntity != null && _player == null)
             {
                 ulong steamId = 0;
                 _player = new Player(existingPlayerEntity.Id, Vector3.Zero, steamId);
+                SetPlayer(_player);
                 var existingPhys = existingPlayerEntity.GetComponent<PhysicsComponent>();
                 if (existingPhys != null)
                 {
@@ -487,12 +502,19 @@ namespace SiegeEngine.Scenes
                     ForceVisibleOverheadCamera();
             }
         }
+        protected override Vector3 GetViewPosition()
+        {
+            if (_usePlayerCamera && _player?.Camera != null)
+                return _player.Camera.Position;
+            return _flyCamera.Position;
+        }
+
         protected override void GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection)
         {
             view = _usePlayerCamera && _player?.Camera != null
                 ? _player.Camera.ViewMatrix
                 : _flyCamera.ViewMatrix;
-            projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f);
+            projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 20000f);
         }
         protected override void RenderEntities(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {

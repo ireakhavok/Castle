@@ -1,4 +1,4 @@
-﻿// Folder: CastleBuilder
+// Folder: CastleBuilder
 // File: SceneEditorPanel.cs
 using Keystone;
 using MapRoom;
@@ -7,6 +7,7 @@ using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Lighting;
 using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
@@ -80,6 +81,9 @@ namespace CastleBuilder
         private AcousticDebugOverlay _acousticDebug;
         private readonly List<IWorldOverlay> _worldOverlays = new List<IWorldOverlay>();
         private bool _fileSelectedSubscribed = false;
+        private bool _genericSubscribed = false;
+        private bool _entitySelectedSubscribed = false;
+        private long _lastLightPlaceTick;
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
@@ -222,8 +226,16 @@ namespace CastleBuilder
                 _eventBus.Subscribe<FileSelectedEvent>(OnFileSelectedForPlacement);
                 _fileSelectedSubscribed = true;
             }
-            _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
-            _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
+            if (!_entitySelectedSubscribed)
+            {
+                _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
+                _entitySelectedSubscribed = true;
+            }
+            if (!_genericSubscribed)
+            {
+                _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
+                _genericSubscribed = true;
+            }
         }
         private void OnGenericEvent(GenericEvent e)
         {
@@ -253,6 +265,14 @@ namespace CastleBuilder
                     active.RefreshFromLiveState(ProjectSettings.Current.CurrentSceneData);
                     Console.WriteLine("[SceneEditorPanel] SkyboxSet event → forced RefreshFromLiveState on active TerrainCreatorScene");
                 }
+            }
+            else if (e.Hook == "AddLight")
+            {
+                PlaceLightFromPanel(e);
+            }
+            else if (e.Hook == "PostProcessSet")
+            {
+                ApplyPostProcess(e);
             }
             else if (e.Hook == "OutlinerSelectionChanged")
             {
@@ -427,7 +447,179 @@ namespace CastleBuilder
                 _editorScene.SyncCurrentLevelToRuntimeServer();
                 NotifyHierarchyChanged();
             }
+            else if (hook == "OpenAddLight")
+            {
+                AddLightPanel.Open(_renderContext, _controlContext, _window, _eventBus);
+                Console.WriteLine("[SceneEditorPanel] Opened AddLightPanel");
+            }
+            else if (hook == "OpenPostProcess")
+            {
+                PostProcessPanel.Open(_renderContext, _controlContext, _window, _eventBus);
+                Console.WriteLine("[SceneEditorPanel] Opened PostProcessPanel");
+            }
         }
+
+        private void PlaceLightFromPanel(GenericEvent evt)
+        {
+            long now = Environment.TickCount64;
+            if (now - _lastLightPlaceTick < 250)
+            {
+                Console.WriteLine("[SceneEditorPanel.PlaceLight] Ignored duplicate place within 250ms");
+                return;
+            }
+            _lastLightPlaceTick = now;
+            if (!_editorScene.TryGetPlacementPosition(out var hitPoint))
+            {
+                Console.WriteLine("[SceneEditorPanel.PlaceLight] Raycast failed - no valid placement position");
+                return;
+            }
+            Vector3 placePos = hitPoint + new Vector3(0f, 0f, 2f);
+            var level = ProjectSettings.Current.CurrentLevel;
+            if (level == null)
+            {
+                string sceneName = _editorScene.CurrentGameScene ?? "Main";
+                level = new Level(_eventBus) { Name = sceneName };
+                ProjectSettings.Current.SetCurrentLevel(level);
+            }
+
+            LightType type = LightType.Point;
+            Vector3 color = Vector3.One;
+            float intensity = 1f;
+            Vector3 direction = Vector3.Normalize(new Vector3(0f, 0f, -1f));
+            float range = 25f;
+            bool castShadows = true;
+            if (evt?.Data != null)
+            {
+                string Read(string key) => evt.Data.ContainsKey(key) ? evt.Data[key]?.ToString() : null;
+                string typeRaw = Read("type");
+                if (!string.IsNullOrWhiteSpace(typeRaw) && Enum.TryParse(typeRaw, true, out LightType parsedType))
+                    type = parsedType;
+                if (type == LightType.Directional)
+                    type = LightType.Point;
+                string colorRaw = Read("color");
+                if (!string.IsNullOrWhiteSpace(colorRaw))
+                {
+                    var parts = colorRaw.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 3
+                        && float.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float cr)
+                        && float.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float cg)
+                        && float.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float cb))
+                        color = new Vector3(cr, cg, cb);
+                }
+                string intensityRaw = Read("intensity");
+                if (float.TryParse(intensityRaw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedIntensity))
+                    intensity = parsedIntensity;
+                string dirRaw = Read("direction");
+                if (!string.IsNullOrWhiteSpace(dirRaw))
+                {
+                    var parts = dirRaw.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 3
+                        && float.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dx)
+                        && float.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dy)
+                        && float.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dz))
+                    {
+                        Vector3 d = new Vector3(dx, dy, dz);
+                        if (d.LengthSquared() > 1e-8f)
+                            direction = Vector3.Normalize(d);
+                    }
+                }
+                string rangeRaw = Read("range");
+                if (float.TryParse(rangeRaw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedRange))
+                    range = parsedRange;
+                string castRaw = Read("castShadows");
+                if (!string.IsNullOrWhiteSpace(castRaw))
+                    castShadows = castRaw != "0" && !string.Equals(castRaw, "false", StringComparison.OrdinalIgnoreCase);
+            }
+
+            // Build the entity fully BEFORE Level.AddEntity. EntityAddedEvent
+            // subscribers snapshot the object; adding LightComponent afterwards
+            // left the runtime server with a bare Physics entity, so placed
+            // lights did nothing.
+            var entity = new Entity { Id = 0, Type = "Light" };
+            var physics = new PhysicsComponent
+            {
+                Position = placePos,
+                Rotation = Quaternion.Identity,
+                Scale = Vector3.One,
+                BodyType = BodyType.Static,
+                CollisionEnabled = false
+            };
+            entity.AddComponent(physics);
+            entity.AddComponent(new LightComponent
+            {
+                Type = type,
+                Color = color,
+                Intensity = intensity,
+                Direction = direction,
+                Position = placePos,
+                Range = range,
+                Enabled = true,
+                CastShadows = castShadows,
+                ShadowMode = ShadowMode.Auto
+            });
+            level.AddEntity(entity);
+            LightingFrame.Current = null;
+            Console.WriteLine($"[SceneEditorPanel.PlaceLight] Placed {type} Light entity ID={entity.Id} at {placePos}");
+            _editorScene.SyncCurrentLevelToRuntimeServer();
+            NotifyHierarchyChanged();
+        }
+
+        private void ApplyPostProcess(GenericEvent evt)
+        {
+            var level = ProjectSettings.Current.CurrentLevel;
+            if (level == null)
+            {
+                string sceneNameFallback = _editorScene?.CurrentGameScene ?? "Main";
+                level = new Level(_eventBus) { Name = sceneNameFallback };
+                ProjectSettings.Current.SetCurrentLevel(level);
+            }
+            var env = level.Environment ?? new EnvironmentSettings();
+            string Read(string key) => evt?.Data != null && evt.Data.ContainsKey(key) ? evt.Data[key]?.ToString() : null;
+            string fogMode = Read("fogMode");
+            if (!string.IsNullOrWhiteSpace(fogMode)) env.FogMode = fogMode.Trim();
+            string fogQuality = Read("fogQuality");
+            if (!string.IsNullOrWhiteSpace(fogQuality)) env.FogQuality = fogQuality.Trim();
+            if (float.TryParse(Read("fogDensity"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float density))
+                env.FogDensity = density;
+            if (float.TryParse(Read("fogStart"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float start))
+                env.FogStart = start;
+            string shadowQuality = Read("shadowQuality");
+            if (!string.IsNullOrWhiteSpace(shadowQuality)) env.ShadowQuality = shadowQuality.Trim();
+            string sunEnabled = Read("sunEnabled");
+            if (!string.IsNullOrWhiteSpace(sunEnabled))
+                env.SunEnabled = sunEnabled != "0" && !string.Equals(sunEnabled, "false", StringComparison.OrdinalIgnoreCase);
+            string dirRaw = Read("sunDirection");
+            if (!string.IsNullOrWhiteSpace(dirRaw))
+            {
+                var parts = dirRaw.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 3
+                    && float.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dx)
+                    && float.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dy)
+                    && float.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dz))
+                {
+                    Vector3 d = new Vector3(dx, dy, dz);
+                    if (d.LengthSquared() > 1e-8f)
+                        env.SunDirection = Vector3.Normalize(d);
+                }
+            }
+            if (float.TryParse(Read("sunIntensity"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float sunIntensity))
+                env.SunIntensity = sunIntensity;
+            string sunCast = Read("sunCastShadows");
+            if (!string.IsNullOrWhiteSpace(sunCast))
+                env.SunCastShadows = sunCast != "0" && !string.Equals(sunCast, "false", StringComparison.OrdinalIgnoreCase);
+            level.Environment = env;
+            var project = _editorScene.GetProjectData();
+            string sceneName = _editorScene.CurrentGameScene;
+            if (project?.Scenes != null && !string.IsNullOrEmpty(sceneName) && project.Scenes.TryGetValue(sceneName, out var sd) && sd != null)
+                sd.Environment = env;
+            var currentScene = ProjectSettings.Current?.CurrentSceneData;
+            if (currentScene != null)
+                currentScene.Environment = env;
+            LightingSettings.BindAuthored(env);
+            LightingFrame.Current = null;
+            Console.WriteLine($"[SceneEditorPanel] PostProcess sun={env.SunEnabled} dir={env.SunDirection} fog={env.FogMode}/{env.FogQuality} shadows={env.ShadowQuality}");
+        }
+
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
         {
             if (e.UserData?.ToString() != "PlaceEntity" || string.IsNullOrEmpty(e.Path)) return;
@@ -691,6 +883,16 @@ namespace CastleBuilder
             {
                 _eventBus.Unsubscribe<FileSelectedEvent>(OnFileSelectedForPlacement);
                 _fileSelectedSubscribed = false;
+            }
+            if (_entitySelectedSubscribed)
+            {
+                _eventBus.Unsubscribe<EntitySelectedEvent>(OnEntitySelected);
+                _entitySelectedSubscribed = false;
+            }
+            if (_genericSubscribed)
+            {
+                _eventBus.Unsubscribe<GenericEvent>(OnGenericEvent);
+                _genericSubscribed = false;
             }
             PanelManager.Current.ReleasePanelCapture();
             _editorScene?.Dispose();

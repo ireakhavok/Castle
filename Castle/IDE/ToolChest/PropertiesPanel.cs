@@ -1,4 +1,4 @@
-﻿// Folder: ToolChest
+// Folder: ToolChest
 // File: PropertiesPanel.cs
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -46,7 +46,7 @@ namespace ToolChest
                 if (elem is InputElement input)
                 {
                     string id = input.Attributes.GetValueOrDefault("id", "");
-                    if (id.StartsWith("ss-"))
+                    if (id.StartsWith("ss-") || id.StartsWith("env-"))
                     {
                         _parent.FlushLiveSettings();
                         return;
@@ -208,7 +208,38 @@ namespace ToolChest
             if (cameraElem != null)
                 settings.CameraMode = string.IsNullOrWhiteSpace(cameraElem.Value) ? null : cameraElem.Value.Trim();
             ProjectSettings.Current.SetSceneSettings(_activeSceneSettingsName, settings);
+            FlushEnvironmentFromUI();
             Console.WriteLine($"[PropertiesPanel] Flushed Scene Settings for '{_activeSceneSettingsName}': Avatar={settings.AvatarPackKey}, Animation={settings.AnimationPackKey}, Controller={settings.ControllerTypeName}, Camera={settings.CameraMode}, Spawns=[{string.Join(",", settings.PreferredSpawnPointIds ?? new List<int>())}]");
+        }
+
+        private void FlushEnvironmentFromUI()
+        {
+            var level = ProjectSettings.Current.CurrentLevel;
+            if (level == null || _uiOverlay == null) return;
+            var env = level.Environment ?? new EnvironmentSettings();
+            string ReadSelect(string id)
+            {
+                var el = _uiOverlay.FindElementById(id);
+                if (el is InputElement input) return input.Value;
+                return el?.Attributes.GetValueOrDefault("value", null);
+            }
+            string fogMode = ReadSelect("env-fogMode");
+            string fogQuality = ReadSelect("env-fogQuality");
+            string fogDensity = ReadSelect("env-fogDensity");
+            string shadowQuality = ReadSelect("env-shadowQuality");
+            string shadowDistance = ReadSelect("env-shadowDistance");
+            if (fogMode == null && fogQuality == null && fogDensity == null && shadowQuality == null && shadowDistance == null)
+                return;
+            if (!string.IsNullOrWhiteSpace(fogMode)) env.FogMode = fogMode.Trim();
+            if (!string.IsNullOrWhiteSpace(fogQuality)) env.FogQuality = fogQuality.Trim();
+            if (float.TryParse(fogDensity, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float density))
+                env.FogDensity = density;
+            if (!string.IsNullOrWhiteSpace(shadowQuality)) env.ShadowQuality = shadowQuality.Trim();
+            if (float.TryParse(shadowDistance, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dist) && dist > 1f)
+                env.ShadowDistance = dist;
+            level.Environment = env;
+            var sceneData = ProjectSettings.Current.CurrentLevel;
+            Console.WriteLine($"[PropertiesPanel] Flushed Environment: Fog={env.FogMode}/{env.FogQuality} density={env.FogDensity} Shadows={env.ShadowQuality} dist={env.ShadowDistance}");
         }
         private string BuildPropertiesHtml(object obj)
         {
@@ -236,6 +267,16 @@ namespace ToolChest
                 sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-controller\"><div class=\"property-name\">Controller Type</div><input type=\"text\" id=\"ss-controllerTypeName\" value=\"{settings.ControllerTypeName ?? ""}\"></div>");
                 sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-spawns\"><div class=\"property-name\">Preferred Spawn IDs</div><input type=\"text\" id=\"ss-preferredSpawnPointIds\" value=\"{spawnIds}\"></div>");
                 sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-camera\"><div class=\"property-name\">Camera Mode</div><input type=\"text\" id=\"ss-cameraMode\" value=\"{settings.CameraMode ?? ""}\"></div>");
+                sb.Append("</details>");
+                var env = level.Environment ?? new EnvironmentSettings();
+                level.Environment = env;
+                sb.Append("<details open><summary>Environment / Lighting</summary>");
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Fog Mode</div><select id=\"env-fogMode\"><option{(env.FogMode == "Off" ? " selected" : "")}>Off</option><option{(env.FogMode == "Exponential" ? " selected" : "")}>Exponential</option><option{(env.FogMode == "Height" ? " selected" : "")}>Height</option><option{(env.FogMode == "Volumetric" ? " selected" : "")}>Volumetric</option></select></div>");
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Fog Quality</div><select id=\"env-fogQuality\"><option{(env.FogQuality == "Off" ? " selected" : "")}>Off</option><option{(env.FogQuality == "Low" ? " selected" : "")}>Low</option><option{(env.FogQuality == "Medium" ? " selected" : "")}>Medium</option><option{(env.FogQuality == "High" ? " selected" : "")}>High</option></select></div>");
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Fog Density</div><input type=\"text\" id=\"env-fogDensity\" value=\"{env.FogDensity.ToString(System.Globalization.CultureInfo.InvariantCulture)}\"></div>");
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Shadow Quality</div><select id=\"env-shadowQuality\"><option{(env.ShadowQuality == "Off" ? " selected" : "")}>Off</option><option{(env.ShadowQuality == "Low" ? " selected" : "")}>Low</option><option{(env.ShadowQuality == "Medium" ? " selected" : "")}>Medium</option><option{(env.ShadowQuality == "High" ? " selected" : "")}>High</option><option{(env.ShadowQuality == "Ultra" ? " selected" : "")}>Ultra</option></select></div>");
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Shadow Distance</div><input type=\"text\" id=\"env-shadowDistance\" value=\"{env.ShadowDistance.ToString(System.Globalization.CultureInfo.InvariantCulture)}\"></div>");
+                sb.Append("<div class=\"property-row\"><div class=\"property-name\">Note</div><div>Editor lighting comes from placed Light entities. Play Game uses a 3 o'clock sun if none exist.</div></div>");
                 sb.Append("</details>");
             }
             else
@@ -290,6 +331,21 @@ namespace ToolChest
                 {
                     sb.Append("<details open><summary>Sound</summary>");
                     AppendEditableProperties(sb, soundComp, ent.Id);
+                    sb.Append("</details>");
+                }
+                var lightComp = ent.GetComponent<LightComponent>();
+                if (lightComp != null)
+                {
+                    sb.Append("<details open><summary>Light</summary>");
+                    AppendEditableProperties(sb, lightComp, ent.Id);
+                    sb.Append("</details>");
+                }
+                var modelShadows = ent.GetComponent<ModelComponent>();
+                if (modelShadows != null)
+                {
+                    sb.Append("<details open><summary>Shadows</summary>");
+                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Cast Shadows</div><input type=\"checkbox\" {(modelShadows.CastShadows ? "checked" : "")} data-hook=\"SetComponentProperty\" data-entityid=\"{ent.Id}\" data-component=\"ModelComponent\" data-property=\"CastShadows\"></div>");
+                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Receive Shadows</div><input type=\"checkbox\" {(modelShadows.ReceiveShadows ? "checked" : "")} data-hook=\"SetComponentProperty\" data-entityid=\"{ent.Id}\" data-component=\"ModelComponent\" data-property=\"ReceiveShadows\"></div>");
                     sb.Append("</details>");
                 }
                 return sb.ToString();
