@@ -526,16 +526,53 @@ namespace CastleBuilder
             _activeGameScene is TerrainCreatorScene
                 ? new Vector4(0.05f, 0.08f, 0.15f, 1f)
                 : new Vector4(0.12f, 0.12f, 0.18f, 1f);
+
+        protected override EnvironmentSettings GetEnvironmentSettings()
+        {
+            if (_projectData?.Scenes != null &&
+                _projectData.Scenes.TryGetValue(_currentGameSceneName, out SceneData sd) &&
+                sd?.Environment != null)
+                return sd.Environment;
+            return ProjectSettings.Current.CurrentLevel?.Environment;
+        }
+
+        protected override void GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection)
+        {
+            if (_hostedCustomScene != null)
+            {
+                _hostedCustomScene.GetCameraViewProjection(out view, out projection);
+                return;
+            }
+            if (_activeGameScene != null)
+            {
+                _activeGameScene.GetCameraViewProjection(out view, out projection);
+                return;
+            }
+            base.GetViewProjection(out view, out projection);
+        }
+
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
             var list = entities ?? GetEntities();
             if (_hostedCustomScene != null)
             {
-                _hostedCustomScene.Render(list);
+                _hostedCustomScene.RenderWorldOnly(list, view, projection);
                 return;
             }
-            _activeGameScene?.Render(list);
+            _activeGameScene?.RenderWorldOnly(list, view, projection);
         }
+
+        protected override void RenderOverlay(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
+        {
+            var list = entities ?? GetEntities();
+            if (_hostedCustomScene != null)
+            {
+                _hostedCustomScene.RenderOverlaysOnly(list, view, projection);
+                return;
+            }
+            _activeGameScene?.RenderOverlaysOnly(list, view, projection);
+        }
+
         public override void Resize(int width, int height)
         {
             base.Resize(width, height);

@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Definitions
+// Folder: SiegeEngine/Core/Definitions
 // File: SceneData.cs
 using System.Collections.Generic;
 using System.Numerics;
@@ -103,6 +103,9 @@ namespace SiegeEngine.Core.Definitions
 
         [JsonPropertyName("fogDensity")]
         public float FogDensity { get; set; } = 0.01f;
+
+        [JsonPropertyName("antiAliasing")]
+        public string AntiAliasing { get; set; } = "SMAA";
     }
 
     public class SkyboxData

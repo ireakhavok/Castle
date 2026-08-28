@@ -20,6 +20,7 @@ namespace SiegeEngine.Scenes
         protected SkyboxData _skyboxData;
         protected TerrainRenderer _terrainRenderer;
         protected VertexBuffer _terrainBuffer;
+        protected VertexBuffer _wireframeBuffer;
         protected float[,] _heightmap;
         protected int _terrainWidth = 200;
         protected int _terrainHeight = 200;
@@ -44,6 +45,8 @@ namespace SiegeEngine.Scenes
                 _skyboxData = data.Skybox;
         }
 
+        protected override EnvironmentSettings GetEnvironmentSettings() => _sceneData?.Environment;
+
         protected virtual void LoadContentFromContext(SceneContext ctx)
         {
             if (ctx?.SceneData != null)
@@ -60,6 +63,8 @@ namespace SiegeEngine.Scenes
             _terrainRenderer?.Initialize();
             if (_terrainBuffer == null)
                 _terrainBuffer = new VertexBuffer(_renderContext);
+            if (_wireframeBuffer == null)
+                _wireframeBuffer = new VertexBuffer(_renderContext);
         }
 
         protected void EnsureSkyboxRenderer()
@@ -74,11 +79,6 @@ namespace SiegeEngine.Scenes
             return _player?.Camera?.Position ?? Vector3.Zero;
         }
 
-        public void GetCameraViewProjection(out Matrix4x4 view, out Matrix4x4 projection)
-        {
-            GetViewProjection(out view, out projection);
-        }
-
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
             RenderGameplayContent(entities, view, projection);
@@ -89,7 +89,6 @@ namespace SiegeEngine.Scenes
             RenderSkybox(view, projection);
             RenderTerrain(view, projection);
             RenderEntities(entities, view, projection);
-            RenderOverlay(entities, view, projection);
         }
 
         protected virtual void RenderSkybox(Matrix4x4 view, Matrix4x4 projection)
@@ -103,7 +102,7 @@ namespace SiegeEngine.Scenes
         {
             if (_terrainRenderer == null || _terrainBuffer == null || _heightmap == null)
                 return;
-            _terrainRenderer.RenderTerrain(view, projection, _hasColorTexture, _terrainTextureId, _terrainBuffer, _heightmap, _terrainWireframe);
+            _terrainRenderer.RenderTerrain(view, projection, _hasColorTexture, _terrainTextureId, _terrainBuffer, _wireframeBuffer, _heightmap, _terrainWireframe);
         }
 
         protected virtual void RenderEntities(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
@@ -123,7 +122,7 @@ namespace SiegeEngine.Scenes
             }
         }
 
-        protected virtual void RenderOverlay(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
+        protected override void RenderOverlay(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
         }
 
@@ -136,6 +135,8 @@ namespace SiegeEngine.Scenes
             _terrainRenderer = null;
             _terrainBuffer?.Dispose();
             _terrainBuffer = null;
+            _wireframeBuffer?.Dispose();
+            _wireframeBuffer = null;
             base.Dispose();
         }
     }

@@ -30,6 +30,7 @@ namespace SiegeEngine.Scenes
         protected bool _useCustomScale = false;
         protected List<float> _terrainVertices = new List<float>();
         protected List<uint> _terrainIndices = new List<uint>();
+        protected List<uint> _wireframeIndices = new List<uint>();
         protected int _meshVertsX = 0;
         protected int _meshVertsY = 0;
         protected int _currentMeshStep = 1;
@@ -187,6 +188,7 @@ namespace SiegeEngine.Scenes
                 }
             }
             _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
+            UploadWireframeLattice();
         }
         public virtual void RebuildTerrainMesh()
         {
@@ -278,6 +280,48 @@ namespace SiegeEngine.Scenes
                 }
             }
             _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
+            UploadWireframeLattice();
+        }
+
+        /// <summary>
+        /// Triangle EBOs cannot be drawn as GL_LINES. GL_LINES consumes pairs, so a
+        /// quad's [tl,tr,bl, tr,br,bl] becomes top + diagonal + bottom and drops both
+        /// verticals. Build a real lattice: every horizontal and vertical neighbor only.
+        /// </summary>
+        protected void UploadWireframeLattice()
+        {
+            _wireframeIndices.Clear();
+            if (_meshVertsX < 2 || _meshVertsY < 2)
+            {
+                if (_wireframeBuffer != null)
+                    _wireframeBuffer.UpdateCustomWithUV(_terrainVertices, _wireframeIndices);
+                return;
+            }
+
+            for (int y = 0; y < _meshVertsY; y++)
+            {
+                for (int x = 0; x < _meshVertsX - 1; x++)
+                {
+                    uint a = (uint)(x * _meshVertsY + y);
+                    uint b = (uint)((x + 1) * _meshVertsY + y);
+                    _wireframeIndices.Add(a);
+                    _wireframeIndices.Add(b);
+                }
+            }
+            for (int x = 0; x < _meshVertsX; x++)
+            {
+                for (int y = 0; y < _meshVertsY - 1; y++)
+                {
+                    uint a = (uint)(x * _meshVertsY + y);
+                    uint b = (uint)(x * _meshVertsY + y + 1);
+                    _wireframeIndices.Add(a);
+                    _wireframeIndices.Add(b);
+                }
+            }
+
+            if (_wireframeBuffer == null)
+                _wireframeBuffer = new VertexBuffer(_renderContext);
+            _wireframeBuffer.UpdateCustomWithUV(_terrainVertices, _wireframeIndices);
         }
         protected void UpdateAffectedVertices(Vector3 worldPos, float radius)
         {
@@ -313,6 +357,7 @@ namespace SiegeEngine.Scenes
                 int rowStartVertex = mx * _meshVertsY + minMeshY;
                 int rowVertexCount = maxMeshY - minMeshY + 1;
                 _terrainBuffer.UpdateVerticesPartial(_terrainVertices, rowStartVertex, rowVertexCount, 9);
+                _wireframeBuffer?.UpdateVerticesPartial(_terrainVertices, rowStartVertex, rowVertexCount, 9);
             }
         }
         private void ComputeWorldScale()
