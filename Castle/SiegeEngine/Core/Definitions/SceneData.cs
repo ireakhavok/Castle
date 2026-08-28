@@ -106,6 +106,30 @@ namespace SiegeEngine.Core.Definitions
 
         [JsonPropertyName("antiAliasing")]
         public string AntiAliasing { get; set; } = "SMAA";
+
+        [JsonPropertyName("fogMode")]
+        public string FogMode { get; set; } = "Off";
+
+        [JsonPropertyName("fogQuality")]
+        public string FogQuality { get; set; } = "Medium";
+
+        [JsonPropertyName("fogColor")]
+        public Vector3 FogColor { get; set; } = new Vector3(0.62f, 0.70f, 0.82f);
+
+        [JsonPropertyName("fogHeight")]
+        public float FogHeight { get; set; } = 8f;
+
+        [JsonPropertyName("fogHeightFalloff")]
+        public float FogHeightFalloff { get; set; } = 0.08f;
+
+        [JsonPropertyName("volumetricIntensity")]
+        public float VolumetricIntensity { get; set; } = 0.45f;
+
+        [JsonPropertyName("shadowQuality")]
+        public string ShadowQuality { get; set; } = "Medium";
+
+        [JsonPropertyName("shadowDistance")]
+        public float ShadowDistance { get; set; } = 80f;
     }
 
     public class SkyboxData

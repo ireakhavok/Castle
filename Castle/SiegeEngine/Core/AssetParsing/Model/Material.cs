@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/AssetParsing.V2/Model
+// Folder: SiegeEngine/Core/AssetParsing.V2/Model
 // File: Material.cs
 using System;
 using System.Collections.Generic;
@@ -60,8 +60,13 @@ namespace SiegeEngine.Core.AssetParsing.Model
         [JsonPropertyName("textures")]
         public Dictionary<string, TextureInfo> Textures { get; set; } = new Dictionary<string, TextureInfo>();
 
-        // World-aligned texture support - fully serialized and reflection-visible
         [JsonPropertyName("textureSlots")]
         public List<TextureSlot> TextureSlots { get; set; } = new List<TextureSlot>();
+
+        [JsonPropertyName("castShadows")]
+        public bool CastShadows { get; set; } = true;
+
+        [JsonPropertyName("receiveShadows")]
+        public bool ReceiveShadows { get; set; } = true;
     }
 }

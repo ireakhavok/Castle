@@ -1,9 +1,10 @@
-﻿// Folder: SiegeEngine/Scenes
+// Folder: SiegeEngine/Scenes
 // File: Scene.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Lighting;
 using SiegeEngine.Core.GPU.PostProcess;
 using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.GPU.Shaders;
@@ -31,6 +32,8 @@ namespace SiegeEngine.Scenes
         protected ModelRenderer _modelRenderer;
         private AntiAliasingPass _aaPass;
         private AntiAliasingMode _aaLastMode = AntiAliasingMode.Off;
+        private ShadowMapRenderer _shadowMapRenderer;
+        private FogPass _fogPass;
 
         public DockingMode DefaultDockingMode { get; protected set; } = DockingMode.Desktop;
         public bool OwnsFramebuffer { get; protected set; } = true;
@@ -105,6 +108,11 @@ namespace SiegeEngine.Scenes
 
         public void RenderWorldOnly(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
+            // Parent RenderPresentRoot already packed LightingFrame + CSM.
+            // Only build here when this is the first lighting pass (hosted
+            // preview, model viewer, or a caller that skipped Render()).
+            if (LightingFrame.Current == null || !LightingFrame.Current.ShadowsReady)
+                PrepareLightingFrame(entities, view, projection, runShadows: true);
             RenderContent(entities, view, projection);
         }
 
@@ -123,25 +131,26 @@ namespace SiegeEngine.Scenes
             if (_disposed) return;
 
             GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection);
-            AntiAliasingSettings.BindAuthored(GetEnvironmentSettings());
+            LightingFrame frame = PrepareLightingFrame(entities, view, projection, runShadows: presentRoot);
 
             bool wrapped = false;
-            if (presentRoot)
+            AntiAliasingMode aaMode = AntiAliasingSettings.Resolve();
+            bool volumetric = frame.Fog.Mode == FogMode.Volumetric && frame.Fog.Quality != FogQuality.Off;
+            if (presentRoot && (aaMode != AntiAliasingMode.Off || volumetric))
             {
-                AntiAliasingMode mode = AntiAliasingSettings.Resolve();
-                if (mode != AntiAliasingMode.Off)
-                {
-                    if (_aaPass == null)
-                        _aaPass = new AntiAliasingPass(_renderContext);
-                    if (_aaLastMode != mode)
-                        _aaPass.DiscardHistory();
-                    _aaLastMode = mode;
-                    wrapped = _aaPass.BeginWorld(mode, _width, _height, FrameClearColor);
-                }
-                else
-                {
-                    _aaLastMode = AntiAliasingMode.Off;
-                }
+                if (_aaPass == null)
+                    _aaPass = new AntiAliasingPass(_renderContext);
+                if (_aaLastMode != aaMode)
+                    _aaPass.DiscardHistory();
+                _aaLastMode = aaMode;
+                // BeginWorld rejects Off; when only volumetric needs a world target, capture
+                // with FXAA internals then Resolve(Off) copies the fogged color with no AA.
+                AntiAliasingMode wrapMode = aaMode != AntiAliasingMode.Off ? aaMode : AntiAliasingMode.FXAA;
+                wrapped = _aaPass.BeginWorld(wrapMode, _width, _height, FrameClearColor);
+            }
+            else if (presentRoot)
+            {
+                _aaLastMode = AntiAliasingMode.Off;
             }
 
             if (!wrapped && OwnsFramebuffer)
@@ -153,11 +162,53 @@ namespace SiegeEngine.Scenes
 
             RenderContent(entities, view, projection);
 
+            if (wrapped && frame.Fog.Mode == FogMode.Volumetric && frame.Fog.Quality != FogQuality.Off && _aaPass.WorldColor != 0)
+            {
+                if (_fogPass == null)
+                    _fogPass = new FogPass(_renderContext);
+                _fogPass.Apply(frame, view, projection, _aaPass.WorldColor, _aaPass.WorldDepth, _aaPass.WorldDepthIsTexture, _aaPass.TargetWidth, _aaPass.TargetHeight);
+                if (_fogPass.ResolveColor != 0)
+                    _aaPass.ReplaceWorldColor(_fogPass.ResolveColor);
+            }
+
             if (wrapped)
                 _aaPass.Resolve(mode: _aaLastMode, view, projection);
 
             if (presentRoot)
                 RenderOverlay(entities, view, projection);
+        }
+
+        protected LightingFrame PrepareLightingFrame(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection, bool runShadows)
+        {
+            EnvironmentSettings environment = GetEnvironmentSettings();
+            AntiAliasingSettings.BindAuthored(environment);
+            LightingSettings.BindAuthored(environment);
+
+            IReadOnlyList<Entity> list = entities ?? _server?.GetEntities();
+            LightingFrame frame = LightingFrame.Build(list, environment, LightingFrame.DefaultSunDirection);
+            LightingFrame.Current = frame;
+
+            if (runShadows && frame.ShadowQuality != ShadowQuality.Off && frame.Sun.CastShadows)
+            {
+                if (_shadowMapRenderer == null)
+                    _shadowMapRenderer = new ShadowMapRenderer(_renderContext);
+                Vector3 cameraPos = _player?.Camera?.Position ?? ExtractCameraPosition(view);
+                _shadowMapRenderer.Render(frame, CollectShadowCasters(list), view, projection, cameraPos);
+            }
+
+            return frame;
+        }
+
+        protected virtual List<ShadowCaster> CollectShadowCasters(IReadOnlyList<Entity> entities)
+        {
+            return ShadowMapRenderer.CollectCasters(entities);
+        }
+
+        private static Vector3 ExtractCameraPosition(Matrix4x4 view)
+        {
+            if (Matrix4x4.Invert(view, out Matrix4x4 inv))
+                return inv.Translation;
+            return Vector3.Zero;
         }
 
         protected virtual void GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection)
@@ -184,6 +235,11 @@ namespace SiegeEngine.Scenes
             if (_disposed) return;
             _aaPass?.Dispose();
             _aaPass = null;
+            _shadowMapRenderer?.Dispose();
+            _shadowMapRenderer = null;
+            _fogPass?.Dispose();
+            _fogPass = null;
+            LightingFrame.Current = null;
             _modelRenderer?.Dispose();
             _disposed = true;
         }

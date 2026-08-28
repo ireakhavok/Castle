@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Definitions
+// Folder: SiegeEngine/Core/Definitions
 // File: ModelComponent.cs
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Interfaces;
@@ -17,16 +17,18 @@ namespace SiegeEngine.Core.Definitions
         public Matrix4x4[] BoneMatrices { get; set; }
         public Matrix3x3[] NormalBoneTransforms { get; set; }
 
-        // Material (with full world-aligned TextureSlot support)
-        // This is the per-entity override. Base material from FBX is in FBXModel.
         public Material Material { get; set; }
 
-        // NEW: IComponentData support for round-tripping
+        public bool CastShadows { get; set; } = true;
+        public bool ReceiveShadows { get; set; } = true;
+
         public object ToSerializableData()
         {
             return new ModelComponentData
             {
                 Key = Key,
+                CastShadows = CastShadows,
+                ReceiveShadows = ReceiveShadows,
                 MaterialData = Material != null ? new MaterialData
                 {
                     Name = Material.Name,
@@ -40,6 +42,8 @@ namespace SiegeEngine.Core.Definitions
             if (data is ModelComponentData m)
             {
                 Key = m.Key;
+                CastShadows = m.CastShadows;
+                ReceiveShadows = m.ReceiveShadows;
                 if (m.MaterialData != null)
                 {
                     Material = new Material
@@ -54,6 +58,8 @@ namespace SiegeEngine.Core.Definitions
         private class ModelComponentData
         {
             public string Key { get; set; }
+            public bool CastShadows { get; set; } = true;
+            public bool ReceiveShadows { get; set; } = true;
             public MaterialData MaterialData { get; set; }
         }
     }

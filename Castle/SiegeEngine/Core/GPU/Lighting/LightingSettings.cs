@@ -2,6 +2,7 @@
 // File: LightingSettings.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Managers;
+using System;
 using System.Numerics;
 
 namespace SiegeEngine.Core.GPU.Lighting
@@ -33,9 +34,10 @@ namespace SiegeEngine.Core.GPU.Lighting
         {
             if (_fogModeOverride.HasValue) return _fogModeOverride.Value;
             if (_machine != null && _machine.HasFogOverride) return _machine.FogMode;
-            if (FogModeParser.TryParse(_authored?.FogMode, out FogMode authored)) return authored;
+            if (FogModeParser.TryParse(_authored?.FogMode, out FogMode authored))
+                return authored;
             if ((_authored?.FogDensity ?? 0f) > 0.001f) return FogMode.Exponential;
-            return FogMode.Off;
+            return FogMode.Exponential;
         }
 
         public static FogQuality ResolveFogQuality()
@@ -49,7 +51,11 @@ namespace SiegeEngine.Core.GPU.Lighting
         public static float ResolveShadowDistance()
         {
             float authored = _authored?.ShadowDistance ?? 0f;
-            return authored > 1f ? authored : 80f;
+            // 80 was the previous engine default and is too short for the
+            // overhead editor / play cameras (~300-500 units). Treat it as unset.
+            if (authored <= 1f || MathF.Abs(authored - 80f) < 0.01f)
+                return 400f;
+            return authored;
         }
 
         public static Vector3 ResolveFogColor()
