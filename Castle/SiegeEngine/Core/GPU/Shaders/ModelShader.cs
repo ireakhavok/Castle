@@ -210,7 +210,8 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
         for (int y = -3; y <= 3; y++) {
             if (abs(y) > kernel) continue;
             float closest = texture(uShadowAtlas, atlasUv + vec2(float(x), float(y)) * texel * cell).r;
-            shadow += (proj.z - uShadowBias > closest) ? umbra : 1.0;
+            float slopeBias = uShadowBias + uShadowNormalBias * 0.08;
+            shadow += (proj.z - slopeBias > closest) ? umbra : 1.0;
             taps++;
         }
     }
@@ -297,12 +298,14 @@ vec3 SpotLighting(vec3 albedo, vec3 norm, vec3 viewDir) {
 }
 
 vec3 ApplyFog(vec3 color) {
-    if (uFogMode == 0) return color;
+    // Volumetric (mode 3) is composited in FogPass. Do not also wash
+    // the forward color toward fog gray -- that made sunlit models gray.
+    if (uFogMode == 0 || uFogMode == 3) return color;
     float dist = length(uViewPos - vPosition);
-    float fogFactor = exp(-uFogDensity * uFogDensity * dist * dist);
+    float fogFactor = exp(-uFogDensity * dist);
     if (uFogMode == 2) {
         float heightTerm = exp(-uFogHeightFalloff * max(vPosition.z - uFogHeight, 0.0));
-        fogFactor = exp(-uFogDensity * uFogDensity * dist * dist * heightTerm);
+        fogFactor = exp(-uFogDensity * dist * heightTerm);
     }
     fogFactor = clamp(fogFactor, 0.0, 1.0);
     return mix(uFogColor, color, fogFactor);

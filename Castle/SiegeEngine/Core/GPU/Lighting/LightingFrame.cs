@@ -119,9 +119,9 @@ namespace SiegeEngine.Core.GPU.Lighting
                 VolumetricIntensity = LightingSettings.ResolveVolumetricIntensity(),
                 RaySteps = LightingSettings.ResolveFogQuality() switch
                 {
-                    FogQuality.High => 24,
-                    FogQuality.Medium => 16,
-                    FogQuality.Low => 8,
+                    FogQuality.High => 32,
+                    FogQuality.Medium => 24,
+                    FogQuality.Low => 16,
                     _ => 0
                 }
             };
@@ -171,8 +171,8 @@ namespace SiegeEngine.Core.GPU.Lighting
                     Color = color,
                     Intensity = intensity,
                     CastShadows = cast,
-                    ShadowBias = 0.0015f,
-                    ShadowNormalBias = 0.035f,
+                    ShadowBias = 0.004f,
+                    ShadowNormalBias = 0.06f,
                     Technique = cast ? ShadowTechnique.ShadowMap : ShadowTechnique.None
                 };
                 hasSun = intensity > 0.001f;
@@ -219,7 +219,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             if (shader == null) return;
 
             shader.SetUniform("uAmbientColor", AmbientColor.X, AmbientColor.Y, AmbientColor.Z);
-            shader.SetUniform("uAmbientStrength", 0.16f);
+            shader.SetUniform("uAmbientStrength", 0.34f);
             shader.SetUniform("uLightDir", Sun.Direction.X, Sun.Direction.Y, Sun.Direction.Z);
             shader.SetUniform("uLightColor", Sun.Color.X, Sun.Color.Y, Sun.Color.Z);
             float sunPunch = Sun.Intensity <= 0f ? 0f : MathF.Min(Sun.Intensity * 1.85f, 5f);
@@ -261,8 +261,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             shader.SetUniform("uShadowsEnabled", shadows ? 1 : 0);
             shader.SetUniform("uCascadeCount", shadows ? CascadeCount : 0);
             shader.SetUniform("uCascadeSplits", CascadeSplits.X, CascadeSplits.Y, CascadeSplits.Z, CascadeSplits.W);
-            shader.SetUniform("uShadowBias", Sun.ShadowBias > 0f ? Sun.ShadowBias : 0.0015f);
-            shader.SetUniform("uShadowNormalBias", Sun.ShadowNormalBias > 0f ? Sun.ShadowNormalBias : 0.035f);
+            shader.SetUniform("uShadowBias", Sun.ShadowBias > 0f ? Sun.ShadowBias : 0.004f);
+            shader.SetUniform("uShadowNormalBias", Sun.ShadowNormalBias > 0f ? Sun.ShadowNormalBias : 0.06f);
             shader.SetUniform("uShadowAtlasSize", ShadowQuality switch
             {
                 ShadowQuality.Ultra => 4096f,

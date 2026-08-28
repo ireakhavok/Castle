@@ -64,6 +64,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             _rc.ActiveTexture(_e.Texture0 + 2);
             _rc.BindTexture(_e.Texture2D, frame.ShadowAtlas);
             _volumetric.SetUniform("uShadowAtlas", 2);
+            _volumetric.SetMatrix4("uView", view);
             _volumetric.SetMatrix4("uInvView", invView);
             _volumetric.SetMatrix4("uInvProjection", invProj);
             for (int i = 0; i < LightingFrame.MaxCascades; i++)

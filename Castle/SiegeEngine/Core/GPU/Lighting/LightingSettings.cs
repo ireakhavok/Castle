@@ -70,11 +70,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             if (density <= 0f)
                 return 0f;
             FogMode mode = ResolveFogMode();
-            // Exponential needs a usable floor so the horizon actually fogs.
-            // Volumetric must NOT be floored -- a 0.012 density over a long
-            // march became a solid fog wall past a fixed distance.
-            if (mode == FogMode.Exponential && density < 0.012f)
-                return 0.018f;
+            // Do not floor density. The old 0.018 exponential floor turned
+            // every model past ~80m into solid fog color (gray).
             return density;
         }
 

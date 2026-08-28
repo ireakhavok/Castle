@@ -118,7 +118,18 @@ namespace SiegeEngine.Scenes
 
         protected virtual Vector3 GetViewPosition()
         {
-            return _player?.Camera?.Position ?? Vector3.Zero;
+            if (_player?.Camera != null)
+                return _player.Camera.Position;
+            return Vector3.Zero;
+        }
+
+        protected static Vector3 ViewPositionFromMatrix(Matrix4x4 view, Vector3 fallback)
+        {
+            if (fallback.LengthSquared() > 1e-6f)
+                return fallback;
+            if (Matrix4x4.Invert(view, out Matrix4x4 inv))
+                return inv.Translation;
+            return fallback;
         }
 
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
@@ -154,7 +165,7 @@ namespace SiegeEngine.Scenes
             if (list == null || list.Count == 0)
                 list = _server?.GetEntities();
             if (list == null || list.Count == 0) return;
-            Vector3 viewPos = GetViewPosition();
+            Vector3 viewPos = ViewPositionFromMatrix(view, GetViewPosition());
             foreach (var entity in list)
             {
                 var modelComp = entity.GetComponent<ModelComponent>();

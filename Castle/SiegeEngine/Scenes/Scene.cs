@@ -204,13 +204,12 @@ namespace SiegeEngine.Scenes
             AntiAliasingSettings.BindAuthored(environment);
             LightingSettings.BindAuthored(environment);
 
-            // Play Game used to pass Array.Empty<Entity>() (not null) because
-            // SceneManager._server was unset. Treat an empty list the same as
-            // null and fall back to the scene's live server — that is where
-            // placed Light entities actually live.
-            IReadOnlyList<Entity> list = entities;
+            // Always prefer the scene server. Play Game and custom scenes
+            // sometimes pass Array.Empty even when _server already has the
+            // rehydrated models and lights.
+            IReadOnlyList<Entity> list = _server?.GetEntities();
             if (list == null || list.Count == 0)
-                list = _server?.GetEntities();
+                list = entities;
             LightingFrame frame = LightingFrame.Build(list, environment, LightingFrame.DefaultSunDirection, AllowRuntimeDefaultSun);
             LightingFrame.Current = frame;
 
@@ -225,8 +224,6 @@ namespace SiegeEngine.Scenes
                 if (_player?.Camera != null)
                     cameraPos = _player.Camera.Position;
                 var casters = CollectShadowCasters(list);
-                if (casters.Count == 0)
-                    Console.WriteLine($"[Scene] CollectShadowCasters returned 0 (entities={list?.Count ?? 0}, points={frame.PointCount}). Point shadows will be empty.");
                 _shadowMapRenderer.Render(frame, casters, view, projection, cameraPos);
             }
 

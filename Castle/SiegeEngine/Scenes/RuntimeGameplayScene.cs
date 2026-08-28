@@ -192,6 +192,7 @@ namespace SiegeEngine.Scenes
             {
                 ulong steamId = 0;
                 _player = new Player(existingPlayerEntity.Id, Vector3.Zero, steamId);
+                SetPlayer(_player);
                 var existingPhys = existingPlayerEntity.GetComponent<PhysicsComponent>();
                 if (existingPhys != null)
                 {
@@ -501,6 +502,13 @@ namespace SiegeEngine.Scenes
                     ForceVisibleOverheadCamera();
             }
         }
+        protected override Vector3 GetViewPosition()
+        {
+            if (_usePlayerCamera && _player?.Camera != null)
+                return _player.Camera.Position;
+            return _flyCamera.Position;
+        }
+
         protected override void GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection)
         {
             view = _usePlayerCamera && _player?.Camera != null

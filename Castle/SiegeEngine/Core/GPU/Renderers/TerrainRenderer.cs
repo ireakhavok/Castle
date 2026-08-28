@@ -106,7 +106,8 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
         for (int y = -3; y <= 3; y++) {
             if (abs(y) > kernel) continue;
             float closest = texture(uShadowAtlas, atlasUv + vec2(float(x), float(y)) * texel * cell).r;
-            shadow += (proj.z - uShadowBias > closest) ? umbra : 1.0;
+            float slopeBias = uShadowBias + uShadowNormalBias * 0.08;
+            shadow += (proj.z - slopeBias > closest) ? umbra : 1.0;
             taps++;
         }
     }
@@ -209,12 +210,12 @@ void main() {
     vec3 lit = ambient + diff * albedo.rgb * uLightColor * uLightIntensity * shadow;
     lit += PointLighting(albedo.rgb, normal);
     lit += SpotLighting(albedo.rgb, normal);
-    if (uFogMode != 0) {
+    if (uFogMode != 0 && uFogMode != 3) {
         float dist = length(vViewPos.xyz);
-        float fogFactor = exp(-uFogDensity * uFogDensity * dist * dist);
+        float fogFactor = exp(-uFogDensity * dist);
         if (uFogMode == 2) {
             float heightTerm = exp(-uFogHeightFalloff * max(vWorldPos.z - uFogHeight, 0.0));
-            fogFactor = exp(-uFogDensity * uFogDensity * dist * dist * heightTerm);
+            fogFactor = exp(-uFogDensity * dist * heightTerm);
         }
         lit = mix(uFogColor, lit, clamp(fogFactor, 0.0, 1.0));
     }

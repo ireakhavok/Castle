@@ -207,6 +207,13 @@ namespace SiegeEngine.Core.Managers
             Console.WriteLine($"[SceneManager] Resolved preferred scene '{preferred}' (level='{levelName}', CustomSceneClass='{reconstructedSceneData?.CustomSceneClass}')");
             _currentScene = (Scene)SceneRegistry.Create(preferred, ctx);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
+            // Custom scenes sometimes skip rehydrate. If the server is still
+            // empty, push the Level snapshot so lights and casters exist.
+            if ((_server?.GetEntities()?.Count ?? 0) == 0 && level?.Entities != null)
+            {
+                foreach (var e in level.Entities)
+                    _server.AddEntity(e);
+            }
             Console.WriteLine($"[SceneManager] '{preferred}' active with FULL editor snapshot - entities rehydrated and added, serverEntities={_server?.GetEntities()?.Count ?? 0}, lights={CountLights(level)}");
         }
 
