@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/GPU/Lighting
+// Folder: SiegeEngine/Core/GPU/Lighting
 // File: ShadowMapRenderer.cs
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;

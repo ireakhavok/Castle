@@ -7,6 +7,7 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Lighting;
 using SiegeEngine.Core.GPU.Shaders;
 using SiegeEngine.Core.UI;
 using System;
@@ -544,6 +545,23 @@ namespace SiegeEngine.Scenes
             view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
             projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f);
         }
+        protected override List<ShadowCaster> CollectShadowCasters(IReadOnlyList<Entity> entities)
+        {
+            var list = ShadowMapRenderer.CollectCasters(entities);
+            if (_modelData?.MeshRenders != null)
+            {
+                list.Add(new ShadowCaster
+                {
+                    ModelMatrix = Matrix4x4.Identity,
+                    ModelData = _modelData,
+                    BoneMatrices = _boneMatrices,
+                    HasBones = _boneMatrices != null && _boneMatrices.Length > 0 && _model != null && _model.HasSkin,
+                    CastShadows = true
+                });
+            }
+            return list;
+        }
+
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
             _modelRenderer.RenderModel(_model, _modelData, view, projection, _cameraPosition, Matrix4x4.Identity, _boneMatrices, _currentNormalTransforms);

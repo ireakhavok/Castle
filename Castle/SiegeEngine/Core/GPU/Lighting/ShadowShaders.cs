@@ -21,14 +21,16 @@ void main() {
             if (id < 0 || id >= 128) continue;
             skinned += (uBoneTransforms[id] * local) * aBoneWeights[i];
         }
-        if (length(skinned) > 0.0001)
+        if (dot(skinned, skinned) > 0.0001)
             local = skinned;
     }
     gl_Position = uLightVP * uModel * local;
 }";
 
         public const string DepthFragment = @"#version 330 core
-void main() { }
-";
+out vec4 FragColor;
+void main() {
+    FragColor = vec4(1.0);
+}";
     }
 }

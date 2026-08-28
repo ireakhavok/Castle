@@ -1,4 +1,4 @@
-﻿// Folder: ToolChest
+// Folder: ToolChest
 // File: PropertiesPanel.cs
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;

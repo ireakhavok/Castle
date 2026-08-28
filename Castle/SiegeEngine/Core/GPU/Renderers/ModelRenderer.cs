@@ -119,7 +119,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             shader.SetUniform("uAmbientStrength", 0.3f);
             shader.SetUniform("uSpecularStrength", 0.05f);
             shader.SetUniform("uShininess", 4.0f);
-            shader.SetUniform("uLightDir", -0.707f, -0.707f, 0.707f);
+            shader.SetUniform("uLightDir", LightingFrame.DefaultSunDirection.X, LightingFrame.DefaultSunDirection.Y, LightingFrame.DefaultSunDirection.Z);
             shader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
             shader.SetUniform("uLightIntensity", 1.0f);
             shader.SetUniform("uHasWorldAligned", 0);

@@ -1,4 +1,4 @@
-﻿// Folder: CastleBuilder
+// Folder: CastleBuilder
 // File: MenuCommands.cs
 using CastleBuilder.Events;
 using Keystone;

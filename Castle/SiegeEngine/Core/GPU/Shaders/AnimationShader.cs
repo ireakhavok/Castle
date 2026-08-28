@@ -4,8 +4,7 @@ namespace SiegeEngine.Core.GPU.Shaders
 {
     public static class AnimationShader
     {
-        public const string VertexShaderSource = @"
-#version 330 core
+        public const string VertexShaderSource = @"#version 330 core
 layout(location = 0) in vec3 aPosition;
 layout(location = 2) in vec2 aTexCoord;
 layout(location = 3) in vec3 aNormal;
@@ -17,7 +16,7 @@ out vec2 TexCoord;
 out vec3 Normal;
 out vec3 FragPos;
 out float MaterialIndex;
-out mat3 TBN;
+out vec3 vTangent;
 out vec4 vViewPos;
 uniform mat4 uModel;
 uniform mat4 uView;
@@ -60,26 +59,22 @@ void main()
         totalNormal = aNormal;
         totalTangent = aTangent;
     }
-    mat3 normalMatrix = transpose(inverse(mat3(uModel)));
+    mat3 normalMatrix = mat3(uModel);
     Normal = normalize(normalMatrix * totalNormal);
-    vec3 T = normalize(normalMatrix * totalTangent);
-    vec3 N = Normal;
-    T = normalize(T - dot(T, N) * N);
-    vec3 B = cross(N, T);
-    TBN = mat3(T, B, N);
+    vTangent = normalize(normalMatrix * totalTangent);
     FragPos = vec3(uModel * totalPosition);
     TexCoord = aTexCoord;
     MaterialIndex = aMaterialIndex;
     vViewPos = uView * vec4(FragPos, 1.0);
     gl_Position = uProjection * uView * uModel * totalPosition;
 }";
-        public const string FragmentShaderSource = @"
-#version 330 core
+
+        public const string FragmentShaderSource = @"#version 330 core
 in vec2 TexCoord;
 in vec3 Normal;
 in vec3 FragPos;
 in float MaterialIndex;
-in mat3 TBN;
+in vec3 vTangent;
 in vec4 vViewPos;
 out vec4 FragColor;
 
@@ -131,28 +126,39 @@ uniform float uShadowBias;
 uniform float uShadowNormalBias;
 uniform float uShadowAtlasSize;
 
-vec2 WorldPlanarUV(vec3 worldPos, vec3 normal, int axis, vec2 tiling, vec2 offset)
-{
-    vec2 uv;
-    if (axis == 0) uv = worldPos.yz;
-    else if (axis == 1) uv = worldPos.xz;
-    else uv = worldPos.xy;
-    return uv * tiling + offset;
+vec3 SampleAlbedo(int matIdx, vec2 uv) {
+    if (matIdx == 1) return texture(uAlbedoMap[1], uv).rgb;
+    if (matIdx == 2) return texture(uAlbedoMap[2], uv).rgb;
+    if (matIdx == 3) return texture(uAlbedoMap[3], uv).rgb;
+    return texture(uAlbedoMap[0], uv).rgb;
 }
 
-vec3 TriplanarSample(sampler2D tex, vec3 worldPos, vec3 normal, vec2 tiling, vec2 offset, float sharpness)
-{
-    vec3 blend = abs(normal);
-    blend /= blend.x + blend.y + blend.z + 0.0001;
-    blend = pow(blend, vec3(sharpness));
-    blend /= blend.x + blend.y + blend.z;
-    vec2 uvX = worldPos.yz * tiling + offset;
-    vec2 uvY = worldPos.xz * tiling + offset;
-    vec2 uvZ = worldPos.xy * tiling + offset;
-    vec3 colX = texture(tex, uvX).rgb;
-    vec3 colY = texture(tex, uvY).rgb;
-    vec3 colZ = texture(tex, uvZ).rgb;
-    return colX * blend.x + colY * blend.y + colZ * blend.z;
+vec3 SampleNormalMap(int matIdx, vec2 uv) {
+    if (matIdx == 1) return texture(uNormalMap[1], uv).rgb;
+    if (matIdx == 2) return texture(uNormalMap[2], uv).rgb;
+    if (matIdx == 3) return texture(uNormalMap[3], uv).rgb;
+    return texture(uNormalMap[0], uv).rgb;
+}
+
+float SampleMetallic(int matIdx, vec2 uv) {
+    if (matIdx == 1) return texture(uMetallicMap[1], uv).r;
+    if (matIdx == 2) return texture(uMetallicMap[2], uv).r;
+    if (matIdx == 3) return texture(uMetallicMap[3], uv).r;
+    return texture(uMetallicMap[0], uv).r;
+}
+
+int NormalWidth(int matIdx) {
+    if (matIdx == 1) return textureSize(uNormalMap[1], 0).x;
+    if (matIdx == 2) return textureSize(uNormalMap[2], 0).x;
+    if (matIdx == 3) return textureSize(uNormalMap[3], 0).x;
+    return textureSize(uNormalMap[0], 0).x;
+}
+
+int MetallicWidth(int matIdx) {
+    if (matIdx == 1) return textureSize(uMetallicMap[1], 0).x;
+    if (matIdx == 2) return textureSize(uMetallicMap[2], 0).x;
+    if (matIdx == 3) return textureSize(uMetallicMap[3], 0).x;
+    return textureSize(uMetallicMap[0], 0).x;
 }
 
 float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
@@ -170,7 +176,7 @@ float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
     if (proj.x <= 0.0 || proj.x >= 1.0 || proj.y <= 0.0 || proj.y >= 1.0 || proj.z > 1.0)
         return 1.0;
     float cell = 0.5;
-    vec2 atlasUv = vec2(float(cascade % 2), float(cascade / 2)) * cell + proj.xy * cell;
+    vec2 atlasUv = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell + proj.xy * cell;
     float closest = texture(uShadowAtlas, atlasUv).r;
     return (proj.z - uShadowBias > closest) ? 0.35 : 1.0;
 }
@@ -189,37 +195,27 @@ vec3 ApplyFog(vec3 color) {
 void main()
 {
     int matIdx = int(MaterialIndex);
-    vec3 albedo = texture(uAlbedoMap[matIdx], TexCoord).rgb;
+    if (matIdx < 0) matIdx = 0;
+    if (matIdx > 3) matIdx = 3;
+
+    vec3 albedo = SampleAlbedo(matIdx, TexCoord);
     float metallic = 0.0;
-    if (textureSize(uMetallicMap[matIdx], 0).x > 1)
-        metallic = texture(uMetallicMap[matIdx], TexCoord).r;
+    if (MetallicWidth(matIdx) > 1)
+        metallic = SampleMetallic(matIdx, TexCoord);
 
     vec3 normal = normalize(Normal);
-    // FBX/DirectX normal maps store +Y up. OpenGL TBN expects +Y down, so
-    // flip the green channel. Skip the map when the tangent basis is
-    // degenerate (UV seams on a sphere) or no normal texture is bound —
-    // otherwise TBN * (-1,-1,-1) paints a bright/black split across the head.
-    if (length(TBN[0]) > 0.001 && textureSize(uNormalMap[matIdx], 0).x > 1)
+    // FBX/DirectX normal maps store +Y up. OpenGL TBN expects +Y down.
+    // Skip the map when the tangent is degenerate or no normal texture is bound.
+    if (length(vTangent) > 0.001 && NormalWidth(matIdx) > 1)
     {
-        vec3 tangentNormal = texture(uNormalMap[matIdx], TexCoord).rgb * 2.0 - 1.0;
+        vec3 T = normalize(vTangent);
+        T = normalize(T - dot(T, normal) * normal);
+        vec3 B = cross(normal, T);
+        vec3 tangentNormal = SampleNormalMap(matIdx, TexCoord) * 2.0 - 1.0;
         tangentNormal.y = -tangentNormal.y;
-        vec3 mapped = TBN * tangentNormal;
+        vec3 mapped = mat3(T, B, normal) * tangentNormal;
         if (dot(mapped, mapped) > 0.001)
             normal = normalize(mapped);
-    }
-
-    if (uHasWorldAligned == 1 && uMappingMode[matIdx] != 0)
-    {
-        if (uMappingMode[matIdx] == 2)
-        {
-            albedo = TriplanarSample(uAlbedoMap[matIdx], FragPos, normal, uTiling[matIdx], uOffset[matIdx], uBlendSharpness[matIdx]);
-        }
-        else
-        {
-            int axis = abs(normal.x) > abs(normal.y) && abs(normal.x) > abs(normal.z) ? 0 : (abs(normal.y) > abs(normal.z) ? 1 : 2);
-            vec2 worldUV = WorldPlanarUV(FragPos, normal, axis, uTiling[matIdx], uOffset[matIdx]);
-            albedo = texture(uAlbedoMap[matIdx], worldUV).rgb;
-        }
     }
 
     vec3 ambient = uAmbientStrength * albedo * uAmbientColor;
