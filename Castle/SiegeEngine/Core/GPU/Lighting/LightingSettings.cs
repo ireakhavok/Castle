@@ -53,6 +53,11 @@ namespace SiegeEngine.Core.GPU.Lighting
             return FogQuality.Off;
         }
 
+        public static bool ResolveShadowSmooth()
+        {
+            return _authored != null && _authored.ShadowSmooth;
+        }
+
         public static float ResolveShadowDistance()
         {
             float authored = _authored?.ShadowDistance ?? 0f;

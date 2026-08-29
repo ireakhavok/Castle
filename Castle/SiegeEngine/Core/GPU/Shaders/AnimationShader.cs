@@ -131,6 +131,7 @@ uniform float uShadowNormalBias;
 uniform float uShadowAtlasSize;
 uniform float uShadowStrength;
 uniform int uShadowPcfRadius;
+uniform int uShadowSmooth;
 uniform vec4 uCascadeZRange;
 uniform samplerCube uPointShadowCube;
 uniform int uPointShadowsEnabled;
@@ -187,6 +188,23 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
     atlasUv = clamp(atlasUv, atlasOrigin + vec2(0.001), atlasOrigin + vec2(cell - 0.001));
 
     float stored = texture(uShadowAtlas, atlasUv).r;
+    if (uShadowSmooth > 0) {
+        // Box-filter the depth map, then one ESM compare.
+        // Not PCF: we do not test this Z against neighbor rays.
+        float texel = cell / max(uShadowAtlasSize * 0.5, 1.0);
+        float acc = 0.0;
+        int taps = 0;
+        for (int x = -1; x <= 1; x++) {
+            for (int y = -1; y <= 1; y++) {
+                vec2 uv = atlasUv + vec2(float(x), float(y)) * texel;
+                uv = clamp(uv, atlasOrigin + vec2(0.001), atlasOrigin + vec2(cell - 0.001));
+                acc += texture(uShadowAtlas, uv).r;
+                taps++;
+            }
+        }
+        stored = acc / float(max(taps, 1));
+    }
+
     float umbra = uShadowStrength;
     if (umbra < 0.0) umbra = 0.08;
 
@@ -197,9 +215,6 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
     else zRange = uCascadeZRange.w;
     zRange = max(zRange, 1.0);
 
-    // k is world-space. Multiply by zRange so a 20cm occluder is a full
-    // umbra on every cascade, not just the inner tile. Old window-space k
-    // made the outer tile look like Low no matter what was selected.
     float kWorld = uShadowBias;
     if (kWorld < 1.0) kWorld = 40.0;
     float k = kWorld * zRange;

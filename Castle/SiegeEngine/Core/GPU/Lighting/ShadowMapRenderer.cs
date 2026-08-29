@@ -539,12 +539,12 @@ namespace SiegeEngine.Core.GPU.Lighting
             return quality switch
             {
                 ShadowQuality.Off => 0,
-                ShadowQuality.Low => 4096,
-                ShadowQuality.Medium => 8192,
+                ShadowQuality.Low => 8192,
+                ShadowQuality.Medium => 16384,
                 ShadowQuality.High => 16384,
                 ShadowQuality.Ultra => 16384,
                 ShadowQuality.Cinematic => 16384,
-                _ => 8192
+                _ => 16384
             };
         }
 
@@ -561,12 +561,12 @@ namespace SiegeEngine.Core.GPU.Lighting
             // Ultra reaches full umbra at ~6cm of occluder depth.
             return quality switch
             {
-                ShadowQuality.Low => 20f,
-                ShadowQuality.Medium => 50f,
-                ShadowQuality.High => 90f,
-                ShadowQuality.Ultra => 150f,
-                ShadowQuality.Cinematic => 220f,
-                _ => 50f
+                ShadowQuality.Low => 50f,
+                ShadowQuality.Medium => 90f,
+                ShadowQuality.High => 140f,
+                ShadowQuality.Ultra => 200f,
+                ShadowQuality.Cinematic => 280f,
+                _ => 90f
             };
         }
 
@@ -574,12 +574,12 @@ namespace SiegeEngine.Core.GPU.Lighting
         {
             return quality switch
             {
-                ShadowQuality.Low => 0.14f,
-                ShadowQuality.Medium => 0.06f,
-                ShadowQuality.High => 0.03f,
-                ShadowQuality.Ultra => 0.015f,
-                ShadowQuality.Cinematic => 0.01f,
-                _ => 0.06f
+                ShadowQuality.Low => 0.07f,
+                ShadowQuality.Medium => 0.035f,
+                ShadowQuality.High => 0.02f,
+                ShadowQuality.Ultra => 0.012f,
+                ShadowQuality.Cinematic => 0.008f,
+                _ => 0.035f
             };
         }
 
@@ -591,15 +591,15 @@ namespace SiegeEngine.Core.GPU.Lighting
             switch (quality)
             {
                 case ShadowQuality.Low:
-                    r0 = 128f; break;
+                    r0 = 40f; break;
                 case ShadowQuality.High:
-                    r0 = 32f; break;
+                    r0 = 16f; break;
                 case ShadowQuality.Ultra:
-                    r0 = 20f; break;
+                    r0 = 12f; break;
                 case ShadowQuality.Cinematic:
-                    r0 = 14f; break;
+                    r0 = 9f; break;
                 default:
-                    r0 = 48f; break;
+                    r0 = 24f; break;
             }
             radii[0] = r0;
             radii[1] = r0 * 3f;

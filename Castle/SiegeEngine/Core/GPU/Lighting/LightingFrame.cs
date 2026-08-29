@@ -106,11 +106,13 @@ namespace SiegeEngine.Core.GPU.Lighting
         public Matrix4x4 SpotVP = Matrix4x4.Identity;
         public bool ShadowsReady;
         public float ShadowDistance = 2048f;
+        public bool ShadowSmooth;
 
         public static LightingFrame Build(IReadOnlyList<Entity> entities, EnvironmentSettings environment, Vector3 fallbackSunDirection, bool allowFallbackSun = true)
         {
             var frame = new LightingFrame();
             frame.ShadowQuality = LightingSettings.ResolveShadowQuality();
+            frame.ShadowSmooth = LightingSettings.ResolveShadowSmooth();
             frame.ShadowDistance = LightingSettings.ResolveShadowDistance();
             frame.AmbientColor = environment?.AmbientColor ?? new Vector3(0.45f, 0.45f, 0.48f);
             if (frame.AmbientColor.LengthSquared() < 1e-6f)
@@ -310,6 +312,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             shader.SetUniform("uShadowAtlasSize", atlasPx);
             shader.SetUniform("uShadowStrength", ShadowMapRenderer.ShadowStrength(ShadowQuality));
             shader.SetUniform("uShadowPcfRadius", ShadowMapRenderer.PcfRadius(ShadowQuality));
+            shader.SetUniform("uShadowSmooth", ShadowSmooth ? 1 : 0);
             shader.SetUniform("uPointShadowStrength", 0.15f);
 
             for (int i = 0; i < MaxCascades; i++)
