@@ -27,8 +27,9 @@ namespace SiegeEngine.Core.GPU.Lighting
     ///
     /// Sun cascades are nested WORLD-SPACE orthographic boxes on the XY ground
     /// plane (Z-up), centered on the scene/caster AABB — never on the camera.
-    /// Shaders pick a tile by light-clip containment. A fragment outside every
-    /// tile is lit. Terrain is a receiver only.
+    /// Shaders pick a tile by light-clip containment. Outside every tile the
+    /// sun still lights the fragment (no clamp-as-shadow). Terrain is a
+    /// receiver only.
     /// </summary>
     public unsafe class ShadowMapRenderer : IDisposable
     {
@@ -92,29 +93,19 @@ namespace SiegeEngine.Core.GPU.Lighting
                 frame.ShadowAtlas = _atlasDepth;
 
                 float far = MathF.Max(frame.ShadowDistance, 2048f);
-                ComputeCascades(frame, far, cascadeCount, atlasSize, casters);
+                ComputeCascades(frame, cameraPos, far, cascadeCount, atlasSize, casters);
 
+                int tile = atlasSize / 2;
                 _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
                 BindDepthOnly();
                 _rc.Clear(_e.DepthBufferBit);
 
-                // One cascade uses the whole atlas (point-light analogue).
-                // Two cascades pack into the 2x2 atlas the shaders already address.
-                if (cascadeCount <= 1)
+                for (int i = 0; i < cascadeCount; i++)
                 {
-                    _rc.Viewport(0, 0, (uint)atlasSize, (uint)atlasSize);
-                    DrawCasters(frame.CascadeVP[0], casters, linearDepth: false, lightPos: default, farPlane: 1f);
-                }
-                else
-                {
-                    int tile = atlasSize / 2;
-                    for (int i = 0; i < cascadeCount; i++)
-                    {
-                        int x = (i % 2) * tile;
-                        int y = (i / 2) * tile;
-                        _rc.Viewport(x, y, (uint)tile, (uint)tile);
-                        DrawCasters(frame.CascadeVP[i], casters, linearDepth: false, lightPos: default, farPlane: 1f);
-                    }
+                    int x = (i % 2) * tile;
+                    int y = (i / 2) * tile;
+                    _rc.Viewport(x, y, (uint)tile, (uint)tile);
+                    DrawCasters(frame.CascadeVP[i], casters, linearDepth: false, lightPos: default, farPlane: 1f);
                 }
             }
             else
@@ -325,13 +316,12 @@ namespace SiegeEngine.Core.GPU.Lighting
         }
 
         /// <summary>
-        /// World-covering orthos centered on the scene/caster AABB, pinned to
-        /// the Z=0 ground plane. The camera is not a focus — a camera-centered
-        /// tile is the moving sunlight square in the editor. The last live
-        /// cascade always covers worldRadius so Play has no sun cutoff.
-        /// Shaders pick by containment; outside every tile is lit.
+        /// Nested world-space orthos on Z=0, focused on the scene/caster AABB.
+        /// The camera is not a focus. Inner tiles stay small so Ultra keeps
+        /// sharp umbras; the last tile is the scene span. A fragment outside
+        /// every tile is lit by the sun — never clamped into a shadow test.
         /// </summary>
-        private void ComputeCascades(LightingFrame frame, float far, int cascadeCount, int atlasSize, IReadOnlyList<ShadowCaster> casters)
+        private void ComputeCascades(LightingFrame frame, Vector3 cameraPos, float far, int cascadeCount, int atlasSize, IReadOnlyList<ShadowCaster> casters)
         {
             Vector3 sceneMin = Vector3.Zero;
             Vector3 sceneMax = Vector3.Zero;
@@ -355,7 +345,6 @@ namespace SiegeEngine.Core.GPU.Lighting
                 }
             }
 
-            // Scene center on the ground plane. Never the camera.
             Vector3 sceneCenter = haveCaster
                 ? new Vector3((sceneMin.X + sceneMax.X) * 0.5f, (sceneMin.Y + sceneMax.Y) * 0.5f, 0f)
                 : Vector3.Zero;
@@ -364,11 +353,36 @@ namespace SiegeEngine.Core.GPU.Lighting
             float worldRadius = MathF.Max(far, MathF.Max(sceneRadius * 2f, 2048f));
 
             float[] radii = new float[LightingFrame.MaxCascades];
-            for (int i = 0; i < LightingFrame.MaxCascades; i++)
-                radii[i] = worldRadius;
-            if (cascadeCount > 1)
-                radii[0] = MathF.Max(sceneRadius, 256f);
-            radii[Math.Max(cascadeCount - 1, 0)] = worldRadius;
+            if (frame.ShadowQuality == ShadowQuality.Ultra)
+            {
+                radii[0] = 48f;
+                radii[1] = 160f;
+                radii[2] = 512f;
+                radii[3] = worldRadius;
+            }
+            else if (frame.ShadowQuality == ShadowQuality.High)
+            {
+                radii[0] = 64f;
+                radii[1] = 192f;
+                radii[2] = 640f;
+                radii[3] = worldRadius;
+            }
+            else if (frame.ShadowQuality == ShadowQuality.Low)
+            {
+                radii[0] = 160f;
+                radii[1] = worldRadius;
+                radii[2] = worldRadius;
+                radii[3] = worldRadius;
+            }
+            else
+            {
+                radii[0] = 80f;
+                radii[1] = 240f;
+                radii[2] = 720f;
+                radii[3] = worldRadius;
+            }
+            if (cascadeCount > 0)
+                radii[cascadeCount - 1] = worldRadius;
             frame.CascadeSplits = new Vector4(radii[0], radii[1], radii[2], radii[3]);
 
             Vector3 lightDir = frame.Sun.Direction.LengthSquared() > 1e-8f
@@ -377,15 +391,18 @@ namespace SiegeEngine.Core.GPU.Lighting
             Vector3 lightUp = MathF.Abs(Vector3.Dot(lightDir, Vector3.UnitZ)) > 0.95f ? Vector3.UnitX : Vector3.UnitZ;
 
             float casterPad = MathF.Max(sceneRadius + 80f, 120f);
-            int tile = cascadeCount <= 1 ? Math.Max(atlasSize, 1) : Math.Max(atlasSize / 2, 1);
-            float zBack = worldRadius + casterPad + 80f;
-            float zFwd = worldRadius + casterPad + 80f;
+            int tile = Math.Max(atlasSize / 2, 1);
 
             for (int i = 0; i < cascadeCount; i++)
             {
                 float radius = radii[i];
                 float texel = MathF.Max((radius * 2f) / tile, 0.05f);
                 Vector3 focus = SnapToTexel(sceneCenter, texel);
+
+                // Z range follows this tile, not the whole world — keeps
+                // Ultra's inner 2048px tiles precise instead of pixelated.
+                float zBack = radius + casterPad + 80f;
+                float zFwd = radius + casterPad + 80f;
 
                 Vector3 eye = focus - lightDir * zBack;
                 Matrix4x4 lightView = Matrix4x4.CreateLookAt(eye, focus, lightUp);
@@ -456,7 +473,13 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private static int CascadeCount(ShadowQuality quality)
         {
-            return quality == ShadowQuality.Low ? 1 : 2;
+            return quality switch
+            {
+                ShadowQuality.Low => 2,
+                ShadowQuality.High => 4,
+                ShadowQuality.Ultra => 4,
+                _ => 4
+            };
         }
 
         private static int AtlasSize(ShadowQuality quality)

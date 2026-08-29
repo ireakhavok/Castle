@@ -197,7 +197,7 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
     if (proj.x <= 0.001 || proj.x >= 0.999 || proj.y <= 0.001 || proj.y >= 0.999 || proj.z <= 0.0 || proj.z >= 1.0)
         return -1.0;
     proj = clamp(proj, vec3(0.001, 0.001, 0.0), vec3(0.999, 0.999, 1.0));
-    float cell = (uCascadeCount <= 1) ? 1.0 : 0.5;
+    float cell = 0.5;
     vec2 atlasOrigin = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell;
     vec2 atlasUv = atlasOrigin + proj.xy * cell;
     float shadow = 0.0;
