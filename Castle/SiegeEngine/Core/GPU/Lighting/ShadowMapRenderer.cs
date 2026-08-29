@@ -35,6 +35,8 @@ namespace SiegeEngine.Core.GPU.Lighting
     {
         private const int GL_FRAMEBUFFER_BINDING = 0x8CA6;
         private const int GL_VIEWPORT = 0x0BA2;
+        private const int GL_SCISSOR_BOX = 0x0C10;
+        private const int GL_SCISSOR_TEST = 0x0C11;
         private const int GL_NONE = 0;
         private const int GL_BACK = 0x0405;
 
@@ -55,6 +57,8 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private int _savedFbo;
         private int _savedVpX, _savedVpY, _savedVpW, _savedVpH;
+        private int _savedScX, _savedScY, _savedScW, _savedScH;
+        private bool _savedScissor;
 
         public ShadowMapRenderer(IRenderContext renderContext)
         {
@@ -78,6 +82,14 @@ namespace SiegeEngine.Core.GPU.Lighting
             }
 
             Capture();
+            // SceneEditorPanel renders inside a window-space scissor.
+            // glClear / viewport draws honor that box. The shadow atlas is a
+            // different framebuffer — leaving the panel scissor on clips the
+            // atlas to a window-sized rectangle. Low/Medium tiles miss it
+            // entirely (no sun). High/Ultra only keep the overlapping sliver
+            // of cascade 0 (the lit square). Disable scissor for the shadow
+            // pass; Restore puts the panel scissor back.
+            _rc.Disable(_e.ScissorTest);
             int atlasSize = AtlasSize(frame.ShadowQuality);
             _rc.ColorMask(false, false, false, false);
             _rc.Enable(_e.DepthTest);
@@ -569,6 +581,14 @@ namespace SiegeEngine.Core.GPU.Lighting
             _savedVpY = vp[1];
             _savedVpW = vp[2];
             _savedVpH = vp[3];
+            int* sc = stackalloc int[4];
+            _rc.GetInteger(GL_SCISSOR_BOX, sc);
+            _savedScX = sc[0];
+            _savedScY = sc[1];
+            _savedScW = sc[2];
+            _savedScH = sc[3];
+            _rc.GetInteger(GL_SCISSOR_TEST, out int scissorOn);
+            _savedScissor = scissorOn != 0;
         }
 
         private void Restore()
@@ -580,6 +600,9 @@ namespace SiegeEngine.Core.GPU.Lighting
                 _rc.ReadBuffer(GL_BACK);
             }
             _rc.Viewport(_savedVpX, _savedVpY, (uint)Math.Max(_savedVpW, 1), (uint)Math.Max(_savedVpH, 1));
+            _rc.Scissor(_savedScX, _savedScY, (uint)Math.Max(_savedScW, 1), (uint)Math.Max(_savedScH, 1));
+            if (_savedScissor) _rc.Enable(_e.ScissorTest);
+            else _rc.Disable(_e.ScissorTest);
             _rc.ColorMask(true, true, true, true);
             _rc.DepthMask(true);
             _rc.Enable(_e.DepthTest);
