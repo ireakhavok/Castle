@@ -295,8 +295,10 @@ namespace SiegeEngine.Core.GPU.Lighting
                 shader.SetMatrix4($"uCascadeVP[{i}]", CascadeVP[i]);
 
             shader.SetMatrix4("uSpotVP", SpotVP);
-            bool pointShadows = ShadowsReady && ShadowQuality != ShadowQuality.Off && PointShadowCube != 0 && PointCount > 0 && Points[0].CastShadows;
-            bool spotShadows = ShadowsReady && ShadowQuality != ShadowQuality.Off && SpotShadowMap != 0 && SpotCount > 0 && Spots[0].CastShadows;
+            // Point and spot maps are a separate pass from the sun atlas.
+            // Turning the sun off must not zero uPointShadowsEnabled.
+            bool pointShadows = ShadowQuality != ShadowQuality.Off && PointShadowCube != 0 && PointCount > 0 && Points[0].CastShadows;
+            bool spotShadows = ShadowQuality != ShadowQuality.Off && SpotShadowMap != 0 && SpotCount > 0 && Spots[0].CastShadows;
             shader.SetUniform("uSpotShadowsEnabled", spotShadows ? 1 : 0);
             shader.SetUniform("uPointShadowsEnabled", pointShadows ? 1 : 0);
             shader.SetUniform("uPointShadowFar", PointCount > 0 && Points[0].Range > 0f ? Points[0].Range : 1f);
