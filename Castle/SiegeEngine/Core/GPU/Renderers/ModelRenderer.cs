@@ -179,6 +179,8 @@ namespace SiegeEngine.Core.GPU.Renderers
                     }
                 }
 
+                BindShadowMaps(shader);
+
                 _renderContext.BindVertexArray(mmr.Vao);
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                 _renderContext.BindVertexArray(0);
@@ -251,6 +253,41 @@ namespace SiegeEngine.Core.GPU.Renderers
             if (!Matrix4x4.Invert(linear, out Matrix4x4 inv))
                 return linear;
             return Matrix4x4.Transpose(inv);
+        }
+
+        private static int _shadowBindLog;
+
+        private void BindShadowMaps(ShaderProgram shader)
+        {
+            LightingFrame frame = LightingFrame.Current;
+            if (frame == null || frame.ShadowAtlas == 0 || !frame.ShadowsReady)
+                frame = LightingFrame.LastReady;
+            IRenderContext rc = _renderContext;
+            int u0 = rc.Enums.Texture0;
+            uint atlas = ShadowMapRenderer.WrittenSunAtlas != 0
+                ? ShadowMapRenderer.WrittenSunAtlas
+                : (frame != null ? frame.ShadowAtlas : 0);
+            rc.ActiveTexture(u0 + LightingFrame.ShadowAtlasUnit);
+            rc.BindTexture(rc.Enums.Texture2D, atlas);
+            shader.SetUniform("uShadowAtlas", LightingFrame.ShadowAtlasUnit);
+            if (frame != null)
+            {
+                rc.ActiveTexture(u0 + LightingFrame.PointShadowUnit);
+                rc.BindTexture(rc.Enums.TextureCubeMap, frame.PointShadowCube);
+                shader.SetUniform("uPointShadowCube", LightingFrame.PointShadowUnit);
+                rc.ActiveTexture(u0 + LightingFrame.SpotShadowUnit);
+                rc.BindTexture(rc.Enums.Texture2D, frame.SpotShadowMap);
+                shader.SetUniform("uSpotShadowMap", LightingFrame.SpotShadowUnit);
+            }
+            rc.ActiveTexture(u0);
+            if ((_shadowBindLog++ % 600) == 0)
+            {
+                int loc = shader.FindUniform("uShadowAtlas");
+                Console.WriteLine(
+                    $"[SunShadow] modelBind atlas={atlas} writeAtlas={ShadowMapRenderer.WrittenSunAtlas} " +
+                    $"ready={frame?.ShadowsReady} enabled={frame != null && frame.ShadowsReady && frame.Sun.CastShadows} " +
+                    $"unit=12 loc={loc}");
+            }
         }
 
         public void Dispose()

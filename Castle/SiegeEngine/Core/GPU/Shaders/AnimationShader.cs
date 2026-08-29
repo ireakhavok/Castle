@@ -131,6 +131,9 @@ uniform float uShadowNormalBias;
 uniform float uShadowAtlasSize;
 uniform float uShadowStrength;
 uniform int uShadowPcfRadius;
+uniform int uShadowDebug;
+uniform vec4 uCascadeZRange;
+uniform float uShadowContact;
 uniform samplerCube uPointShadowCube;
 uniform int uPointShadowsEnabled;
 uniform float uPointShadowFar;
@@ -171,19 +174,81 @@ int MetallicWidth(int matIdx) {
     return textureSize(uMetallicMap[0], 0).x;
 }
 
+vec3 DebugSunShadow(vec3 worldPos, vec3 normal, vec3 lightDir, float shadow) {
+    float ndotl = max(dot(normalize(normal), lightDir), 0.0);
+    if (uShadowsEnabled == 0 || uCascadeCount <= 0)
+        return vec3(0.25, 0.25, 0.25);
+    int used = -1;
+    vec3 proj = vec3(0.0);
+    float closest = 1.0;
+    for (int i = 0; i < 4; i++) {
+        if (i >= uCascadeCount) break;
+        vec4 lightClip = uCascadeVP[i] * vec4(worldPos, 1.0);
+        vec3 p = lightClip.xyz / max(lightClip.w, 0.0001);
+        p = p * 0.5 + 0.5;
+        if (p.x <= 0.001 || p.x >= 0.999 || p.y <= 0.001 || p.y >= 0.999 || p.z <= 0.0 || p.z >= 1.0)
+            continue;
+        used = i;
+        proj = clamp(p, vec3(0.001, 0.001, 0.0), vec3(0.999, 0.999, 1.0));
+        float cell = 0.5;
+        vec2 atlasOrigin = vec2(float(i - (i / 2) * 2), float(i / 2)) * cell;
+        closest = texture(uShadowAtlas, atlasOrigin + proj.xy * cell).r;
+        break;
+    }
+    float delta = proj.z - closest;
+    if (uShadowDebug == 1)
+        return vec3(shadow);
+    if (uShadowDebug == 2) {
+        float t0 = 1.0, t1 = 1.0, t2 = 1.0, t3 = 1.0;
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                vec2 o = (vec2(float(x), float(y)) + 0.5) / 8.0 * 0.5;
+                t0 = min(t0, texture(uShadowAtlas, vec2(0.0, 0.0) + o).r);
+                t1 = min(t1, texture(uShadowAtlas, vec2(0.5, 0.0) + o).r);
+                t2 = min(t2, texture(uShadowAtlas, vec2(0.0, 0.5) + o).r);
+                t3 = min(t3, texture(uShadowAtlas, vec2(0.5, 0.5) + o).r);
+            }
+        }
+        vec3 c = vec3(0.0);
+        if (t0 < 0.999) c.r = 1.0;
+        if (t1 < 0.999) c.g = 1.0;
+        if (t2 < 0.999) c.b = 1.0;
+        if (t3 < 0.999) c += vec3(1.0, 1.0, 0.0);
+        if (dot(c, c) < 0.01) return vec3(0.0, 1.0, 1.0);
+        return c;
+    }
+    if (uShadowDebug == 3)
+        return vec3(clamp(delta * 40.0, 0.0, 1.0), 0.0, clamp(-delta * 40.0, 0.0, 1.0));
+    if (uShadowDebug == 4) {
+        if (used == 0) return vec3(1.0, 0.0, 0.0);
+        if (used == 1) return vec3(0.0, 1.0, 0.0);
+        if (used == 2) return vec3(0.0, 0.0, 1.0);
+        if (used == 3) return vec3(1.0, 1.0, 1.0);
+        return vec3(0.0);
+    }
+    if (uShadowDebug == 5)
+        return vec3(closest);
+    return vec3(proj.z);
+}
+
 float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
     float ndotl = max(dot(normal, normalize(-uLightDir)), 0.0);
     float slope = 1.0 - ndotl;
-    vec3 offsetPos = worldPos + normal * (uShadowNormalBias * (1.0 + slope));
-    vec4 lightClip = uCascadeVP[cascade] * vec4(offsetPos, 1.0);
-    vec3 proj = lightClip.xyz / max(lightClip.w, 0.0001);
-    proj = proj * 0.5 + 0.5;
-    if (proj.x <= 0.001 || proj.x >= 0.999 || proj.y <= 0.001 || proj.y >= 0.999 || proj.z <= 0.0 || proj.z >= 1.0)
+    vec3 samplePos = worldPos + normal * (uShadowNormalBias * (1.0 + slope));
+    vec4 sampleClip = uCascadeVP[cascade] * vec4(samplePos, 1.0);
+    vec3 sampleProj = sampleClip.xyz / max(sampleClip.w, 0.0001);
+    sampleProj = sampleProj * 0.5 + 0.5;
+    vec4 myClip = uCascadeVP[cascade] * vec4(worldPos, 1.0);
+    vec3 myProj = myClip.xyz / max(myClip.w, 0.0001);
+    myProj = myProj * 0.5 + 0.5;
+    if (sampleProj.x <= 0.001 || sampleProj.x >= 0.999 || sampleProj.y <= 0.001 || sampleProj.y >= 0.999)
         return -1.0;
-    proj = clamp(proj, vec3(0.001, 0.001, 0.0), vec3(0.999, 0.999, 1.0));
+    if (myProj.z <= 0.0 || myProj.z >= 1.0)
+        return -1.0;
+    sampleProj = clamp(sampleProj, vec3(0.001, 0.001, 0.0), vec3(0.999, 0.999, 1.0));
     float cell = 0.5;
     vec2 atlasOrigin = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell;
-    vec2 atlasUv = atlasOrigin + proj.xy * cell;
+    vec2 atlasUv = atlasOrigin + sampleProj.xy * cell;
     float shadow = 0.0;
     float texel = 1.0 / max(uShadowAtlasSize, 1.0);
     int kernel = uShadowPcfRadius;
@@ -192,15 +257,19 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
     int taps = 0;
     float umbra = uShadowStrength;
     if (umbra < 0.0) umbra = 0.08;
-    float bias = uShadowBias * (1.0 + slope * 3.0);
+    float plane = abs(dFdx(myProj.z)) + abs(dFdy(myProj.z));
+    float bias = uShadowBias * (1.0 + slope * 3.0) + plane;
     for (int x = -3; x <= 3; x++) {
         if (abs(x) > kernel) continue;
         for (int y = -3; y <= 3; y++) {
             if (abs(y) > kernel) continue;
             vec2 uv = atlasUv + vec2(float(x), float(y)) * texel * cell;
             uv = clamp(uv, atlasOrigin + vec2(0.001), atlasOrigin + vec2(cell - 0.001));
-            float closest = texture(uShadowAtlas, uv).r;
-            shadow += (proj.z - bias > closest) ? umbra : 1.0;
+            float firstHit = texture(uShadowAtlas, uv).r;
+            if (firstHit <= 0.0001 || firstHit >= 0.999)
+                shadow += 1.0;
+            else
+                shadow += (firstHit + bias < myProj.z) ? umbra : 1.0;
             taps++;
         }
     }
@@ -336,6 +405,10 @@ void main()
     vec3 ambient = uAmbientStrength * albedo * uAmbientColor;
     vec3 lightDir = normalize(-uLightDir);
     float shadow = SampleCascadeShadow(FragPos, geoN);
+    if (uShadowDebug > 0) {
+        FragColor = vec4(DebugSunShadow(FragPos, geoN, lightDir, shadow), 1.0);
+        return;
+    }
     float diff = max(dot(normal, lightDir), 0.0);
     vec3 diffuse = diff * albedo * uLightColor * uLightIntensity * shadow;
     vec3 viewDir = normalize(uViewPos - FragPos);

@@ -37,6 +37,9 @@ namespace SiegeEngine.Core.GPU.Lighting
         private readonly AbstractRenderEnums _e;
         private ShaderProgram _depthShader;
         private bool _disposed;
+        private int _diagFrames;
+        private readonly Matrix4x4[] _lastCascadeVP = new Matrix4x4[LightingFrame.MaxCascades];
+        private int _lastCascadeCount;
 
         private int _atlasSize;
         private uint _atlasFbo;
@@ -52,6 +55,24 @@ namespace SiegeEngine.Core.GPU.Lighting
         private int _savedVpX, _savedVpY, _savedVpW, _savedVpH;
         private int _savedScX, _savedScY, _savedScW, _savedScH;
         private bool _savedScissor;
+
+        private readonly float[] _cascadeRadii = new float[LightingFrame.MaxCascades];
+
+        private static ShadowMapRenderer _shared;
+        public static uint WrittenSunAtlas { get; private set; }
+        public static int WrittenCascadeCount { get; private set; }
+        public static readonly Matrix4x4[] WrittenCascadeVP = new Matrix4x4[LightingFrame.MaxCascades];
+        public static Vector4 WrittenCascadeSplits;
+        public static Vector4 WrittenCascadeZRange;
+
+        public static ShadowMapRenderer Shared(IRenderContext renderContext)
+        {
+            if (_shared == null || _shared._disposed)
+                _shared = new ShadowMapRenderer(renderContext);
+            return _shared;
+        }
+
+        public uint AtlasId => _atlasDepth;
 
         public ShadowMapRenderer(IRenderContext renderContext)
         {
@@ -92,44 +113,92 @@ namespace SiegeEngine.Core.GPU.Lighting
 
             if (sunMaps)
             {
+                _diagFrames++;
+                if ((_diagFrames % 120) == 1)
+                {
+                    Vector3 t0 = (casters != null && casters.Count > 0) ? casters[0].ModelMatrix.Translation : Vector3.Zero;
+                    Console.WriteLine(
+                        $"[SunShadow] sunDir=({frame.Sun.Direction.X:0.00},{frame.Sun.Direction.Y:0.00},{frame.Sun.Direction.Z:0.00}) " +
+                        $"I={frame.Sun.Intensity:0.00} cast={frame.Sun.CastShadows} " +
+                        $"cascades={CascadeCount(frame.ShadowQuality)} atlas={atlasSize} writeAtlas={_atlasDepth} shared=True " +
+                        $"bias={frame.Sun.ShadowBias:0.0000} nBias={frame.Sun.ShadowNormalBias:0.000} " +
+                        $"casters={casters?.Count ?? 0} caster0=({t0.X:0.02},{t0.Y:0.02},{t0.Z:0.02}) " +
+                        $"cull=BACK casterBias=0 debug={LightingFrame.ShadowDebugMode}");
+                }
                 int cascadeCount = CascadeCount(frame.ShadowQuality);
                 EnsureAtlas(atlasSize);
-                frame.CascadeCount = cascadeCount;
                 frame.ShadowAtlas = _atlasDepth;
 
-                float far = MathF.Max(frame.ShadowDistance, 2048f);
-                ComputeCascades(frame, cameraPos, far, cascadeCount, atlasSize, casters);
-
-                int tile = atlasSize / 2;
-                _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
-                BindDepthOnly();
-                _rc.Clear(_e.DepthBufferBit);
-
-                // Caster writes the light-facing BACK face. The target
-                // samples the camera-facing FRONT face. Same-surface
-                // self-test cannot match, so the sun-facing cap is gone.
-                // A different part of the same mesh that sits closer
-                // along the light ray still wins GL_LESS and umbras.
-                // Point/spot stay two-sided below — do not inherit this.
-                _rc.Enable(_e.CullFace);
-                _rc.CullFace(_e.Front);
-                _rc.FrontFace(_e.CounterClockwise);
-
-                for (int i = 0; i < cascadeCount; i++)
+                bool drawSun = casters != null && casters.Count > 0;
+                if (!drawSun)
                 {
-                    int x = (i % 2) * tile;
-                    int y = (i / 2) * tile;
-                    _rc.Viewport(x, y, (uint)tile, (uint)tile);
-                    DrawCasters(frame.CascadeVP[i], casters, linearDepth: false, lightPos: default, farPlane: 1f);
+                    // Another view already filled the shared atlas. Do not
+                    // clear it and do not publish this instance's empty tex.
+                    if (WrittenSunAtlas != 0)
+                    {
+                        frame.ShadowAtlas = WrittenSunAtlas;
+                        frame.CascadeCount = WrittenCascadeCount;
+                        frame.CascadeSplits = WrittenCascadeSplits;
+                        frame.CascadeZRange = WrittenCascadeZRange;
+                        for (int i = 0; i < LightingFrame.MaxCascades; i++)
+                            frame.CascadeVP[i] = WrittenCascadeVP[i];
+                    }
+                    else
+                    {
+                        frame.CascadeCount = _lastCascadeCount;
+                        for (int i = 0; i < LightingFrame.MaxCascades; i++)
+                            frame.CascadeVP[i] = _lastCascadeVP[i];
+                    }
                 }
+                else
+                {
+                    frame.CascadeCount = cascadeCount;
+                    float far = MathF.Max(frame.ShadowDistance, 2048f);
+                    ComputeCascades(frame, cameraPos, far, cascadeCount, atlasSize, casters);
+                    _lastCascadeCount = frame.CascadeCount;
+                    for (int i = 0; i < LightingFrame.MaxCascades; i++)
+                        _lastCascadeVP[i] = frame.CascadeVP[i];
 
-                _rc.Disable(_e.CullFace);
+                    int tile = atlasSize / 2;
+                    _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
+                    BindDepthOnly();
+                    // Clear must cover the whole atlas. The editor panel
+                    // viewport is a window sliver; leaving it active wipes
+                    // only that rectangle and leaves the rest undefined.
+                    _rc.Viewport(0, 0, (uint)atlasSize, (uint)atlasSize);
+                    _rc.Clear(_e.DepthBufferBit);
+
+                    // Standard sun write: same cull as the color pass.
+                    // Acne is handled by the caster vertex nudge, not by
+                    // hiding the front face.
+                    _rc.Enable(_e.CullFace);
+                    _rc.CullFace(_e.Back);
+
+                    for (int i = 0; i < cascadeCount; i++)
+                    {
+                        int x = (i % 2) * tile;
+                        int y = (i / 2) * tile;
+                        _rc.Viewport(x, y, (uint)tile, (uint)tile);
+                        DrawCasters(frame.CascadeVP[i], casters, linearDepth: false, lightPos: default, farPlane: 1f);
+                    }
+
+                    WrittenSunAtlas = _atlasDepth;
+                    WrittenCascadeCount = frame.CascadeCount;
+                    WrittenCascadeSplits = frame.CascadeSplits;
+                    WrittenCascadeZRange = frame.CascadeZRange;
+                    for (int i = 0; i < LightingFrame.MaxCascades; i++)
+                        WrittenCascadeVP[i] = frame.CascadeVP[i];
+                    frame.ShadowAtlas = _atlasDepth;
+                }
             }
             else
             {
                 frame.CascadeCount = 0;
                 frame.ShadowAtlas = 0;
             }
+
+            // Point / spot keep two-sided writes. Front cull is sun-only.
+            _rc.Disable(_e.CullFace);
 
             if (frame.SpotCount > 0 && frame.Spots[0].CastShadows && frame.Spots[0].Technique == ShadowTechnique.ShadowMap)
             {
@@ -161,7 +230,9 @@ namespace SiegeEngine.Core.GPU.Lighting
             _rc.CullFace(_e.Back);
             _rc.ColorMask(true, true, true, true);
             Restore();
-            frame.ShadowsReady = true;
+            frame.ShadowsReady = frame.ShadowAtlas != 0;
+            if (frame.ShadowAtlas != 0 && frame.ShadowAtlas == WrittenSunAtlas)
+                LightingFrame.LastReady = frame;
         }
 
         public static List<ShadowCaster> CollectCasters(IReadOnlyList<Entity> entities)
@@ -400,6 +471,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             }
             if (cascadeCount > 0)
                 radii[cascadeCount - 1] = worldRadius;
+            for (int r = 0; r < LightingFrame.MaxCascades; r++)
+                _cascadeRadii[r] = radii[r];
             frame.CascadeSplits = new Vector4(radii[0], radii[1], radii[2], radii[3]);
 
             Vector3 lightDir = frame.Sun.Direction.LengthSquared() > 1e-8f
@@ -420,6 +493,10 @@ namespace SiegeEngine.Core.GPU.Lighting
                 // Ultra's inner 2048px tiles precise instead of pixelated.
                 float zBack = radius + casterPad + 80f;
                 float zFwd = radius + casterPad + 80f;
+                if (i == 0) frame.CascadeZRange.X = zBack + zFwd;
+                else if (i == 1) frame.CascadeZRange.Y = zBack + zFwd;
+                else if (i == 2) frame.CascadeZRange.Z = zBack + zFwd;
+                else frame.CascadeZRange.W = zBack + zFwd;
 
                 Vector3 eye = focus - lightDir * zBack;
                 Matrix4x4 lightView = Matrix4x4.CreateLookAt(eye, focus, lightUp);

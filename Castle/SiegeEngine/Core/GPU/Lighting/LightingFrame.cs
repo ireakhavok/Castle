@@ -80,6 +80,21 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         public static LightingFrame Current { get; set; }
 
+        /// <summary>
+        /// Last frame that actually filled a sun atlas. Views that Build()
+        /// without running ShadowMapRenderer.Render leave Current with
+        /// ShadowAtlas=0 / ShadowsReady=false. Models then sample texture 0
+        /// (magenta cap). Inherit this atlas + cascade VPs instead.
+        /// </summary>
+        public static LightingFrame LastReady { get; set; }
+
+        /// <summary>
+        /// Temporary sun-shadow diagnosis. Set back to 0 for normal lighting.
+        /// 0 off, 1 shadow factor, 2 cap mask (RED = sun-facing and darkened),
+        /// 3 depth delta, 4 cascade index, 5 stored depth, 6 receiver depth.
+        /// </summary>
+        public static int ShadowDebugMode = 0;
+
         public Vector3 AmbientColor = new Vector3(0.45f, 0.45f, 0.48f);
         public GpuDirectionalLight Sun;
         public GpuPointLight[] Points = new GpuPointLight[MaxPointLights];
@@ -91,6 +106,7 @@ namespace SiegeEngine.Core.GPU.Lighting
         public int CascadeCount;
         public Matrix4x4[] CascadeVP = new Matrix4x4[MaxCascades];
         public Vector4 CascadeSplits;
+        public Vector4 CascadeZRange;
         public uint ShadowAtlas;
         public uint PointShadowCube;
         public uint SpotShadowMap;
@@ -265,11 +281,34 @@ namespace SiegeEngine.Core.GPU.Lighting
             shader.SetUniform("uFogHeight", Fog.Height);
             shader.SetUniform("uFogHeightFalloff", Fog.HeightFalloff);
 
-            bool shadows = ShadowsReady && ShadowQuality != ShadowQuality.Off && Sun.CastShadows && Sun.Technique == ShadowTechnique.ShadowMap;
+            LightingFrame ready = (ShadowsReady && ShadowAtlas != 0) ? this : LastReady;
+            uint atlas;
+            int cascadeCount;
+            Vector4 splits;
+            Matrix4x4[] cascades;
+            if (ShadowMapRenderer.WrittenSunAtlas != 0)
+            {
+                atlas = ShadowMapRenderer.WrittenSunAtlas;
+                cascadeCount = ShadowMapRenderer.WrittenCascadeCount;
+                splits = ShadowMapRenderer.WrittenCascadeSplits;
+                cascades = ShadowMapRenderer.WrittenCascadeVP;
+            }
+            else
+            {
+                atlas = ready != null ? ready.ShadowAtlas : 0;
+                cascadeCount = ready != null ? ready.CascadeCount : 0;
+                splits = ready != null ? ready.CascadeSplits : default;
+                cascades = ready != null ? ready.CascadeVP : CascadeVP;
+            }
+            bool shadows = atlas != 0 && ShadowQuality != ShadowQuality.Off && Sun.CastShadows && Sun.Technique == ShadowTechnique.ShadowMap;
             shader.SetUniform("uReceiveShadows", 1);
             shader.SetUniform("uShadowsEnabled", shadows ? 1 : 0);
-            shader.SetUniform("uCascadeCount", shadows ? CascadeCount : 0);
-            shader.SetUniform("uCascadeSplits", CascadeSplits.X, CascadeSplits.Y, CascadeSplits.Z, CascadeSplits.W);
+            shader.SetUniform("uShadowDebug", ShadowDebugMode);
+            shader.SetUniform("uCascadeCount", shadows ? cascadeCount : 0);
+            shader.SetUniform("uCascadeSplits", splits.X, splits.Y, splits.Z, splits.W);
+            Vector4 zRange = ShadowMapRenderer.WrittenCascadeZRange;
+            if (zRange == default && ready != null)
+                zRange = ready.CascadeZRange;
             shader.SetUniform("uShadowBias", Sun.ShadowBias > 0f ? Sun.ShadowBias : 0.0015f);
             shader.SetUniform("uShadowNormalBias", Sun.ShadowNormalBias > 0f ? Sun.ShadowNormalBias : 0.035f);
             shader.SetUniform("uShadowAtlasSize", ShadowQuality switch
@@ -295,7 +334,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             shader.SetUniform("uPointShadowStrength", 0.15f);
 
             for (int i = 0; i < MaxCascades; i++)
-                shader.SetMatrix4($"uCascadeVP[{i}]", CascadeVP[i]);
+                shader.SetMatrix4($"uCascadeVP[{i}]", cascades != null && i < cascades.Length ? cascades[i] : Matrix4x4.Identity);
 
             shader.SetMatrix4("uSpotVP", SpotVP);
             // Point and spot maps are a separate pass from the sun atlas.
@@ -310,7 +349,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 return;
 
             renderContext.ActiveTexture(renderContext.Enums.Texture0 + ShadowAtlasUnit);
-            renderContext.BindTexture(renderContext.Enums.Texture2D, shadows ? ShadowAtlas : 0);
+            renderContext.BindTexture(renderContext.Enums.Texture2D, shadows ? atlas : 0);
             shader.SetUniform("uShadowAtlas", ShadowAtlasUnit);
 
             renderContext.ActiveTexture(renderContext.Enums.Texture0 + PointShadowUnit);
