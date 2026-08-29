@@ -335,9 +335,7 @@ void main()
 
     vec3 ambient = uAmbientStrength * albedo * uAmbientColor;
     vec3 lightDir = normalize(-uLightDir);
-    float facing = max(dot(geoN, lightDir), 0.0);
     float shadow = SampleCascadeShadow(FragPos, geoN);
-    shadow = mix(shadow, 1.0, smoothstep(0.12, 0.50, facing));
     float diff = max(dot(normal, lightDir), 0.0);
     vec3 diffuse = diff * albedo * uLightColor * uLightIntensity * shadow;
     vec3 viewDir = normalize(uViewPos - FragPos);

@@ -105,16 +105,25 @@ namespace SiegeEngine.Core.GPU.Lighting
                 BindDepthOnly();
                 _rc.Clear(_e.DepthBufferBit);
 
+                // Caster writes the light-facing BACK face. The target
+                // samples the camera-facing FRONT face. Same-surface
+                // self-test cannot match, so the sun-facing cap is gone.
+                // A different part of the same mesh that sits closer
+                // along the light ray still wins GL_LESS and umbras.
+                // Point/spot stay two-sided below — do not inherit this.
+                _rc.Enable(_e.CullFace);
+                _rc.CullFace(_e.Front);
+                _rc.FrontFace(_e.CounterClockwise);
+
                 for (int i = 0; i < cascadeCount; i++)
                 {
                     int x = (i % 2) * tile;
                     int y = (i / 2) * tile;
                     _rc.Viewport(x, y, (uint)tile, (uint)tile);
-                    Vector3 sunDir = frame.Sun.Direction.LengthSquared() > 1e-8f
-                        ? Vector3.Normalize(frame.Sun.Direction)
-                        : LightingFrame.DefaultSunDirection;
-                    DrawCasters(frame.CascadeVP[i], casters, linearDepth: false, lightPos: default, farPlane: 1f, lightDir: sunDir, casterDepthBias: 0.04f);
+                    DrawCasters(frame.CascadeVP[i], casters, linearDepth: false, lightPos: default, farPlane: 1f);
                 }
+
+                _rc.Disable(_e.CullFace);
             }
             else
             {
@@ -252,7 +261,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             DeleteTex(ref _pointDepth);
         }
 
-        private void DrawCasters(Matrix4x4 lightVp, IReadOnlyList<ShadowCaster> casters, bool linearDepth, Vector3 lightPos, float farPlane, Vector3 lightDir = default, float casterDepthBias = 0f)
+        private void DrawCasters(Matrix4x4 lightVp, IReadOnlyList<ShadowCaster> casters, bool linearDepth, Vector3 lightPos, float farPlane)
         {
             if (casters == null) return;
             _depthShader.Use();
@@ -260,8 +269,6 @@ namespace SiegeEngine.Core.GPU.Lighting
             _depthShader.SetUniform("uLinearDepth", linearDepth ? 1 : 0);
             _depthShader.SetUniform("uLightPos", lightPos.X, lightPos.Y, lightPos.Z);
             _depthShader.SetUniform("uFarPlane", farPlane > 0f ? farPlane : 1f);
-            _depthShader.SetUniform("uLightDir", lightDir.X, lightDir.Y, lightDir.Z);
-            _depthShader.SetUniform("uCasterDepthBias", casterDepthBias);
             foreach (var caster in casters)
             {
                 if (caster.ModelData?.MeshRenders == null) continue;
