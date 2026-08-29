@@ -19,6 +19,7 @@ namespace SiegeEngine.Core.GPU.Lighting
         public Matrix4x4[] BoneMatrices;
         public bool HasBones;
         public bool CastShadows;
+        public VertexBuffer TerrainMesh;
     }
 
     /// <summary>
@@ -28,7 +29,7 @@ namespace SiegeEngine.Core.GPU.Lighting
     /// Sun cascades are nested world-space orthos centered on the caster AABB
     /// so SceneEditorPanel and Play Game write the same tiles for the same
     /// scene. Shaders pick a tile by light-clip containment. Outside every
-    /// tile the sun still lights the fragment. Terrain is a receiver only.
+    /// tile the sun still lights the fragment. Terrain writes the same atlas.
     /// </summary>
     public unsafe class ShadowMapRenderer : IDisposable
     {
@@ -333,6 +334,14 @@ namespace SiegeEngine.Core.GPU.Lighting
             _depthShader.SetUniform("uFarPlane", farPlane > 0f ? farPlane : 1f);
             foreach (var caster in casters)
             {
+                if (caster.TerrainMesh != null && caster.TerrainMesh.GetIndexCount() > 0)
+                {
+                    _depthShader.SetMatrix4("uModel", caster.ModelMatrix);
+                    _depthShader.SetUniform("uHasBones", 0);
+                    caster.TerrainMesh.Bind();
+                    _rc.DrawElements(_e.Triangles, caster.TerrainMesh.GetIndexCount(), _e.UnsignedInt, null);
+                    continue;
+                }
                 if (caster.ModelData?.MeshRenders == null) continue;
                 _depthShader.SetMatrix4("uModel", caster.ModelMatrix);
                 _depthShader.SetUniform("uHasBones", caster.HasBones ? 1 : 0);
@@ -454,7 +463,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 // Z span follows this tile so inner cascades keep centimetre
                 // contact (arms, model-to-model). Scene-wide padding on every
                 // tile flattened those gaps into the cap/no-contact oscillation.
-                float zExtent = MathF.Max(radius * 1.25f, 40f);
+                float zExtent = MathF.Max(radius * 1.25f, 80f);
                 float zBack = zExtent;
                 float zFwd = zExtent;
                 if (i == 0) frame.CascadeZRange.X = zBack + zFwd;
