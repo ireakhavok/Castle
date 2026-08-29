@@ -64,7 +64,12 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public override int NoError => (int)GLEnum.NoError;
         public override int Rgba => (int)GLEnum.Rgba;
         public override int CullFace => (int)GLEnum.CullFace;
+        public override int Front => (int)GLEnum.Front;
         public override int Back => (int)GLEnum.Back;
+        public override int None => (int)GLEnum.None;
+        public override int FramebufferBinding => (int)GLEnum.FramebufferBinding;
+        public override int Viewport => (int)GLEnum.Viewport;
+        public override int ScissorBox => (int)GLEnum.ScissorBox;
         public override int CounterClockwise => (int)GLEnum.Ccw;
         public override int Clockwise => (int)GLEnum.CW;
         public override int LineSmooth => (int)GLEnum.LineSmooth;

@@ -25,22 +25,19 @@ namespace SiegeEngine.Core.GPU.Lighting
     /// Core-owned shadow map generation. CSM atlas for the sun, cubemap for
     /// the primary point light, 2D map for the primary spot light.
     ///
-    /// Sun cascades are nested WORLD-SPACE orthographic boxes on the XY ground
-    /// plane (Z-up). Shaders pick a tile by light-clip containment, not by
-    /// camera view-depth. Terrain is a receiver only — it is not a caster —
-    /// so the atlas holds model umbras instead of ground self-depth.
+    /// Sun cascades are nested world-space orthos centered on the caster AABB
+    /// so SceneEditorPanel and Play Game write the same tiles for the same
+    /// scene. Shaders pick a tile by light-clip containment. Outside every
+    /// tile the sun still lights the fragment. Terrain is a receiver only.
     /// </summary>
     public unsafe class ShadowMapRenderer : IDisposable
     {
-        private const int GL_FRAMEBUFFER_BINDING = 0x8CA6;
-        private const int GL_VIEWPORT = 0x0BA2;
-        private const int GL_NONE = 0;
-        private const int GL_BACK = 0x0405;
-
         private readonly IRenderContext _rc;
         private readonly AbstractRenderEnums _e;
         private ShaderProgram _depthShader;
         private bool _disposed;
+        private readonly Matrix4x4[] _lastCascadeVP = new Matrix4x4[LightingFrame.MaxCascades];
+        private int _lastCascadeCount;
 
         private int _atlasSize;
         private uint _atlasFbo;
@@ -54,6 +51,27 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private int _savedFbo;
         private int _savedVpX, _savedVpY, _savedVpW, _savedVpH;
+        private int _savedScX, _savedScY, _savedScW, _savedScH;
+        private bool _savedScissor;
+
+        private readonly float[] _cascadeRadii = new float[LightingFrame.MaxCascades];
+
+        private static ShadowMapRenderer _shared;
+        public static uint WrittenSunAtlas { get; private set; }
+        public static int WrittenAtlasSize { get; private set; }
+        public static int WrittenCascadeCount { get; private set; }
+        public static readonly Matrix4x4[] WrittenCascadeVP = new Matrix4x4[LightingFrame.MaxCascades];
+        public static Vector4 WrittenCascadeSplits;
+        public static Vector4 WrittenCascadeZRange;
+
+        public static ShadowMapRenderer Shared(IRenderContext renderContext)
+        {
+            if (_shared == null || _shared._disposed)
+                _shared = new ShadowMapRenderer(renderContext);
+            return _shared;
+        }
+
+        public uint AtlasId => _atlasDepth;
 
         public ShadowMapRenderer(IRenderContext renderContext)
         {
@@ -77,7 +95,16 @@ namespace SiegeEngine.Core.GPU.Lighting
             }
 
             Capture();
+            // SceneEditorPanel renders inside a window-space scissor.
+            // glClear / viewport draws honor that box. The shadow atlas is a
+            // different framebuffer — leaving the panel scissor on clips the
+            // atlas to a window-sized rectangle. Low/Medium tiles miss it
+            // entirely (no sun). High/Ultra only keep the overlapping sliver
+            // of cascade 0 (the lit square). Disable scissor for the shadow
+            // pass; Restore puts the panel scissor back.
+            _rc.Disable(_e.ScissorTest);
             int atlasSize = AtlasSize(frame.ShadowQuality);
+            Console.WriteLine($"ShadowMap: quality={frame.ShadowQuality} atlas={atlasSize} k={EsmExponent(frame.ShadowQuality):0.#}");
             _rc.ColorMask(false, false, false, false);
             _rc.Enable(_e.DepthTest);
             _rc.DepthMask(true);
@@ -88,23 +115,70 @@ namespace SiegeEngine.Core.GPU.Lighting
             {
                 int cascadeCount = CascadeCount(frame.ShadowQuality);
                 EnsureAtlas(atlasSize);
-                frame.CascadeCount = cascadeCount;
                 frame.ShadowAtlas = _atlasDepth;
 
-                float far = MathF.Max(frame.ShadowDistance, 2048f);
-                ComputeCascades(frame, cameraPos, far, cascadeCount, atlasSize, casters);
-
-                int tile = atlasSize / 2;
-                _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
-                BindDepthOnly();
-                _rc.Clear(_e.DepthBufferBit);
-
-                for (int i = 0; i < cascadeCount; i++)
+                bool drawSun = casters != null && casters.Count > 0;
+                if (!drawSun)
                 {
-                    int x = (i % 2) * tile;
-                    int y = (i / 2) * tile;
-                    _rc.Viewport(x, y, (uint)tile, (uint)tile);
-                    DrawCasters(frame.CascadeVP[i], casters, linearDepth: false, lightPos: default, farPlane: 1f);
+                    // Another view already filled the shared atlas. Do not
+                    // clear it and do not publish this instance's empty tex.
+                    if (WrittenSunAtlas != 0)
+                    {
+                        frame.ShadowAtlas = WrittenSunAtlas;
+                        frame.CascadeCount = WrittenCascadeCount;
+                        frame.CascadeSplits = WrittenCascadeSplits;
+                        frame.CascadeZRange = WrittenCascadeZRange;
+                        for (int i = 0; i < LightingFrame.MaxCascades; i++)
+                            frame.CascadeVP[i] = WrittenCascadeVP[i];
+                    }
+                    else
+                    {
+                        frame.CascadeCount = _lastCascadeCount;
+                        for (int i = 0; i < LightingFrame.MaxCascades; i++)
+                            frame.CascadeVP[i] = _lastCascadeVP[i];
+                    }
+                }
+                else
+                {
+                    frame.CascadeCount = cascadeCount;
+                    float far = MathF.Max(frame.ShadowDistance, 2048f);
+                    ComputeCascades(frame, cameraPos, far, cascadeCount, atlasSize, casters);
+                    _lastCascadeCount = frame.CascadeCount;
+                    for (int i = 0; i < LightingFrame.MaxCascades; i++)
+                        _lastCascadeVP[i] = frame.CascadeVP[i];
+
+                    int tile = atlasSize / 2;
+                    _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
+                    BindDepthOnly();
+                    // Clear must cover the whole atlas. The editor panel
+                    // viewport is a window sliver; leaving it active wipes
+                    // only that rectangle and leaves the rest undefined.
+                    _rc.Viewport(0, 0, (uint)atlasSize, (uint)atlasSize);
+                    _rc.Clear(_e.DepthBufferBit);
+
+                    // First surface the sun hits. Same winding as the color
+                    // pass. Two-sided so thin features write a hit; closed
+                    // meshes keep the nearer face via GL_LESS. Hiding a
+                    // face here was a cap band-aid.
+                    _rc.FrontFace(_e.CounterClockwise);
+                    _rc.Disable(_e.CullFace);
+
+                    for (int i = 0; i < cascadeCount; i++)
+                    {
+                        int x = (i % 2) * tile;
+                        int y = (i / 2) * tile;
+                        _rc.Viewport(x, y, (uint)tile, (uint)tile);
+                        DrawCasters(frame.CascadeVP[i], casters, linearDepth: false, lightPos: default, farPlane: 1f);
+                    }
+
+                    WrittenSunAtlas = _atlasDepth;
+                    WrittenAtlasSize = atlasSize;
+                    WrittenCascadeCount = frame.CascadeCount;
+                    WrittenCascadeSplits = frame.CascadeSplits;
+                    WrittenCascadeZRange = frame.CascadeZRange;
+                    for (int i = 0; i < LightingFrame.MaxCascades; i++)
+                        WrittenCascadeVP[i] = frame.CascadeVP[i];
+                    frame.ShadowAtlas = _atlasDepth;
                 }
             }
             else
@@ -112,6 +186,9 @@ namespace SiegeEngine.Core.GPU.Lighting
                 frame.CascadeCount = 0;
                 frame.ShadowAtlas = 0;
             }
+
+            // Point / spot keep two-sided writes. Sun used back-face cull above.
+            _rc.Disable(_e.CullFace);
 
             if (frame.SpotCount > 0 && frame.Spots[0].CastShadows && frame.Spots[0].Technique == ShadowTechnique.ShadowMap)
             {
@@ -130,10 +207,11 @@ namespace SiegeEngine.Core.GPU.Lighting
             {
                 int size = frame.ShadowQuality switch
                 {
-                    ShadowQuality.Low => 512,
-                    ShadowQuality.High => 2048,
-                    ShadowQuality.Ultra => 2048,
-                    _ => 1024
+                    ShadowQuality.Low => 2048,
+                    ShadowQuality.Medium => 2048,
+                    ShadowQuality.High => 4096,
+                    ShadowQuality.Ultra => 4096,
+                    _ => 2048
                 };
                 EnsurePoint(size);
                 frame.PointShadowCube = _pointDepth;
@@ -143,7 +221,9 @@ namespace SiegeEngine.Core.GPU.Lighting
             _rc.CullFace(_e.Back);
             _rc.ColorMask(true, true, true, true);
             Restore();
-            frame.ShadowsReady = true;
+            frame.ShadowsReady = frame.ShadowAtlas != 0;
+            if (frame.ShadowAtlas != 0 && frame.ShadowAtlas == WrittenSunAtlas)
+                LightingFrame.LastReady = frame;
         }
 
         public static List<ShadowCaster> CollectCasters(IReadOnlyList<Entity> entities)
@@ -254,8 +334,6 @@ namespace SiegeEngine.Core.GPU.Lighting
             foreach (var caster in casters)
             {
                 if (caster.ModelData?.MeshRenders == null) continue;
-                if (linearDepth && Vector3.DistanceSquared(caster.ModelMatrix.Translation, lightPos) < 0.04f)
-                    continue;
                 _depthShader.SetMatrix4("uModel", caster.ModelMatrix);
                 _depthShader.SetUniform("uHasBones", caster.HasBones ? 1 : 0);
                 if (caster.HasBones && caster.BoneMatrices != null)
@@ -317,14 +395,15 @@ namespace SiegeEngine.Core.GPU.Lighting
         }
 
         /// <summary>
-        /// World-covering orthos. Cascade 0 is a tight high-detail tile around
-        /// the camera on the ground plane; later cascades cover the scene.
-        /// Shaders pick by whether the world point is inside a tile.
+        /// Nested world-space orthos on Z=0, focused on the scene/caster AABB.
+        /// The camera is not a focus. Inner tiles stay small so Ultra keeps
+        /// sharp umbras; the last tile is the scene span. A fragment outside
+        /// every tile is lit by the sun — never clamped into a shadow test.
         /// </summary>
         private void ComputeCascades(LightingFrame frame, Vector3 cameraPos, float far, int cascadeCount, int atlasSize, IReadOnlyList<ShadowCaster> casters)
         {
-            Vector3 sceneMin = cameraPos;
-            Vector3 sceneMax = cameraPos;
+            Vector3 sceneMin = Vector3.Zero;
+            Vector3 sceneMax = Vector3.Zero;
             bool haveCaster = false;
             if (casters != null)
             {
@@ -344,43 +423,19 @@ namespace SiegeEngine.Core.GPU.Lighting
                     }
                 }
             }
-            Vector3 groundCam = new Vector3(cameraPos.X, cameraPos.Y, 0f);
-            Vector3 sceneCenter = haveCaster
-                ? new Vector3((sceneMin.X + sceneMax.X) * 0.5f, (sceneMin.Y + sceneMax.Y) * 0.5f, 0f)
-                : groundCam;
-            float sceneRadius = haveCaster ? Vector3.Distance(sceneMin, sceneMax) * 0.5f + 80f : 256f;
-            sceneRadius = MathF.Max(sceneRadius, 256f);
-            float worldRadius = MathF.Max(far, MathF.Max(sceneRadius * 2f, 2048f));
+
+            // Play Game pixelation was scene-fit C0 covering the whole level.
+            // One 16k tile over 500m is 6cm blocks. C0 is camera-centered and
+            // sized by quality so nearby contact is millimetres, far uses C1-C3.
+            Vector3 sceneCenter = new Vector3(cameraPos.X, cameraPos.Y, cameraPos.Z);
+            float worldRadius = MathF.Max(far, 2048f);
 
             float[] radii = new float[LightingFrame.MaxCascades];
-            if (frame.ShadowQuality == ShadowQuality.Ultra)
-            {
-                radii[0] = 48f;
-                radii[1] = 160f;
-                radii[2] = 512f;
-                radii[3] = worldRadius;
-            }
-            else if (frame.ShadowQuality == ShadowQuality.High)
-            {
-                radii[0] = 64f;
-                radii[1] = 192f;
-                radii[2] = 640f;
-                radii[3] = worldRadius;
-            }
-            else if (frame.ShadowQuality == ShadowQuality.Low)
-            {
-                radii[0] = 160f;
-                radii[1] = worldRadius;
-                radii[2] = worldRadius;
-                radii[3] = worldRadius;
-            }
-            else
-            {
-                radii[0] = 80f;
-                radii[1] = 240f;
-                radii[2] = 720f;
-                radii[3] = worldRadius;
-            }
+            CascadeRadii(frame.ShadowQuality, worldRadius, radii);
+            if (cascadeCount > 0)
+                radii[cascadeCount - 1] = worldRadius;
+            for (int r = 0; r < LightingFrame.MaxCascades; r++)
+                _cascadeRadii[r] = radii[r];
             frame.CascadeSplits = new Vector4(radii[0], radii[1], radii[2], radii[3]);
 
             Vector3 lightDir = frame.Sun.Direction.LengthSquared() > 1e-8f
@@ -388,18 +443,24 @@ namespace SiegeEngine.Core.GPU.Lighting
                 : LightingFrame.DefaultSunDirection;
             Vector3 lightUp = MathF.Abs(Vector3.Dot(lightDir, Vector3.UnitZ)) > 0.95f ? Vector3.UnitX : Vector3.UnitZ;
 
-            float casterPad = MathF.Max(sceneRadius + 80f, 120f);
             int tile = Math.Max(atlasSize / 2, 1);
-            float zBack = worldRadius + casterPad + 80f;
-            float zFwd = worldRadius + casterPad + 80f;
 
             for (int i = 0; i < cascadeCount; i++)
             {
                 float radius = radii[i];
                 float texel = MathF.Max((radius * 2f) / tile, 0.05f);
-                Vector3 focus = i == 0 && cascadeCount > 1
-                    ? SnapToTexel(groundCam, texel)
-                    : SnapToTexel(sceneCenter, texel);
+                Vector3 focus = SnapToTexel(sceneCenter, texel);
+
+                // Z span follows this tile so inner cascades keep centimetre
+                // contact (arms, model-to-model). Scene-wide padding on every
+                // tile flattened those gaps into the cap/no-contact oscillation.
+                float zExtent = MathF.Max(radius * 1.25f, 40f);
+                float zBack = zExtent;
+                float zFwd = zExtent;
+                if (i == 0) frame.CascadeZRange.X = zBack + zFwd;
+                else if (i == 1) frame.CascadeZRange.Y = zBack + zFwd;
+                else if (i == 2) frame.CascadeZRange.Z = zBack + zFwd;
+                else frame.CascadeZRange.W = zBack + zFwd;
 
                 Vector3 eye = focus - lightDir * zBack;
                 Matrix4x4 lightView = Matrix4x4.CreateLookAt(eye, focus, lightUp);
@@ -470,36 +531,97 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private static int CascadeCount(ShadowQuality quality)
         {
-            return quality switch
-            {
-                ShadowQuality.Low => 2,
-                ShadowQuality.High => 4,
-                ShadowQuality.Ultra => 4,
-                _ => 2
-            };
+            return quality == ShadowQuality.Off ? 0 : 4;
         }
 
-        private static int AtlasSize(ShadowQuality quality)
+        public static int AtlasSize(ShadowQuality quality)
         {
             return quality switch
             {
-                ShadowQuality.Low => 1024,
-                ShadowQuality.High => 4096,
-                ShadowQuality.Ultra => 4096,
-                _ => 2048
+                ShadowQuality.Off => 0,
+                ShadowQuality.Low => 8192,
+                ShadowQuality.Medium => 16384,
+                ShadowQuality.High => 16384,
+                ShadowQuality.Ultra => 16384,
+                ShadowQuality.Cinematic => 16384,
+                _ => 16384
             };
+        }
+
+        public static int PcfRadius(ShadowQuality quality)
+        {
+            // ESM is a single tap. Kept so older shaders that still
+            // read the uniform do not explode.
+            return 1;
+        }
+
+        public static float EsmExponent(ShadowQuality quality)
+        {
+            // World-space exponent. Shader multiplies by the cascade Z range.
+            // Ultra reaches full umbra at ~6cm of occluder depth.
+            return quality switch
+            {
+                ShadowQuality.Low => 50f,
+                ShadowQuality.Medium => 90f,
+                ShadowQuality.High => 140f,
+                ShadowQuality.Ultra => 200f,
+                ShadowQuality.Cinematic => 280f,
+                _ => 90f
+            };
+        }
+
+        public static float ShadowStrength(ShadowQuality quality)
+        {
+            return quality switch
+            {
+                ShadowQuality.Low => 0.07f,
+                ShadowQuality.Medium => 0.035f,
+                ShadowQuality.High => 0.02f,
+                ShadowQuality.Ultra => 0.012f,
+                ShadowQuality.Cinematic => 0.008f,
+                _ => 0.035f
+            };
+        }
+
+        private static void CascadeRadii(ShadowQuality quality, float worldRadius, float[] radii)
+        {
+            // Camera-centered. C0 is large enough for a player + nearby models
+            // (never a 5m floor). Pixel size = 2*r0 / (atlas/2).
+            float r0;
+            switch (quality)
+            {
+                case ShadowQuality.Low:
+                    r0 = 40f; break;
+                case ShadowQuality.High:
+                    r0 = 16f; break;
+                case ShadowQuality.Ultra:
+                    r0 = 12f; break;
+                case ShadowQuality.Cinematic:
+                    r0 = 9f; break;
+                default:
+                    r0 = 24f; break;
+            }
+            radii[0] = r0;
+            radii[1] = r0 * 3f;
+            radii[2] = r0 * 10f;
+            radii[3] = worldRadius;
         }
 
         private void BindDepthOnly()
         {
-            _rc.DrawBuffer(GL_NONE);
-            _rc.ReadBuffer(GL_NONE);
+            _rc.DrawBuffer(_e.None);
+            _rc.ReadBuffer(_e.None);
         }
 
         private void EnsureAtlas(int size)
         {
             if (_atlasFbo != 0 && _atlasSize == size)
+            {
+                _rc.BindTexture(_e.Texture2D, _atlasDepth);
+                _rc.TexParameter(_e.Texture2D, _e.TextureMinFilter, _e.Linear);
+                _rc.TexParameter(_e.Texture2D, _e.TextureMagFilter, _e.Linear);
                 return;
+            }
             DeleteFbo(ref _atlasFbo);
             DeleteTex(ref _atlasDepth);
             _atlasSize = size;
@@ -508,6 +630,10 @@ namespace SiegeEngine.Core.GPU.Lighting
             _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
             _rc.FramebufferTexture2D(_e.Framebuffer, _e.DepthAttachment, _e.Texture2D, _atlasDepth, 0);
             BindDepthOnly();
+            // ESM wants bilinear depth. Binary PCF does not.
+            _rc.BindTexture(_e.Texture2D, _atlasDepth);
+            _rc.TexParameter(_e.Texture2D, _e.TextureMinFilter, _e.Linear);
+            _rc.TexParameter(_e.Texture2D, _e.TextureMagFilter, _e.Linear);
         }
 
         private void EnsureSpot(int size)
@@ -559,13 +685,21 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private void Capture()
         {
-            _rc.GetInteger(GL_FRAMEBUFFER_BINDING, out _savedFbo);
+            _rc.GetInteger(_e.FramebufferBinding, out _savedFbo);
             int* vp = stackalloc int[4];
-            _rc.GetInteger(GL_VIEWPORT, vp);
+            _rc.GetInteger(_e.Viewport, vp);
             _savedVpX = vp[0];
             _savedVpY = vp[1];
             _savedVpW = vp[2];
             _savedVpH = vp[3];
+            int* sc = stackalloc int[4];
+            _rc.GetInteger(_e.ScissorBox, sc);
+            _savedScX = sc[0];
+            _savedScY = sc[1];
+            _savedScW = sc[2];
+            _savedScH = sc[3];
+            _rc.GetInteger(_e.ScissorTest, out int scissorOn);
+            _savedScissor = scissorOn != 0;
         }
 
         private void Restore()
@@ -573,10 +707,13 @@ namespace SiegeEngine.Core.GPU.Lighting
             _rc.BindFramebuffer(_e.Framebuffer, (uint)Math.Max(_savedFbo, 0));
             if (_savedFbo <= 0)
             {
-                _rc.DrawBuffer(GL_BACK);
-                _rc.ReadBuffer(GL_BACK);
+                _rc.DrawBuffer(_e.Back);
+                _rc.ReadBuffer(_e.Back);
             }
             _rc.Viewport(_savedVpX, _savedVpY, (uint)Math.Max(_savedVpW, 1), (uint)Math.Max(_savedVpH, 1));
+            _rc.Scissor(_savedScX, _savedScY, (uint)Math.Max(_savedScW, 1), (uint)Math.Max(_savedScH, 1));
+            if (_savedScissor) _rc.Enable(_e.ScissorTest);
+            else _rc.Disable(_e.ScissorTest);
             _rc.ColorMask(true, true, true, true);
             _rc.DepthMask(true);
             _rc.Enable(_e.DepthTest);

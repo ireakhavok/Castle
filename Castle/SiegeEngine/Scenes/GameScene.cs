@@ -82,6 +82,11 @@ namespace SiegeEngine.Scenes
         /// Play applies the authored Post Process / Level environment so the
         /// runtime window matches the editor instead of the fallback sun.
         /// </summary>
+        public void BindAuthoredEnvironment(EnvironmentSettings environment, SkyboxData skybox = null)
+        {
+            ApplyAuthoredEnvironment(environment, skybox);
+        }
+
         protected void ApplyAuthoredEnvironment(EnvironmentSettings environment, SkyboxData skybox = null)
         {
             if (_sceneData == null)

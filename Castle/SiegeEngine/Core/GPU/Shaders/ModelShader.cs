@@ -132,6 +132,8 @@ uniform float uShadowNormalBias;
 uniform float uShadowAtlasSize;
 uniform float uShadowStrength;
 uniform int uShadowPcfRadius;
+uniform int uShadowSmooth;
+uniform vec4 uCascadeZRange;
 uniform samplerCube uPointShadowCube;
 uniform int uPointShadowsEnabled;
 uniform float uPointShadowFar;
@@ -188,35 +190,53 @@ vec2 WorldPlanarUV(vec3 worldPos, vec3 normal, int axis, vec2 tiling, vec2 offse
 }
 
 float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
-    vec3 offsetPos = worldPos + normal * uShadowNormalBias;
-    vec4 lightClip = uCascadeVP[cascade] * vec4(offsetPos, 1.0);
-    vec3 proj = lightClip.xyz / max(lightClip.w, 0.0001);
+    vec4 clip = uCascadeVP[cascade] * vec4(worldPos, 1.0);
+    vec3 proj = clip.xyz / max(clip.w, 0.0001);
     proj = proj * 0.5 + 0.5;
-    bool last = cascade == uCascadeCount - 1;
-    if (!last && (proj.x <= 0.001 || proj.x >= 0.999 || proj.y <= 0.001 || proj.y >= 0.999 || proj.z <= 0.0 || proj.z >= 1.0))
+    if (proj.x < 0.0 || proj.x > 1.0 || proj.y < 0.0 || proj.y > 1.0)
         return -1.0;
-    proj = clamp(proj, vec3(0.001, 0.001, 0.0), vec3(0.999, 0.999, 1.0));
+    if (proj.z < 0.0 || proj.z > 1.0)
+        return -1.0;
+
     float cell = 0.5;
     vec2 atlasOrigin = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell;
     vec2 atlasUv = atlasOrigin + proj.xy * cell;
-    float shadow = 0.0;
-    float texel = 1.0 / max(uShadowAtlasSize, 1.0);
-    int kernel = uShadowPcfRadius;
-    if (kernel < 1) kernel = 1;
-    if (kernel > 3) kernel = 3;
-    int taps = 0;
+    atlasUv = clamp(atlasUv, atlasOrigin + vec2(0.001), atlasOrigin + vec2(cell - 0.001));
+
+    float stored = texture(uShadowAtlas, atlasUv).r;
+    if (uShadowSmooth > 0) {
+        // Box-filter the depth map, then one ESM compare.
+        // Not PCF: we do not test this Z against neighbor rays.
+        float texel = cell / max(uShadowAtlasSize * 0.5, 1.0);
+        float acc = 0.0;
+        int taps = 0;
+        for (int x = -1; x <= 1; x++) {
+            for (int y = -1; y <= 1; y++) {
+                vec2 uv = atlasUv + vec2(float(x), float(y)) * texel;
+                uv = clamp(uv, atlasOrigin + vec2(0.001), atlasOrigin + vec2(cell - 0.001));
+                acc += texture(uShadowAtlas, uv).r;
+                taps++;
+            }
+        }
+        stored = acc / float(max(taps, 1));
+    }
+
     float umbra = uShadowStrength;
     if (umbra < 0.0) umbra = 0.08;
-    for (int x = -3; x <= 3; x++) {
-        if (abs(x) > kernel) continue;
-        for (int y = -3; y <= 3; y++) {
-            if (abs(y) > kernel) continue;
-            float closest = texture(uShadowAtlas, atlasUv + vec2(float(x), float(y)) * texel * cell).r;
-            shadow += (proj.z - uShadowBias > closest) ? umbra : 1.0;
-            taps++;
-        }
-    }
-    return shadow / float(max(taps, 1));
+
+    float zRange = 1.0;
+    if (cascade == 0) zRange = uCascadeZRange.x;
+    else if (cascade == 1) zRange = uCascadeZRange.y;
+    else if (cascade == 2) zRange = uCascadeZRange.z;
+    else zRange = uCascadeZRange.w;
+    zRange = max(zRange, 1.0);
+
+    float kWorld = uShadowBias;
+    if (kWorld < 1.0) kWorld = 40.0;
+    float k = kWorld * zRange;
+    float dz = max(proj.z - stored, 0.0);
+    float vis = exp(-k * dz);
+    return mix(umbra, 1.0, clamp(vis, 0.0, 1.0));
 }
 
 float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
@@ -235,24 +255,32 @@ float SamplePointShadow(vec3 worldPos, vec3 lightPos, float range) {
         return 1.0;
     vec3 L = worldPos - lightPos;
     float dist = length(L);
-    if (dist > range || dist < 0.15)
+    if (dist > range || dist < 0.02)
         return 1.0;
     vec3 dir = L / dist;
     vec3 up = abs(dir.z) < 0.99 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
     vec3 tangent = normalize(cross(up, dir));
     vec3 bitangent = cross(dir, tangent);
     float current = dist / max(uPointShadowFar, 0.001);
-    float umbra = uShadowStrength;
-    if (umbra < 0.0) umbra = 0.08;
+    float umbra = uPointShadowStrength;
+    if (umbra <= 0.0) umbra = 0.15;
     float disk = 0.006;
     float shadow = 0.0;
+    int live = 0;
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {
             vec3 sdir = normalize(dir + tangent * float(x) * disk + bitangent * float(y) * disk);
             float closest = texture(uPointShadowCube, sdir).r;
-            shadow += current > closest + 0.008 ? umbra : 1.0;
+            if (closest > 0.0001 && closest < 0.999) {
+                live++;
+                shadow += current > closest + 0.003 ? umbra : 1.0;
+            } else {
+                shadow += 1.0;
+            }
         }
     }
+    if (live == 0)
+        return 1.0;
     return shadow / 9.0;
 }
 
@@ -359,7 +387,7 @@ void main() {
         metallic = SampleMetallic(matIdx, vTexCoord);
 
     vec3 lightDir = normalize(-uLightDir);
-    float shadow = SampleCascadeShadow(vWorldPos, norm);
+    float shadow = SampleCascadeShadow(vWorldPos, geoN);
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * uLightColor * uLightIntensity * materialDiffuse * shadow;
     vec3 ambient = uAmbientStrength * materialDiffuse * uAmbientColor;

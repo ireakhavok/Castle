@@ -52,8 +52,8 @@ namespace ToolChest
             IsModal = false;
             DockingMode = DockingMode.IDE;
             BaseWidth = 420f;
-            BaseHeight = 620f;
-            Size = new Vector2(420f, 620f);
+            BaseHeight = 680f;
+            Size = new Vector2(420f, 680f);
             RenderOrder = 0;
             Scaling = ScalingMode.Fill;
         }
@@ -101,6 +101,7 @@ namespace ToolChest
             SetSelect("pp-shadow-quality", string.IsNullOrWhiteSpace(env.ShadowQuality) ? "Medium" : env.ShadowQuality);
             SetCheckbox("pp-sun-enabled", env.SunEnabled);
             SetCheckbox("pp-sun-cast-shadows", env.SunCastShadows);
+            SetCheckbox("pp-shadow-smooth", env.ShadowSmooth);
         }
 
         private string _lastAzimuthText;
@@ -146,8 +147,9 @@ namespace ToolChest
             string fogQuality = GetSelectValue("pp-fog-quality") ?? "Off";
             bool sunEnabled = GetChecked("pp-sun-enabled");
             bool sunCast = GetChecked("pp-sun-cast-shadows");
+            bool shadowSmooth = GetChecked("pp-shadow-smooth");
 
-            var env = CommitEnvironment(direction, intensity, sunEnabled, sunCast, shadowQuality, fogMode, fogQuality, density, start);
+            var env = CommitEnvironment(direction, intensity, sunEnabled, sunCast, shadowQuality, fogMode, fogQuality, density, start, shadowSmooth);
             LightingSettings.BindAuthored(env);
             LightingFrame.Current = null;
 
@@ -161,6 +163,7 @@ namespace ToolChest
                     { "sunIntensity", intensity.ToString(CultureInfo.InvariantCulture) },
                     { "sunCastShadows", sunCast ? "true" : "false" },
                     { "shadowQuality", shadowQuality },
+                    { "shadowSmooth", shadowSmooth ? "true" : "false" },
                     { "fogMode", fogMode },
                     { "fogQuality", fogQuality },
                     { "fogDensity", density.ToString(CultureInfo.InvariantCulture) },
@@ -178,7 +181,8 @@ namespace ToolChest
             string fogMode,
             string fogQuality,
             float fogDensity,
-            float fogStart)
+            float fogStart,
+            bool shadowSmooth = false)
         {
             var env = ResolveEnvironment() ?? new EnvironmentSettings();
             env.SunEnabled = sunEnabled;
@@ -186,6 +190,7 @@ namespace ToolChest
             env.SunIntensity = intensity < 0f ? 0f : intensity;
             env.SunCastShadows = sunCastShadows;
             env.ShadowQuality = string.IsNullOrWhiteSpace(shadowQuality) ? "Medium" : shadowQuality.Trim();
+            env.ShadowSmooth = shadowSmooth;
             env.FogMode = string.IsNullOrWhiteSpace(fogMode) ? "Off" : fogMode.Trim();
             env.FogQuality = string.IsNullOrWhiteSpace(fogQuality) ? "Off" : fogQuality.Trim();
             env.FogDensity = fogDensity < 0f ? 0f : fogDensity;

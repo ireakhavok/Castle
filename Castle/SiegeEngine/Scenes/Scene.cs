@@ -211,6 +211,7 @@ namespace SiegeEngine.Scenes
             if (list == null || list.Count == 0)
                 list = entities;
             LightingFrame frame = LightingFrame.Build(list, environment, LightingFrame.DefaultSunDirection, AllowRuntimeDefaultSun);
+            InheritReadyShadows(frame);
             LightingFrame.Current = frame;
 
             bool wantSunShadows = runShadows && frame.ShadowQuality != ShadowQuality.Off && frame.Sun.CastShadows && frame.Sun.Intensity > 0.001f;
@@ -218,8 +219,7 @@ namespace SiegeEngine.Scenes
                 ((frame.PointCount > 0 && frame.Points[0].CastShadows) || (frame.SpotCount > 0 && frame.Spots[0].CastShadows));
             if (wantSunShadows || wantLocalShadows)
             {
-                if (_shadowMapRenderer == null)
-                    _shadowMapRenderer = new ShadowMapRenderer(_renderContext);
+                _shadowMapRenderer = ShadowMapRenderer.Shared(_renderContext);
                 Vector3 cameraPos = ExtractCameraPosition(view);
                 if (_player?.Camera != null)
                     cameraPos = _player.Camera.Position;
@@ -228,6 +228,28 @@ namespace SiegeEngine.Scenes
             }
 
             return frame;
+        }
+
+        private static void InheritReadyShadows(LightingFrame frame)
+        {
+            if (frame == null) return;
+            if (frame.ShadowsReady && frame.ShadowAtlas != 0) return;
+            LightingFrame ready = LightingFrame.LastReady;
+            if (ready == null || ready.ShadowAtlas == 0 || !ready.ShadowsReady) return;
+            frame.ShadowAtlas = ready.ShadowAtlas;
+            frame.CascadeCount = ready.CascadeCount;
+            frame.CascadeSplits = ready.CascadeSplits;
+            frame.CascadeZRange = ready.CascadeZRange;
+            frame.ShadowsReady = true;
+            if (frame.CascadeVP != null && ready.CascadeVP != null)
+            {
+                int n = Math.Min(frame.CascadeVP.Length, ready.CascadeVP.Length);
+                for (int i = 0; i < n; i++)
+                    frame.CascadeVP[i] = ready.CascadeVP[i];
+            }
+            frame.PointShadowCube = ready.PointShadowCube;
+            frame.SpotShadowMap = ready.SpotShadowMap;
+            frame.SpotVP = ready.SpotVP;
         }
 
         protected virtual List<ShadowCaster> CollectShadowCasters(IReadOnlyList<Entity> entities)
@@ -271,7 +293,8 @@ namespace SiegeEngine.Scenes
             if (_disposed) return;
             _aaPass?.Dispose();
             _aaPass = null;
-            _shadowMapRenderer?.Dispose();
+            // Shared across editor + terrain + play. Do not delete the atlas
+            // when one Scene unloads.
             _shadowMapRenderer = null;
             _fogPass?.Dispose();
             _fogPass = null;

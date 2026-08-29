@@ -8,7 +8,8 @@ namespace SiegeEngine.Core.Definitions
         Low = 1,
         Medium = 2,
         High = 3,
-        Ultra = 4
+        Ultra = 4,
+        Cinematic = 5
     }
 
     public static class ShadowQualityParser
@@ -43,6 +44,13 @@ namespace SiegeEngine.Core.Definitions
                 case "4":
                     quality = ShadowQuality.Ultra;
                     return true;
+                case "CINEMATIC":
+                case "CINE":
+                case "EXTREME":
+                case "EPIC":
+                case "5":
+                    quality = ShadowQuality.Cinematic;
+                    return true;
                 default:
                     return false;
             }
@@ -56,6 +64,7 @@ namespace SiegeEngine.Core.Definitions
                 ShadowQuality.Low => "Low",
                 ShadowQuality.High => "High",
                 ShadowQuality.Ultra => "Ultra",
+                ShadowQuality.Cinematic => "Cinematic",
                 _ => "Medium"
             };
         }

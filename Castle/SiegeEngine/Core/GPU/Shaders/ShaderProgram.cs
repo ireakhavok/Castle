@@ -68,6 +68,8 @@ namespace SiegeEngine.Core.GPU.Shaders
             _renderContext.DeleteShader(fragmentShader);
         }
 
+        public int FindUniform(string name) => GetLocation(name);
+
         private int GetLocation(string name)
         {
             if (_uniformLocations.TryGetValue(name, out int loc))

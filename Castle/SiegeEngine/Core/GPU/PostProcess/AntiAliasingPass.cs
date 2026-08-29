@@ -15,12 +15,6 @@ namespace SiegeEngine.Core.GPU.PostProcess
     /// </summary>
     public unsafe class AntiAliasingPass : IDisposable
     {
-        private const int GL_VIEWPORT = 0x0BA2;
-        private const int GL_FRAMEBUFFER_BINDING = 0x8CA6;
-        private const int GL_SCISSOR_BOX = 0x0C10;
-        private const int GL_SCISSOR_TEST = 0x0C11;
-        private const int GL_BLEND = 0x0BE2;
-
         private readonly IRenderContext _rc;
         private readonly AbstractRenderEnums _e;
 
@@ -218,22 +212,22 @@ namespace SiegeEngine.Core.GPU.PostProcess
 
         private void CapturePresentTarget()
         {
-            _rc.GetInteger(GL_FRAMEBUFFER_BINDING, out _savedFbo);
+            _rc.GetInteger(_e.FramebufferBinding, out _savedFbo);
             int* vp = stackalloc int[4];
-            _rc.GetInteger(GL_VIEWPORT, vp);
+            _rc.GetInteger(_e.Viewport, vp);
             _savedVpX = vp[0];
             _savedVpY = vp[1];
             _savedVpW = vp[2];
             _savedVpH = vp[3];
             int* sc = stackalloc int[4];
-            _rc.GetInteger(GL_SCISSOR_BOX, sc);
+            _rc.GetInteger(_e.ScissorBox, sc);
             _savedScX = sc[0];
             _savedScY = sc[1];
             _savedScW = sc[2];
             _savedScH = sc[3];
-            _rc.GetInteger(GL_SCISSOR_TEST, out int scissorOn);
+            _rc.GetInteger(_e.ScissorTest, out int scissorOn);
             _savedScissor = scissorOn != 0;
-            _rc.GetInteger(GL_BLEND, out int blendOn);
+            _rc.GetInteger(_e.Blend, out int blendOn);
             _savedBlend = blendOn != 0;
 
             if (_savedVpW <= 0 || _savedVpH <= 0)

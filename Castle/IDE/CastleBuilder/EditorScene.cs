@@ -573,6 +573,25 @@ namespace CastleBuilder
             base.GetViewProjection(out view, out projection);
         }
 
+        public override void Render(IReadOnlyList<Entity> entities)
+        {
+            var list = entities ?? GetEntities();
+            EnvironmentSettings env = GetEnvironmentSettings();
+            if (_activeGameScene != null)
+                _activeGameScene.BindAuthoredEnvironment(env);
+
+            // Play Game calls Scene.Render on the gameplay scene. That packs
+            // LightingFrame with the gameplay AllowRuntimeDefaultSun / env
+            // and draws skybox + terrain + models. The editor wrapper used
+            // to pack a different frame and then call RenderWorldOnly, which
+            // skipped the gameplay prepare. Run the same method Play uses.
+            LightingFrame.Current = null;
+            if (_hostedCustomScene != null)
+                _hostedCustomScene.Render(list);
+            else if (_activeGameScene != null)
+                _activeGameScene.Render(list);
+        }
+
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
             var list = entities ?? GetEntities();

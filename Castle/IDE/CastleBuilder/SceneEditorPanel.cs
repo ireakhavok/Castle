@@ -863,7 +863,15 @@ namespace CastleBuilder
         }
         protected override void RenderInnerContent()
         {
-            _editorScene.Render(null);
+            // Play Game renders with the scene server entity list and the
+            // authored Post Process environment. The panel used to call
+            // Render(null) and rely on a later fallback — bind the same
+            // inputs Play uses so the editor view cannot pack a different
+            // LightingFrame than the export.
+            var env = ProjectSettings.Current?.CurrentLevel?.Environment;
+            if (env != null)
+                LightingSettings.BindAuthored(env);
+            _editorScene.Render(_editorScene.GetEntities());
             Matrix4x4 view = Matrix4x4.Identity;
             Matrix4x4 projection = Matrix4x4.Identity;
             var active = _editorScene.GetActiveGameScene();

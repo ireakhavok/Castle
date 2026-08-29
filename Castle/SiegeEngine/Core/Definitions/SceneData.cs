@@ -134,6 +134,9 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("shadowDistance")]
         public float ShadowDistance { get; set; } = 2048f;
 
+        [JsonPropertyName("shadowSmooth")]
+        public bool ShadowSmooth { get; set; } = false;
+
         [JsonPropertyName("sunEnabled")]
         public bool SunEnabled { get; set; } = false;
 
