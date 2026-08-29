@@ -172,15 +172,16 @@ int MetallicWidth(int matIdx) {
 }
 
 float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
-    vec3 offsetPos = worldPos + normal * uShadowNormalBias;
+    float ndotl = max(dot(normal, normalize(-uLightDir)), 0.0);
+    float slope = 1.0 - ndotl;
+    vec3 offsetPos = worldPos + normal * (uShadowNormalBias * (1.0 + slope));
     vec4 lightClip = uCascadeVP[cascade] * vec4(offsetPos, 1.0);
     vec3 proj = lightClip.xyz / max(lightClip.w, 0.0001);
     proj = proj * 0.5 + 0.5;
-    bool last = cascade == uCascadeCount - 1;
-    if (!last && (proj.x <= 0.001 || proj.x >= 0.999 || proj.y <= 0.001 || proj.y >= 0.999 || proj.z <= 0.0 || proj.z >= 1.0))
+    if (proj.x <= 0.001 || proj.x >= 0.999 || proj.y <= 0.001 || proj.y >= 0.999 || proj.z <= 0.0 || proj.z >= 1.0)
         return -1.0;
     proj = clamp(proj, vec3(0.001, 0.001, 0.0), vec3(0.999, 0.999, 1.0));
-    float cell = 0.5;
+    float cell = (uCascadeCount <= 1) ? 1.0 : 0.5;
     vec2 atlasOrigin = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell;
     vec2 atlasUv = atlasOrigin + proj.xy * cell;
     float shadow = 0.0;
@@ -191,12 +192,15 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
     int taps = 0;
     float umbra = uShadowStrength;
     if (umbra < 0.0) umbra = 0.08;
+    float bias = uShadowBias * (1.0 + slope * 3.0);
     for (int x = -3; x <= 3; x++) {
         if (abs(x) > kernel) continue;
         for (int y = -3; y <= 3; y++) {
             if (abs(y) > kernel) continue;
-            float closest = texture(uShadowAtlas, atlasUv + vec2(float(x), float(y)) * texel * cell).r;
-            shadow += (proj.z - uShadowBias > closest) ? umbra : 1.0;
+            vec2 uv = atlasUv + vec2(float(x), float(y)) * texel * cell;
+            uv = clamp(uv, atlasOrigin + vec2(0.001), atlasOrigin + vec2(cell - 0.001));
+            float closest = texture(uShadowAtlas, uv).r;
+            shadow += (proj.z - bias > closest) ? umbra : 1.0;
             taps++;
         }
     }
