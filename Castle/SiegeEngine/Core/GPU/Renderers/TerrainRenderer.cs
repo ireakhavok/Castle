@@ -59,6 +59,7 @@ uniform float uShadowNormalBias;
 uniform float uShadowAtlasSize;
 uniform float uShadowStrength;
 uniform int uShadowPcfRadius;
+uniform vec4 uCascadeZRange;
 uniform samplerCube uPointShadowCube;
 uniform int uPointShadowsEnabled;
 uniform float uPointShadowFar;
@@ -84,40 +85,34 @@ uniform float uSpotRange[2];
 uniform float uSpotInner[2];
 uniform float uSpotOuter[2];
 float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
-    float ndotl = max(dot(normal, normalize(-uLightDir)), 0.0);
-    float slope = 1.0 - ndotl;
-    vec3 offsetPos = worldPos + normal * (uShadowNormalBias * (1.0 + slope));
-    vec4 lightClip = uCascadeVP[cascade] * vec4(offsetPos, 1.0);
-    vec3 proj = lightClip.xyz / max(lightClip.w, 0.0001);
+    vec4 clip = uCascadeVP[cascade] * vec4(worldPos, 1.0);
+    vec3 proj = clip.xyz / max(clip.w, 0.0001);
     proj = proj * 0.5 + 0.5;
-    if (proj.x <= 0.001 || proj.x >= 0.999 || proj.y <= 0.001 || proj.y >= 0.999 || proj.z <= 0.0 || proj.z >= 1.0)
+    if (proj.x < 0.0 || proj.x > 1.0 || proj.y < 0.0 || proj.y > 1.0)
         return -1.0;
-    proj = clamp(proj, vec3(0.001, 0.001, 0.0), vec3(0.999, 0.999, 1.0));
+    if (proj.z < 0.0 || proj.z > 1.0)
+        return -1.0;
+
     float cell = 0.5;
     vec2 atlasOrigin = vec2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell;
     vec2 atlasUv = atlasOrigin + proj.xy * cell;
-    float shadow = 0.0;
-    float texel = 1.0 / max(uShadowAtlasSize, 1.0);
-    int kernel = uShadowPcfRadius;
-    if (kernel < 1) kernel = 1;
-    if (kernel > 7) kernel = 7;
-    int taps = 0;
+    atlasUv = clamp(atlasUv, atlasOrigin + vec2(0.001), atlasOrigin + vec2(cell - 0.001));
+
+    float stored = texture(uShadowAtlas, atlasUv).r;
     float umbra = uShadowStrength;
     if (umbra < 0.0) umbra = 0.08;
-    float bias = uShadowBias * (1.0 + slope * 3.0);
-    for (int x = -7; x <= 7; x++) {
-        if (abs(x) > kernel) continue;
-        for (int y = -7; y <= 7; y++) {
-            if (abs(y) > kernel) continue;
-            vec2 uv = atlasUv + vec2(float(x), float(y)) * texel * cell;
-            uv = clamp(uv, atlasOrigin + vec2(0.001), atlasOrigin + vec2(cell - 0.001));
-            float closest = texture(uShadowAtlas, uv).r;
-            shadow += (proj.z - bias > closest) ? umbra : 1.0;
-            taps++;
-        }
-    }
-    return shadow / float(max(taps, 1));
+
+    // Exponential shadow map. Not a binary closer-than test.
+    // dz <= 0  -> this point is the first hit or closer -> lit
+    // dz tiny  -> acne / texel mismatch -> still almost lit
+    // dz large -> a real occluder sits in front -> umbra
+    float k = uShadowBias;
+    if (k < 1.0) k = 80.0;
+    float dz = max(proj.z - stored, 0.0);
+    float vis = exp(-k * dz);
+    return mix(umbra, 1.0, clamp(vis, 0.0, 1.0));
 }
+
 float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
     if (uShadowsEnabled == 0 || uReceiveShadows == 0 || uCascadeCount <= 0)
         return 1.0;

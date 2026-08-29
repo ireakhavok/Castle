@@ -188,7 +188,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                     Intensity = intensity,
                     CastShadows = cast,
                     ShadowBias = 0.0015f,
-                    ShadowNormalBias = 0.035f,
+                    ShadowNormalBias = 0.02f,
                     Technique = cast ? ShadowTechnique.ShadowMap : ShadowTechnique.None
                 };
                 hasSun = true;
@@ -211,7 +211,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                     Intensity = 1f,
                     CastShadows = frame.ShadowQuality != ShadowQuality.Off,
                     ShadowBias = 0.0015f,
-                    ShadowNormalBias = 0.035f,
+                    ShadowNormalBias = 0.02f,
                     Technique = frame.ShadowQuality == ShadowQuality.Off ? ShadowTechnique.None : ShadowTechnique.ShadowMap
                 };
             }
@@ -302,8 +302,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             if (zRange == default && ready != null)
                 zRange = ready.CascadeZRange;
             shader.SetUniform("uCascadeZRange", zRange.X, zRange.Y, zRange.Z, zRange.W);
-            shader.SetUniform("uShadowBias", Sun.ShadowBias > 0f ? Sun.ShadowBias : 0.0015f);
-            shader.SetUniform("uShadowNormalBias", Sun.ShadowNormalBias > 0f ? Sun.ShadowNormalBias : 0.035f);
+            shader.SetUniform("uShadowBias", ShadowMapRenderer.EsmExponent(ShadowQuality));
+            shader.SetUniform("uShadowNormalBias", Sun.ShadowNormalBias > 0f ? Sun.ShadowNormalBias : 0.02f);
             float atlasPx = ShadowMapRenderer.WrittenAtlasSize > 0
                 ? ShadowMapRenderer.WrittenAtlasSize
                 : ShadowMapRenderer.AtlasSize(ShadowQuality);

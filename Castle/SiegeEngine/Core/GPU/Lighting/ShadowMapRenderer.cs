@@ -25,10 +25,10 @@ namespace SiegeEngine.Core.GPU.Lighting
     /// Core-owned shadow map generation. CSM atlas for the sun, cubemap for
     /// the primary point light, 2D map for the primary spot light.
     ///
-    /// Sun cascades are nested world-space orthos on the XY ground plane (Z-up),
-    /// centered on the view so Play Game and the editor see the same density.
-    /// Shaders pick a tile by light-clip containment. Outside every tile the
-    /// sun still lights the fragment. Terrain is a receiver only.
+    /// Sun cascades are nested world-space orthos centered on the caster AABB
+    /// so SceneEditorPanel and Play Game write the same tiles for the same
+    /// scene. Shaders pick a tile by light-clip containment. Outside every
+    /// tile the sun still lights the fragment. Terrain is a receiver only.
     /// </summary>
     public unsafe class ShadowMapRenderer : IDisposable
     {
@@ -155,11 +155,12 @@ namespace SiegeEngine.Core.GPU.Lighting
                     _rc.Viewport(0, 0, (uint)atlasSize, (uint)atlasSize);
                     _rc.Clear(_e.DepthBufferBit);
 
-                    // Standard sun write: same cull as the color pass.
-                    // Acne is handled by the caster vertex nudge, not by
-                    // hiding the front face.
-                    _rc.Enable(_e.CullFace);
-                    _rc.CullFace(_e.Back);
+                    // First surface the sun hits. Same winding as the color
+                    // pass. Two-sided so thin features write a hit; closed
+                    // meshes keep the nearer face via GL_LESS. Hiding a
+                    // face here was a cap band-aid.
+                    _rc.FrontFace(_e.CounterClockwise);
+                    _rc.Disable(_e.CullFace);
 
                     for (int i = 0; i < cascadeCount; i++)
                     {
@@ -185,7 +186,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 frame.ShadowAtlas = 0;
             }
 
-            // Point / spot keep two-sided writes. Front cull is sun-only.
+            // Point / spot keep two-sided writes. Sun used back-face cull above.
             _rc.Disable(_e.CullFace);
 
             if (frame.SpotCount > 0 && frame.Spots[0].CastShadows && frame.Spots[0].Technique == ShadowTechnique.ShadowMap)
@@ -422,7 +423,12 @@ namespace SiegeEngine.Core.GPU.Lighting
                 }
             }
 
-            Vector3 viewCenter = new Vector3(cameraPos.X, cameraPos.Y, 0f);
+            Vector3 sceneCenter = haveCaster
+                ? new Vector3(
+                    (sceneMin.X + sceneMax.X) * 0.5f,
+                    (sceneMin.Y + sceneMax.Y) * 0.5f,
+                    (sceneMin.Z + sceneMax.Z) * 0.5f)
+                : new Vector3(cameraPos.X, cameraPos.Y, cameraPos.Z);
             float sceneRadius = haveCaster ? Vector3.Distance(sceneMin, sceneMax) * 0.5f + 80f : 256f;
             sceneRadius = MathF.Max(sceneRadius, 256f);
             float worldRadius = MathF.Max(far, MathF.Max(sceneRadius * 2f, 2048f));
@@ -440,19 +446,20 @@ namespace SiegeEngine.Core.GPU.Lighting
                 : LightingFrame.DefaultSunDirection;
             Vector3 lightUp = MathF.Abs(Vector3.Dot(lightDir, Vector3.UnitZ)) > 0.95f ? Vector3.UnitX : Vector3.UnitZ;
 
-            float casterPad = MathF.Max(sceneRadius + 80f, 120f);
             int tile = Math.Max(atlasSize / 2, 1);
 
             for (int i = 0; i < cascadeCount; i++)
             {
                 float radius = radii[i];
                 float texel = MathF.Max((radius * 2f) / tile, 0.05f);
-                Vector3 focus = SnapToTexel(viewCenter, texel);
+                Vector3 focus = SnapToTexel(sceneCenter, texel);
 
-                // Z range follows this tile, not the whole world — keeps
-                // Ultra's inner 2048px tiles precise instead of pixelated.
-                float zBack = radius + casterPad + 80f;
-                float zFwd = radius + casterPad + 80f;
+                // Z span follows this tile so inner cascades keep centimetre
+                // contact (arms, model-to-model). Scene-wide padding on every
+                // tile flattened those gaps into the cap/no-contact oscillation.
+                float zExtent = MathF.Max(radius * 1.25f, 40f);
+                float zBack = zExtent;
+                float zFwd = zExtent;
                 if (i == 0) frame.CascadeZRange.X = zBack + zFwd;
                 else if (i == 1) frame.CascadeZRange.Y = zBack + zFwd;
                 else if (i == 2) frame.CascadeZRange.Z = zBack + zFwd;
@@ -535,23 +542,30 @@ namespace SiegeEngine.Core.GPU.Lighting
             return quality switch
             {
                 ShadowQuality.Off => 0,
-                ShadowQuality.Low => 8192,
-                ShadowQuality.Medium => 8192,
-                ShadowQuality.High => 8192,
+                ShadowQuality.Low => 2048,
+                ShadowQuality.Medium => 4096,
+                ShadowQuality.High => 4096,
                 ShadowQuality.Ultra => 8192,
-                _ => 8192
+                _ => 4096
             };
         }
 
         public static int PcfRadius(ShadowQuality quality)
         {
+            // ESM is a single tap. Kept so older shaders that still
+            // read the uniform do not explode.
+            return 1;
+        }
+
+        public static float EsmExponent(ShadowQuality quality)
+        {
             return quality switch
             {
-                ShadowQuality.Low => 4,
-                ShadowQuality.Medium => 5,
-                ShadowQuality.High => 6,
-                ShadowQuality.Ultra => 7,
-                _ => 5
+                ShadowQuality.Low => 40f,
+                ShadowQuality.Medium => 80f,
+                ShadowQuality.High => 120f,
+                ShadowQuality.Ultra => 180f,
+                _ => 80f
             };
         }
 
@@ -559,28 +573,30 @@ namespace SiegeEngine.Core.GPU.Lighting
         {
             return quality switch
             {
-                ShadowQuality.Low => 0.08f,
-                ShadowQuality.Medium => 0.06f,
+                ShadowQuality.Low => 0.14f,
+                ShadowQuality.Medium => 0.08f,
                 ShadowQuality.High => 0.05f,
-                ShadowQuality.Ultra => 0.04f,
-                _ => 0.06f
+                ShadowQuality.Ultra => 0.035f,
+                _ => 0.08f
             };
         }
 
         private static void CascadeRadii(ShadowQuality quality, float worldRadius, float[] radii)
         {
-            // Low  = previous High. Medium = previous Ultra.
-            // High / Ultra add tighter near tiles so close umbras stay sharp.
+            // Low    = previous High  (64 / 192 / 640, 4096 atlas)
+            // Medium = previous Ultra (48 / 160 / 512, 4096 atlas)
+            // High / Ultra are new tiers. Ultra extends atlas + PCF, not a
+            // 5m near tile that drops neighboring casters.
             switch (quality)
             {
                 case ShadowQuality.Low:
-                    radii[0] = 24f; radii[1] = 80f; radii[2] = 256f; break;
+                    radii[0] = 64f; radii[1] = 192f; radii[2] = 640f; break;
                 case ShadowQuality.High:
-                    radii[0] = 8f; radii[1] = 24f; radii[2] = 80f; break;
+                    radii[0] = 32f; radii[1] = 96f; radii[2] = 320f; break;
                 case ShadowQuality.Ultra:
-                    radii[0] = 5f; radii[1] = 16f; radii[2] = 48f; break;
+                    radii[0] = 20f; radii[1] = 64f; radii[2] = 200f; break;
                 default:
-                    radii[0] = 12f; radii[1] = 40f; radii[2] = 128f; break;
+                    radii[0] = 48f; radii[1] = 160f; radii[2] = 512f; break;
             }
             radii[3] = worldRadius;
         }
@@ -594,7 +610,12 @@ namespace SiegeEngine.Core.GPU.Lighting
         private void EnsureAtlas(int size)
         {
             if (_atlasFbo != 0 && _atlasSize == size)
+            {
+                _rc.BindTexture(_e.Texture2D, _atlasDepth);
+                _rc.TexParameter(_e.Texture2D, _e.TextureMinFilter, _e.Linear);
+                _rc.TexParameter(_e.Texture2D, _e.TextureMagFilter, _e.Linear);
                 return;
+            }
             DeleteFbo(ref _atlasFbo);
             DeleteTex(ref _atlasDepth);
             _atlasSize = size;
@@ -603,6 +624,10 @@ namespace SiegeEngine.Core.GPU.Lighting
             _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
             _rc.FramebufferTexture2D(_e.Framebuffer, _e.DepthAttachment, _e.Texture2D, _atlasDepth, 0);
             BindDepthOnly();
+            // ESM wants bilinear depth. Binary PCF does not.
+            _rc.BindTexture(_e.Texture2D, _atlasDepth);
+            _rc.TexParameter(_e.Texture2D, _e.TextureMinFilter, _e.Linear);
+            _rc.TexParameter(_e.Texture2D, _e.TextureMagFilter, _e.Linear);
         }
 
         private void EnsureSpot(int size)
