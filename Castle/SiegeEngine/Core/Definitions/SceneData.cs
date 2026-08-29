@@ -151,6 +151,30 @@ namespace SiegeEngine.Core.Definitions
 
         [JsonPropertyName("sunCastShadows")]
         public bool SunCastShadows { get; set; } = true;
+
+        [JsonPropertyName("exposure")]
+        public float Exposure { get; set; } = 1f;
+
+        [JsonPropertyName("tonemap")]
+        public string Tonemap { get; set; } = "Off";
+
+        [JsonPropertyName("bloomEnabled")]
+        public bool BloomEnabled { get; set; } = false;
+
+        [JsonPropertyName("bloomThreshold")]
+        public float BloomThreshold { get; set; } = 1f;
+
+        [JsonPropertyName("bloomIntensity")]
+        public float BloomIntensity { get; set; } = 0.35f;
+
+        [JsonPropertyName("contrast")]
+        public float Contrast { get; set; } = 1f;
+
+        [JsonPropertyName("saturation")]
+        public float Saturation { get; set; } = 1f;
+
+        [JsonPropertyName("temperature")]
+        public float Temperature { get; set; } = 0f;
     }
 
     public class SkyboxData
