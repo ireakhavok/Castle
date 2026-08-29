@@ -88,13 +88,6 @@ namespace SiegeEngine.Core.GPU.Lighting
         /// </summary>
         public static LightingFrame LastReady { get; set; }
 
-        /// <summary>
-        /// Temporary sun-shadow diagnosis. Set back to 0 for normal lighting.
-        /// 0 off, 1 shadow factor, 2 cap mask (RED = sun-facing and darkened),
-        /// 3 depth delta, 4 cascade index, 5 stored depth, 6 receiver depth.
-        /// </summary>
-        public static int ShadowDebugMode = 0;
-
         public Vector3 AmbientColor = new Vector3(0.45f, 0.45f, 0.48f);
         public GpuDirectionalLight Sun;
         public GpuPointLight[] Points = new GpuPointLight[MaxPointLights];
@@ -303,7 +296,6 @@ namespace SiegeEngine.Core.GPU.Lighting
             bool shadows = atlas != 0 && ShadowQuality != ShadowQuality.Off && Sun.CastShadows && Sun.Technique == ShadowTechnique.ShadowMap;
             shader.SetUniform("uReceiveShadows", 1);
             shader.SetUniform("uShadowsEnabled", shadows ? 1 : 0);
-            shader.SetUniform("uShadowDebug", ShadowDebugMode);
             shader.SetUniform("uCascadeCount", shadows ? cascadeCount : 0);
             shader.SetUniform("uCascadeSplits", splits.X, splits.Y, splits.Z, splits.W);
             Vector4 zRange = ShadowMapRenderer.WrittenCascadeZRange;
@@ -311,26 +303,12 @@ namespace SiegeEngine.Core.GPU.Lighting
                 zRange = ready.CascadeZRange;
             shader.SetUniform("uShadowBias", Sun.ShadowBias > 0f ? Sun.ShadowBias : 0.0015f);
             shader.SetUniform("uShadowNormalBias", Sun.ShadowNormalBias > 0f ? Sun.ShadowNormalBias : 0.035f);
-            shader.SetUniform("uShadowAtlasSize", ShadowQuality switch
-            {
-                ShadowQuality.Ultra => 4096f,
-                ShadowQuality.High => 4096f,
-                ShadowQuality.Low => 1024f,
-                _ => 2048f
-            });
-            shader.SetUniform("uShadowStrength", ShadowQuality switch
-            {
-                ShadowQuality.Low => 0.14f,
-                ShadowQuality.Ultra => 0.05f,
-                _ => 0.08f
-            });
-            shader.SetUniform("uShadowPcfRadius", ShadowQuality switch
-            {
-                ShadowQuality.Ultra => 3,
-                ShadowQuality.High => 3,
-                ShadowQuality.Low => 1,
-                _ => 2
-            });
+            float atlasPx = ShadowMapRenderer.WrittenAtlasSize > 0
+                ? ShadowMapRenderer.WrittenAtlasSize
+                : ShadowMapRenderer.AtlasSize(ShadowQuality);
+            shader.SetUniform("uShadowAtlasSize", atlasPx);
+            shader.SetUniform("uShadowStrength", ShadowMapRenderer.ShadowStrength(ShadowQuality));
+            shader.SetUniform("uShadowPcfRadius", ShadowMapRenderer.PcfRadius(ShadowQuality));
             shader.SetUniform("uPointShadowStrength", 0.15f);
 
             for (int i = 0; i < MaxCascades; i++)

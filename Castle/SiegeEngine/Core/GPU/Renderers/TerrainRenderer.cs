@@ -100,14 +100,14 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
     float texel = 1.0 / max(uShadowAtlasSize, 1.0);
     int kernel = uShadowPcfRadius;
     if (kernel < 1) kernel = 1;
-    if (kernel > 3) kernel = 3;
+    if (kernel > 7) kernel = 7;
     int taps = 0;
     float umbra = uShadowStrength;
     if (umbra < 0.0) umbra = 0.08;
     float bias = uShadowBias * (1.0 + slope * 3.0);
-    for (int x = -3; x <= 3; x++) {
+    for (int x = -7; x <= 7; x++) {
         if (abs(x) > kernel) continue;
-        for (int y = -3; y <= 3; y++) {
+        for (int y = -7; y <= 7; y++) {
             if (abs(y) > kernel) continue;
             vec2 uv = atlasUv + vec2(float(x), float(y)) * texel * cell;
             uv = clamp(uv, atlasOrigin + vec2(0.001), atlasOrigin + vec2(cell - 0.001));

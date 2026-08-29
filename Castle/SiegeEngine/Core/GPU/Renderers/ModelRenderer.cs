@@ -255,8 +255,6 @@ namespace SiegeEngine.Core.GPU.Renderers
             return Matrix4x4.Transpose(inv);
         }
 
-        private static int _shadowBindLog;
-
         private void BindShadowMaps(ShaderProgram shader)
         {
             LightingFrame frame = LightingFrame.Current;
@@ -280,14 +278,6 @@ namespace SiegeEngine.Core.GPU.Renderers
                 shader.SetUniform("uSpotShadowMap", LightingFrame.SpotShadowUnit);
             }
             rc.ActiveTexture(u0);
-            if ((_shadowBindLog++ % 600) == 0)
-            {
-                int loc = shader.FindUniform("uShadowAtlas");
-                Console.WriteLine(
-                    $"[SunShadow] modelBind atlas={atlas} writeAtlas={ShadowMapRenderer.WrittenSunAtlas} " +
-                    $"ready={frame?.ShadowsReady} enabled={frame != null && frame.ShadowsReady && frame.Sun.CastShadows} " +
-                    $"unit=12 loc={loc}");
-            }
         }
 
         public void Dispose()

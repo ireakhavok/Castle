@@ -25,11 +25,10 @@ namespace SiegeEngine.Core.GPU.Lighting
     /// Core-owned shadow map generation. CSM atlas for the sun, cubemap for
     /// the primary point light, 2D map for the primary spot light.
     ///
-    /// Sun cascades are nested WORLD-SPACE orthographic boxes on the XY ground
-    /// plane (Z-up), centered on the scene/caster AABB — never on the camera.
+    /// Sun cascades are nested world-space orthos on the XY ground plane (Z-up),
+    /// centered on the view so Play Game and the editor see the same density.
     /// Shaders pick a tile by light-clip containment. Outside every tile the
-    /// sun still lights the fragment (no clamp-as-shadow). Terrain is a
-    /// receiver only.
+    /// sun still lights the fragment. Terrain is a receiver only.
     /// </summary>
     public unsafe class ShadowMapRenderer : IDisposable
     {
@@ -37,7 +36,6 @@ namespace SiegeEngine.Core.GPU.Lighting
         private readonly AbstractRenderEnums _e;
         private ShaderProgram _depthShader;
         private bool _disposed;
-        private int _diagFrames;
         private readonly Matrix4x4[] _lastCascadeVP = new Matrix4x4[LightingFrame.MaxCascades];
         private int _lastCascadeCount;
 
@@ -60,6 +58,7 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private static ShadowMapRenderer _shared;
         public static uint WrittenSunAtlas { get; private set; }
+        public static int WrittenAtlasSize { get; private set; }
         public static int WrittenCascadeCount { get; private set; }
         public static readonly Matrix4x4[] WrittenCascadeVP = new Matrix4x4[LightingFrame.MaxCascades];
         public static Vector4 WrittenCascadeSplits;
@@ -113,18 +112,6 @@ namespace SiegeEngine.Core.GPU.Lighting
 
             if (sunMaps)
             {
-                _diagFrames++;
-                if ((_diagFrames % 120) == 1)
-                {
-                    Vector3 t0 = (casters != null && casters.Count > 0) ? casters[0].ModelMatrix.Translation : Vector3.Zero;
-                    Console.WriteLine(
-                        $"[SunShadow] sunDir=({frame.Sun.Direction.X:0.00},{frame.Sun.Direction.Y:0.00},{frame.Sun.Direction.Z:0.00}) " +
-                        $"I={frame.Sun.Intensity:0.00} cast={frame.Sun.CastShadows} " +
-                        $"cascades={CascadeCount(frame.ShadowQuality)} atlas={atlasSize} writeAtlas={_atlasDepth} shared=True " +
-                        $"bias={frame.Sun.ShadowBias:0.0000} nBias={frame.Sun.ShadowNormalBias:0.000} " +
-                        $"casters={casters?.Count ?? 0} caster0=({t0.X:0.02},{t0.Y:0.02},{t0.Z:0.02}) " +
-                        $"cull=BACK casterBias=0 debug={LightingFrame.ShadowDebugMode}");
-                }
                 int cascadeCount = CascadeCount(frame.ShadowQuality);
                 EnsureAtlas(atlasSize);
                 frame.ShadowAtlas = _atlasDepth;
@@ -183,6 +170,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                     }
 
                     WrittenSunAtlas = _atlasDepth;
+                    WrittenAtlasSize = atlasSize;
                     WrittenCascadeCount = frame.CascadeCount;
                     WrittenCascadeSplits = frame.CascadeSplits;
                     WrittenCascadeZRange = frame.CascadeZRange;
@@ -217,10 +205,11 @@ namespace SiegeEngine.Core.GPU.Lighting
             {
                 int size = frame.ShadowQuality switch
                 {
-                    ShadowQuality.Low => 512,
-                    ShadowQuality.High => 2048,
-                    ShadowQuality.Ultra => 2048,
-                    _ => 1024
+                    ShadowQuality.Low => 2048,
+                    ShadowQuality.Medium => 2048,
+                    ShadowQuality.High => 4096,
+                    ShadowQuality.Ultra => 4096,
+                    _ => 2048
                 };
                 EnsurePoint(size);
                 frame.PointShadowCube = _pointDepth;
@@ -433,42 +422,13 @@ namespace SiegeEngine.Core.GPU.Lighting
                 }
             }
 
-            Vector3 sceneCenter = haveCaster
-                ? new Vector3((sceneMin.X + sceneMax.X) * 0.5f, (sceneMin.Y + sceneMax.Y) * 0.5f, 0f)
-                : Vector3.Zero;
+            Vector3 viewCenter = new Vector3(cameraPos.X, cameraPos.Y, 0f);
             float sceneRadius = haveCaster ? Vector3.Distance(sceneMin, sceneMax) * 0.5f + 80f : 256f;
             sceneRadius = MathF.Max(sceneRadius, 256f);
             float worldRadius = MathF.Max(far, MathF.Max(sceneRadius * 2f, 2048f));
 
             float[] radii = new float[LightingFrame.MaxCascades];
-            if (frame.ShadowQuality == ShadowQuality.Ultra)
-            {
-                radii[0] = 48f;
-                radii[1] = 160f;
-                radii[2] = 512f;
-                radii[3] = worldRadius;
-            }
-            else if (frame.ShadowQuality == ShadowQuality.High)
-            {
-                radii[0] = 64f;
-                radii[1] = 192f;
-                radii[2] = 640f;
-                radii[3] = worldRadius;
-            }
-            else if (frame.ShadowQuality == ShadowQuality.Low)
-            {
-                radii[0] = 160f;
-                radii[1] = worldRadius;
-                radii[2] = worldRadius;
-                radii[3] = worldRadius;
-            }
-            else
-            {
-                radii[0] = 80f;
-                radii[1] = 240f;
-                radii[2] = 720f;
-                radii[3] = worldRadius;
-            }
+            CascadeRadii(frame.ShadowQuality, worldRadius, radii);
             if (cascadeCount > 0)
                 radii[cascadeCount - 1] = worldRadius;
             for (int r = 0; r < LightingFrame.MaxCascades; r++)
@@ -487,7 +447,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             {
                 float radius = radii[i];
                 float texel = MathF.Max((radius * 2f) / tile, 0.05f);
-                Vector3 focus = SnapToTexel(sceneCenter, texel);
+                Vector3 focus = SnapToTexel(viewCenter, texel);
 
                 // Z range follows this tile, not the whole world — keeps
                 // Ultra's inner 2048px tiles precise instead of pixelated.
@@ -567,24 +527,62 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private static int CascadeCount(ShadowQuality quality)
         {
-            return quality switch
-            {
-                ShadowQuality.Low => 2,
-                ShadowQuality.High => 4,
-                ShadowQuality.Ultra => 4,
-                _ => 4
-            };
+            return quality == ShadowQuality.Off ? 0 : 4;
         }
 
-        private static int AtlasSize(ShadowQuality quality)
+        public static int AtlasSize(ShadowQuality quality)
         {
             return quality switch
             {
-                ShadowQuality.Low => 1024,
-                ShadowQuality.High => 4096,
-                ShadowQuality.Ultra => 4096,
-                _ => 2048
+                ShadowQuality.Off => 0,
+                ShadowQuality.Low => 8192,
+                ShadowQuality.Medium => 8192,
+                ShadowQuality.High => 8192,
+                ShadowQuality.Ultra => 8192,
+                _ => 8192
             };
+        }
+
+        public static int PcfRadius(ShadowQuality quality)
+        {
+            return quality switch
+            {
+                ShadowQuality.Low => 4,
+                ShadowQuality.Medium => 5,
+                ShadowQuality.High => 6,
+                ShadowQuality.Ultra => 7,
+                _ => 5
+            };
+        }
+
+        public static float ShadowStrength(ShadowQuality quality)
+        {
+            return quality switch
+            {
+                ShadowQuality.Low => 0.08f,
+                ShadowQuality.Medium => 0.06f,
+                ShadowQuality.High => 0.05f,
+                ShadowQuality.Ultra => 0.04f,
+                _ => 0.06f
+            };
+        }
+
+        private static void CascadeRadii(ShadowQuality quality, float worldRadius, float[] radii)
+        {
+            // Low  = previous High. Medium = previous Ultra.
+            // High / Ultra add tighter near tiles so close umbras stay sharp.
+            switch (quality)
+            {
+                case ShadowQuality.Low:
+                    radii[0] = 24f; radii[1] = 80f; radii[2] = 256f; break;
+                case ShadowQuality.High:
+                    radii[0] = 8f; radii[1] = 24f; radii[2] = 80f; break;
+                case ShadowQuality.Ultra:
+                    radii[0] = 5f; radii[1] = 16f; radii[2] = 48f; break;
+                default:
+                    radii[0] = 12f; radii[1] = 40f; radii[2] = 128f; break;
+            }
+            radii[3] = worldRadius;
         }
 
         private void BindDepthOnly()
