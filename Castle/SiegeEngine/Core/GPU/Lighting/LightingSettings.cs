@@ -24,12 +24,16 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         public static ShadowQuality ResolveShadowQuality()
         {
-            if (_shadowOverride.HasValue) return _shadowOverride.Value;
-            // Authored Post Process quality wins over the launcher machine cap
-            // so High/Ultra set on the scene actually reach the shadow atlas.
-            if (ShadowQualityParser.TryParse(_authored?.ShadowQuality, out ShadowQuality authored)) return authored;
-            if (_machine != null && _machine.HasShadowQualityOverride) return _machine.ShadowQuality;
-            return ShadowQuality.Medium;
+            ShadowQuality q;
+            if (_shadowOverride.HasValue)
+                q = _shadowOverride.Value;
+            else if (ShadowQualityParser.TryParse(_authored?.ShadowQuality, out ShadowQuality authored))
+                q = authored;
+            else if (_machine != null && _machine.HasShadowQualityOverride)
+                q = _machine.ShadowQuality;
+            else
+                q = ShadowQuality.Medium;
+            return q;
         }
 
         public static FogMode ResolveFogMode()
@@ -70,14 +74,11 @@ namespace SiegeEngine.Core.GPU.Lighting
             if (density <= 0f)
                 return 0f;
             FogMode mode = ResolveFogMode();
-            // Do not floor density. The old 0.018 exponential floor turned
-            // every model past ~80m into solid fog color (gray).
             return density;
         }
 
         public static float ResolveFogStart()
         {
-            // A non-zero start drew a hard clear circle around the camera.
             return 0f;
         }
 

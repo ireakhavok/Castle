@@ -206,12 +206,19 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
     float umbra = uShadowStrength;
     if (umbra < 0.0) umbra = 0.08;
 
-    // Exponential shadow map. Not a binary closer-than test.
-    // dz <= 0  -> this point is the first hit or closer -> lit
-    // dz tiny  -> acne / texel mismatch -> still almost lit
-    // dz large -> a real occluder sits in front -> umbra
-    float k = uShadowBias;
-    if (k < 1.0) k = 80.0;
+    float zRange = 1.0;
+    if (cascade == 0) zRange = uCascadeZRange.x;
+    else if (cascade == 1) zRange = uCascadeZRange.y;
+    else if (cascade == 2) zRange = uCascadeZRange.z;
+    else zRange = uCascadeZRange.w;
+    zRange = max(zRange, 1.0);
+
+    // k is world-space. Multiply by zRange so a 20cm occluder is a full
+    // umbra on every cascade, not just the inner tile. Old window-space k
+    // made the outer tile look like Low no matter what was selected.
+    float kWorld = uShadowBias;
+    if (kWorld < 1.0) kWorld = 40.0;
+    float k = kWorld * zRange;
     float dz = max(proj.z - stored, 0.0);
     float vis = exp(-k * dz);
     return mix(umbra, 1.0, clamp(vis, 0.0, 1.0));

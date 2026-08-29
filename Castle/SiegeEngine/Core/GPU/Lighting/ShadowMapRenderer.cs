@@ -104,6 +104,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             // pass; Restore puts the panel scissor back.
             _rc.Disable(_e.ScissorTest);
             int atlasSize = AtlasSize(frame.ShadowQuality);
+            Console.WriteLine($"ShadowMap: quality={frame.ShadowQuality} atlas={atlasSize} k={EsmExponent(frame.ShadowQuality):0.#}");
             _rc.ColorMask(false, false, false, false);
             _rc.Enable(_e.DepthTest);
             _rc.DepthMask(true);
@@ -423,15 +424,11 @@ namespace SiegeEngine.Core.GPU.Lighting
                 }
             }
 
-            Vector3 sceneCenter = haveCaster
-                ? new Vector3(
-                    (sceneMin.X + sceneMax.X) * 0.5f,
-                    (sceneMin.Y + sceneMax.Y) * 0.5f,
-                    (sceneMin.Z + sceneMax.Z) * 0.5f)
-                : new Vector3(cameraPos.X, cameraPos.Y, cameraPos.Z);
-            float sceneRadius = haveCaster ? Vector3.Distance(sceneMin, sceneMax) * 0.5f + 80f : 256f;
-            sceneRadius = MathF.Max(sceneRadius, 256f);
-            float worldRadius = MathF.Max(far, MathF.Max(sceneRadius * 2f, 2048f));
+            // Play Game pixelation was scene-fit C0 covering the whole level.
+            // One 16k tile over 500m is 6cm blocks. C0 is camera-centered and
+            // sized by quality so nearby contact is millimetres, far uses C1-C3.
+            Vector3 sceneCenter = new Vector3(cameraPos.X, cameraPos.Y, cameraPos.Z);
+            float worldRadius = MathF.Max(far, 2048f);
 
             float[] radii = new float[LightingFrame.MaxCascades];
             CascadeRadii(frame.ShadowQuality, worldRadius, radii);
@@ -542,11 +539,12 @@ namespace SiegeEngine.Core.GPU.Lighting
             return quality switch
             {
                 ShadowQuality.Off => 0,
-                ShadowQuality.Low => 2048,
-                ShadowQuality.Medium => 4096,
-                ShadowQuality.High => 4096,
-                ShadowQuality.Ultra => 8192,
-                _ => 4096
+                ShadowQuality.Low => 4096,
+                ShadowQuality.Medium => 8192,
+                ShadowQuality.High => 16384,
+                ShadowQuality.Ultra => 16384,
+                ShadowQuality.Cinematic => 16384,
+                _ => 8192
             };
         }
 
@@ -559,13 +557,16 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         public static float EsmExponent(ShadowQuality quality)
         {
+            // World-space exponent. Shader multiplies by the cascade Z range.
+            // Ultra reaches full umbra at ~6cm of occluder depth.
             return quality switch
             {
-                ShadowQuality.Low => 40f,
-                ShadowQuality.Medium => 80f,
-                ShadowQuality.High => 120f,
-                ShadowQuality.Ultra => 180f,
-                _ => 80f
+                ShadowQuality.Low => 20f,
+                ShadowQuality.Medium => 50f,
+                ShadowQuality.High => 90f,
+                ShadowQuality.Ultra => 150f,
+                ShadowQuality.Cinematic => 220f,
+                _ => 50f
             };
         }
 
@@ -574,30 +575,35 @@ namespace SiegeEngine.Core.GPU.Lighting
             return quality switch
             {
                 ShadowQuality.Low => 0.14f,
-                ShadowQuality.Medium => 0.08f,
-                ShadowQuality.High => 0.05f,
-                ShadowQuality.Ultra => 0.035f,
-                _ => 0.08f
+                ShadowQuality.Medium => 0.06f,
+                ShadowQuality.High => 0.03f,
+                ShadowQuality.Ultra => 0.015f,
+                ShadowQuality.Cinematic => 0.01f,
+                _ => 0.06f
             };
         }
 
         private static void CascadeRadii(ShadowQuality quality, float worldRadius, float[] radii)
         {
-            // Low    = previous High  (64 / 192 / 640, 4096 atlas)
-            // Medium = previous Ultra (48 / 160 / 512, 4096 atlas)
-            // High / Ultra are new tiers. Ultra extends atlas + PCF, not a
-            // 5m near tile that drops neighboring casters.
+            // Camera-centered. C0 is large enough for a player + nearby models
+            // (never a 5m floor). Pixel size = 2*r0 / (atlas/2).
+            float r0;
             switch (quality)
             {
                 case ShadowQuality.Low:
-                    radii[0] = 64f; radii[1] = 192f; radii[2] = 640f; break;
+                    r0 = 128f; break;
                 case ShadowQuality.High:
-                    radii[0] = 32f; radii[1] = 96f; radii[2] = 320f; break;
+                    r0 = 32f; break;
                 case ShadowQuality.Ultra:
-                    radii[0] = 20f; radii[1] = 64f; radii[2] = 200f; break;
+                    r0 = 20f; break;
+                case ShadowQuality.Cinematic:
+                    r0 = 14f; break;
                 default:
-                    radii[0] = 48f; radii[1] = 160f; radii[2] = 512f; break;
+                    r0 = 48f; break;
             }
+            radii[0] = r0;
+            radii[1] = r0 * 3f;
+            radii[2] = r0 * 10f;
             radii[3] = worldRadius;
         }
 
