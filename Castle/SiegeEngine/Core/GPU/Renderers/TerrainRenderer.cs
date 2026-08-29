@@ -84,13 +84,12 @@ uniform float uSpotRange[2];
 uniform float uSpotInner[2];
 uniform float uSpotOuter[2];
 float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
-    float ndotl = max(dot(normal, normalize(-uLightDir)), 0.0);
-    float slope = 1.0 - ndotl;
-    vec3 offsetPos = worldPos + normal * (uShadowNormalBias * (1.0 + slope));
+    vec3 offsetPos = worldPos + normal * uShadowNormalBias;
     vec4 lightClip = uCascadeVP[cascade] * vec4(offsetPos, 1.0);
     vec3 proj = lightClip.xyz / max(lightClip.w, 0.0001);
     proj = proj * 0.5 + 0.5;
-    if (proj.x <= 0.001 || proj.x >= 0.999 || proj.y <= 0.001 || proj.y >= 0.999 || proj.z <= 0.0 || proj.z >= 1.0)
+    bool last = cascade == uCascadeCount - 1;
+    if (!last && (proj.x <= 0.001 || proj.x >= 0.999 || proj.y <= 0.001 || proj.y >= 0.999 || proj.z <= 0.0 || proj.z >= 1.0))
         return -1.0;
     proj = clamp(proj, vec3(0.001, 0.001, 0.0), vec3(0.999, 0.999, 1.0));
     float cell = 0.5;
@@ -102,43 +101,25 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
     if (kernel < 1) kernel = 1;
     if (kernel > 3) kernel = 3;
     int taps = 0;
-    int live = 0;
     float umbra = uShadowStrength;
     if (umbra < 0.0) umbra = 0.08;
-    float bias = uShadowBias * (1.0 + slope * 3.0);
     for (int x = -3; x <= 3; x++) {
         if (abs(x) > kernel) continue;
         for (int y = -3; y <= 3; y++) {
             if (abs(y) > kernel) continue;
-            vec2 uv = atlasUv + vec2(float(x), float(y)) * texel * cell;
-            uv = clamp(uv, atlasOrigin + vec2(0.001), atlasOrigin + vec2(cell - 0.001));
-            float closest = texture(uShadowAtlas, uv).r;
-            if (closest > 0.0001 && closest < 0.999) {
-                live++;
-                shadow += (proj.z - bias > closest) ? umbra : 1.0;
-            } else {
-                shadow += 1.0;
-            }
+            float closest = texture(uShadowAtlas, atlasUv + vec2(float(x), float(y)) * texel * cell).r;
+            shadow += (proj.z - uShadowBias > closest) ? umbra : 1.0;
             taps++;
         }
     }
-    if (live == 0)
-        return 1.0;
     return shadow / float(max(taps, 1));
 }
 float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
     if (uShadowsEnabled == 0 || uReceiveShadows == 0 || uCascadeCount <= 0)
         return 1.0;
-    float viewDepth = abs(vViewPos.z);
-    int cascade = 0;
-    if (uCascadeCount > 1 && viewDepth >= uCascadeSplits.x) cascade = 1;
-    if (uCascadeCount > 2 && viewDepth >= uCascadeSplits.y) cascade = 2;
-    if (uCascadeCount > 3 && viewDepth >= uCascadeSplits.z) cascade = 3;
-    if (cascade >= uCascadeCount) cascade = uCascadeCount - 1;
-    float s = SampleCascadeAt(cascade, worldPos, normal);
-    if (s >= 0.0) return s;
-    if (cascade + 1 < uCascadeCount) {
-        s = SampleCascadeAt(cascade + 1, worldPos, normal);
+    for (int i = 0; i < 4; i++) {
+        if (i >= uCascadeCount) break;
+        float s = SampleCascadeAt(i, worldPos, normal);
         if (s >= 0.0) return s;
     }
     return 1.0;
