@@ -301,6 +301,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             Vector4 zRange = ShadowMapRenderer.WrittenCascadeZRange;
             if (zRange == default && ready != null)
                 zRange = ready.CascadeZRange;
+            shader.SetUniform("uCascadeZRange", zRange.X, zRange.Y, zRange.Z, zRange.W);
             shader.SetUniform("uShadowBias", Sun.ShadowBias > 0f ? Sun.ShadowBias : 0.0015f);
             shader.SetUniform("uShadowNormalBias", Sun.ShadowNormalBias > 0f ? Sun.ShadowNormalBias : 0.035f);
             float atlasPx = ShadowMapRenderer.WrittenAtlasSize > 0

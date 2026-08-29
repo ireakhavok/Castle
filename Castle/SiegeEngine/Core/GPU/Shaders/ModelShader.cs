@@ -214,7 +214,6 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
     float umbra = uShadowStrength;
     if (umbra < 0.0) umbra = 0.08;
     float plane = abs(dFdx(myProj.z)) + abs(dFdy(myProj.z));
-    float bias = uShadowBias * (1.0 + slope * 3.0) + plane;
     for (int x = -7; x <= 7; x++) {
         if (abs(x) > kernel) continue;
         for (int y = -7; y <= 7; y++) {
@@ -226,7 +225,7 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
             if (firstHit <= 0.0001 || firstHit >= 0.999)
                 shadow += 1.0;
             else
-                shadow += (firstHit + bias < myProj.z) ? umbra : 1.0;
+                shadow += (firstHit + plane < myProj.z) ? umbra : 1.0;
             taps++;
         }
     }
