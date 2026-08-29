@@ -64,7 +64,12 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public abstract int NoError { get; }
         public abstract int Rgba { get; }
         public abstract int CullFace { get; }
+        public abstract int Front { get; }
         public abstract int Back { get; }
+        public abstract int None { get; }
+        public abstract int FramebufferBinding { get; }
+        public abstract int Viewport { get; }
+        public abstract int ScissorBox { get; }
         public abstract int Clockwise { get; }
         public abstract int CounterClockwise { get; }
         public abstract int LineSmooth { get; }

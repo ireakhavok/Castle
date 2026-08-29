@@ -33,13 +33,6 @@ namespace SiegeEngine.Core.GPU.Lighting
     /// </summary>
     public unsafe class ShadowMapRenderer : IDisposable
     {
-        private const int GL_FRAMEBUFFER_BINDING = 0x8CA6;
-        private const int GL_VIEWPORT = 0x0BA2;
-        private const int GL_SCISSOR_BOX = 0x0C10;
-        private const int GL_SCISSOR_TEST = 0x0C11;
-        private const int GL_NONE = 0;
-        private const int GL_BACK = 0x0405;
-
         private readonly IRenderContext _rc;
         private readonly AbstractRenderEnums _e;
         private ShaderProgram _depthShader;
@@ -117,7 +110,10 @@ namespace SiegeEngine.Core.GPU.Lighting
                     int x = (i % 2) * tile;
                     int y = (i / 2) * tile;
                     _rc.Viewport(x, y, (uint)tile, (uint)tile);
-                    DrawCasters(frame.CascadeVP[i], casters, linearDepth: false, lightPos: default, farPlane: 1f);
+                    Vector3 sunDir = frame.Sun.Direction.LengthSquared() > 1e-8f
+                        ? Vector3.Normalize(frame.Sun.Direction)
+                        : LightingFrame.DefaultSunDirection;
+                    DrawCasters(frame.CascadeVP[i], casters, linearDepth: false, lightPos: default, farPlane: 1f, lightDir: sunDir, casterDepthBias: 0.04f);
                 }
             }
             else
@@ -256,7 +252,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             DeleteTex(ref _pointDepth);
         }
 
-        private void DrawCasters(Matrix4x4 lightVp, IReadOnlyList<ShadowCaster> casters, bool linearDepth, Vector3 lightPos, float farPlane)
+        private void DrawCasters(Matrix4x4 lightVp, IReadOnlyList<ShadowCaster> casters, bool linearDepth, Vector3 lightPos, float farPlane, Vector3 lightDir = default, float casterDepthBias = 0f)
         {
             if (casters == null) return;
             _depthShader.Use();
@@ -264,6 +260,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             _depthShader.SetUniform("uLinearDepth", linearDepth ? 1 : 0);
             _depthShader.SetUniform("uLightPos", lightPos.X, lightPos.Y, lightPos.Z);
             _depthShader.SetUniform("uFarPlane", farPlane > 0f ? farPlane : 1f);
+            _depthShader.SetUniform("uLightDir", lightDir.X, lightDir.Y, lightDir.Z);
+            _depthShader.SetUniform("uCasterDepthBias", casterDepthBias);
             foreach (var caster in casters)
             {
                 if (caster.ModelData?.MeshRenders == null) continue;
@@ -507,8 +505,8 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private void BindDepthOnly()
         {
-            _rc.DrawBuffer(GL_NONE);
-            _rc.ReadBuffer(GL_NONE);
+            _rc.DrawBuffer(_e.None);
+            _rc.ReadBuffer(_e.None);
         }
 
         private void EnsureAtlas(int size)
@@ -574,20 +572,20 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private void Capture()
         {
-            _rc.GetInteger(GL_FRAMEBUFFER_BINDING, out _savedFbo);
+            _rc.GetInteger(_e.FramebufferBinding, out _savedFbo);
             int* vp = stackalloc int[4];
-            _rc.GetInteger(GL_VIEWPORT, vp);
+            _rc.GetInteger(_e.Viewport, vp);
             _savedVpX = vp[0];
             _savedVpY = vp[1];
             _savedVpW = vp[2];
             _savedVpH = vp[3];
             int* sc = stackalloc int[4];
-            _rc.GetInteger(GL_SCISSOR_BOX, sc);
+            _rc.GetInteger(_e.ScissorBox, sc);
             _savedScX = sc[0];
             _savedScY = sc[1];
             _savedScW = sc[2];
             _savedScH = sc[3];
-            _rc.GetInteger(GL_SCISSOR_TEST, out int scissorOn);
+            _rc.GetInteger(_e.ScissorTest, out int scissorOn);
             _savedScissor = scissorOn != 0;
         }
 
@@ -596,8 +594,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             _rc.BindFramebuffer(_e.Framebuffer, (uint)Math.Max(_savedFbo, 0));
             if (_savedFbo <= 0)
             {
-                _rc.DrawBuffer(GL_BACK);
-                _rc.ReadBuffer(GL_BACK);
+                _rc.DrawBuffer(_e.Back);
+                _rc.ReadBuffer(_e.Back);
             }
             _rc.Viewport(_savedVpX, _savedVpY, (uint)Math.Max(_savedVpW, 1), (uint)Math.Max(_savedVpH, 1));
             _rc.Scissor(_savedScX, _savedScY, (uint)Math.Max(_savedScW, 1), (uint)Math.Max(_savedScH, 1));

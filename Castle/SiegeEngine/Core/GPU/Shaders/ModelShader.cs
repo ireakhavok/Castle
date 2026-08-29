@@ -371,7 +371,9 @@ void main() {
         metallic = SampleMetallic(matIdx, vTexCoord);
 
     vec3 lightDir = normalize(-uLightDir);
-    float shadow = SampleCascadeShadow(vWorldPos, norm);
+    float facing = max(dot(geoN, lightDir), 0.0);
+    float shadow = SampleCascadeShadow(vWorldPos, geoN);
+    shadow = mix(shadow, 1.0, smoothstep(0.12, 0.50, facing));
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * uLightColor * uLightIntensity * materialDiffuse * shadow;
     vec3 ambient = uAmbientStrength * materialDiffuse * uAmbientColor;
