@@ -210,8 +210,9 @@ namespace SiegeEngine.Core.GPU.Lighting
                 {
                     ShadowQuality.Low => 2048,
                     ShadowQuality.Medium => 2048,
-                    ShadowQuality.High => 4096,
+                    ShadowQuality.High => 2048,
                     ShadowQuality.Ultra => 4096,
+                    ShadowQuality.Cinematic => 4096,
                     _ => 2048
                 };
                 EnsurePoint(size);
@@ -336,10 +337,15 @@ namespace SiegeEngine.Core.GPU.Lighting
             {
                 if (caster.TerrainMesh != null && caster.TerrainMesh.GetIndexCount() > 0)
                 {
+                    // Heightfield top faces only. The underside writes a
+                    // farther Z that GL_LESS already discards.
+                    _rc.Enable(_e.CullFace);
+                    _rc.CullFace(_e.Back);
                     _depthShader.SetMatrix4("uModel", caster.ModelMatrix);
                     _depthShader.SetUniform("uHasBones", 0);
                     caster.TerrainMesh.Bind();
                     _rc.DrawElements(_e.Triangles, caster.TerrainMesh.GetIndexCount(), _e.UnsignedInt, null);
+                    _rc.Disable(_e.CullFace);
                     continue;
                 }
                 if (caster.ModelData?.MeshRenders == null) continue;
@@ -549,11 +555,11 @@ namespace SiegeEngine.Core.GPU.Lighting
             {
                 ShadowQuality.Off => 0,
                 ShadowQuality.Low => 8192,
-                ShadowQuality.Medium => 16384,
+                ShadowQuality.Medium => 8192,
                 ShadowQuality.High => 16384,
                 ShadowQuality.Ultra => 16384,
                 ShadowQuality.Cinematic => 16384,
-                _ => 16384
+                _ => 8192
             };
         }
 
@@ -601,6 +607,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             {
                 case ShadowQuality.Low:
                     r0 = 40f; break;
+                case ShadowQuality.Medium:
+                    r0 = 24f; break;
                 case ShadowQuality.High:
                     r0 = 16f; break;
                 case ShadowQuality.Ultra:
