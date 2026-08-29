@@ -187,7 +187,10 @@ namespace SiegeEngine.Core.GPU.Lighting
 
             // Play Game still gets a directional sun even when point lights
             // exist. Point lights must not suppress the cascade atlas.
-            if (!hasSun && allowFallbackSun)
+            // If the authored environment explicitly turned the sun off,
+            // do not inject a default sun (editor Post Process toggle).
+            bool allowFallback = allowFallbackSun && (environment == null || environment.SunEnabled);
+            if (!hasSun && allowFallback)
             {
                 Vector3 dir = fallbackSunDirection.LengthSquared() > 1e-8f
                     ? Vector3.Normalize(fallbackSunDirection)

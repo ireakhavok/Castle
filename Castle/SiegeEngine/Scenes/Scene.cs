@@ -225,18 +225,6 @@ namespace SiegeEngine.Scenes
                     cameraPos = _player.Camera.Position;
                 var casters = CollectShadowCasters(list);
                 _shadowMapRenderer.Render(frame, casters, view, projection, cameraPos);
-
-                // Editor only (AllowRuntimeDefaultSun == false). Play Game
-                // keeps the full cascade count and is untouched.
-                //
-                // The last cascade is a world-sized ortho. Play's camera stays
-                // inside the inner tiles so that tile is never sampled there.
-                // The SceneEditorPanel fly-cam leaves those tiles and the last
-                // ortho self-shadows the terrain — a square of correct sun
-                // with the rest looking like the sun is OFF. Drop only that
-                // last tile from SAMPLING. Atlas generation is unchanged.
-                if (!AllowRuntimeDefaultSun && frame.Sun.CastShadows && frame.CascadeCount > 1)
-                    frame.CascadeCount -= 1;
             }
 
             return frame;
