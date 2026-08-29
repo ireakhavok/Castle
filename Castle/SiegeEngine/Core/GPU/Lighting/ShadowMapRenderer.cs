@@ -105,7 +105,6 @@ namespace SiegeEngine.Core.GPU.Lighting
             // pass; Restore puts the panel scissor back.
             _rc.Disable(_e.ScissorTest);
             int atlasSize = AtlasSize(frame.ShadowQuality);
-            Console.WriteLine($"ShadowMap: quality={frame.ShadowQuality} atlas={atlasSize} k={EsmExponent(frame.ShadowQuality):0.#}");
             _rc.ColorMask(false, false, false, false);
             _rc.Enable(_e.DepthTest);
             _rc.DepthMask(true);
@@ -160,7 +159,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                     // First surface the sun hits. Same winding as the color
                     // pass. Two-sided so thin features write a hit; closed
                     // meshes keep the nearer face via GL_LESS. Hiding a
-                    // face here was a cap band-aid.
+                    // face here hid first-hit depth.
                     _rc.FrontFace(_e.CounterClockwise);
                     _rc.Disable(_e.CullFace);
 
@@ -561,13 +560,6 @@ namespace SiegeEngine.Core.GPU.Lighting
                 ShadowQuality.Cinematic => 16384,
                 _ => 8192
             };
-        }
-
-        public static int PcfRadius(ShadowQuality quality)
-        {
-            // ESM is a single tap. Kept so older shaders that still
-            // read the uniform do not explode.
-            return 1;
         }
 
         public static float EsmExponent(ShadowQuality quality)
