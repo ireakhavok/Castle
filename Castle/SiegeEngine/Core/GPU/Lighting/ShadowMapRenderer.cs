@@ -91,8 +91,8 @@ namespace SiegeEngine.Core.GPU.Lighting
                 frame.CascadeCount = cascadeCount;
                 frame.ShadowAtlas = _atlasDepth;
 
-                float far = MathF.Max(frame.ShadowDistance, 2048f);
-                ComputeCascades(frame, cameraPos, far, cascadeCount, atlasSize, casters);
+                float far = frame.ShadowDistance > 1f ? frame.ShadowDistance : 1024f;
+                ComputeCascades(frame, view, projection, cameraPos, far, cascadeCount, atlasSize, casters);
 
                 int tile = atlasSize / 2;
                 _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
@@ -254,8 +254,6 @@ namespace SiegeEngine.Core.GPU.Lighting
             foreach (var caster in casters)
             {
                 if (caster.ModelData?.MeshRenders == null) continue;
-                if (linearDepth && Vector3.DistanceSquared(caster.ModelMatrix.Translation, lightPos) < 0.04f)
-                    continue;
                 _depthShader.SetMatrix4("uModel", caster.ModelMatrix);
                 _depthShader.SetUniform("uHasBones", caster.HasBones ? 1 : 0);
                 if (caster.HasBones && caster.BoneMatrices != null)
@@ -321,110 +319,131 @@ namespace SiegeEngine.Core.GPU.Lighting
         /// the camera on the ground plane; later cascades cover the scene.
         /// Shaders pick by whether the world point is inside a tile.
         /// </summary>
-        private void ComputeCascades(LightingFrame frame, Vector3 cameraPos, float far, int cascadeCount, int atlasSize, IReadOnlyList<ShadowCaster> casters)
+        private void ComputeCascades(LightingFrame frame, Matrix4x4 view, Matrix4x4 projection, Vector3 cameraPos, float far, int cascadeCount, int atlasSize, IReadOnlyList<ShadowCaster> casters)
         {
-            Vector3 sceneMin = cameraPos;
-            Vector3 sceneMax = cameraPos;
-            bool haveCaster = false;
-            if (casters != null)
-            {
-                for (int c = 0; c < casters.Count; c++)
-                {
-                    Vector3 world = casters[c].ModelMatrix.Translation;
-                    if (!haveCaster)
-                    {
-                        sceneMin = world;
-                        sceneMax = world;
-                        haveCaster = true;
-                    }
-                    else
-                    {
-                        sceneMin = Vector3.Min(sceneMin, world);
-                        sceneMax = Vector3.Max(sceneMax, world);
-                    }
-                }
-            }
-            Vector3 groundCam = new Vector3(cameraPos.X, cameraPos.Y, 0f);
-            Vector3 sceneCenter = haveCaster
-                ? new Vector3((sceneMin.X + sceneMax.X) * 0.5f, (sceneMin.Y + sceneMax.Y) * 0.5f, 0f)
-                : groundCam;
-            float sceneRadius = haveCaster ? Vector3.Distance(sceneMin, sceneMax) * 0.5f + 80f : 256f;
-            sceneRadius = MathF.Max(sceneRadius, 256f);
-            float worldRadius = MathF.Max(far, MathF.Max(sceneRadius * 2f, 2048f));
+            float camNear = ExtractPerspectiveNear(projection, 0.1f);
+            float camFar = far > camNear + 1f ? far : camNear + 1f;
 
-            float[] radii = new float[LightingFrame.MaxCascades];
-            if (frame.ShadowQuality == ShadowQuality.Ultra)
-            {
-                radii[0] = 48f;
-                radii[1] = 160f;
-                radii[2] = 512f;
-                radii[3] = worldRadius;
-            }
-            else if (frame.ShadowQuality == ShadowQuality.High)
-            {
-                radii[0] = 64f;
-                radii[1] = 192f;
-                radii[2] = 640f;
-                radii[3] = worldRadius;
-            }
-            else if (frame.ShadowQuality == ShadowQuality.Low)
-            {
-                radii[0] = 160f;
-                radii[1] = worldRadius;
-                radii[2] = worldRadius;
-                radii[3] = worldRadius;
-            }
-            else
-            {
-                radii[0] = 80f;
-                radii[1] = 240f;
-                radii[2] = 720f;
-                radii[3] = worldRadius;
-            }
-            frame.CascadeSplits = new Vector4(radii[0], radii[1], radii[2], radii[3]);
+            float[] splits = new float[LightingFrame.MaxCascades];
+            ComputePracticalSplits(camNear, camFar, cascadeCount, splits);
+            frame.CascadeSplits = new Vector4(splits[0], splits[1], splits[2], splits[3]);
 
             Vector3 lightDir = frame.Sun.Direction.LengthSquared() > 1e-8f
                 ? Vector3.Normalize(frame.Sun.Direction)
                 : LightingFrame.DefaultSunDirection;
             Vector3 lightUp = MathF.Abs(Vector3.Dot(lightDir, Vector3.UnitZ)) > 0.95f ? Vector3.UnitX : Vector3.UnitZ;
 
-            float casterPad = MathF.Max(sceneRadius + 80f, 120f);
+            float casterPull = 0f;
+            if (casters != null)
+            {
+                for (int c = 0; c < casters.Count; c++)
+                {
+                    Vector3 world = casters[c].ModelMatrix.Translation;
+                    float along = Vector3.Dot(cameraPos - world, lightDir);
+                    if (along > casterPull)
+                        casterPull = along;
+                }
+            }
+
             int tile = Math.Max(atlasSize / 2, 1);
-            float zBack = worldRadius + casterPad + 80f;
-            float zFwd = worldRadius + casterPad + 80f;
+            Vector3[] corners = new Vector3[8];
+            float sliceNear = camNear;
 
             for (int i = 0; i < cascadeCount; i++)
             {
-                float radius = radii[i];
-                float texel = MathF.Max((radius * 2f) / tile, 0.05f);
-                Vector3 focus = i == 0 && cascadeCount > 1
-                    ? SnapToTexel(groundCam, texel)
-                    : SnapToTexel(sceneCenter, texel);
+                float sliceFar = splits[i];
+                ExtractSliceCorners(view, projection, cameraPos, sliceNear, sliceFar, corners);
+                sliceNear = sliceFar;
 
-                Vector3 eye = focus - lightDir * zBack;
-                Matrix4x4 lightView = Matrix4x4.CreateLookAt(eye, focus, lightUp);
+                Vector3 center = Vector3.Zero;
+                for (int c = 0; c < 8; c++)
+                    center += corners[c];
+                center *= 0.125f;
 
-                Vector3 lsFocus = Vector3.Transform(focus, lightView);
+                float radius = 0f;
+                for (int c = 0; c < 8; c++)
+                    radius = MathF.Max(radius, Vector3.Distance(corners[c], center));
+                radius = MathF.Max(radius, 1f);
+                radius = MathF.Ceiling(radius * 16f) / 16f;
+
+                float texel = MathF.Max((radius * 2f) / tile, 0.001f);
+                float zBack = radius + MathF.Max(casterPull, radius);
+                float zFwd = radius + 8f;
+
+                Vector3 eye = center - lightDir * zBack;
+                Matrix4x4 lightView = Matrix4x4.CreateLookAt(eye, center, lightUp);
+
+                Vector3 lsFocus = Vector3.Transform(center, lightView);
                 lsFocus.X = MathF.Round(lsFocus.X / texel) * texel;
                 lsFocus.Y = MathF.Round(lsFocus.Y / texel) * texel;
                 Vector3 snappedWorld = TransformByInverse(lightView, new Vector3(lsFocus.X, lsFocus.Y, lsFocus.Z));
                 eye = snappedWorld - lightDir * zBack;
                 lightView = Matrix4x4.CreateLookAt(eye, snappedWorld, lightUp);
 
-                Matrix4x4 lightProj = CreateGLOrtho(-radius, radius, -radius, radius, 1f, zBack + zFwd);
+                Matrix4x4 lightProj = CreateGLOrtho(-radius, radius, -radius, radius, 0.1f, zBack + zFwd);
                 frame.CascadeVP[i] = lightView * lightProj;
             }
             for (int i = cascadeCount; i < LightingFrame.MaxCascades; i++)
                 frame.CascadeVP[i] = Matrix4x4.Identity;
         }
 
-        private static Vector3 SnapToTexel(Vector3 p, float texel)
+        private static void ComputePracticalSplits(float near, float far, int cascadeCount, float[] splits)
         {
-            if (texel < 1e-4f) return p;
-            return new Vector3(
-                MathF.Round(p.X / texel) * texel,
-                MathF.Round(p.Y / texel) * texel,
-                MathF.Round(p.Z / texel) * texel);
+            int count = Math.Clamp(cascadeCount, 1, LightingFrame.MaxCascades);
+            const float lambda = 0.75f;
+            for (int i = 0; i < LightingFrame.MaxCascades; i++)
+                splits[i] = far;
+            for (int i = 1; i <= count; i++)
+            {
+                float p = i / (float)count;
+                float log = near * MathF.Pow(far / MathF.Max(near, 0.01f), p);
+                float uniform = near + (far - near) * p;
+                splits[i - 1] = log * lambda + uniform * (1f - lambda);
+            }
+        }
+
+        private static void ExtractSliceCorners(Matrix4x4 view, Matrix4x4 projection, Vector3 cameraPos, float near, float far, Vector3[] corners)
+        {
+            float tanHalfV = projection.M22 > 1e-5f ? 1f / projection.M22 : 1f;
+            float tanHalfH = projection.M11 > 1e-5f ? 1f / projection.M11 : tanHalfV;
+            float nh = tanHalfV * near;
+            float nw = tanHalfH * near;
+            float fh = tanHalfV * far;
+            float fw = tanHalfH * far;
+
+            if (!Matrix4x4.Invert(view, out Matrix4x4 invView))
+            {
+                Vector3 fallback = cameraPos;
+                for (int i = 0; i < 8; i++)
+                    corners[i] = fallback;
+                return;
+            }
+
+            Vector3[] viewCorners =
+            {
+                new Vector3(-nw,  nh, -near),
+                new Vector3( nw,  nh, -near),
+                new Vector3( nw, -nh, -near),
+                new Vector3(-nw, -nh, -near),
+                new Vector3(-fw,  fh, -far),
+                new Vector3( fw,  fh, -far),
+                new Vector3( fw, -fh, -far),
+                new Vector3(-fw, -fh, -far)
+            };
+            for (int i = 0; i < 8; i++)
+                corners[i] = Vector3.Transform(viewCorners[i], invView);
+        }
+
+        private static float ExtractPerspectiveNear(Matrix4x4 projection, float fallback)
+        {
+            float m33 = projection.M33;
+            float m43 = projection.M43;
+            if (MathF.Abs(m33) < 1e-8f)
+                return fallback;
+            float near = m43 / m33;
+            if (near <= 0.0001f || near > 100f)
+                return fallback;
+            return near;
         }
 
         private static Vector3 TransformByInverse(Matrix4x4 m, Vector3 p)
@@ -475,7 +494,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 ShadowQuality.Low => 2,
                 ShadowQuality.High => 4,
                 ShadowQuality.Ultra => 4,
-                _ => 2
+                _ => 4
             };
         }
 

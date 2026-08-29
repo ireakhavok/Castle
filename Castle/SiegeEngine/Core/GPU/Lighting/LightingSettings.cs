@@ -52,8 +52,8 @@ namespace SiegeEngine.Core.GPU.Lighting
         public static float ResolveShadowDistance()
         {
             float authored = _authored?.ShadowDistance ?? 0f;
-            if (authored < 512f)
-                return 2048f;
+            if (authored <= 0f)
+                return 1024f;
             return authored;
         }
 
