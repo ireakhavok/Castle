@@ -34,6 +34,7 @@ namespace SiegeEngine.Scenes
         private AntiAliasingMode _aaLastMode = AntiAliasingMode.Off;
         private ShadowMapRenderer _shadowMapRenderer;
         private FogPass _fogPass;
+        private ColorComposePass _composePass;
 
         public DockingMode DefaultDockingMode { get; protected set; } = DockingMode.Desktop;
         public bool OwnsFramebuffer { get; protected set; } = true;
@@ -157,8 +158,10 @@ namespace SiegeEngine.Scenes
 
             bool wrapped = false;
             AntiAliasingMode aaMode = AntiAliasingSettings.Resolve();
+            ColorComposeState compose = ColorComposeSettings.Resolve();
             bool volumetric = frame.Fog.Mode == FogMode.Volumetric && frame.Fog.Quality != FogQuality.Off;
-            if (presentRoot && (aaMode != AntiAliasingMode.Off || volumetric))
+            bool needWrap = aaMode != AntiAliasingMode.Off || volumetric || compose.NeedsPass;
+            if (presentRoot && needWrap)
             {
                 if (_aaPass == null)
                     _aaPass = new AntiAliasingPass(_renderContext);
@@ -191,6 +194,15 @@ namespace SiegeEngine.Scenes
                     _aaPass.ReplaceWorldColor(_fogPass.ResolveColor);
             }
 
+            if (wrapped && compose.NeedsPass && _aaPass.WorldColor != 0)
+            {
+                if (_composePass == null)
+                    _composePass = new ColorComposePass(_renderContext);
+                _composePass.Apply(_aaPass.WorldColor, _aaPass.TargetWidth, _aaPass.TargetHeight, compose);
+                if (_composePass.ResolveColor != 0)
+                    _aaPass.ReplaceWorldColor(_composePass.ResolveColor);
+            }
+
             if (wrapped)
                 _aaPass.Resolve(mode: _aaLastMode, view, projection);
 
@@ -203,6 +215,7 @@ namespace SiegeEngine.Scenes
             EnvironmentSettings environment = GetEnvironmentSettings();
             AntiAliasingSettings.BindAuthored(environment);
             LightingSettings.BindAuthored(environment);
+            ColorComposeSettings.BindAuthored(environment);
 
             // Always prefer the scene server. Play Game and custom scenes
             // sometimes pass Array.Empty even when _server already has the
@@ -298,6 +311,8 @@ namespace SiegeEngine.Scenes
             _shadowMapRenderer = null;
             _fogPass?.Dispose();
             _fogPass = null;
+            _composePass?.Dispose();
+            _composePass = null;
             LightingFrame.Current = null;
             _modelRenderer?.Dispose();
             _disposed = true;

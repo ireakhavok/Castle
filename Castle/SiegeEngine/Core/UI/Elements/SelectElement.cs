@@ -175,9 +175,9 @@ namespace SiegeEngine.Core.UI.Elements
                 }
             }
         }
-        public void RenderDropdown(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+        public void RenderDropdown(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
-            Matrix4x4 local = ComputedFullTransform;
+            Matrix4x4 local = parentMatrix * ComputedFullTransform;
             CssStyle effectiveStyle = Style;
             if (Checked && PseudoStyles.TryGetValue("checked", out CssStyle checkedStyle))
             {

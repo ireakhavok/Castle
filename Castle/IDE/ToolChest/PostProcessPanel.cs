@@ -52,8 +52,8 @@ namespace ToolChest
             IsModal = false;
             DockingMode = DockingMode.IDE;
             BaseWidth = 420f;
-            BaseHeight = 680f;
-            Size = new Vector2(420f, 680f);
+            BaseHeight = 920f;
+            Size = new Vector2(420f, 920f);
             RenderOrder = 0;
             Scaling = ScalingMode.Fill;
         }
@@ -102,11 +102,35 @@ namespace ToolChest
             SetCheckbox("pp-sun-enabled", env.SunEnabled);
             SetCheckbox("pp-sun-cast-shadows", env.SunCastShadows);
             SetCheckbox("pp-shadow-smooth", env.ShadowSmooth);
+            SetInput("pp-exposure", env.Exposure.ToString("0.00", CultureInfo.InvariantCulture));
+            SetReadout("pp-exposure-val", env.Exposure.ToString("0.00", CultureInfo.InvariantCulture));
+            SetSelect("pp-tonemap", string.IsNullOrWhiteSpace(env.Tonemap) ? "Off" : env.Tonemap);
+            SetCheckbox("pp-bloom-enabled", env.BloomEnabled);
+            SetInput("pp-bloom-threshold", env.BloomThreshold.ToString("0.00", CultureInfo.InvariantCulture));
+            SetReadout("pp-bloom-threshold-val", env.BloomThreshold.ToString("0.00", CultureInfo.InvariantCulture));
+            SetInput("pp-bloom-intensity", env.BloomIntensity.ToString("0.00", CultureInfo.InvariantCulture));
+            SetReadout("pp-bloom-intensity-val", env.BloomIntensity.ToString("0.00", CultureInfo.InvariantCulture));
+            SetInput("pp-contrast", env.Contrast.ToString("0.00", CultureInfo.InvariantCulture));
+            SetReadout("pp-contrast-val", env.Contrast.ToString("0.00", CultureInfo.InvariantCulture));
+            SetInput("pp-saturation", env.Saturation.ToString("0.00", CultureInfo.InvariantCulture));
+            SetReadout("pp-saturation-val", env.Saturation.ToString("0.00", CultureInfo.InvariantCulture));
+            SetInput("pp-temperature", env.Temperature.ToString("0.00", CultureInfo.InvariantCulture));
+            SetReadout("pp-temperature-val", env.Temperature.ToString("0.00", CultureInfo.InvariantCulture));
+            SetCheckbox("pp-auto-exposure", env.AutoExposure);
+            SetInput("pp-adapt-seconds", env.AdaptSeconds.ToString("0.00", CultureInfo.InvariantCulture));
+            SetReadout("pp-adapt-seconds-val", env.AdaptSeconds.ToString("0.00", CultureInfo.InvariantCulture));
         }
 
         private string _lastAzimuthText;
         private string _lastElevationText;
         private string _lastVectorText;
+        private string _lastExposureText;
+        private string _lastBloomThreshText;
+        private string _lastBloomIntText;
+        private string _lastContrastText;
+        private string _lastSaturationText;
+        private string _lastTemperatureText;
+        private string _lastAdaptText;
 
         private void SyncSliderReadouts()
         {
@@ -130,6 +154,22 @@ namespace ToolChest
                 _lastVectorText = vecText;
                 SetReadout("pp-sun-vector", vecText);
             }
+            SyncFloatReadout("pp-exposure", "pp-exposure-val", 1f, "0.00", ref _lastExposureText);
+            SyncFloatReadout("pp-bloom-threshold", "pp-bloom-threshold-val", 1f, "0.00", ref _lastBloomThreshText);
+            SyncFloatReadout("pp-bloom-intensity", "pp-bloom-intensity-val", 0.35f, "0.00", ref _lastBloomIntText);
+            SyncFloatReadout("pp-contrast", "pp-contrast-val", 1f, "0.00", ref _lastContrastText);
+            SyncFloatReadout("pp-saturation", "pp-saturation-val", 1f, "0.00", ref _lastSaturationText);
+            SyncFloatReadout("pp-temperature", "pp-temperature-val", 0f, "0.00", ref _lastTemperatureText);
+            SyncFloatReadout("pp-adapt-seconds", "pp-adapt-seconds-val", 1.4f, "0.00", ref _lastAdaptText);
+        }
+
+        private void SyncFloatReadout(string inputId, string readoutId, float fallback, string format, ref string last)
+        {
+            float v = ParseFloat(GetInputValue(inputId), fallback);
+            string text = v.ToString(format, CultureInfo.InvariantCulture);
+            if (text == last) return;
+            last = text;
+            SetReadout(readoutId, text);
         }
 
         private void Apply()
@@ -148,8 +188,28 @@ namespace ToolChest
             bool sunEnabled = GetChecked("pp-sun-enabled");
             bool sunCast = GetChecked("pp-sun-cast-shadows");
             bool shadowSmooth = GetChecked("pp-shadow-smooth");
+            float exposure = ParseFloat(GetInputValue("pp-exposure"), 1f);
+            string tonemap = GetSelectValue("pp-tonemap") ?? "Off";
+            bool bloomEnabled = GetChecked("pp-bloom-enabled");
+            float bloomThreshold = ParseFloat(GetInputValue("pp-bloom-threshold"), 1f);
+            float bloomIntensity = ParseFloat(GetInputValue("pp-bloom-intensity"), 0.35f);
+            float contrast = ParseFloat(GetInputValue("pp-contrast"), 1f);
+            float saturation = ParseFloat(GetInputValue("pp-saturation"), 1f);
+            float temperature = ParseFloat(GetInputValue("pp-temperature"), 0f);
+            bool autoExposure = GetChecked("pp-auto-exposure");
+            float adaptSeconds = ParseFloat(GetInputValue("pp-adapt-seconds"), 1.4f);
 
             var env = CommitEnvironment(direction, intensity, sunEnabled, sunCast, shadowQuality, fogMode, fogQuality, density, start, shadowSmooth);
+            env.Exposure = exposure < 0.05f ? 0.05f : exposure;
+            env.Tonemap = string.IsNullOrWhiteSpace(tonemap) ? "Off" : tonemap.Trim();
+            env.BloomEnabled = bloomEnabled;
+            env.BloomThreshold = bloomThreshold < 0.05f ? 0.05f : bloomThreshold;
+            env.BloomIntensity = bloomIntensity < 0f ? 0f : bloomIntensity;
+            env.Contrast = contrast < 0.2f ? 0.2f : contrast;
+            env.Saturation = saturation < 0f ? 0f : saturation;
+            env.Temperature = temperature;
+            env.AutoExposure = autoExposure;
+            env.AdaptSeconds = adaptSeconds < 0.05f ? 0.05f : adaptSeconds;
             LightingSettings.BindAuthored(env);
             LightingFrame.Current = null;
 
@@ -167,7 +227,17 @@ namespace ToolChest
                     { "fogMode", fogMode },
                     { "fogQuality", fogQuality },
                     { "fogDensity", density.ToString(CultureInfo.InvariantCulture) },
-                    { "fogStart", start.ToString(CultureInfo.InvariantCulture) }
+                    { "fogStart", start.ToString(CultureInfo.InvariantCulture) },
+                    { "exposure", exposure.ToString(CultureInfo.InvariantCulture) },
+                    { "tonemap", tonemap },
+                    { "bloomEnabled", bloomEnabled ? "true" : "false" },
+                    { "bloomThreshold", bloomThreshold.ToString(CultureInfo.InvariantCulture) },
+                    { "bloomIntensity", bloomIntensity.ToString(CultureInfo.InvariantCulture) },
+                    { "contrast", contrast.ToString(CultureInfo.InvariantCulture) },
+                    { "saturation", saturation.ToString(CultureInfo.InvariantCulture) },
+                    { "temperature", temperature.ToString(CultureInfo.InvariantCulture) },
+                    { "autoExposure", autoExposure ? "true" : "false" },
+                    { "adaptSeconds", adaptSeconds.ToString(CultureInfo.InvariantCulture) }
                 }
             });
         }

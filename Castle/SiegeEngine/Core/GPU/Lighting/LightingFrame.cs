@@ -305,13 +305,11 @@ namespace SiegeEngine.Core.GPU.Lighting
                 zRange = ready.CascadeZRange;
             shader.SetUniform("uCascadeZRange", zRange.X, zRange.Y, zRange.Z, zRange.W);
             shader.SetUniform("uShadowBias", ShadowMapRenderer.EsmExponent(ShadowQuality));
-            shader.SetUniform("uShadowNormalBias", Sun.ShadowNormalBias > 0f ? Sun.ShadowNormalBias : 0.02f);
             float atlasPx = ShadowMapRenderer.WrittenAtlasSize > 0
                 ? ShadowMapRenderer.WrittenAtlasSize
                 : ShadowMapRenderer.AtlasSize(ShadowQuality);
             shader.SetUniform("uShadowAtlasSize", atlasPx);
             shader.SetUniform("uShadowStrength", ShadowMapRenderer.ShadowStrength(ShadowQuality));
-            shader.SetUniform("uShadowPcfRadius", ShadowMapRenderer.PcfRadius(ShadowQuality));
             shader.SetUniform("uShadowSmooth", ShadowSmooth ? 1 : 0);
             shader.SetUniform("uPointShadowStrength", 0.15f);
 
