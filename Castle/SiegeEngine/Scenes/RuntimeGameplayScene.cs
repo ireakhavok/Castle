@@ -31,6 +31,8 @@ namespace SiegeEngine.Scenes
         private bool _usePlayerCamera = false;
         private bool _panelHosted = false;
         private bool _inputLive = false;
+        private float _frameScroll = 0f;
+        private bool _paused = false;
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -488,13 +490,27 @@ namespace SiegeEngine.Scenes
             _inputLive = live;
         }
 
+        public void SetScrollDelta(float scroll)
+        {
+            _frameScroll = scroll;
+        }
+
+        public void SetPaused(bool paused)
+        {
+            _paused = paused;
+        }
+
+        public AudioSystem HostedAudio => _server?.GetSystem<AudioSystem>();
+
         public override void Update(float deltaTime)
         {
+            if (_paused)
+                return;
             // Movement first, then physics — contact corrections must be the last write to Position.
             bool driveCamera = !_panelHosted || _inputLive;
             if (driveCamera && _usePlayerCamera && _player?.Camera != null)
             {
-                _player.Camera.Update(deltaTime, 0f, true);
+                _player.Camera.Update(deltaTime, _frameScroll, true);
                 if (_playerMovement != null)
                 {
                     _playerMovement.Update(_player, deltaTime, (id, pos, rotation) => { }, _player.Camera);
@@ -502,8 +518,9 @@ namespace SiegeEngine.Scenes
             }
             else if (driveCamera)
             {
-                _flyCamera.Update(deltaTime, 0f, true);
+                _flyCamera.Update(deltaTime, _frameScroll, true);
             }
+            _frameScroll = 0f;
             base.Update(deltaTime);
             if (_usePlayerCamera && _player?.Camera != null)
                 _player.Camera.RefreshFromPhysics();
@@ -554,6 +571,8 @@ namespace SiegeEngine.Scenes
         }
         public override void Dispose()
         {
+            try { HostedAudio?.StopAll(); } catch { }
+            try { HostedAudio?.Dispose(); } catch { }
             _terrainShader?.Dispose();
             _modelRenderer?.Dispose();
             base.Dispose();

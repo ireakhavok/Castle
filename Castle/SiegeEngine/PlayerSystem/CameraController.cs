@@ -23,7 +23,7 @@ namespace SiegeEngine.PlayerSystem
         protected float _pitch = 0f;
         protected float _distance = 2.0f;
         protected readonly float _minDistance = 0.5f;
-        protected readonly float _maxDistance = 80.0f;
+        protected readonly float _maxDistance = 100.0f;
         protected readonly float _zoomSpeed = 10f;
         protected readonly float _xSpeed = 2.0f;
         protected readonly float _ySpeed = 2.0f;
@@ -111,7 +111,8 @@ namespace SiegeEngine.PlayerSystem
                     _wasTabPressedLastFrame = isTabPressed;
                     if (_perspective != Perspective.FirstPerson && scrollDelta != 0)
                     {
-                        _distance -= scrollDelta * _zoomSpeed * deltaTime;
+                        float step = MathF.Max(0.35f, _distance * 0.18f);
+                        _distance -= scrollDelta * step;
                         _distance = Math.Clamp(_distance, _minDistance, _maxDistance);
                         Console.WriteLine($"Camera distance adjusted to: {_distance}");
                     }
