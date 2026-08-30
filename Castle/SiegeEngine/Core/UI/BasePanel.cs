@@ -54,6 +54,8 @@ namespace SiegeEngine.Core.UI
         }
         public PanelChrome chrome;
         public bool HasTitleBar { get; set; } = false;
+        public SiegeEngine.Core.Definitions.PanelChromeStyle ChromeStyle { get; set; } = SiegeEngine.Core.Definitions.PanelChromeStyle.Editor;
+        public System.Numerics.Vector4 TitleBarColor { get; set; }
         public bool IsClosable { get; set; } = false;
         public int RenderOrder { get; set; } = 0;
         public static bool MouseReleasedConsumedThisFrame { get; set; } = false;

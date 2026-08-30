@@ -1,0 +1,48 @@
+<!-- Folder: CastleBuilder -->
+<!-- File: PlayHostUI.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        .play-bar {
+            position: absolute;
+            top: 24px;
+            left: 8px;
+            right: 8px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 10px;
+            background: rgba(22, 22, 26, 0.92);
+            border: 1px solid #3a3a44;
+            border-radius: 6px;
+            z-index: 300;
+            font-family: system-ui, sans-serif;
+        }
+        .play-bar button {
+            padding: 5px 14px;
+            border: none;
+            border-radius: 4px;
+            color: #f2f2f2;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        #playBtn { background: #2d6a4f; }
+        #stopBtn { background: #6a2d2d; }
+        #buildBtn { background: #3a4a6a; }
+        #playStatus { color: #c8c8c8; font-size: 12px; margin-left: 8px; }
+        .hint { color: #888; font-size: 11px; margin-left: auto; }
+    </style>
+</head>
+<body>
+    <div class="play-bar">
+        <button id="playBtn" data-hook="PlayHost.Play">Play</button>
+        <button id="stopBtn" data-hook="PlayHost.Stop">Stop</button>
+        <button id="buildBtn" data-hook="PlayHost.Build">Build</button>
+        <span id="playStatus">stopped</span>
+        <span class="hint">Tab look — mouse can leave</span>
+    </div>
+</body>
+</html>

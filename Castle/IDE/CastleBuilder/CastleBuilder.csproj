@@ -25,6 +25,7 @@
   <None Remove="SaveProjectForm.html" />
   <None Remove="SceneEditorUI.html" />
   <None Remove="ScriptEditorPanelUI.html" />
+  <None Remove="PlayHostUI.html" />
 </ItemGroup>
 
 <ItemGroup>
@@ -38,6 +39,9 @@
     <CopyToOutputDirectory>Always</CopyToOutputDirectory>
   </Content>
   <Content Include="ScriptEditorPanelUI.html">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+  </Content>
+  <Content Include="PlayHostUI.html">
     <CopyToOutputDirectory>Always</CopyToOutputDirectory>
   </Content>
 </ItemGroup>

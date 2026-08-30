@@ -267,9 +267,16 @@ namespace CastleBuilder
             ProjectLayoutManager.FlushAllToDisk();
             Console.WriteLine("[BlueprintManager.DoProjectSave] All blades committed to disk");
         }
-        public static string BuildPlayPayloadFile()
+        public sealed class PlaySnapshot
         {
-            // Commit typed Scene Settings before reading the buffer for the payload.
+            public string LevelName;
+            public Level Level;
+            public SceneData SceneData;
+            public float[,] Heightmap;
+        }
+
+        public static PlaySnapshot BuildCurrentPlaySnapshot()
+        {
             FlushLiveEditorState();
             var level = ProjectSettings.Current.CurrentLevel ?? new Level();
             string levelName = ProjectSettings.Current.CurrentSceneName ?? level.Name ?? "Main";
@@ -313,10 +320,26 @@ namespace CastleBuilder
             {
                 int width = liveHeightmap.GetLength(0);
                 int height = liveHeightmap.GetLength(1);
+                if (sceneData.Terrain == null) sceneData.Terrain = new TerrainData();
                 sceneData.Terrain.EmbeddedHeightmapWidth = width;
                 sceneData.Terrain.EmbeddedHeightmapHeight = height;
                 sceneData.Terrain.EmbeddedHeightmapData = LinearizeHeightmap(liveHeightmap);
             }
+            return new PlaySnapshot
+            {
+                LevelName = levelName,
+                Level = level,
+                SceneData = sceneData,
+                Heightmap = liveHeightmap
+            };
+        }
+
+        public static string BuildPlayPayloadFile()
+        {
+            var snap = BuildCurrentPlaySnapshot();
+            var level = snap.Level;
+            string levelName = snap.LevelName;
+            var sceneData = snap.SceneData;
             byte[] levelBytes = level.Serialize();
             string levelDataBase64 = Convert.ToBase64String(levelBytes);
             var transfer = new PlayPayloadTransfer

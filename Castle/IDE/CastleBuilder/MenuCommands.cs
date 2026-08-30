@@ -123,6 +123,10 @@ namespace CastleBuilder
             PostProcessPanel.Open(renderContext, controlContext, window, eventBus);
             Console.WriteLine("[MenuCommands] Opened PostProcessPanel");
         }
+        public static void OpenPlayHost(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            PlayHostPanel.Open(renderContext, controlContext, window, eventBus);
+        }
         public static void PlayGame(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             Console.WriteLine("[MenuCommands.PlayGame] Launching CURRENT project Level in NEW isolated window (pure runtime client - pure in-memory payload via temp transfer file, no forced disk write)");

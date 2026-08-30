@@ -44,7 +44,16 @@ namespace SiegeEngine.Core.UI
 
         public void Render(UIQuadRenderer quadRenderer, float panelWidth, float panelHeight)
         {
-            quadRenderer.DrawQuad(0, 0, panelWidth, _titleHeight, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), panelWidth, panelHeight);
+            if (_owner.ChromeStyle == SiegeEngine.Core.Definitions.PanelChromeStyle.Bare)
+                return;
+            var bar = _owner.TitleBarColor;
+            if (bar.W <= 0.01f)
+            {
+                bar = _owner.ChromeStyle == SiegeEngine.Core.Definitions.PanelChromeStyle.Game
+                    ? new Vector4(0.16f, 0.12f, 0.08f, 1.0f)
+                    : new Vector4(0.2f, 0.2f, 0.2f, 1.0f);
+            }
+            quadRenderer.DrawQuad(0, 0, panelWidth, _titleHeight, bar, panelWidth, panelHeight);
 
             if (_owner.IsClosable)
             {
