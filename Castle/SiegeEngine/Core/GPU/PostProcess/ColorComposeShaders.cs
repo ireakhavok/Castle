@@ -89,6 +89,9 @@ namespace SiegeEngine.Core.GPU.PostProcess
             uniform float uContrast;
             uniform float uSaturation;
             uniform float uTemperature;
+            uniform int uAutoExposure;
+            uniform sampler2D uAdaptedLuma;
+            uniform float uTargetLuma;
 
             float Luma(vec3 c)
             {
@@ -116,7 +119,14 @@ namespace SiegeEngine.Core.GPU.PostProcess
                 if (uHasBloom == 1)
                     hdr += max(texture(uBloom, vUv).rgb, vec3(0.0)) * uBloomIntensity;
 
-                hdr *= max(uExposure, 0.05);
+                float ev = max(uExposure, 0.05);
+                if (uAutoExposure == 1)
+                {
+                    float adapted = max(texture(uAdaptedLuma, vec2(0.5)).r, 0.04);
+                    float ratio = clamp(uTargetLuma / adapted, 0.78, 1.35);
+                    ev *= mix(1.0, ratio, 0.45);
+                }
+                hdr *= ev;
 
                 vec3 mapped = hdr;
                 if (uTonemap == 1)
@@ -137,5 +147,59 @@ namespace SiegeEngine.Core.GPU.PostProcess
 
                 FragColor = vec4(mapped, 1.0);
             }";
+ 
+        public const string LumaFragment = @"
+            #version 330 core
+            in vec2 vUv;
+            out vec4 FragColor;
+            uniform sampler2D uColor;
+
+            void main()
+            {
+                vec3 hdr = max(texture(uColor, vUv).rgb, vec3(0.0));
+                float luma = dot(hdr, vec3(0.2126, 0.7152, 0.0722));
+                vec2 d = vUv - vec2(0.5);
+                float w = exp(-dot(d, d) * 10.0);
+                FragColor = vec4(luma * w, w, 0.0, 1.0);
+            }";
+
+        public const string LumaDownFragment = @"
+            #version 330 core
+            in vec2 vUv;
+            out vec4 FragColor;
+            uniform sampler2D uColor;
+            uniform vec2 uInvResolution;
+
+            void main()
+            {
+                vec2 rcp = uInvResolution;
+                vec4 acc = vec4(0.0);
+                acc += texture(uColor, vUv + vec2(-rcp.x, -rcp.y));
+                acc += texture(uColor, vUv + vec2( rcp.x, -rcp.y));
+                acc += texture(uColor, vUv + vec2(-rcp.x,  rcp.y));
+                acc += texture(uColor, vUv + vec2( rcp.x,  rcp.y));
+                FragColor = acc * 0.25;
+            }";
+
+        public const string AdaptFragment = @"
+            #version 330 core
+            in vec2 vUv;
+            out vec4 FragColor;
+            uniform sampler2D uCurrent;
+            uniform sampler2D uPrevious;
+            uniform float uAdapt;
+            uniform int uHasPrev;
+
+            void main()
+            {
+                vec4 cur = texture(uCurrent, vec2(0.5));
+                float current = cur.r / max(cur.g, 1e-4);
+                float prev = current;
+                if (uHasPrev == 1)
+                    prev = texture(uPrevious, vec2(0.5)).r;
+                float adapted = mix(prev, current, clamp(uAdapt, 0.0, 1.0));
+                FragColor = vec4(adapted, 1.0, 0.0, 1.0);
+            }";
+
     }
 }

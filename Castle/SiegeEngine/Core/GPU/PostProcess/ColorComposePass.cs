@@ -3,6 +3,7 @@
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
 using System;
+using System.Diagnostics;
 
 namespace SiegeEngine.Core.GPU.PostProcess
 {
@@ -22,7 +23,12 @@ namespace SiegeEngine.Core.GPU.PostProcess
         private ShaderProgram _down;
         private ShaderProgram _up;
         private ShaderProgram _compose;
+        private ShaderProgram _luma;
+        private ShaderProgram _lumaDown;
+        private ShaderProgram _adapt;
         private uint _emptyVao;
+        private long _lastAdaptStamp;
+        private bool _hasAdapted;
 
         private int _width;
         private int _height;
@@ -35,6 +41,15 @@ namespace SiegeEngine.Core.GPU.PostProcess
         private readonly int[] _mipH = new int[MipCount];
         private uint _composeFbo;
         private uint _composeColor;
+        private uint _lumaFbo;
+        private uint _lumaColor;
+        private uint _lumaDownFbo;
+        private uint _lumaDownColor;
+        private uint _adaptFboA;
+        private uint _adaptColorA;
+        private uint _adaptFboB;
+        private uint _adaptColorB;
+        private bool _adaptPing;
 
         private bool _disposed;
 
@@ -46,7 +61,11 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _down = new ShaderProgram(_rc, ColorComposeShaders.FullscreenVertex, ColorComposeShaders.DownsampleFragment);
             _up = new ShaderProgram(_rc, ColorComposeShaders.FullscreenVertex, ColorComposeShaders.UpsampleFragment);
             _compose = new ShaderProgram(_rc, ColorComposeShaders.FullscreenVertex, ColorComposeShaders.ComposeFragment);
+            _luma = new ShaderProgram(_rc, ColorComposeShaders.FullscreenVertex, ColorComposeShaders.LumaFragment);
+            _lumaDown = new ShaderProgram(_rc, ColorComposeShaders.FullscreenVertex, ColorComposeShaders.LumaDownFragment);
+            _adapt = new ShaderProgram(_rc, ColorComposeShaders.FullscreenVertex, ColorComposeShaders.AdaptFragment);
             _emptyVao = _rc.GenVertexArray();
+            _lastAdaptStamp = Stopwatch.GetTimestamp();
         }
 
         public uint ResolveColor => _composeColor;
@@ -115,14 +134,21 @@ namespace SiegeEngine.Core.GPU.PostProcess
                 bloomTex = _mipColor[0];
             }
 
+            uint adaptedTex = 0;
+            if (state.AutoExposure)
+                adaptedTex = MeterView(sourceColor, state);
+
             _rc.BindFramebuffer(_e.Framebuffer, _composeFbo);
             _rc.Viewport(0, 0, (uint)_width, (uint)_height);
             _compose.Use();
             Bind0(sourceColor);
             _rc.ActiveTexture(_e.Texture0 + 1);
             _rc.BindTexture(_e.Texture2D, bloomTex);
+            _rc.ActiveTexture(_e.Texture0 + 2);
+            _rc.BindTexture(_e.Texture2D, adaptedTex);
             _compose.SetUniform("uColor", 0);
             _compose.SetUniform("uBloom", 1);
+            _compose.SetUniform("uAdaptedLuma", 2);
             _compose.SetUniform("uHasBloom", bloomTex != 0 ? 1 : 0);
             _compose.SetUniform("uBloomIntensity", state.BloomIntensity);
             _compose.SetUniform("uExposure", state.Exposure);
@@ -130,7 +156,11 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _compose.SetUniform("uContrast", state.Contrast);
             _compose.SetUniform("uSaturation", state.Saturation);
             _compose.SetUniform("uTemperature", state.Temperature);
+            _compose.SetUniform("uAutoExposure", state.AutoExposure ? 1 : 0);
+            _compose.SetUniform("uTargetLuma", state.TargetLuma);
             DrawFullscreen();
+            _rc.ActiveTexture(_e.Texture0 + 2);
+            _rc.BindTexture(_e.Texture2D, 0);
             _rc.ActiveTexture(_e.Texture0 + 1);
             _rc.BindTexture(_e.Texture2D, 0);
             _rc.ActiveTexture(_e.Texture0);
@@ -145,15 +175,72 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _down?.Dispose();
             _up?.Dispose();
             _compose?.Dispose();
+            _luma?.Dispose();
+            _lumaDown?.Dispose();
+            _adapt?.Dispose();
             _extract = null;
             _down = null;
             _up = null;
             _compose = null;
+            _luma = null;
+            _lumaDown = null;
+            _adapt = null;
             if (_emptyVao != 0)
             {
                 _rc.DeleteVertexArray(_emptyVao);
                 _emptyVao = 0;
             }
+        }
+
+
+        private uint MeterView(uint sourceColor, ColorComposeState state)
+        {
+            int lumaW = Math.Max(_width / 8, 8);
+            int lumaH = Math.Max(_height / 8, 8);
+
+            _rc.BindFramebuffer(_e.Framebuffer, _lumaFbo);
+            _rc.Viewport(0, 0, (uint)lumaW, (uint)lumaH);
+            _luma.Use();
+            Bind0(sourceColor);
+            _luma.SetUniform("uColor", 0);
+            DrawFullscreen();
+
+            _rc.BindFramebuffer(_e.Framebuffer, _lumaDownFbo);
+            _rc.Viewport(0, 0, 8, 8);
+            _lumaDown.Use();
+            Bind0(_lumaColor);
+            _lumaDown.SetUniform("uColor", 0);
+            _lumaDown.SetUniform("uInvResolution", 1f / lumaW, 1f / lumaH);
+            DrawFullscreen();
+
+            long now = Stopwatch.GetTimestamp();
+            float dt = (now - _lastAdaptStamp) / (float)Stopwatch.Frequency;
+            if (dt < 0f || dt > 0.25f) dt = 0.016f;
+            _lastAdaptStamp = now;
+            float tau = MathF.Max(state.AdaptSeconds, 0.05f);
+            float k = 1f - MathF.Exp(-dt / tau);
+
+            uint prevTex = _adaptPing ? _adaptColorB : _adaptColorA;
+            uint destFbo = _adaptPing ? _adaptFboA : _adaptFboB;
+            uint destTex = _adaptPing ? _adaptColorA : _adaptColorB;
+
+            _rc.BindFramebuffer(_e.Framebuffer, destFbo);
+            _rc.Viewport(0, 0, 1, 1);
+            _adapt.Use();
+            Bind0(_lumaDownColor);
+            _rc.ActiveTexture(_e.Texture0 + 1);
+            _rc.BindTexture(_e.Texture2D, _hasAdapted ? prevTex : destTex);
+            _adapt.SetUniform("uCurrent", 0);
+            _adapt.SetUniform("uPrevious", 1);
+            _adapt.SetUniform("uAdapt", k);
+            _adapt.SetUniform("uHasPrev", _hasAdapted ? 1 : 0);
+            DrawFullscreen();
+            _rc.ActiveTexture(_e.Texture0 + 1);
+            _rc.BindTexture(_e.Texture2D, 0);
+
+            _adaptPing = !_adaptPing;
+            _hasAdapted = true;
+            return destTex;
         }
 
         private void EnsureTargets(int width, int height)
@@ -182,6 +269,16 @@ namespace SiegeEngine.Core.GPU.PostProcess
 
             _composeColor = CreateColor(width, height, preferHdr: false);
             _composeFbo = CreateFbo(_composeColor);
+
+            _lumaColor = CreateColor(Math.Max(width / 8, 8), Math.Max(height / 8, 8), preferHdr: true);
+            _lumaFbo = CreateFbo(_lumaColor);
+            _lumaDownColor = CreateColor(8, 8, preferHdr: true);
+            _lumaDownFbo = CreateFbo(_lumaDownColor);
+            _adaptColorA = CreateColor(1, 1, preferHdr: true);
+            _adaptFboA = CreateFbo(_adaptColorA);
+            _adaptColorB = CreateColor(1, 1, preferHdr: true);
+            _adaptFboB = CreateFbo(_adaptColorB);
+            _hasAdapted = false;
         }
 
         private uint CreateColor(int width, int height, bool preferHdr)
@@ -237,8 +334,17 @@ namespace SiegeEngine.Core.GPU.PostProcess
             }
             DeleteFbo(ref _composeFbo);
             DeleteTex(ref _composeColor);
+            DeleteFbo(ref _lumaFbo);
+            DeleteTex(ref _lumaColor);
+            DeleteFbo(ref _lumaDownFbo);
+            DeleteTex(ref _lumaDownColor);
+            DeleteFbo(ref _adaptFboA);
+            DeleteTex(ref _adaptColorA);
+            DeleteFbo(ref _adaptFboB);
+            DeleteTex(ref _adaptColorB);
             _width = 0;
             _height = 0;
+            _hasAdapted = false;
         }
 
         private void DeleteFbo(ref uint fbo)

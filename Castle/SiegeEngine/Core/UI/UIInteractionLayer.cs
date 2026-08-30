@@ -95,7 +95,7 @@ namespace SiegeEngine.Core.UI
             {
                 bool isDropdownElement = IsDropdownElement(clickable);
                 bool isContext = IsContextMenuElement(clickable);
-                Vector2 effectiveMouse = (isDropdownElement || isContext) ? relMousePos : scrolledMousePos;
+                Vector2 effectiveMouse = isContext ? relMousePos : scrolledMousePos;
                 clickable.UpdateHover(effectiveMouse, vw, vh);
             }
             // Outside-click blur: press not over any text input → clear focus so cursor disappears.

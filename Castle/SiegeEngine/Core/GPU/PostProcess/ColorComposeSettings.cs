@@ -26,6 +26,9 @@ namespace SiegeEngine.Core.GPU.PostProcess
         public readonly float Contrast;
         public readonly float Saturation;
         public readonly float Temperature;
+        public readonly bool AutoExposure;
+        public readonly float AdaptSeconds;
+        public readonly float TargetLuma;
 
         public ColorComposeState(
             float exposure,
@@ -35,7 +38,10 @@ namespace SiegeEngine.Core.GPU.PostProcess
             float bloomIntensity,
             float contrast,
             float saturation,
-            float temperature)
+            float temperature,
+            bool autoExposure,
+            float adaptSeconds,
+            float targetLuma)
         {
             Exposure = Math.Clamp(exposure, 0.05f, 8f);
             Tonemap = tonemap;
@@ -45,15 +51,20 @@ namespace SiegeEngine.Core.GPU.PostProcess
             Contrast = Math.Clamp(contrast, 0.2f, 3f);
             Saturation = Math.Clamp(saturation, 0f, 3f);
             Temperature = Math.Clamp(temperature, -1f, 1f);
+            AutoExposure = autoExposure;
+            AdaptSeconds = Math.Clamp(adaptSeconds, 0.05f, 8f);
+            TargetLuma = Math.Clamp(targetLuma, 0.05f, 0.6f);
         }
 
         public static ColorComposeState Neutral => new ColorComposeState(
-            1f, TonemapMode.Off, false, 1f, 0.35f, 1f, 1f, 0f);
+            1f, TonemapMode.Off, false, 1f, 0.35f, 1f, 1f, 0f, false, 1.4f, 0.26f);
 
         public bool IsIdentity
         {
             get
             {
+                if (AutoExposure)
+                    return false;
                 if (BloomEnabled && BloomIntensity > 0.001f)
                     return false;
                 if (Tonemap != TonemapMode.Off)
@@ -92,16 +103,18 @@ namespace SiegeEngine.Core.GPU.PostProcess
             if (env == null)
                 return ColorComposeState.Neutral;
 
-            TonemapMode tonemap = ParseTonemap(env.Tonemap);
             return new ColorComposeState(
                 env.Exposure <= 0f ? 1f : env.Exposure,
-                tonemap,
+                ParseTonemap(env.Tonemap),
                 env.BloomEnabled,
                 env.BloomThreshold <= 0f ? 1f : env.BloomThreshold,
                 env.BloomIntensity,
                 env.Contrast <= 0f ? 1f : env.Contrast,
                 env.Saturation < 0f ? 1f : env.Saturation,
-                env.Temperature);
+                env.Temperature,
+                env.AutoExposure,
+                env.AdaptSeconds <= 0f ? 1.4f : env.AdaptSeconds,
+                env.TargetLuma <= 0f ? 0.26f : env.TargetLuma);
         }
 
         public static TonemapMode ParseTonemap(string value)

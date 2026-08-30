@@ -584,7 +584,7 @@ namespace SiegeEngine.Core.UI
             Matrix4x4 rootMatrix = Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
             _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h, rootMatrix);
             foreach (var sel in _interactionLayer._openSelects)
-                sel.RenderDropdown(_renderContext, _textRenderer, _quadRenderer, w, h);
+                sel.RenderDropdown(_renderContext, _textRenderer, _quadRenderer, w, h, rootMatrix);
             if (_currentContextMenu != null)
             {
                 _currentContextMenu.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 14f);

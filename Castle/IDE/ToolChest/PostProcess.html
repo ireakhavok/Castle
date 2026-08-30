@@ -159,6 +159,14 @@
                 </select>
             </div>
         </div>
+        <div class="check">
+            <input id="pp-auto-exposure" type="checkbox">
+            <div class="field">Auto exposure</div>
+        </div>
+        <div class="field">Adapt seconds</div>
+        <input id="pp-adapt-seconds" type="range" min="0.4" max="3" step="0.05" value="1.4">
+        <div id="pp-adapt-seconds-val" class="readout">1.40</div>
+        <div class="hint">Leave tonemap Off. Auto exposure meters the view and eases as you enter a room.</div>
 
         <div class="section">BLOOM</div>
         <div class="check">
@@ -177,7 +185,7 @@
                 <div id="pp-bloom-intensity-val" class="readout">0.35</div>
             </div>
         </div>
-        <div class="hint">Bloom extracts brights, then tonemap. Raise sun intensity first.</div>
+        <div class="hint">Threshold is scene brightness. On this path 0.7-1.0 blooms highlights. 2.5 blooms nothing.</div>
 
         <div class="section">GRADE</div>
         <div class="field">Contrast</div>

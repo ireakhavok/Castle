@@ -116,6 +116,9 @@ namespace ToolChest
             SetReadout("pp-saturation-val", env.Saturation.ToString("0.00", CultureInfo.InvariantCulture));
             SetInput("pp-temperature", env.Temperature.ToString("0.00", CultureInfo.InvariantCulture));
             SetReadout("pp-temperature-val", env.Temperature.ToString("0.00", CultureInfo.InvariantCulture));
+            SetCheckbox("pp-auto-exposure", env.AutoExposure);
+            SetInput("pp-adapt-seconds", env.AdaptSeconds.ToString("0.00", CultureInfo.InvariantCulture));
+            SetReadout("pp-adapt-seconds-val", env.AdaptSeconds.ToString("0.00", CultureInfo.InvariantCulture));
         }
 
         private string _lastAzimuthText;
@@ -127,6 +130,7 @@ namespace ToolChest
         private string _lastContrastText;
         private string _lastSaturationText;
         private string _lastTemperatureText;
+        private string _lastAdaptText;
 
         private void SyncSliderReadouts()
         {
@@ -156,6 +160,7 @@ namespace ToolChest
             SyncFloatReadout("pp-contrast", "pp-contrast-val", 1f, "0.00", ref _lastContrastText);
             SyncFloatReadout("pp-saturation", "pp-saturation-val", 1f, "0.00", ref _lastSaturationText);
             SyncFloatReadout("pp-temperature", "pp-temperature-val", 0f, "0.00", ref _lastTemperatureText);
+            SyncFloatReadout("pp-adapt-seconds", "pp-adapt-seconds-val", 1.4f, "0.00", ref _lastAdaptText);
         }
 
         private void SyncFloatReadout(string inputId, string readoutId, float fallback, string format, ref string last)
@@ -191,6 +196,8 @@ namespace ToolChest
             float contrast = ParseFloat(GetInputValue("pp-contrast"), 1f);
             float saturation = ParseFloat(GetInputValue("pp-saturation"), 1f);
             float temperature = ParseFloat(GetInputValue("pp-temperature"), 0f);
+            bool autoExposure = GetChecked("pp-auto-exposure");
+            float adaptSeconds = ParseFloat(GetInputValue("pp-adapt-seconds"), 1.4f);
 
             var env = CommitEnvironment(direction, intensity, sunEnabled, sunCast, shadowQuality, fogMode, fogQuality, density, start, shadowSmooth);
             env.Exposure = exposure < 0.05f ? 0.05f : exposure;
@@ -201,6 +208,8 @@ namespace ToolChest
             env.Contrast = contrast < 0.2f ? 0.2f : contrast;
             env.Saturation = saturation < 0f ? 0f : saturation;
             env.Temperature = temperature;
+            env.AutoExposure = autoExposure;
+            env.AdaptSeconds = adaptSeconds < 0.05f ? 0.05f : adaptSeconds;
             LightingSettings.BindAuthored(env);
             LightingFrame.Current = null;
 
@@ -226,7 +235,9 @@ namespace ToolChest
                     { "bloomIntensity", bloomIntensity.ToString(CultureInfo.InvariantCulture) },
                     { "contrast", contrast.ToString(CultureInfo.InvariantCulture) },
                     { "saturation", saturation.ToString(CultureInfo.InvariantCulture) },
-                    { "temperature", temperature.ToString(CultureInfo.InvariantCulture) }
+                    { "temperature", temperature.ToString(CultureInfo.InvariantCulture) },
+                    { "autoExposure", autoExposure ? "true" : "false" },
+                    { "adaptSeconds", adaptSeconds.ToString(CultureInfo.InvariantCulture) }
                 }
             });
         }

@@ -175,6 +175,15 @@ namespace SiegeEngine.Core.Definitions
 
         [JsonPropertyName("temperature")]
         public float Temperature { get; set; } = 0f;
+
+        [JsonPropertyName("autoExposure")]
+        public bool AutoExposure { get; set; } = false;
+
+        [JsonPropertyName("adaptSeconds")]
+        public float AdaptSeconds { get; set; } = 1.4f;
+
+        [JsonPropertyName("targetLuma")]
+        public float TargetLuma { get; set; } = 0.26f;
     }
 
     public class SkyboxData
