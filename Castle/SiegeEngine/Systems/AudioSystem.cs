@@ -353,6 +353,7 @@ namespace SiegeEngine.Systems
                 }
                 if (!reg.Started)
                 {
+                    if (MasterMuted) continue;
                     if (!_listenerValid) continue;
                     var bootstrap = PrimaryLosRayInternal(reg.Source.Position, _listenerPosition);
                     int h = PlaySpatial(reg.Source, bootstrap);
@@ -788,6 +789,33 @@ namespace SiegeEngine.Systems
                 if (handle == _currentPlaylistHandle) _currentPlaylistHandle = -1;
             }
         }
+        public bool MasterMuted { get; private set; }
+
+        public void SetMuted(bool muted)
+        {
+            MasterMuted = muted;
+            if (muted) StopAll();
+            else ResetAutoPlayHandles();
+        }
+
+        public void PauseAll()
+        {
+            StopAll();
+            ResetAutoPlayHandles();
+        }
+
+        private void ResetAutoPlayHandles()
+        {
+            lock (_regsLock)
+            {
+                foreach (var reg in _autoPlayRegs)
+                {
+                    reg.Handle = -1;
+                    reg.Started = false;
+                }
+            }
+        }
+
         public void StopAll(bool musicOnly = false)
         {
             if (!musicOnly)

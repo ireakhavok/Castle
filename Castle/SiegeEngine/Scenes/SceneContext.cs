@@ -37,6 +37,12 @@ namespace SiegeEngine.Scenes
         /// </summary>
         public bool IsHostedPreview { get; set; } = false;
 
+        /// <summary>
+        /// Hosted inside an IDE panel (Play Host). Skip window callbacks.
+        /// Input is driven by the panel, not the whole window.
+        /// </summary>
+        public bool IsPanelHosted { get; set; } = false;
+
         public static SceneContext CreateCore(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
         {
             return new SceneContext { RenderContext = renderContext, ControlContext = controlContext, Window = window, Server = server, EventBus = eventBus };

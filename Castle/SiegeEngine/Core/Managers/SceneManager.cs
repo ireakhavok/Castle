@@ -160,11 +160,7 @@ namespace SiegeEngine.Core.Managers
             // Play Game was building LightingFrame from SceneManager._server,
             // which this path never assigned. Render() then passed an empty
             // entity list so placed point/spot lights never reached the GPU.
-            _server = new ClientGameServerProxy(_eventBus);
-            var ctx = SceneContext.CreateForRuntime(level, reconstructedSceneData ?? new SceneData { Name = levelName }, _renderContext, _controlContext, _window, _server, _eventBus);
-            ctx.PlayProjectPath = projectPath;
-            ctx.LoadLevelName = levelName;
-            ctx.CurrentLevel = level;
+            float[,] heightmap = null;
             if (reconstructedSceneData?.Terrain != null && reconstructedSceneData.Terrain.EmbeddedHeightmapData != null && reconstructedSceneData.Terrain.EmbeddedHeightmapWidth > 0 && reconstructedSceneData.Terrain.EmbeddedHeightmapHeight > 0)
             {
                 int w = reconstructedSceneData.Terrain.EmbeddedHeightmapWidth;
@@ -172,40 +168,22 @@ namespace SiegeEngine.Core.Managers
                 float[] flat = reconstructedSceneData.Terrain.EmbeddedHeightmapData;
                 if (flat != null && flat.Length >= w * h)
                 {
-                    var map = new float[w, h];
+                    heightmap = new float[w, h];
                     for (int x = 0; x < w; x++)
                         for (int y = 0; y < h; y++)
-                            map[x, y] = flat[x * h + y];
-                    ctx.HeightmapSnapshot = map;
+                            heightmap[x, y] = flat[x * h + y];
                     Console.WriteLine($"[SceneManager] HeightmapSnapshot populated from embedded transfer data ({w}x{h})");
                 }
             }
-            _modelManager = new ModelManager(_renderContext);
-            ctx.ModelManager = _modelManager;
-            if (!string.IsNullOrEmpty(projectPath))
-            {
-                ModelManager.EnsurePacksLoaded(projectPath, level);
-            }
-            var predictionSystem = new ClientPredictionSystem(ctx.Server, _eventBus);
-            ctx.Server.AddSystem(predictionSystem);
-            ctx.Server.AddSystem(new AnimationSystem(ctx.Server));
-            ctx.Server.AddSystem(new AudioSystem(ctx.Server, _eventBus, false, null, _renderContext));
-            ctx.Player = null;
-            ctx.PlayerMovement = null;
-            // Activate first so [CustomSceneEntry] factories are registered before resolution.
-            ScriptLoader.ActivateProjectScripts(ctx, _inputHandler, predictionSystem);
-            if (ctx.PlayerMovement == null)
-            {
-                ctx.PlayerMovement = new PlayerMovement(_inputHandler, predictionSystem, _eventBus);
-            }
+            var ctx = RuntimePlayStart.BuildContext(
+                _renderContext, _controlContext, _window, _eventBus, _inputHandler,
+                projectPath, levelName, level, reconstructedSceneData ?? new SceneData { Name = levelName },
+                heightmap, panelHosted: false);
+            _server = ctx.Server;
+            _modelManager = ctx.ModelManager;
             _playerMovement = ctx.PlayerMovement;
             _player = ctx.Player;
-            // First-class resolution: pure-client [CustomSceneEntry] or classic RuntimeGameplay.
-            string preferred = SceneRegistry.ResolvePreferredSceneName(levelName, reconstructedSceneData ?? ctx.SceneData);
-            if (!SceneRegistry.IsRegistered(preferred))
-                preferred = "RuntimeGameplay";
-            Console.WriteLine($"[SceneManager] Resolved preferred scene '{preferred}' (level='{levelName}', CustomSceneClass='{reconstructedSceneData?.CustomSceneClass}')");
-            _currentScene = (Scene)SceneRegistry.Create(preferred, ctx);
+            _currentScene = RuntimePlayStart.CreateScene(ctx, levelName);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             // Custom scenes sometimes skip rehydrate. If the server is still
             // empty, push the Level snapshot so lights and casters exist.
@@ -214,7 +192,7 @@ namespace SiegeEngine.Core.Managers
                 foreach (var e in level.Entities)
                     _server.AddEntity(e);
             }
-            Console.WriteLine($"[SceneManager] '{preferred}' active with FULL editor snapshot - entities rehydrated and added, serverEntities={_server?.GetEntities()?.Count ?? 0}, lights={CountLights(level)}");
+            Console.WriteLine("[SceneManager] " + (_currentScene?.GetType().Name ?? "?") + " active with FULL editor snapshot - entities rehydrated and added, serverEntities=" + (_server?.GetEntities()?.Count ?? 0) + ", lights=" + CountLights(level));
         }
 
         private static void MergeLightEntities(Level level, SceneData sceneData)

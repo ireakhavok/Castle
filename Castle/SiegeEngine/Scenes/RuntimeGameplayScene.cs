@@ -29,6 +29,10 @@ namespace SiegeEngine.Scenes
         private bool _firstFrame = true;
         private ModelManager _modelManager;
         private bool _usePlayerCamera = false;
+        private bool _panelHosted = false;
+        private bool _inputLive = false;
+        private float _frameScroll = 0f;
+        private bool _paused = false;
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -57,6 +61,7 @@ namespace SiegeEngine.Scenes
             {
                 Console.WriteLine($"[RuntimeGameplayScene] ✅ MenuCommands command-line parsed → Project: {projectPath} | Level: {levelName}");
             }
+            _panelHosted = ctx != null && (ctx.IsPanelHosted || ctx.IsHostedPreview);
             if (ctx != null && ctx.CurrentLevel != null && ctx.CurrentLevel.Entities.Count > 0)
             {
                 Console.WriteLine($"[RuntimeGameplayScene] Rich ctx from registry with {ctx.CurrentLevel.Entities.Count} entities - preserving");
@@ -79,6 +84,7 @@ namespace SiegeEngine.Scenes
                 _sceneData.Name = levelName ?? "Main";
             _eventBus.Publish(new SceneActivatedEvent(levelName));
             _player?.InitializeCamera(_controlContext, _window);
+            BindCameraGround();
         }
         public override void Initialize(int width, int height)
         {
@@ -86,13 +92,17 @@ namespace SiegeEngine.Scenes
             _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
             _modelRenderer.Initialize();
             SetupPureRuntimeWorld();
-            _controlContext.SetScrollCallback(_window, (w, xoffset, yoffset) => { });
-            _controlContext.SetWindowSizeCallback(_window, (w, newWidth, newHeight) =>
+            if (!_panelHosted)
             {
-                if (newWidth > 0 && newHeight > 0)
-                    Resize(newWidth, newHeight);
-            });
+                _controlContext.SetScrollCallback(_window, (w, xoffset, yoffset) => { });
+                _controlContext.SetWindowSizeCallback(_window, (w, newWidth, newHeight) =>
+                {
+                    if (newWidth > 0 && newHeight > 0)
+                        Resize(newWidth, newHeight);
+                });
+            }
             _player?.InitializeCamera(_controlContext, _window);
+            BindCameraGround();
             if (!_usePlayerCamera)
                 ForceVisibleOverheadCamera();
             BuildTexturedMesh();
@@ -108,10 +118,17 @@ namespace SiegeEngine.Scenes
             _flyCamera.Update(0f, 0f, true);
             _flyCamera.RefreshViewMatrix();
         }
+        private void BindCameraGround()
+        {
+            if (_player?.Camera == null || _heightmap == null) return;
+            _player.Camera.SetGroundQuery(new HeightmapAdapter(_heightmap, 1.0f, 1.0f));
+        }
         private void EnsureHeightProvider()
         {
             if (_heightmap == null || _server == null) return;
-            _server.SetHeightProvider(new HeightmapAdapter(_heightmap, 1.0f, 1.0f));
+            var ground = new HeightmapAdapter(_heightmap, 1.0f, 1.0f);
+            _server.SetHeightProvider(ground);
+            _player?.Camera?.SetGroundQuery(ground);
         }
         protected override void LoadContentFromContext(SceneContext ctx)
         {
@@ -364,6 +381,7 @@ namespace SiegeEngine.Scenes
                     Console.WriteLine($"[RuntimeGameplayScene] Player entity {_player.EntityId} created with shared PhysicsComponent");
                 }
                 _player.InitializeCamera(_controlContext, _window);
+                BindCameraGround();
             }
             if (!_usePlayerCamera)
             {
@@ -477,21 +495,42 @@ namespace SiegeEngine.Scenes
             }
             _terrainBuffer.UpdateCustomWithUV(vertices, indices);
         }
+        public void SetInputLive(bool live)
+        {
+            _inputLive = live;
+        }
+
+        public void SetScrollDelta(float scroll)
+        {
+            _frameScroll = scroll;
+        }
+
+        public void SetPaused(bool paused)
+        {
+            _paused = paused;
+        }
+
+        public AudioSystem HostedAudio => _server?.GetSystem<AudioSystem>();
+
         public override void Update(float deltaTime)
         {
+            if (_paused)
+                return;
             // Movement first, then physics — contact corrections must be the last write to Position.
-            if (_usePlayerCamera && _player?.Camera != null)
+            bool driveCamera = !_panelHosted || _inputLive;
+            if (driveCamera && _usePlayerCamera && _player?.Camera != null)
             {
-                _player.Camera.Update(deltaTime, 0f, true);
+                _player.Camera.Update(deltaTime, _frameScroll, true);
                 if (_playerMovement != null)
                 {
                     _playerMovement.Update(_player, deltaTime, (id, pos, rotation) => { }, _player.Camera);
                 }
             }
-            else
+            else if (driveCamera)
             {
-                _flyCamera.Update(deltaTime, 0f, true);
+                _flyCamera.Update(deltaTime, _frameScroll, true);
             }
+            _frameScroll = 0f;
             base.Update(deltaTime);
             if (_usePlayerCamera && _player?.Camera != null)
                 _player.Camera.RefreshFromPhysics();
@@ -534,10 +573,16 @@ namespace SiegeEngine.Scenes
 
         protected override void RenderOverlay(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
+            // Standalone Play Game draws HUD through PanelManager.
+            // Hosted in PlayHostPanel we are ALREADY inside PanelManager.Render —
+            // calling it again is a stack overflow.
+            if (_panelHosted) return;
             PanelManager.Current?.Render();
         }
         public override void Dispose()
         {
+            try { HostedAudio?.StopAll(); } catch { }
+            try { HostedAudio?.Dispose(); } catch { }
             _terrainShader?.Dispose();
             _modelRenderer?.Dispose();
             base.Dispose();

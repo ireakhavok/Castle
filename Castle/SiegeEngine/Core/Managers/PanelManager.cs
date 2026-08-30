@@ -44,6 +44,7 @@ namespace SiegeEngine.Core.Managers
             _ideStrategy = new IDEDockingStrategy(renderContext, controlContext, window, eventBus);
             _eventBus.Subscribe<OpenPanelEvent>(OnOpenPanel);
             _eventBus.Subscribe<ClosePanelEvent>(OnClosePanel);
+            _eventBus.Subscribe<OpenGameHudEvent>(OnOpenGameHud);
             _controlContext.SetScrollCallback(_window, (nint w, double xoffset, double yoffset) =>
             {
                 _scrollDelta += (float)yoffset;
@@ -248,6 +249,27 @@ namespace SiegeEngine.Core.Managers
                 }
             }
         }
+        private readonly System.Collections.Generic.Dictionary<string, SiegeEngine.Core.UI.GameHudPanel> _gameHuds = new System.Collections.Generic.Dictionary<string, SiegeEngine.Core.UI.GameHudPanel>();
+
+        private void OnOpenGameHud(OpenGameHudEvent e)
+        {
+            if (e == null || string.IsNullOrEmpty(e.HtmlRelativePath)) return;
+            string key = e.HtmlRelativePath;
+            if (!e.Open)
+            {
+                if (_gameHuds.TryGetValue(key, out var existing))
+                {
+                    RemovePanel(existing);
+                    _gameHuds.Remove(key);
+                }
+                return;
+            }
+            if (_gameHuds.ContainsKey(key)) return;
+            var hud = new SiegeEngine.Core.UI.GameHudPanel(_renderContext, _controlContext, _window, _eventBus, e);
+            _gameHuds[key] = hud;
+            AddPanel(hud);
+        }
+
         public void RemovePanel(IPanel panel)
         {
             if (_captureManager.CurrentOwner == panel)
