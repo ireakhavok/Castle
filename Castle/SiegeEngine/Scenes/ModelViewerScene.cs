@@ -545,26 +545,29 @@ namespace SiegeEngine.Scenes
             view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
             projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f);
         }
+        public override void Render(IReadOnlyList<Entity> entities)
+        {
+            GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection);
+            LightingFrame prev = LightingFrame.Current;
+            LightingFrame.Current = LightingFrame.Studio(_cameraPosition, _cameraTarget);
+            try
+            {
+                RenderContent(entities, view, projection);
+            }
+            finally
+            {
+                LightingFrame.Current = prev;
+            }
+        }
+
         protected override List<ShadowCaster> CollectShadowCasters(IReadOnlyList<Entity> entities)
         {
-            var list = ShadowMapRenderer.CollectCasters(entities);
-            if (_modelData?.MeshRenders != null)
-            {
-                list.Add(new ShadowCaster
-                {
-                    ModelMatrix = Matrix4x4.Identity,
-                    ModelData = _modelData,
-                    BoneMatrices = _boneMatrices,
-                    HasBones = _boneMatrices != null && _boneMatrices.Length > 0 && _model != null && _model.HasSkin,
-                    CastShadows = true
-                });
-            }
-            return list;
+            return new List<ShadowCaster>();
         }
 
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            _modelRenderer.RenderModel(_model, _modelData, view, projection, _cameraPosition, Matrix4x4.Identity, _boneMatrices, _currentNormalTransforms);
+            _modelRenderer.RenderModel(_model, _modelData, view, projection, _cameraPosition, Matrix4x4.Identity, _boneMatrices, _currentNormalTransforms, receiveShadows: false);
             if (_showSkeleton) _modelRenderer.RenderSkeletonDebug(_skeletonBuffer, _pointShader, view, projection);
             if (_bindSkeletonBuffer != null && _showBindPoseSkeleton) _modelRenderer.RenderSkeletonDebug(_bindSkeletonBuffer, _pointShader, view, projection);
         }

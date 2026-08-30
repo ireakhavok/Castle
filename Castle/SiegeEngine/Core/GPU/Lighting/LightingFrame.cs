@@ -343,6 +343,67 @@ namespace SiegeEngine.Core.GPU.Lighting
             renderContext.ActiveTexture(renderContext.Enums.Texture0);
         }
 
+        public static LightingFrame Studio(Vector3 cameraPos, Vector3 lookTarget)
+        {
+            Vector3 toModel = lookTarget - cameraPos;
+            float dist = toModel.Length();
+            if (dist < 1e-4f)
+            {
+                toModel = new Vector3(0f, 1f, 0f);
+                dist = 1f;
+            }
+            else
+                toModel /= dist;
+
+            // Key sits above the model and a little toward the camera (in front of the subject).
+            Vector3 keyPos = lookTarget - toModel * (dist * 0.22f) + Vector3.UnitZ * MathF.Max(1.6f, dist * 0.18f);
+            Vector3 travel = lookTarget - keyPos;
+            if (travel.LengthSquared() < 1e-8f)
+                travel = new Vector3(0f, 0f, -1f);
+            travel = Vector3.Normalize(travel);
+
+            var frame = new LightingFrame
+            {
+                AmbientColor = new Vector3(0.48f, 0.49f, 0.52f),
+                Sun = new GpuDirectionalLight
+                {
+                    Direction = travel,
+                    Color = new Vector3(1f, 0.97f, 0.93f),
+                    Intensity = 0.42f,
+                    CastShadows = false,
+                    ShadowBias = 0f,
+                    ShadowNormalBias = 0f,
+                    Technique = ShadowTechnique.None
+                },
+                Fog = new GpuFogState { Mode = FogMode.Off, Quality = FogQuality.Off },
+                ShadowQuality = ShadowQuality.Off,
+                ShadowsReady = false,
+                ShadowAtlas = 0,
+                PointShadowCube = 0,
+                SpotShadowMap = 0,
+                PointCount = 1,
+                SpotCount = 0,
+                CascadeCount = 0,
+                ShadowSmooth = false
+            };
+            frame.Points[0] = new GpuPointLight
+            {
+                Position = keyPos,
+                Color = new Vector3(1f, 0.96f, 0.90f),
+                Intensity = 0.22f,
+                Range = MathF.Max(8f, dist * 1.4f),
+                CastShadows = false,
+                Technique = ShadowTechnique.None
+            };
+            return frame;
+        }
+
+        public static LightingFrame BuildStudio(Vector3 keyDirection)
+        {
+            Vector3 dir = keyDirection.LengthSquared() < 1e-8f ? new Vector3(0f, 1f, 0f) : Vector3.Normalize(keyDirection);
+            return Studio(-dir * 8f, Vector3.Zero);
+        }
+
         private static GpuDirectionalLight PackDirectional(LightComponent light)
         {
             return new GpuDirectionalLight
