@@ -84,6 +84,7 @@ namespace SiegeEngine.Scenes
                 _sceneData.Name = levelName ?? "Main";
             _eventBus.Publish(new SceneActivatedEvent(levelName));
             _player?.InitializeCamera(_controlContext, _window);
+            BindCameraGround();
         }
         public override void Initialize(int width, int height)
         {
@@ -101,6 +102,7 @@ namespace SiegeEngine.Scenes
                 });
             }
             _player?.InitializeCamera(_controlContext, _window);
+            BindCameraGround();
             if (!_usePlayerCamera)
                 ForceVisibleOverheadCamera();
             BuildTexturedMesh();
@@ -116,10 +118,17 @@ namespace SiegeEngine.Scenes
             _flyCamera.Update(0f, 0f, true);
             _flyCamera.RefreshViewMatrix();
         }
+        private void BindCameraGround()
+        {
+            if (_player?.Camera == null || _heightmap == null) return;
+            _player.Camera.SetGroundQuery(new HeightmapAdapter(_heightmap, 1.0f, 1.0f));
+        }
         private void EnsureHeightProvider()
         {
             if (_heightmap == null || _server == null) return;
-            _server.SetHeightProvider(new HeightmapAdapter(_heightmap, 1.0f, 1.0f));
+            var ground = new HeightmapAdapter(_heightmap, 1.0f, 1.0f);
+            _server.SetHeightProvider(ground);
+            _player?.Camera?.SetGroundQuery(ground);
         }
         protected override void LoadContentFromContext(SceneContext ctx)
         {
@@ -372,6 +381,7 @@ namespace SiegeEngine.Scenes
                     Console.WriteLine($"[RuntimeGameplayScene] Player entity {_player.EntityId} created with shared PhysicsComponent");
                 }
                 _player.InitializeCamera(_controlContext, _window);
+                BindCameraGround();
             }
             if (!_usePlayerCamera)
             {
