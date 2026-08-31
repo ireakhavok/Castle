@@ -61,11 +61,13 @@ namespace SiegeEngine.Core.UI
                 IsHover = false;
                 changed = true;
             }
+            bool childHit = false;
             for (int i = Children.Count - 1; i >= 0; i--)
             {
-                if (Children[i].UpdateHover(mousePos, viewportWidth, viewportHeight)) return true;
+                if (Children[i].UpdateHover(mousePos, viewportWidth, viewportHeight))
+                    childHit = true;
             }
-            return over;
+            return over || childHit;
         }
     }
 }

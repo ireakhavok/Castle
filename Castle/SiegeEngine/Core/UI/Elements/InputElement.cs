@@ -12,6 +12,7 @@ namespace SiegeEngine.Core.UI.Elements
     {
         public string Type { get; set; }
         public string Value { get; set; } = "";
+        public string CommittedValue { get; set; } = "";
         public string Placeholder { get; set; } = "";
         private bool _cursorVisible = true;
         private float _cursorTimer = 0f;

@@ -27,6 +27,8 @@ namespace CastleBuilder
         private Scene _pendingDisposeHosted;
         private bool _scriptsActivatedForProject;
         private bool _coreSystemsRegistered;
+        private readonly List<string> _sceneUsageOrder = new List<string>();
+        private string _loadedProjectPath;
         public static EditorScene Current { get; private set; }
 
         // Editor viewport has no implicit sun. Place a Light entity.
@@ -50,7 +52,16 @@ namespace CastleBuilder
             base.Initialize(width, height);
             Current = this;
             RegisterCoreSystems();
+            EditorHistory.TransformApplied = ApplyLiveTransform;
             LoadProjectData();
+        }
+        private void ApplyLiveTransform(int entityId, Vector3 pos, System.Numerics.Quaternion rot)
+        {
+            var entity = GetEntityById(entityId);
+            var physics = entity?.GetComponent<PhysicsComponent>();
+            if (physics == null) return;
+            physics.Position = pos;
+            physics.Rotation = rot;
         }
         /// <summary>
         /// Same core systems SceneManager registers for Play.
@@ -73,6 +84,19 @@ namespace CastleBuilder
         public Entity GetEntityById(int id)
         {
             return _server.GetEntities().FirstOrDefault(e => e.Id == id);
+        }
+        public void RemoveLiveEntity(int id)
+        {
+            _server?.RemoveEntity(id);
+            ProjectSettings.Current.CurrentLevel?.RemoveEntity(id);
+        }
+        public void AddLiveEntity(Entity entity)
+        {
+            if (entity == null) return;
+            var level = ProjectSettings.Current.CurrentLevel;
+            if (level != null && !level.Entities.Exists(e => e.Id == entity.Id))
+                level.AddEntity(entity);
+            _server?.AddEntity(entity);
         }
         public GameScene GetActiveGameScene() => _activeGameScene;
         public IReadOnlyList<ContactManifold> GetContactManifolds()
@@ -207,10 +231,19 @@ namespace CastleBuilder
                 Console.WriteLine($"[EditorScene.SyncCurrentLevelToRuntimeServer] Idempotent sync: {level.Entities.Count} entities (loaded + new placements preserved)");
             }
         }
-        public void LoadProjectData()
+        public void LoadProjectData(bool forceFromDisk = false)
         {
-            _scriptsActivatedForProject = false;
             string projectPath = ProjectSettings.Current.ActiveProject;
+            if (!forceFromDisk && _projectData != null && _loadedProjectPath == projectPath && !string.IsNullOrEmpty(projectPath))
+            {
+                if (!string.IsNullOrEmpty(_currentGameSceneName) && _projectData.Scenes != null && _projectData.Scenes.ContainsKey(_currentGameSceneName))
+                    ActivateScene(_currentGameSceneName);
+                else if (_projectData.Scenes != null && _projectData.Scenes.Count > 0)
+                    ActivateScene(GetLastUsedScene() ?? System.Linq.Enumerable.First(_projectData.Scenes.Keys));
+                return;
+            }
+            _loadedProjectPath = projectPath;
+            _scriptsActivatedForProject = false;
             if (!string.IsNullOrEmpty(projectPath) && Directory.Exists(projectPath))
             {
                 string jsonPath = Path.Combine(projectPath, "project.json");
@@ -300,6 +333,7 @@ namespace CastleBuilder
                 HostChild(_activeGameScene);
                 _currentGameSceneName = sceneName;
                 if (_projectData != null) _projectData.LastOpenedScene = sceneName;
+                RecordSceneUsage(sceneName);
                 if (_activeGameScene is TerrainCreatorScene cachedTcs)
                 {
                     cachedTcs.LoadSceneData(sd);
@@ -323,6 +357,7 @@ namespace CastleBuilder
             }
             _currentGameSceneName = sceneName;
             if (_projectData != null) _projectData.LastOpenedScene = sceneName;
+            RecordSceneUsage(sceneName);
             if (_activeGameScene != null)
                 _pendingDisposeScene = _activeGameScene;
             if (_hostedCustomScene != null)
@@ -628,6 +663,104 @@ namespace CastleBuilder
             return scenes.ToList();
         }
         public string CurrentGameScene => _currentGameSceneName;
+        public IReadOnlyList<string> SceneUsageOrder => _sceneUsageOrder;
+        private void RecordSceneUsage(string sceneName)
+        {
+            if (string.IsNullOrEmpty(sceneName)) return;
+            _sceneUsageOrder.Remove(sceneName);
+            _sceneUsageOrder.Add(sceneName);
+        }
+        public string GetLastUsedScene(string excluding = null)
+        {
+            for (int i = _sceneUsageOrder.Count - 1; i >= 0; i--)
+            {
+                string name = _sceneUsageOrder[i];
+                if (name == excluding) continue;
+                if (_projectData?.Scenes != null && _projectData.Scenes.ContainsKey(name))
+                    return name;
+            }
+            if (_projectData?.Scenes != null)
+            {
+                foreach (var key in _projectData.Scenes.Keys)
+                {
+                    if (key != excluding) return key;
+                }
+            }
+            return null;
+        }
+        public bool DeleteScene(string sceneName)
+        {
+            if (string.IsNullOrEmpty(sceneName)) return false;
+            if (_projectData?.Scenes == null || !_projectData.Scenes.ContainsKey(sceneName))
+                return false;
+            string previous = GetLastUsedScene(sceneName);
+            bool wasCurrent = _currentGameSceneName == sceneName;
+            _projectData.Scenes.Remove(sceneName);
+            _sceneCache.Remove(sceneName);
+            _sceneUsageOrder.Remove(sceneName);
+            ProjectStateManager.Current.RemoveSceneState(sceneName);
+            if (wasCurrent)
+            {
+                if (!string.IsNullOrEmpty(previous) && _projectData.Scenes.ContainsKey(previous))
+                {
+                    ActivateScene(previous);
+                }
+                else
+                {
+                    _currentGameSceneName = string.Empty;
+                    _activeGameScene = null;
+                    _hostedCustomScene = null;
+                    ProjectSettings.Current.SetCurrentLevel(null);
+                    CloseSceneDependentPanels();
+                }
+            }
+            var bus = _eventBus;
+            if (bus != null)
+            {
+                var evt = new GenericEvent { Hook = "SceneDeleted" };
+                evt.Data["sceneName"] = sceneName;
+                evt.Data["activated"] = _currentGameSceneName ?? "";
+                bus.Publish(evt);
+            }
+            return true;
+        }
+        public void RestoreScene(string sceneName, SceneData sceneData, string activateName)
+        {
+            if (_projectData == null) _projectData = new ProjectData();
+            if (_projectData.Scenes == null) _projectData.Scenes = new Dictionary<string, SceneData>();
+            if (!string.IsNullOrEmpty(sceneName) && sceneData != null)
+                _projectData.Scenes[sceneName] = CloneSceneData(sceneData);
+            if (!string.IsNullOrEmpty(activateName) && _projectData.Scenes.ContainsKey(activateName))
+                ActivateScene(activateName);
+        }
+        public static SceneData CloneSceneData(SceneData src)
+        {
+            if (src == null) return null;
+            try
+            {
+                byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(src, EntityData.SerializerOptions);
+                return JsonSerializer.Deserialize<SceneData>(bytes, EntityData.SerializerOptions);
+            }
+            catch
+            {
+                return src;
+            }
+        }
+        public static void CloseSceneDependentPanels()
+        {
+            var pm = PanelManager.Current;
+            if (pm == null) return;
+            var toClose = new List<IPanel>();
+            foreach (var panel in pm.GetAllPanels())
+            {
+                if (panel == null) continue;
+                string name = panel.GetType().Name;
+                if (name == "SceneEditorPanel" || name == "TerrainCreatorPanel" || name == "TwoDCreatorPanel")
+                    toClose.Add(panel);
+            }
+            foreach (var panel in toClose)
+                panel.Close();
+        }
         public override void Dispose()
         {
             Current = null;

@@ -45,6 +45,7 @@ namespace CastleBuilder
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
             _eventBus.Subscribe<CreateTerrainEvent>(OnCreateTerrain);
             _configPath = GetDefaultIDEPath();
+            EditorHistory.Current.Initialize(_eventBus);
             Console.WriteLine("[BlueprintManager] Constructor finished - all events subscribed");
         }
         public static void Load(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -210,15 +211,14 @@ namespace CastleBuilder
             EditorScene.Current?.FlushActiveSceneData();
             // Commit typed Scene Settings AFTER terrain flush so SetCurrentTerrain cannot clobber them.
             FlushLiveEditorState();
-            string currentSceneName = ProjectSettings.Current.CurrentSceneName ?? "NewTerrain";
+            // Live EditorScene catalog is authoritative. Loading disk first and writing
+            // that dictionary back is what resurrected deleted scenes on Save.
+            ApplyLiveSceneCatalog(data);
+            string currentSceneName = ProjectSettings.Current.CurrentSceneName;
             var level = ProjectSettings.Current.CurrentLevel;
-            if (level != null)
+            if (level != null && !string.IsNullOrEmpty(currentSceneName) && data.Scenes.ContainsKey(currentSceneName))
             {
-                if (!data.Scenes.TryGetValue(currentSceneName, out var sceneData))
-                {
-                    sceneData = new SceneData { Name = currentSceneName, SceneType = "TerrainTest" };
-                    data.Scenes[currentSceneName] = sceneData;
-                }
+                var sceneData = data.Scenes[currentSceneName];
                 sceneData.Entities.Clear();
                 sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
                 sceneData.Terrain = level.Terrain ?? new TerrainData();
@@ -583,7 +583,7 @@ namespace CastleBuilder
             if (EditorScene.Current != null)
             {
                 Console.WriteLine("[BlueprintManager.OnLoadProject] Forcing EditorScene.LoadProjectData for newly loaded project");
-                EditorScene.Current.LoadProjectData();
+                EditorScene.Current.LoadProjectData(true);
             }
         }
         private void OnSaveProject(SaveProjectEvent evt)
@@ -623,6 +623,7 @@ namespace CastleBuilder
                     string json = File.ReadAllText(jsonPath);
                     var data = JsonSerializer.Deserialize<ProjectData>(json, EntityData.SerializerOptions) ?? new ProjectData();
                     data.LastContext = newContext;
+                    ApplyLiveSceneCatalog(data);
                     SaveAllPanelStates(data);
                     File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
                 }
@@ -670,6 +671,32 @@ namespace CastleBuilder
             Directory.CreateDirectory(Path.GetDirectoryName(_configPath));
             File.WriteAllText(_configPath, json);
         }
+        /// <summary>
+        /// Replace disk scene entries with the in-memory EditorScene catalog.
+        /// Scene delete is in-memory until Save; this is what makes Save persist it.
+        /// </summary>
+        private static void ApplyLiveSceneCatalog(ProjectData data)
+        {
+            if (data == null) return;
+            var live = EditorScene.Current?.GetProjectData();
+            if (live?.Scenes == null)
+            {
+                if (data.Scenes == null)
+                    data.Scenes = new Dictionary<string, SceneData>();
+                return;
+            }
+            data.Scenes = live.Scenes;
+            string last = live.LastOpenedScene;
+            if (string.IsNullOrEmpty(last))
+                last = EditorScene.Current?.CurrentGameScene;
+            if (!string.IsNullOrEmpty(last) && data.Scenes.ContainsKey(last))
+                data.LastOpenedScene = last;
+            else if (data.Scenes.Count > 0)
+                data.LastOpenedScene = new List<string>(data.Scenes.Keys)[0];
+            else
+                data.LastOpenedScene = string.Empty;
+        }
+
         private static void SaveAllPanelStates(ProjectData data)
         {
             if (data == null) return;

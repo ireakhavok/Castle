@@ -161,6 +161,29 @@ namespace Keystone
             if (string.IsNullOrEmpty(sceneName)) return;
             _sceneSettings[sceneName] = settings;
         }
+        public void RemoveSceneState(string sceneName)
+        {
+            if (string.IsNullOrEmpty(sceneName)) return;
+            if (_liveStates.TryGetValue(sceneName, out var state))
+            {
+                state.Dispose();
+                _liveStates.Remove(sceneName);
+            }
+            _openPaintData.Remove(sceneName);
+            _unsavedHeightmaps.Remove(sceneName);
+            _sceneSettings.Remove(sceneName);
+            if (_currentSceneName == sceneName)
+            {
+                _currentSceneData = null;
+                _currentHeightmap = null;
+                _currentSceneName = null;
+                _currentLevel = null;
+            }
+        }
+        public List<string> GetLiveSceneNames()
+        {
+            return new List<string>(_liveStates.Keys);
+        }
         public void Clear()
         {
             foreach (var state in _liveStates.Values)

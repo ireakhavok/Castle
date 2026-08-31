@@ -155,7 +155,15 @@
                         <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.SaveProjectAs">Save As...</li>
                     </ul>
                 </li>
-                <li class="nav-item" data-hook="CastleBuilder.MenuCommands.OpenEdit">Edit</li>
+                <li class="nav-item nav-dropdown">
+                    Edit
+                    <ul class="nav-dropdown-content">
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.Undo">Undo (Ctrl+Z)</li>
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.Redo">Redo (Ctrl+Y)</li>
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.DeleteSelected">Delete Selected (Del)</li>
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.DeleteScene">Delete Scene</li>
+                    </ul>
+                </li>
                 <li class="nav-item nav-dropdown">
                     Castle
                     <ul class="nav-dropdown-content">

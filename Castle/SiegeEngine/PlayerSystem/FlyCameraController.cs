@@ -78,7 +78,9 @@ namespace SiegeEngine.Scenes
             if (_controlContext.GetKey(_window, Key.A) == InputAction.Press) _position -= right * moveSpeed;
             if (_controlContext.GetKey(_window, Key.D) == InputAction.Press) _position += right * moveSpeed;
             if (_controlContext.GetKey(_window, Key.Space) == InputAction.Press) _position += Vector3.UnitZ * moveSpeed;
-            if (_controlContext.GetKey(_window, Key.LeftControl) == InputAction.Press) _position -= Vector3.UnitZ * moveSpeed;
+            if (_controlContext.GetKey(_window, Key.LeftControl) == InputAction.Press
+                || _controlContext.GetKey(_window, Key.RightControl) == InputAction.Press)
+                _position -= Vector3.UnitZ * moveSpeed;
             UpdateCamera();
         }
         public void UpdateCamera()

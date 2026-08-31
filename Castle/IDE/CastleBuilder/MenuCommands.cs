@@ -247,5 +247,37 @@ namespace CastleBuilder
             ScriptEditorPanel.Open(renderContext, controlContext, window, eventBus);
             Console.WriteLine("[MenuCommands] Script Editor Panel opened");
         }
+        public static void Undo(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            EditorHistory.Current.Initialize(eventBus);
+            EditorHistory.Current.Undo();
+        }
+        public static void Redo(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            EditorHistory.Current.Initialize(eventBus);
+            EditorHistory.Current.Redo();
+        }
+        public static void DeleteSelected(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            EditorHistory.Current.Initialize(eventBus);
+            EditorHistory.RequestDeleteSelection();
+        }
+        public static void DeleteScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            EditorHistory.Current.Initialize(eventBus);
+            var editor = EditorScene.Current;
+            if (editor == null) return;
+            string name = editor.CurrentGameScene;
+            if (string.IsNullOrEmpty(name)) return;
+            var project = editor.GetProjectData();
+            if (project?.Scenes == null || !project.Scenes.ContainsKey(name)) return;
+            editor.FlushActiveSceneData();
+            if (!project.Scenes.TryGetValue(name, out var live)) return;
+            var snapshot = EditorScene.CloneSceneData(live);
+            EditorHistory.Current.Execute(new DelegateCommand(
+                "Delete scene",
+                () => editor.DeleteScene(name),
+                () => editor.RestoreScene(name, snapshot, name)));
+        }
     }
 }

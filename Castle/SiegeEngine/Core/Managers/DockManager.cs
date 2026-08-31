@@ -33,7 +33,9 @@ namespace SiegeEngine.Core.Managers
         public DockNode Right { get; set; }
         public float SplitRatio { get; set; } = 0.5f;
         public bool IsVertical { get; set; }
+        public static Action<DockSplitNode, float, float> SplitterCommitted;
         private bool _draggingSplitter;
+        private float _dragStartRatio = 0.5f;
         private float _splitterSize = 5f;
         private const float SplitterGap = 2f;
 
@@ -133,6 +135,7 @@ namespace SiegeEngine.Core.Managers
                 if (FindDeepestSplitter(mousePos, out DockSplitNode deepest) && deepest != null)
                 {
                     deepest._draggingSplitter = true;
+                    deepest._dragStartRatio = deepest.SplitRatio;
                     return true;
                 }
             }
@@ -149,7 +152,12 @@ namespace SiegeEngine.Core.Managers
                 SplitRatio = Math.Clamp(SplitRatio, 0.1f, 0.9f);
                 return true;
             }
-            if (mouseReleased)
+            if (mouseReleased && _draggingSplitter)
+            {
+                _draggingSplitter = false;
+                SplitterCommitted?.Invoke(this, _dragStartRatio, SplitRatio);
+            }
+            else if (mouseReleased)
                 _draggingSplitter = false;
             return _draggingSplitter || childHandled;
         }

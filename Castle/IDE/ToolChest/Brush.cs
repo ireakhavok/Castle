@@ -11,6 +11,7 @@ namespace ToolChest
     }
     public enum BrushFalloff
     {
+        None,
         Linear,
         Gaussian
     }
@@ -27,7 +28,7 @@ namespace ToolChest
     public class Brush
     {
         public BrushShape Shape { get; set; } = BrushShape.Circle;
-        public BrushFalloff Falloff { get; set; } = BrushFalloff.Gaussian;
+        public BrushFalloff Falloff { get; set; } = BrushFalloff.None;
         public BrushMode Mode { get; set; } = BrushMode.Raise;
         public int PaintLayer { get; set; } = 0;
         public float Size { get; set; } = 10f;
@@ -108,7 +109,7 @@ namespace ToolChest
                 }
             }
         }
-        private bool IsInShape(float dx, float dz, float radius)
+        public bool IsInShape(float dx, float dz, float radius)
         {
             switch (Shape)
             {
@@ -120,7 +121,7 @@ namespace ToolChest
                     return false;
             }
         }
-        private float GetFalloff(float dx, float dz, float radius)
+        public float GetFalloff(float dx, float dz, float radius)
         {
             float dist = 0f;
             switch (Shape)
@@ -136,6 +137,8 @@ namespace ToolChest
             if (normDist >= 1f) return 0f;
             switch (Falloff)
             {
+                case BrushFalloff.None:
+                    return 1f;
                 case BrushFalloff.Linear:
                     return 1f - normDist;
                 case BrushFalloff.Gaussian:
@@ -143,6 +146,12 @@ namespace ToolChest
                 default:
                     return 1f;
             }
+        }
+        public float GetWeight(float dx, float dz, float radius)
+        {
+            if (radius <= 0f) return 0f;
+            if (!IsInShape(dx, dz, radius)) return 0f;
+            return GetFalloff(dx, dz, radius);
         }
         private float GetNeighborAverage(float[,] heightmap, int x, int z, int width, int height)
         {

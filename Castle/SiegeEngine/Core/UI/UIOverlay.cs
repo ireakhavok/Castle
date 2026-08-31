@@ -47,6 +47,7 @@ namespace SiegeEngine.Core.UI
         private bool _needsVerticalScrollbar = false;
         public bool DidHandleClick { get; set; }
         private UIInteractionLayer _interactionLayer;
+        public static Action<HtmlElement, UIOverlay> ValueCommitted;
         public UIQuadRenderer QuadRenderer => _quadRenderer;
         private HtmlElement _currentContextMenu = null;
         public HtmlElement CurrentContextMenu => _currentContextMenu;
@@ -148,6 +149,22 @@ namespace SiegeEngine.Core.UI
                     input.Checked = elem.Attributes.ContainsKey("checked");
                     input.Value = elem.Attributes.GetValueOrDefault("value", "");
                     input.Placeholder = elem.Attributes.GetValueOrDefault("placeholder", "");
+                    if (input is RangeElement range)
+                    {
+                        if (float.TryParse(input.Value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out float parsed))
+                        {
+                            range.Value = parsed;
+                            range.CommittedValue = parsed;
+                        }
+                        else
+                            range.CommittedValue = range.Value;
+                    }
+                    else
+                    {
+                        input.CommittedValue = input.Type == "checkbox"
+                            ? (input.Checked ? "true" : "false")
+                            : (input.Value ?? "");
+                    }
                 }
                 foreach (var child in elem.Children)
                 {
@@ -288,6 +305,12 @@ namespace SiegeEngine.Core.UI
         public virtual bool HandleUIClick(HtmlElement elem)
         {
             if (elem == null) return false;
+            if (elem is NavLiElement navParent && navParent.IsNavDropdownParent())
+            {
+                HtmlElement hoveredItem = FindHoveredNavDropdownItem(navParent);
+                if (hoveredItem != null)
+                    elem = hoveredItem;
+            }
             bool handled = false;
             bool valueChanged = false;
             // Blur when the click target is not a text/number input (and not a label for one).
@@ -556,6 +579,25 @@ namespace SiegeEngine.Core.UI
         {
             return false;
         }
+        private static HtmlElement FindHoveredNavDropdownItem(HtmlElement parent)
+        {
+            if (parent == null) return null;
+            var hits = new List<HtmlElement>();
+            CollectHoveredNavDropdownItems(parent, hits);
+            return hits.Count == 1 ? hits[0] : null;
+        }
+        private static void CollectHoveredNavDropdownItems(HtmlElement parent, List<HtmlElement> hits)
+        {
+            if (parent == null) return;
+            foreach (var child in parent.Children)
+            {
+                string classes = child.Attributes.GetValueOrDefault("class", "");
+                if (child.Tag.ToLower() == "li" && child.IsHover &&
+                    (child.Attributes.ContainsKey("data-hook") || classes.Contains("nav-dropdown-item")))
+                    hits.Add(child);
+                CollectHoveredNavDropdownItems(child, hits);
+            }
+        }
         private void CloseAllOpenNavDropdowns()
         {
             var navLis = FindElementsByTag("li")
@@ -706,6 +748,28 @@ namespace SiegeEngine.Core.UI
             _uiRoot = null;
             _uiClickables.Clear();
         }
+        public bool HasFocusedTextInput()
+        {
+            if (_interactionLayer != null && _interactionLayer._currentFocused is InputElement focused)
+            {
+                if (focused.IsFocused && (focused.Type == "text" || focused.Type == "number"))
+                    return true;
+            }
+            return HasFocusedTextInput(_uiRoot);
+        }
+        private bool HasFocusedTextInput(HtmlElement root)
+        {
+            if (root == null) return false;
+            if (root is InputElement input && input.IsFocused && (input.Type == "text" || input.Type == "number"))
+                return true;
+            if (root.Children == null) return false;
+            foreach (var child in root.Children)
+            {
+                if (HasFocusedTextInput(child))
+                    return true;
+            }
+            return false;
+        }
         public virtual void TriggerChange(HtmlElement elem)
         {
             var current = elem;
@@ -717,6 +781,7 @@ namespace SiegeEngine.Core.UI
                 InvokeListeners(current, "change", jsElem);
                 current = current.Parent;
             }
+            ValueCommitted?.Invoke(elem, this);
         }
         public bool InvokeListeners(HtmlElement elem, string eventName, JSElement jsElem = null)
         {

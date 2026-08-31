@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI.Elements
+// Folder: SiegeEngine.Core.UI.Elements
 // File: NavLiElement.cs
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Renderers;
@@ -89,49 +89,95 @@ namespace SiegeEngine.Core.UI.Elements
 
         public override bool UpdateHover(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
-            bool hitOnLi = false;
-            if (ComputedWidth > 0 && ComputedHeight > 0)
-            {
-                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
-                float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
-                for (int k = 0; k < 4; k++)
-                {
-                    float nx = ndc[k * 2];
-                    float ny = ndc[k * 2 + 1];
-                    minX = Math.Min(minX, nx);
-                    maxX = Math.Max(maxX, nx);
-                    minY = Math.Min(minY, ny);
-                    maxY = Math.Max(maxY, ny);
-                }
-                float mx = 2 * mousePos.X / viewportWidth - 1;
-                float my = 1 - 2 * mousePos.Y / viewportHeight;
-                hitOnLi = !(mx < minX || mx > maxX || my < minY || my > maxY);
-            }
-
-            bool dropdownHit = false;
-            var dropdownUl = Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
-            if (IsNavDropdownParent() && dropdownUl != null && dropdownUl.GetEffectiveDisplay() != "none")
-            {
-                dropdownHit = dropdownUl.UpdateHover(mousePos, viewportWidth, viewportHeight);
-            }
-
+            bool isParent = IsNavDropdownParent();
             bool isSubmenuItem = Parent != null && Parent.Attributes.GetValueOrDefault("class", "").Contains("nav-dropdown-content");
 
-            if (IsNavDropdownParent() || IsTopLevelNavItem())
-            {
-                IsHover = hitOnLi || dropdownHit;
-            }
-            else if (isSubmenuItem)
+            bool hitOnLi = PixelHit(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, Math.Max(ComputedHeight, 1f), mousePos);
+
+            if (isSubmenuItem && !isParent)
             {
                 IsHover = hitOnLi;
+                return hitOnLi;
             }
 
-            if (IsNavDropdownParent() && _isPinnedOpen && !hitOnLi && !dropdownHit)
+            bool hitPopup = false;
+            var dropdownUl = Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
+            if (isParent && dropdownUl != null)
             {
-                _isPinnedOpen = false;
+                bool wasOpen = IsHover || _isPinnedOpen;
+                GetPopupRect(out float px, out float py, out float pw, out float ph);
+                hitPopup = wasOpen || hitOnLi
+                    ? PixelHit(px, py, pw, ph, mousePos)
+                    : false;
+
+                if (hitOnLi || hitPopup)
+                {
+                    dropdownUl.Style.Display = "block";
+                    HoverPopupItems(dropdownUl, mousePos);
+                }
+                else
+                {
+                    dropdownUl.Style.Display = "none";
+                    ClearHoverTree(dropdownUl);
+                }
             }
 
-            return hitOnLi || dropdownHit;
+            if (isParent || IsTopLevelNavItem())
+                IsHover = hitOnLi || hitPopup;
+
+            if (isParent && _isPinnedOpen && !hitOnLi && !hitPopup)
+                _isPinnedOpen = false;
+
+            return hitOnLi || hitPopup;
+        }
+
+        public bool ContainsPointer(Vector2 mousePos)
+        {
+            if (PixelHit(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, Math.Max(ComputedHeight, 1f), mousePos))
+                return true;
+            if (!IsNavDropdownParent() || !(IsHover || _isPinnedOpen))
+                return false;
+            GetPopupRect(out float x, out float y, out float w, out float h);
+            return PixelHit(x, y, w, h, mousePos);
+        }
+
+        public void GetPopupRect(out float x, out float y, out float w, out float h)
+        {
+            x = ComputedContentX != 0f ? ComputedContentX : ComputedPosition.X;
+            y = ComputedPosition.Y + Math.Max(ComputedHeight, 28f);
+            var dropdownUl = Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
+            int items = 1;
+            if (dropdownUl != null)
+                items = Math.Max(1, dropdownUl.Children.Count(c => c.Tag.ToLower() == "li"));
+            w = Math.Max(200f, ComputedWidth);
+            if (dropdownUl != null && dropdownUl.ComputedWidth > 20f)
+                w = dropdownUl.ComputedWidth;
+            h = items * 32f + 8f;
+        }
+
+        private static bool PixelHit(float x, float y, float w, float h, Vector2 mouse)
+        {
+            if (w <= 0f || h <= 0f) return false;
+            return mouse.X >= x && mouse.X <= x + w && mouse.Y >= y && mouse.Y <= y + h;
+        }
+
+        private static void HoverPopupItems(HtmlElement ul, Vector2 mouse)
+        {
+            foreach (var child in ul.Children)
+            {
+                if (child.Tag.ToLower() != "li") continue;
+                // Items laid out while the UL was display:none sit at y=0 and
+                // would steal clicks from the 28px label. Ignore those.
+                if (child.ComputedPosition.Y < 28f)
+                {
+                    child.IsHover = false;
+                    continue;
+                }
+                child.IsHover = PixelHit(child.ComputedPosition.X, child.ComputedPosition.Y,
+                    child.ComputedWidth > 0 ? child.ComputedWidth : ul.ComputedWidth,
+                    child.ComputedHeight > 0 ? child.ComputedHeight : 32f,
+                    mouse);
+            }
         }
 
         public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
@@ -139,9 +185,7 @@ namespace SiegeEngine.Core.UI.Elements
             if (UpdateHover(mousePos, viewportWidth, viewportHeight))
             {
                 if (IsNavDropdownParent() || IsTopLevelNavItem())
-                {
                     _isPinnedOpen = !_isPinnedOpen;
-                }
 
                 for (int i = Children.Count - 1; i >= 0; i--)
                 {
@@ -154,6 +198,15 @@ namespace SiegeEngine.Core.UI.Elements
 
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
+            bool isSubmenuItem = Parent != null && Parent.Attributes.GetValueOrDefault("class", "").Contains("nav-dropdown-content");
+            if (isSubmenuItem && ComputedWidth > 0 && ComputedHeight > 0)
+            {
+                Vector4 rowColor = IsHover
+                    ? new Vector4(0.220f, 0.220f, 0.220f, 1f)
+                    : new Vector4(0.145f, 0.145f, 0.149f, 1f);
+                float[] itemNdc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
+                quadRenderer.DrawNdcQuad(itemNdc, rowColor);
+            }
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
 
             var dropdownUl = Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
@@ -165,11 +218,13 @@ namespace SiegeEngine.Core.UI.Elements
                 dropdownUl.ComputeLayout(dropdownX, dropdownY, dropdownUl.ComputedWidth, dropdownUl.ComputedHeight, viewportWidth, viewportHeight, textRenderer, Style.FontSize);
 
                 CssStyle ulStyle = dropdownUl.Style;
-                if (ulStyle.BackgroundColor != Vector4.Zero)
-                {
-                    float[] dropdownNdc = HtmlLayoutUtils.GetNdcQuad(dropdownX, dropdownY, dropdownUl.ComputedWidth, dropdownUl.ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
-                    quadRenderer.DrawNdcQuad(dropdownNdc, ulStyle.BackgroundColor);
-                }
+                Vector4 panelColor = ulStyle.BackgroundColor != Vector4.Zero
+                    ? ulStyle.BackgroundColor
+                    : new Vector4(0.145f, 0.145f, 0.149f, 1f);
+                float panelW = dropdownUl.ComputedWidth > 0 ? dropdownUl.ComputedWidth : Math.Max(200f, ComputedWidth);
+                float panelH = dropdownUl.ComputedHeight > 0 ? dropdownUl.ComputedHeight : 8f;
+                float[] dropdownNdc = HtmlLayoutUtils.GetNdcQuad(dropdownX, dropdownY, panelW, panelH, ComputedFullTransform, viewportWidth, viewportHeight);
+                quadRenderer.DrawNdcQuad(dropdownNdc, panelColor);
                 renderContext.Disable(renderContext.Enums.ScissorTest);
                 dropdownUl.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, ComputedFullTransform);
                 renderContext.Enable(renderContext.Enums.ScissorTest);
@@ -191,7 +246,9 @@ namespace SiegeEngine.Core.UI.Elements
         {
             if (Tag.ToLower() != "li") return false;
             string classes = Attributes.GetValueOrDefault("class", "");
-            if (classes.Contains("nav-dropdown")) return true;
+            var tokens = classes.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Contains("nav-dropdown")) return true;
+            if (tokens.Contains("nav-dropdown-item")) return false;
             HtmlElement current = Parent;
             while (current != null)
             {
@@ -203,7 +260,27 @@ namespace SiegeEngine.Core.UI.Elements
 
         public void CloseDropdown()
         {
+            ReleaseHover();
+        }
+
+        public void ReleaseHover()
+        {
             _isPinnedOpen = false;
+            IsHover = false;
+            var dropdownUl = Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
+            if (dropdownUl != null)
+            {
+                dropdownUl.Style.Display = "none";
+                ClearHoverTree(dropdownUl);
+            }
+        }
+
+        private static void ClearHoverTree(HtmlElement root)
+        {
+            if (root == null) return;
+            root.IsHover = false;
+            foreach (var child in root.Children)
+                ClearHoverTree(child);
         }
     }
 }
