@@ -101,7 +101,7 @@ namespace ToolChest
                 var select = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushFalloffChanged") as SelectElement;
                 if (select != null)
                 {
-                    string falloffStr = select.Value ?? "Gaussian";
+                    string falloffStr = select.Value ?? "None";
                     _currentBrush.Falloff = (BrushFalloff)Enum.Parse(typeof(BrushFalloff), falloffStr, true);
                     changed = true;
                 }

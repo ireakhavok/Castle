@@ -40,6 +40,7 @@ namespace MapRoom
         private Bitmap _colorBitmapCache = null;
         private const int ColorLayerResolution = 4096;
         private readonly bool _enableBrush;
+        private float _stampYawOffsetDeg = 0f;
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null, bool enableBrush = true)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
@@ -60,7 +61,7 @@ namespace MapRoom
             _ghostBuffer = new VertexBuffer(_renderContext);
             EnsureSkyboxRenderer();
         }
-        protected override Vector4 FrameClearColor => new Vector4(0.35f, 0.35f, 0.35f, 1.0f);
+        protected override Vector4 FrameClearColor => new Vector4(0.06f, 0.06f, 0.07f, 1.0f);
         protected override void RenderSkybox(Matrix4x4 view, Matrix4x4 projection)
         {
             if (_liveState is LiveSceneState live && live.Skybox != null && _sceneData?.Skybox != live.Skybox)
@@ -179,7 +180,9 @@ namespace MapRoom
             _activeBrush.Size = e.Size;
             _activeBrush.Intensity = e.Intensity;
             _activeBrush.Shape = (BrushShape)Enum.Parse(typeof(BrushShape), e.BrushShape, true);
-            _activeBrush.Falloff = (BrushFalloff)Enum.Parse(typeof(BrushFalloff), e.BrushFalloff, true);
+            if (!Enum.TryParse(e.BrushFalloff, true, out BrushFalloff parsedFalloff))
+                parsedFalloff = BrushFalloff.None;
+            _activeBrush.Falloff = parsedFalloff;
             _activeBrush.PaintLayer = e.PaintLayer;
             _activeBrush.MaterialPath = e.MaterialPath ?? string.Empty;
             if (!string.IsNullOrEmpty(e.MaterialPath))
@@ -213,6 +216,11 @@ namespace MapRoom
             ));
         }
         public Matrix4x4 GetViewMatrix() => _flyCamera.ViewMatrix;
+        private float GetStampRotationRadians()
+        {
+            float yawDeg = (_flyCamera != null ? _flyCamera.Yaw : 0f) + _stampYawOffsetDeg;
+            return yawDeg * (MathF.PI / 180f);
+        }
         public bool TryTerrainRaycast(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
         {
             return RayTerrainIntersect(origin, dir, out hitPoint);
@@ -646,18 +654,25 @@ namespace MapRoom
                     {
                         float ux = (float)ix / gridRes;
                         float uy = (float)iy / gridRes;
-                        float localX = (ux * 2f - 1f) * w;
-                        float localY = (uy * 2f - 1f) * h;
+                        float stampX = (ux * 2f - 1f) * w;
+                        float stampY = (uy * 2f - 1f) * h;
+                        float angle = GetStampRotationRadians();
+                        float cos = MathF.Cos(angle);
+                        float sin = MathF.Sin(angle);
+                        float localX = stampX * cos - stampY * sin;
+                        float localY = stampX * sin + stampY * cos;
                         float worldX = _ghostPosition.X + localX;
                         float worldY = _ghostPosition.Y + localY;
                         float sampleZ = GetInterpolatedHeight(worldX, worldY);
                         float localZ = sampleZ - centerZ;
+                        float weight = _activeBrush.GetWeight(stampX, stampY, r);
+                        float alpha = Math.Clamp(weight * 0.95f, 0f, 0.95f);
                         float u = ux;
                         float v = 1f - uy;
                         vertices.Add(localX);
                         vertices.Add(localY);
                         vertices.Add(localZ);
-                        vertices.Add(1f); vertices.Add(1f); vertices.Add(1f); vertices.Add(0.95f);
+                        vertices.Add(1f); vertices.Add(1f); vertices.Add(1f); vertices.Add(alpha);
                         vertices.Add(u);
                         vertices.Add(v);
                     }
@@ -747,27 +762,7 @@ namespace MapRoom
                 }
             }
             using var materialBmp = new Bitmap(ResolveFullPath(_activeMaterialPath));
-            float u = Math.Clamp(worldPos.X / (_terrainWidth * _worldScaleX), 0f, 1f);
-            float v = Math.Clamp(worldPos.Y / (_terrainHeight * _worldScaleZ), 0f, 1f);
-            int centerTexX = (int)(u * _colorBitmapCache.Width);
-            int centerTexY = (int)(v * _colorBitmapCache.Height);
-            float worldBrushSize = _activeBrush.Size * 2f;
-            int brushTexW = (int)((worldBrushSize / (_terrainWidth * _worldScaleX)) * _colorBitmapCache.Width);
-            int brushTexH = (int)((worldBrushSize / (_terrainHeight * _worldScaleZ)) * _colorBitmapCache.Height);
-            int destX = Math.Max(0, centerTexX - brushTexW / 2);
-            int destY = Math.Max(0, centerTexY - brushTexH / 2);
-            int destW = Math.Min(brushTexW, _colorBitmapCache.Width - destX);
-            int destH = Math.Min(brushTexH, _colorBitmapCache.Height - destY);
-            if (destW <= 0 || destH <= 0) return;
-            using (var flippedMaterial = materialBmp.Clone(new Rectangle(0, 0, materialBmp.Width, materialBmp.Height), materialBmp.PixelFormat))
-            {
-                flippedMaterial.RotateFlip(RotateFlipType.RotateNoneFlipY);
-                using (var g = Graphics.FromImage(_colorBitmapCache))
-                {
-                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                    g.DrawImage(flippedMaterial, new Rectangle(destX, destY, destW, destH));
-                }
-            }
+            StampAlbedo(worldPos, materialBmp);
             if (_liveState is LiveSceneState live)
             {
                 live.ColorBitmap?.Dispose();
@@ -775,6 +770,61 @@ namespace MapRoom
                 live.SyncColorTextureIfNeeded();
             }
             UpdateGPUColorTexture();
+        }
+        private void StampAlbedo(Vector3 worldPos, Bitmap materialBmp)
+        {
+            int texW = _colorBitmapCache.Width;
+            int texH = _colorBitmapCache.Height;
+            float terrainWorldW = Math.Max(_terrainWidth * _worldScaleX, 0.001f);
+            float terrainWorldH = Math.Max(_terrainHeight * _worldScaleZ, 0.001f);
+            float radius = Math.Max(_activeBrush.Size, 0.01f);
+            float angle = GetStampRotationRadians();
+            float cos = MathF.Cos(angle);
+            float sin = MathF.Sin(angle);
+            // Axis-aligned bounds of the rotated stamp (circle/square of half-extent radius).
+            float extent = radius * 1.42f;
+            float minWX = worldPos.X - extent;
+            float maxWX = worldPos.X + extent;
+            float minWY = worldPos.Y - extent;
+            float maxWY = worldPos.Y + extent;
+            int minTX = Math.Clamp((int)MathF.Floor((minWX / terrainWorldW) * texW) - 1, 0, texW - 1);
+            int maxTX = Math.Clamp((int)MathF.Ceiling((maxWX / terrainWorldW) * texW) + 1, 0, texW - 1);
+            int minTY = Math.Clamp((int)MathF.Floor((minWY / terrainWorldH) * texH) - 1, 0, texH - 1);
+            int maxTY = Math.Clamp((int)MathF.Ceiling((maxWY / terrainWorldH) * texH) + 1, 0, texH - 1);
+            if (maxTX < minTX || maxTY < minTY) return;
+            int matW = materialBmp.Width;
+            int matH = materialBmp.Height;
+            float intensity = Math.Clamp(_activeBrush.Intensity, 0f, 5f);
+            for (int ty = minTY; ty <= maxTY; ty++)
+            {
+                float worldY = ((ty + 0.5f) / texH) * terrainWorldH;
+                for (int tx = minTX; tx <= maxTX; tx++)
+                {
+                    float worldX = ((tx + 0.5f) / texW) * terrainWorldW;
+                    float dx = worldX - worldPos.X;
+                    float dz = worldY - worldPos.Y;
+                    float lx = dx * cos + dz * sin;
+                    float lz = -dx * sin + dz * cos;
+                    float weight = _activeBrush.GetWeight(lx, lz, radius);
+                    if (weight <= 0.001f) continue;
+                    float alpha = Math.Clamp(weight * intensity, 0f, 1f);
+                    if (alpha <= 0.001f) continue;
+                    float mu = Math.Clamp((lx / radius + 1f) * 0.5f, 0f, 1f);
+                    float mv = Math.Clamp((lz / radius + 1f) * 0.5f, 0f, 1f);
+                    int mx = Math.Clamp((int)(mu * (matW - 1)), 0, matW - 1);
+                    int my = Math.Clamp((int)((1f - mv) * (matH - 1)), 0, matH - 1);
+                    Color src = materialBmp.GetPixel(mx, my);
+                    if (src.A == 0) continue;
+                    Color dst = _colorBitmapCache.GetPixel(tx, ty);
+                    float sa = (src.A / 255f) * alpha;
+                    float da = 1f - sa;
+                    int r = Math.Clamp((int)(src.R * sa + dst.R * da), 0, 255);
+                    int g = Math.Clamp((int)(src.G * sa + dst.G * da), 0, 255);
+                    int b = Math.Clamp((int)(src.B * sa + dst.B * da), 0, 255);
+                    int a = Math.Clamp((int)((sa + (dst.A / 255f) * da) * 255f), 0, 255);
+                    _colorBitmapCache.SetPixel(tx, ty, Color.FromArgb(a, r, g, b));
+                }
+            }
         }
         private void UpdateGPUColorTexture()
         {
@@ -793,6 +843,15 @@ namespace MapRoom
         public override void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime, relMousePos, mouseDown, mousePressed, mouseReleased, cameraMode);
+            if (_enableBrush && _activeBrush != null && _activeBrush.Mode == BrushMode.Paint
+                && !Keystone.EditorHistory.AnyTextInputFocused())
+            {
+                float rotateSpeed = 90f * deltaTime;
+                if (_controlContext.GetKey(_window, Key.Left) != InputAction.Release)
+                    _stampYawOffsetDeg -= rotateSpeed;
+                if (_controlContext.GetKey(_window, Key.Right) != InputAction.Release)
+                    _stampYawOffsetDeg += rotateSpeed;
+            }
             if (_heightmap == null || _activeBrush == null)
             {
                 _ghostVisible = false;
