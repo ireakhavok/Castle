@@ -106,6 +106,7 @@ namespace CastleBuilder
         }
 
         private bool _lastFrameHadOpenDropdown = false;
+        public override bool WantsContinuousUpdate => true;
 
         public IDEBasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
@@ -117,6 +118,8 @@ namespace CastleBuilder
 
             BaseWidth = 0f;
             BaseHeight = 0f;
+            Keystone.EditorHistory.Current.Initialize(eventBus);
+            Keystone.EditorHistory.Current.BindInput(controlContext, window);
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -151,6 +154,8 @@ namespace CastleBuilder
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
+            Keystone.EditorHistory.Current.BindInput(_controlContext, _window);
+            Keystone.EditorHistory.Current.Tick();
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
 
             if (PanelManager.Current?.GetTopmostPanelAt(absMousePos) != this)

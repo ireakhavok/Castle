@@ -13,6 +13,7 @@ namespace SiegeEngine.Core.UI.Elements
         public float Max { get; set; } = 100f;
         public float Step { get; set; } = 0.5f;
         public float Value { get; set; } = 10f;
+        public float CommittedValue { get; set; } = 10f;
         public RangeElement()
         {
             Tag = "input";

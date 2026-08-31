@@ -45,6 +45,7 @@ namespace CastleBuilder
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
             _eventBus.Subscribe<CreateTerrainEvent>(OnCreateTerrain);
             _configPath = GetDefaultIDEPath();
+            EditorHistory.Current.Initialize(_eventBus);
             Console.WriteLine("[BlueprintManager] Constructor finished - all events subscribed");
         }
         public static void Load(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -583,7 +584,7 @@ namespace CastleBuilder
             if (EditorScene.Current != null)
             {
                 Console.WriteLine("[BlueprintManager.OnLoadProject] Forcing EditorScene.LoadProjectData for newly loaded project");
-                EditorScene.Current.LoadProjectData();
+                EditorScene.Current.LoadProjectData(true);
             }
         }
         private void OnSaveProject(SaveProjectEvent evt)

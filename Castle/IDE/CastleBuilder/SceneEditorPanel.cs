@@ -92,7 +92,7 @@ namespace CastleBuilder
             BaseWidth = 1280f;
             DockingMode = DockingMode.IDE;
             BaseHeight = 720f;
-            _editorScene = new EditorScene(renderContext, controlContext, window, eventBus);
+            _editorScene = EditorScene.Current ?? new EditorScene(renderContext, controlContext, window, eventBus);
             _modelManager = ModelManager.Instance ?? new ModelManager(renderContext);
             CustomOverlays.Add(new SelectionBoxOverlay(this));
             _transformGizmo = new TransformGizmoOverlay(
@@ -274,6 +274,24 @@ namespace CastleBuilder
             {
                 ApplyPostProcess(e);
             }
+            else if (e.Hook == "EditorDeleteSelection")
+            {
+                DeleteSelectedEntities();
+            }
+            else if (e.Hook == "EditorDeleteScene")
+            {
+                MenuCommands.DeleteScene(_renderContext, _controlContext, _window, _eventBus);
+            }
+            else if (e.Hook == "SceneDeleted")
+            {
+                _pendingSceneSelectorUpdate = true;
+                if (_selectedEntityIds.Count > 0)
+                {
+                    _selectedEntityIds.Clear();
+                    _transformGizmo.ClearSelection();
+                    NotifyHierarchyChanged();
+                }
+            }
             else if (e.Hook == "OutlinerSelectionChanged")
             {
                 string nodeId = e.Data != null && e.Data.ContainsKey("nodeId") ? e.Data["nodeId"]?.ToString() ?? "" : "";
@@ -394,6 +412,11 @@ namespace CastleBuilder
                 MenuCommands.CreateNewScene(_renderContext, _controlContext, _window, _eventBus);
                 UpdateSceneSelectorUI();
             }
+            else if (hook == "DeleteActiveScene")
+            {
+                MenuCommands.DeleteScene(_renderContext, _controlContext, _window, _eventBus);
+                UpdateSceneSelectorUI();
+            }
             else if (hook == "OpenPlaceEntityBrowser")
             {
                 string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
@@ -445,6 +468,7 @@ namespace CastleBuilder
                 });
                 Console.WriteLine($"[SceneEditorPanel.PlaceSoundSource] Placed SoundSource entity ID={entity.Id} at {placePos}");
                 _editorScene.SyncCurrentLevelToRuntimeServer();
+                RecordPlacedEntity(entity, "Place sound source");
                 NotifyHierarchyChanged();
             }
             else if (hook == "OpenAddLight")
@@ -561,6 +585,7 @@ namespace CastleBuilder
             LightingFrame.Current = null;
             Console.WriteLine($"[SceneEditorPanel.PlaceLight] Placed {type} Light entity ID={entity.Id} at {placePos}");
             _editorScene.SyncCurrentLevelToRuntimeServer();
+            RecordPlacedEntity(entity, "Place light");
             NotifyHierarchyChanged();
         }
 
@@ -672,6 +697,8 @@ namespace CastleBuilder
             }
             Console.WriteLine($"[SceneEditorPanel.OnFileSelectedForPlacement] Placed entity ID={entity.Id} AssetPackKey='{packId}' at {placePos}");
             _editorScene.SyncCurrentLevelToRuntimeServer();
+            RecordPlacedEntity(entity, "Place entity");
+            NotifyHierarchyChanged();
         }
         public void HandleUIClick(HtmlElement elem)
         {
@@ -679,6 +706,7 @@ namespace CastleBuilder
         public override void ToggleCameraMode()
         {
             _cameraMode = !_cameraMode;
+            EditorHistory.FlyCameraActive = _cameraMode;
             if (_cameraMode) PanelManager.Current.CapturePanel(this);
             else PanelManager.Current.ReleasePanelCapture();
             if (_cameraMode)
@@ -686,6 +714,8 @@ namespace CastleBuilder
         }
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
+            EditorHistory.Current.BindInput(_controlContext, _window);
+            EditorHistory.Current.Tick();
             if (_pendingSceneSelectorUpdate)
             {
                 _pendingSceneSelectorUpdate = false;
@@ -903,7 +933,7 @@ namespace CastleBuilder
                 _genericSubscribed = false;
             }
             PanelManager.Current.ReleasePanelCapture();
-            _editorScene?.Dispose();
+            _editorScene = null;
             base.Dispose();
         }
         public string DataKey => "SceneEditorPanel";
@@ -986,6 +1016,59 @@ namespace CastleBuilder
         public void NotifyHierarchyChanged()
         {
             OutlinerCoordinator.Instance.NotifyHierarchyChanged();
+        }
+        private void RecordPlacedEntity(Entity entity, string description)
+        {
+            if (entity == null || EditorHistory.Current.IsApplying) return;
+            var snapshot = entity.ToData();
+            int id = entity.Id;
+            EditorHistory.Current.Record(new DelegateCommand(
+                description ?? "Place entity",
+                () => ApplyEntityRestore(new List<EntityData> { snapshot }),
+                () => ApplyEntityDelete(new List<int> { id })));
+        }
+        private void DeleteSelectedEntities()
+        {
+            if (EditorHistory.AnyTextInputFocused()) return;
+            if (_selectedEntityIds == null || _selectedEntityIds.Count == 0) return;
+            var snapshots = new List<EntityData>();
+            foreach (var id in _selectedEntityIds)
+            {
+                var entity = _editorScene != null ? _editorScene.GetEntityById(id) : null;
+                if (entity == null)
+                    entity = ProjectSettings.Current.CurrentLevel?.Entities.Find(e => e.Id == id);
+                if (entity != null)
+                    snapshots.Add(entity.ToData());
+            }
+            if (snapshots.Count == 0) return;
+            var ids = new List<int>();
+            foreach (var snap in snapshots)
+                ids.Add(snap.Id);
+            EditorHistory.Current.Execute(new DelegateCommand(
+                "Delete entities",
+                () => ApplyEntityDelete(ids),
+                () => ApplyEntityRestore(snapshots)));
+        }
+        private void ApplyEntityDelete(List<int> ids)
+        {
+            if (ids == null || _editorScene == null) return;
+            foreach (var id in ids)
+                _editorScene.RemoveLiveEntity(id);
+            _selectedEntityIds.RemoveAll(id => ids.Contains(id));
+            _transformGizmo.ClearSelection();
+            NotifyHierarchyChanged();
+        }
+        private void ApplyEntityRestore(List<EntityData> snapshots)
+        {
+            if (snapshots == null || _editorScene == null) return;
+            foreach (var data in snapshots)
+            {
+                if (data == null) continue;
+                var entity = Entity.FromData(data);
+                _editorScene.AddLiveEntity(entity);
+            }
+            _editorScene.SyncCurrentLevelToRuntimeServer();
+            NotifyHierarchyChanged();
         }
     }
 }

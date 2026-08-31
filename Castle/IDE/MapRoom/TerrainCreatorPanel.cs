@@ -290,6 +290,7 @@ namespace MapRoom
         public override void ToggleCameraMode()
         {
             _cameraMode = !_cameraMode;
+            EditorHistory.FlyCameraActive = _cameraMode;
             if (_cameraMode) PanelManager.Current.CapturePanel(this);
             else PanelManager.Current.ReleasePanelCapture();
         }

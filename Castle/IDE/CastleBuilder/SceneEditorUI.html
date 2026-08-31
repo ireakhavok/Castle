@@ -27,12 +27,14 @@
             border: 1px solid #555566; border-radius: 6px; font-size: 14px; outline: none;
         }
         #sceneSelect:focus { border-color: #777799; }
-        .new-scene-btn, .place-entity-btn, .place-sound-btn, .place-light-btn, .physics-debug-btn, .acoustic-debug-btn {
+        .new-scene-btn, .delete-scene-btn, .place-entity-btn, .place-sound-btn, .place-light-btn, .physics-debug-btn, .acoustic-debug-btn {
             padding: 8px 18px; color: white; border: none; border-radius: 6px; cursor: pointer;
             font-size: 13.5px; font-weight: 500; transition: all 0.2s; margin-left: 12px;
         }
         .new-scene-btn { background: #444455; margin-left: 0; }
         .new-scene-btn:hover { background: #555566; transform: translateY(-1px); }
+        .delete-scene-btn { background: #6a2a2a; }
+        .delete-scene-btn:hover { background: #7a3a3a; transform: translateY(-1px); }
         .place-entity-btn { background: #3a5a8a; }
         .place-entity-btn:hover { background: #4a6a9a; transform: translateY(-1px); }
         .place-sound-btn { background: #5a3a8a; }
@@ -52,6 +54,7 @@
             <!-- Populated dynamically -->
         </select>
         <button class="new-scene-btn" data-hook="CreateNewScene">+ New Scene</button>
+        <button class="delete-scene-btn" data-hook="DeleteActiveScene">Delete Scene</button>
         <button class="place-entity-btn" data-hook="OpenPlaceEntityBrowser">Place Entity</button>
         <button class="place-sound-btn" data-hook="PlaceSoundSource">Place Sound</button>
         <button class="place-light-btn" data-hook="OpenAddLight">Add Light</button>

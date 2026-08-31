@@ -28,6 +28,7 @@ namespace MapRoom
         private VertexBuffer _ghostBuffer;
         private HashSet<Guid> _processedModifications = new HashSet<Guid>();
         private bool _isBrushing = false;
+        private float[,] _strokeBefore;
         private float _lastBrushUpdateTime = 0f;
         private Vector3 _lastGhostPosition = Vector3.Zero;
         private const float BrushUpdateInterval = 0.0f;
@@ -813,6 +814,10 @@ namespace MapRoom
             if (mousePressed && _ghostVisible)
             {
                 _isBrushing = true;
+                if (_activeBrush != null && _activeBrush.Mode != BrushMode.Paint)
+                    _strokeBefore = Keystone.TerrainStrokeCommand.CloneMap(_heightmap);
+                else
+                    _strokeBefore = null;
                 _lastBrushUpdateTime = (float)_controlContext.GetTime();
                 _lastGhostPosition = _ghostPosition;
             }
@@ -838,8 +843,14 @@ namespace MapRoom
             }
             if (mouseReleased)
             {
+                if (_isBrushing && _strokeBefore != null && _activeBrush != null && _activeBrush.Mode != BrushMode.Paint)
+                {
+                    var after = Keystone.TerrainStrokeCommand.CloneMap(_heightmap);
+                    Keystone.EditorHistory.Current.Record(new Keystone.TerrainStrokeCommand(_strokeBefore, after, ApplyHeightmapSnapshot));
+                }
+                _strokeBefore = null;
                 _isBrushing = false;
-                if (_activeBrush.Mode == BrushMode.Paint && _ghostVisible && !string.IsNullOrEmpty(_activeMaterialPath))
+                if (_activeBrush != null && _activeBrush.Mode == BrushMode.Paint && _ghostVisible && !string.IsNullOrEmpty(_activeMaterialPath))
                 {
                     PaintAlbedo(_ghostPosition);
                 }
@@ -907,6 +918,14 @@ namespace MapRoom
             }
         }
         public new float[,] GetHeightmap() => _heightmap;
+        public void ApplyHeightmapSnapshot(float[,] map)
+        {
+            if (map == null) return;
+            _heightmap = map;
+            RebuildTerrainMesh();
+            if (_sceneData?.Name != null)
+                ProjectSettings.Current.StoreUnsavedHeightmap(_sceneData.Name, _heightmap);
+        }
         public void SetSkybox(SkyboxData skybox)
         {
             if (_sceneData != null)

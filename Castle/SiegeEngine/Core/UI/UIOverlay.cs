@@ -47,6 +47,7 @@ namespace SiegeEngine.Core.UI
         private bool _needsVerticalScrollbar = false;
         public bool DidHandleClick { get; set; }
         private UIInteractionLayer _interactionLayer;
+        public static Action<HtmlElement, UIOverlay> ValueCommitted;
         public UIQuadRenderer QuadRenderer => _quadRenderer;
         private HtmlElement _currentContextMenu = null;
         public HtmlElement CurrentContextMenu => _currentContextMenu;
@@ -148,6 +149,22 @@ namespace SiegeEngine.Core.UI
                     input.Checked = elem.Attributes.ContainsKey("checked");
                     input.Value = elem.Attributes.GetValueOrDefault("value", "");
                     input.Placeholder = elem.Attributes.GetValueOrDefault("placeholder", "");
+                    if (input is RangeElement range)
+                    {
+                        if (float.TryParse(input.Value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out float parsed))
+                        {
+                            range.Value = parsed;
+                            range.CommittedValue = parsed;
+                        }
+                        else
+                            range.CommittedValue = range.Value;
+                    }
+                    else
+                    {
+                        input.CommittedValue = input.Type == "checkbox"
+                            ? (input.Checked ? "true" : "false")
+                            : (input.Value ?? "");
+                    }
                 }
                 foreach (var child in elem.Children)
                 {
@@ -706,6 +723,28 @@ namespace SiegeEngine.Core.UI
             _uiRoot = null;
             _uiClickables.Clear();
         }
+        public bool HasFocusedTextInput()
+        {
+            if (_interactionLayer != null && _interactionLayer._currentFocused is InputElement focused)
+            {
+                if (focused.IsFocused && (focused.Type == "text" || focused.Type == "number"))
+                    return true;
+            }
+            return HasFocusedTextInput(_uiRoot);
+        }
+        private bool HasFocusedTextInput(HtmlElement root)
+        {
+            if (root == null) return false;
+            if (root is InputElement input && input.IsFocused && (input.Type == "text" || input.Type == "number"))
+                return true;
+            if (root.Children == null) return false;
+            foreach (var child in root.Children)
+            {
+                if (HasFocusedTextInput(child))
+                    return true;
+            }
+            return false;
+        }
         public virtual void TriggerChange(HtmlElement elem)
         {
             var current = elem;
@@ -717,6 +756,7 @@ namespace SiegeEngine.Core.UI
                 InvokeListeners(current, "change", jsElem);
                 current = current.Parent;
             }
+            ValueCommitted?.Invoke(elem, this);
         }
         public bool InvokeListeners(HtmlElement elem, string eventName, JSElement jsElem = null)
         {
