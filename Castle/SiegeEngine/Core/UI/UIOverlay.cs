@@ -305,6 +305,12 @@ namespace SiegeEngine.Core.UI
         public virtual bool HandleUIClick(HtmlElement elem)
         {
             if (elem == null) return false;
+            if (elem is NavLiElement navParent && navParent.IsNavDropdownParent())
+            {
+                HtmlElement hoveredItem = FindHoveredNavDropdownItem(navParent);
+                if (hoveredItem != null)
+                    elem = hoveredItem;
+            }
             bool handled = false;
             bool valueChanged = false;
             // Blur when the click target is not a text/number input (and not a label for one).
@@ -572,6 +578,25 @@ namespace SiegeEngine.Core.UI
         protected internal virtual bool OnContextMenuRequested(HtmlElement sourceElement, Vector2 mousePos)
         {
             return false;
+        }
+        private static HtmlElement FindHoveredNavDropdownItem(HtmlElement parent)
+        {
+            if (parent == null) return null;
+            var hits = new List<HtmlElement>();
+            CollectHoveredNavDropdownItems(parent, hits);
+            return hits.Count == 1 ? hits[0] : null;
+        }
+        private static void CollectHoveredNavDropdownItems(HtmlElement parent, List<HtmlElement> hits)
+        {
+            if (parent == null) return;
+            foreach (var child in parent.Children)
+            {
+                string classes = child.Attributes.GetValueOrDefault("class", "");
+                if (child.Tag.ToLower() == "li" && child.IsHover &&
+                    (child.Attributes.ContainsKey("data-hook") || classes.Contains("nav-dropdown-item")))
+                    hits.Add(child);
+                CollectHoveredNavDropdownItems(child, hits);
+            }
         }
         private void CloseAllOpenNavDropdowns()
         {

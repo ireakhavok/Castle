@@ -148,99 +148,113 @@ namespace CastleBuilder
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
 
-            // IDE finished opening — open the floating MusicPlayerPanel (playlist from Assets/Sounds/IDE/Music)
             MusicPlayerPanel.Open(_renderContext, _controlContext, _window, _eventBus);
+        }
+
+        private void GetNdcViewport(out int vw, out int vh)
+        {
+            _controlContext.GetWindowSize(_window, out vw, out vh);
         }
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             Keystone.EditorHistory.Current.BindInput(_controlContext, _window);
             Keystone.EditorHistory.Current.Tick();
-            base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
 
-            if (PanelManager.Current?.GetTopmostPanelAt(absMousePos) != this)
-                return;
+            GetNdcViewport(out int winW, out int winH);
+            if ((int)Size.X != winW)
+                Size = new Vector2(winW, 28f);
 
             Vector2 relMousePos = absMousePos - Position;
+            bool overBar = IsOverMenuBar(absMousePos);
 
-            _uiOverlay.PanelWidth = Size.X;
-            _uiOverlay.PanelHeight = Size.Y;
+            // Pixel hover first. Do not call base.Update — it runs overlay.Update
+            // with Size.Y=28 and maps the File label onto the whole window.
+            SyncNavHovers(relMousePos);
+            bool overPopup = IsOverAnyPopup(relMousePos);
 
-            _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
-
-            bool hasOpenDropdownNow = UpdateOpenDropdownHovers(relMousePos);
-
-            if (hasOpenDropdownNow && !_lastFrameHadOpenDropdown)
+            if (!overBar && !overPopup)
             {
-                _uiOverlay.RefreshUI();
+                ReleaseAllNavHovers();
+                _lastFrameHadOpenDropdown = false;
+                return;
             }
 
-            _lastFrameHadOpenDropdown = hasOpenDropdownNow;
+            PanelManager.Current?.ForceDrawOverThisFrame(this);
+
+            if (_uiOverlay != null)
+            {
+                _uiOverlay.PanelWidth = winW;
+                _uiOverlay.Update(deltaTime, relMousePos, mouseDown, winW, winH);
+                SyncNavHovers(relMousePos);
+            }
+
+            _lastFrameHadOpenDropdown = overPopup || AnyDropdownOpen();
         }
 
-        private bool UpdateOpenDropdownHovers(Vector2 relMousePos)
+        private void SyncNavHovers(Vector2 relMousePos)
+        {
+            if (_uiOverlay == null) return;
+            foreach (var nav in _uiOverlay.FindElementsByTag("li").OfType<NavLiElement>().Where(n => n.IsNavDropdownParent()))
+                nav.UpdateHover(relMousePos, Size.X, Size.Y);
+        }
+
+        private bool IsOverAnyPopup(Vector2 relMousePos)
         {
             if (_uiOverlay == null) return false;
+            return _uiOverlay.FindElementsByTag("li").OfType<NavLiElement>()
+                .Any(nav => nav.IsNavDropdownParent() && nav.ContainsPointer(relMousePos));
+        }
 
-            bool anyOpen = false;
+        private bool AnyDropdownOpen()
+        {
+            if (_uiOverlay == null) return false;
+            return _uiOverlay.FindElementsByTag("li").OfType<NavLiElement>()
+                .Any(nav => nav.IsNavDropdownParent() && nav.IsDropdownOpen);
+        }
 
-            var navLis = _uiOverlay.FindElementsByTag("li")
-                .Where(e => e is NavLiElement nav && nav.IsNavDropdownParent())
-                .Cast<NavLiElement>();
+        private void ReleaseAllNavHovers()
+        {
+            if (_uiOverlay == null) return;
+            foreach (var nav in _uiOverlay.FindElementsByTag("li").OfType<NavLiElement>().Where(n => n.IsNavDropdownParent()))
+                nav.ReleaseHover();
+        }
 
-            foreach (var nav in navLis)
-            {
-                var dropdownUl = nav.Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
-                if (dropdownUl != null && dropdownUl.GetEffectiveDisplay() != "none")
-                {
-                    anyOpen = true;
-                    dropdownUl.UpdateHover(relMousePos, (int)Size.X, (int)Size.Y);
-                }
-            }
-            return anyOpen;
+        private static bool IsOverMenuBar(Vector2 absMousePos)
+        {
+            return absMousePos.Y >= 0f && absMousePos.Y <= 28f && absMousePos.X >= 0f;
         }
 
         public override void Render()
         {
             if (!Visible) return;
-            if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
+            GetNdcViewport(out int winW, out int winH);
+            if (_lastW != winW)
             {
-                _lastW = (int)Size.X;
-                _lastH = (int)Size.Y;
-                _uiOverlay.PanelWidth = Size.X;
-                _uiOverlay.PanelHeight = Size.Y;
+                _lastW = winW;
+                _lastH = 28;
+                Size = new Vector2(winW, 28f);
+                _uiOverlay.PanelWidth = winW;
+                _uiOverlay.PanelHeight = 28f;
                 _uiOverlay.RefreshUI();
             }
+            _uiOverlay.PanelWidth = winW;
+            _uiOverlay.PanelHeight = winH;
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _uiOverlay.Render();
             _renderContext.Enable(_renderContext.Enums.DepthTest);
+            _uiOverlay.PanelHeight = 28f;
         }
 
         public override bool IsMouseOver(Vector2 absMousePos)
         {
-            if (absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
-                absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + 28f)
+            if (IsOverMenuBar(absMousePos))
                 return true;
-
-            if (_uiOverlay != null)
+            Vector2 relMousePos = absMousePos - Position;
+            if (IsOverAnyPopup(relMousePos))
             {
-                Vector2 relMousePos = absMousePos - Position;
-
-                var navLis = _uiOverlay.FindElementsByTag("li")
-                    .Where(e => e is NavLiElement nav && nav.IsNavDropdownParent())
-                    .Cast<NavLiElement>();
-
-                foreach (var nav in navLis)
-                {
-                    if (nav.IsDropdownOpen)
-                    {
-                        PanelManager.Current?.ForceDrawOverThisFrame(this);
-
-                        bool hit = nav.UpdateHover(relMousePos, (int)Size.X, (int)Size.Y);
-
-                        if (hit) return true;
-                    }
-                }
+                PanelManager.Current?.ForceDrawOverThisFrame(this);
+                return true;
             }
             return false;
         }

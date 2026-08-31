@@ -270,7 +270,8 @@ namespace SiegeEngine.Core.Managers
             if (_floatingPanels.Count == 0 && !HasActiveContent())
                 return;
             IPanel topmost = PanelManager.Current?.GetTopmostPanelAt(mousePos);
-            if (topmost is BasePanel topmostBasePanel && topmostBasePanel.RenderOrder > 0)
+            if (topmost is BasePanel topmostBasePanel && topmostBasePanel.RenderOrder > 0
+                && topmostBasePanel.DockState != DockState.Floating)
             {
                 return;
             }
