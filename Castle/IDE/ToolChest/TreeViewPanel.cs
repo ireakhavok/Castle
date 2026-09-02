@@ -80,13 +80,20 @@ namespace ToolChest
                 var liveNodes = OutlinerCoordinator.Instance.GetCurrentHierarchy(out expandedIds, out selectedIds);
 
                 // Build internal dictionary from provider nodes
+                bool hasCache = expandedIds != null && expandedIds.Length > 0;
                 foreach (var node in liveNodes)
                 {
                     _nodes[node.Id] = node;
-                    if (expandedIds.Contains(node.Id))
-                        node.IsExpanded = true;
+                    if (hasCache)
+                        node.IsExpanded = expandedIds.Contains(node.Id);
                     if (selectedIds.Contains(node.Id))
                         _selectedNodeId = node.Id;
+                }
+                if (!hasCache)
+                {
+                    OutlinerCoordinator.Instance.SaveExpandedState(
+                        provider.ContentType,
+                        liveNodes.Where(n => n.IsExpanded).Select(n => n.Id));
                 }
             }
             else if (_currentRootObject != null)
@@ -164,9 +171,10 @@ namespace ToolChest
         private string BuildTreeHtmlString()
         {
             var sb = new StringBuilder();
-            if (_nodes.TryGetValue("root", out var root))
+            foreach (var node in _nodes.Values)
             {
-                sb.Append(BuildTreeHtmlStringRecursive("root"));
+                if (string.IsNullOrEmpty(node.ParentId))
+                    sb.Append(BuildTreeHtmlStringRecursive(node.Id));
             }
             return sb.ToString();
         }

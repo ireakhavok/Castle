@@ -1,4 +1,4 @@
-﻿// Folder: ReadingChamber
+// Folder: ReadingChamber
 // File: AnimationViewerPanel.cs
 using Keystone;
 using SiegeEngine.Core.AssetObjects;
@@ -218,7 +218,7 @@ namespace ReadingChamber
         {
             var nodes = new List<OutlinerNode>();
 
-            var root = new OutlinerNode { Id = "anim-root", Label = "Animation Viewer", Icon = "🎬" };
+            var root = new OutlinerNode { Id = "root", Label = "Animation Viewer", Icon = "🎬", IsExpanded = true };
             nodes.Add(root);
 
             var modelNode = new OutlinerNode
@@ -226,19 +226,37 @@ namespace ReadingChamber
                 Id = "model",
                 Label = "Model",
                 Icon = "📦",
-                ParentId = "anim-root",
-                AssociatedObject = _viewerScene  // real scene object for Model node
+                ParentId = "root",
+                AssociatedObject = _viewerScene,
+                IsExpanded = false
             };
             root.Children.Add("model");
             nodes.Add(modelNode);
+
+            int meshCount = _viewerScene != null ? _viewerScene.GetMeshCount() : 0;
+            for (int i = 0; i < meshCount; i++)
+            {
+                var meshNode = new OutlinerNode
+                {
+                    Id = "model-mesh-" + i,
+                    Label = "Mesh " + i,
+                    Icon = "🧊",
+                    ParentId = "model",
+                    AssociatedObject = _viewerScene,
+                    IsExpanded = false
+                };
+                modelNode.Children.Add(meshNode.Id);
+                nodes.Add(meshNode);
+            }
 
             var skeletonNode = new OutlinerNode
             {
                 Id = "skeleton",
                 Label = "Skeleton",
                 Icon = "🦴",
-                ParentId = "anim-root",
-                AssociatedObject = _viewerScene  // real scene object for Skeleton node
+                ParentId = "root",
+                AssociatedObject = _viewerScene,
+                IsExpanded = false
             };
             root.Children.Add("skeleton");
             nodes.Add(skeletonNode);
@@ -248,8 +266,9 @@ namespace ReadingChamber
                 Id = "animations",
                 Label = "Animations",
                 Icon = "⏯️",
-                ParentId = "anim-root",
-                AssociatedObject = _animationFiles   // actual list of animation files for Animations node
+                ParentId = "root",
+                AssociatedObject = _animationFiles,
+                IsExpanded = false
             };
             root.Children.Add("animations");
             nodes.Add(animationsNode);
@@ -259,7 +278,19 @@ namespace ReadingChamber
 
         public object GetObjectForNode(string nodeId)
         {
-            // Return the exact object attached to the clicked node
+            if (nodeId != null && nodeId.StartsWith("model-mesh-")
+                && int.TryParse(nodeId.Substring("model-mesh-".Length), out int meshIndex))
+            {
+                return new MeshLayerRef
+                {
+                    EntityId = -1,
+                    MeshIndex = meshIndex,
+                    Label = "Mesh " + meshIndex,
+                    Viewer = _viewerScene
+                };
+            }
+            if (nodeId != null && (nodeId == "model" || nodeId == "skeleton" || nodeId == "root"))
+                return _viewerScene;
             var node = GetCurrentHierarchy().FirstOrDefault(n => n.Id == nodeId);
             return node?.AssociatedObject ?? _viewerScene;
         }

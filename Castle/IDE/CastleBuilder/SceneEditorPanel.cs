@@ -295,7 +295,7 @@ namespace CastleBuilder
             else if (e.Hook == "OutlinerSelectionChanged")
             {
                 string nodeId = e.Data != null && e.Data.ContainsKey("nodeId") ? e.Data["nodeId"]?.ToString() ?? "" : "";
-                if (nodeId.StartsWith("entity-") && int.TryParse(nodeId.Substring(7), out int entityId))
+                if (TryParseEntityNode(nodeId, out int entityId, out _))
                 {
                     _selectedEntityIds = new List<int> { entityId };
                     var entity = _editorScene.GetEntityById(entityId);
@@ -967,7 +967,8 @@ namespace CastleBuilder
                 Id = "root",
                 Label = $"Scene: {level?.Name ?? _editorScene.CurrentGameScene ?? "Untitled"}",
                 Icon = "📐",
-                Children = { "level-info", "entities" }
+                Children = { "level-info", "entities" },
+                IsExpanded = true
             };
             nodes.Add(root);
             var levelInfo = new OutlinerNode
@@ -978,7 +979,7 @@ namespace CastleBuilder
                 ParentId = "root"
             };
             nodes.Add(levelInfo);
-            var entitiesParent = new OutlinerNode { Id = "entities", Label = "Entities", Icon = "🧱", ParentId = "root" };
+            var entitiesParent = new OutlinerNode { Id = "entities", Label = "Entities", Icon = "🧱", ParentId = "root", IsExpanded = true };
             nodes.Add(entitiesParent);
             var entities = GetLiveEntities();
             foreach (var entity in entities)
@@ -989,29 +990,79 @@ namespace CastleBuilder
                     Id = $"entity-{entity.Id}",
                     Label = $"Entity {entity.Id} ({entity.Type ?? "Unknown"})",
                     Icon = selected ? "✅🧱" : "🧱",
-                    ParentId = "entities"
+                    ParentId = "entities",
+                    AssociatedObject = entity,
+                    IsExpanded = false
                 };
                 nodes.Add(node);
                 entitiesParent.Children.Add(node.Id);
+
+                var modelComp = entity.GetComponent<ModelComponent>();
+                FBXModel model = modelComp?.Model;
+                if (model == null && modelComp != null && !string.IsNullOrEmpty(modelComp.Key) && ModelManager.Instance != null)
+                    ModelManager.Instance.TryGetModel(modelComp.Key, out model);
+                int meshCount = model?.Meshes?.Count ?? 0;
+                if (meshCount == 0 && modelComp != null && ModelManager.Instance != null && !string.IsNullOrEmpty(modelComp.Key)
+                    && ModelManager.Instance.TryGetModelData(modelComp.Key, out var md) && md?.MeshRenders != null)
+                    meshCount = md.MeshRenders.Count;
+                for (int mi = 0; mi < meshCount; mi++)
+                {
+                    string meshId = $"entity-{entity.Id}-mesh-{mi}";
+                    nodes.Add(new OutlinerNode
+                    {
+                        Id = meshId,
+                        Label = $"Mesh {mi}",
+                        Icon = "🧊",
+                        ParentId = node.Id,
+                        AssociatedObject = entity,
+                        IsExpanded = false
+                    });
+                    node.Children.Add(meshId);
+                }
             }
             Console.WriteLine($"[SceneEditorPanel.GetCurrentHierarchy] Returned {nodes.Count} nodes (root + {entities.Count} entities)");
             return nodes;
         }
         public object GetObjectForNode(string nodeId)
         {
-            if (nodeId.StartsWith("entity-"))
+            if (TryParseEntityNode(nodeId, out int id, out int meshIndex))
             {
-                if (int.TryParse(nodeId.Substring(7), out int id))
+                var entities = GetLiveEntities();
+                var entity = entities.FirstOrDefault(e => e.Id == id);
+                if (entity == null) return null;
+                if (meshIndex >= 0)
                 {
-                    var entities = GetLiveEntities();
-                    return entities.FirstOrDefault(e => e.Id == id);
+                    return new MeshLayerRef
+                    {
+                        EntityId = id,
+                        MeshIndex = meshIndex,
+                        Label = $"Mesh {meshIndex}",
+                        Entity = entity
+                    };
                 }
+                return entity;
             }
             if (nodeId == "level-info" || nodeId == "root")
             {
                 return ProjectSettings.Current.CurrentLevel;
             }
             return null;
+        }
+
+        private static bool TryParseEntityNode(string nodeId, out int entityId, out int meshIndex)
+        {
+            entityId = -1;
+            meshIndex = -1;
+            if (string.IsNullOrEmpty(nodeId) || !nodeId.StartsWith("entity-")) return false;
+            string rest = nodeId.Substring(7);
+            int meshAt = rest.IndexOf("-mesh-", StringComparison.Ordinal);
+            if (meshAt >= 0)
+            {
+                if (!int.TryParse(rest.Substring(0, meshAt), out entityId)) return false;
+                int.TryParse(rest.Substring(meshAt + 6), out meshIndex);
+                return true;
+            }
+            return int.TryParse(rest, out entityId);
         }
         public void NotifyHierarchyChanged()
         {

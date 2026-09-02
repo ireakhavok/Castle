@@ -22,6 +22,7 @@ namespace SiegeEngine.Scenes
     {
         public FBXModel _model;
         private ModelManager.ModelData _modelData;
+        public List<int> HiddenMeshIndices { get; private set; } = new List<int>();
         private string _currentAnimationPath;
         private VertexBuffer _skeletonBuffer;
         private VertexBuffer _bindSkeletonBuffer;
@@ -565,9 +566,40 @@ namespace SiegeEngine.Scenes
             return new List<ShadowCaster>();
         }
 
+        public void SetMeshHidden(int meshIndex, bool hidden)
+        {
+            if (HiddenMeshIndices == null) HiddenMeshIndices = new List<int>();
+            if (hidden)
+            {
+                if (!HiddenMeshIndices.Contains(meshIndex)) HiddenMeshIndices.Add(meshIndex);
+            }
+            else
+            {
+                HiddenMeshIndices.Remove(meshIndex);
+            }
+            Console.WriteLine($"[ModelViewerScene] Mesh {meshIndex} hidden={hidden} list=[{string.Join(",", HiddenMeshIndices)}]");
+        }
+
+        public int GetMeshCount()
+        {
+            if (_modelData?.MeshRenders != null) return _modelData.MeshRenders.Count;
+            if (_model?.Meshes != null) return _model.Meshes.Count;
+            return 0;
+        }
+
+        public FBXModel GetModel() => _model;
+
+        public IReadOnlyList<Material> GetMeshMaterials(int meshIndex)
+        {
+            if (_model?.Meshes == null || meshIndex < 0 || meshIndex >= _model.Meshes.Count)
+                return System.Array.Empty<Material>();
+            var mats = _model.Meshes[meshIndex].Materials;
+            return mats ?? (IReadOnlyList<Material>)System.Array.Empty<Material>();
+        }
+
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            _modelRenderer.RenderModel(_model, _modelData, view, projection, _cameraPosition, Matrix4x4.Identity, _boneMatrices, _currentNormalTransforms, receiveShadows: false);
+            _modelRenderer.RenderModel(_model, _modelData, view, projection, _cameraPosition, Matrix4x4.Identity, _boneMatrices, _currentNormalTransforms, receiveShadows: false, hiddenMeshIndices: HiddenMeshIndices);
             if (_showSkeleton) _modelRenderer.RenderSkeletonDebug(_skeletonBuffer, _pointShader, view, projection);
             if (_bindSkeletonBuffer != null && _showBindPoseSkeleton) _modelRenderer.RenderSkeletonDebug(_bindSkeletonBuffer, _pointShader, view, projection);
         }
