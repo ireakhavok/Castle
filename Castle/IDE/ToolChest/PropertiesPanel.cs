@@ -18,6 +18,7 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.UI.Elements;
 using SiegeEngine.Core.Physics;
+using SiegeEngine.Core.Managers;
 namespace ToolChest
 {
     public class PropertiesPanel : BasePanel, IDataAwarePanel
@@ -55,6 +56,10 @@ namespace ToolChest
                     if (hook == "SetComponentProperty")
                     {
                         _parent.ApplyComponentPropertyFromInput(input);
+                    }
+                    if (hook == "ToggleMeshVisible")
+                    {
+                        _parent.ApplyMeshVisibleFromInput(input);
                     }
                 }
             }
@@ -299,6 +304,30 @@ namespace ToolChest
                     if (!string.IsNullOrEmpty(modelComp.Key))
                     {
                         sb.Append($"<div class=\"property-row\" data-context=\"model-key\"><div class=\"property-name\">Asset Key</div><input type=\"text\" value=\"{modelComp.Key}\" readonly></div>");
+                    }
+                    int meshCount = 0;
+                    if (ModelManager.Instance != null && !string.IsNullOrEmpty(modelComp.Key)
+                        && ModelManager.Instance.TryGetModelData(modelComp.Key, out var modelData)
+                        && modelData?.MeshRenders != null)
+                    {
+                        meshCount = modelData.MeshRenders.Count;
+                    }
+                    else if (modelComp.Model?.Meshes != null)
+                    {
+                        meshCount = modelComp.Model.Meshes.Count;
+                    }
+                    if (meshCount > 0)
+                    {
+                        sb.Append("<div class=\"property-row\"><div class=\"property-name\" style=\"font-weight:bold;\">Meshes</div></div>");
+                        for (int mi = 0; mi < meshCount; mi++)
+                        {
+                            bool hidden = modelComp.IsMeshHidden(mi);
+                            string chk = hidden ? "" : " checked";
+                            sb.Append($"<div class=\"property-row\" data-context=\"mesh-row\" data-index=\"{mi}\">");
+                            sb.Append($"<div class=\"property-name\">Mesh {mi}</div>");
+                            sb.Append($"<input type=\"checkbox\"{chk} data-hook=\"ToggleMeshVisible\" data-entityid=\"{ent.Id}\" data-index=\"{mi}\">");
+                            sb.Append("</div>");
+                        }
                     }
                     if (modelComp.Material?.TextureSlots?.Count > 0)
                     {
@@ -592,6 +621,22 @@ namespace ToolChest
             }
             return null;
         }
+        public void ApplyMeshVisibleFromInput(InputElement input)
+        {
+            if (input == null) return;
+            string entityIdStr = input.Attributes.GetValueOrDefault("data-entityid", "-1");
+            string indexStr = input.Attributes.GetValueOrDefault("data-index", "-1");
+            if (!int.TryParse(entityIdStr, out int entityId) || entityId <= 0) return;
+            if (!int.TryParse(indexStr, out int meshIndex) || meshIndex < 0) return;
+            bool visible = input.Checked;
+            var level = ProjectSettings.Current.CurrentLevel;
+            var entity = level?.Entities.FirstOrDefault(e => e.Id == entityId);
+            var modelComp = entity?.GetComponent<ModelComponent>();
+            if (modelComp == null) return;
+            modelComp.SetMeshHidden(meshIndex, !visible);
+            Console.WriteLine($"[PropertiesPanel] ToggleMeshVisible index={meshIndex} visible={visible} hidden=[{string.Join(",", modelComp.HiddenMeshIndices)}]");
+        }
+
         public void HandleDataHook(string hook)
         {
             Console.WriteLine($"[PropertiesPanel] HandleDataHook: {hook}");

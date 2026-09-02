@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Definitions
+// Folder: SiegeEngine/Core/Definitions
 // File: Entity.cs
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
@@ -25,21 +25,12 @@ namespace SiegeEngine.Core.Definitions
         {
         }
 
-        /// <summary>
-        /// Generic path – used by every concrete call site (AddComponent(physics), AddComponent(soundComp), etc.).
-        /// Behaviour is identical to the original: key = typeof(T).
-        /// </summary>
         public void AddComponent<T>(T component) where T : IComponent
         {
             if (component == null) throw new ArgumentNullException(nameof(component));
             _components[typeof(T)] = component;
         }
 
-        /// <summary>
-        /// Non-generic overload. C# overload resolution selects this only when the argument
-        /// is typed as IComponent (the FromData / sync paths). Keys by the concrete runtime type
-        /// so GetComponent&lt;SoundComponent&gt;() works after reload.
-        /// </summary>
         public void AddComponent(IComponent component)
         {
             if (component == null) throw new ArgumentNullException(nameof(component));
@@ -94,6 +85,9 @@ namespace SiegeEngine.Core.Definitions
                         TextureSlots = modelComp.Material.TextureSlots
                     };
                 }
+
+                if (modelComp.HiddenMeshIndices != null && modelComp.HiddenMeshIndices.Count > 0)
+                    data.HiddenMeshIndices = new List<int>(modelComp.HiddenMeshIndices);
             }
 
             data.Components = new List<EntityData.ComponentEntry>();
@@ -103,7 +97,6 @@ namespace SiegeEngine.Core.Definitions
                 var componentType = kvp.Key;
                 var component = kvp.Value;
 
-                // Never write the interface type – it cannot be recreated and pollutes the file.
                 if (componentType == typeof(IComponent) || componentType.IsInterface)
                     continue;
 
@@ -151,6 +144,9 @@ namespace SiegeEngine.Core.Definitions
                     };
                 }
 
+                if (data.HiddenMeshIndices != null && data.HiddenMeshIndices.Count > 0)
+                    modelComp.HiddenMeshIndices = new List<int>(data.HiddenMeshIndices);
+
                 entity.AddComponent(modelComp);
 
                 if (modelComp.Model != null)
@@ -170,7 +166,6 @@ namespace SiegeEngine.Core.Definitions
                 {
                     if (string.IsNullOrEmpty(entry.Type)) continue;
 
-                    // Physics is already created and will be updated in-place.
                     if (entry.Type == physicsFullName)
                     {
                         if (entry.Data != null)
@@ -179,7 +174,9 @@ namespace SiegeEngine.Core.Definitions
                         continue;
                     }
 
-                    // Model is already owned by the AssetPackKey path above.
+                    // Do not replay ModelComponent payload — that overwrites live
+                    // materials and was breaking walls on reload. Hide list lives
+                    // on EntityData.HiddenMeshIndices only.
                     if (entry.Type == modelFullName)
                         continue;
 
@@ -201,7 +198,6 @@ namespace SiegeEngine.Core.Definitions
                             serializable.FromSerializableData(entry.Data);
                         }
 
-                        // Non-generic overload → keys by concrete runtime type.
                         entity.AddComponent(component);
                     }
                     catch (Exception ex)
@@ -211,16 +207,10 @@ namespace SiegeEngine.Core.Definitions
                 }
             }
 
-            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm}) Components={entity.Components.Count}");
+            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} HiddenMeshes={(data.HiddenMeshIndices == null ? 0 : data.HiddenMeshIndices.Count)} Components={entity.Components.Count}");
             return entity;
         }
 
-        /// <summary>
-        /// Resolves a component type by full name. First tries System.Type.GetType, then
-        /// searches every loaded assembly (required because components live in SiegeEngine.dll
-        /// while the editor process is Foundation.exe).
-        /// Must use System.Type explicitly – Entity already has a string property named Type.
-        /// </summary>
         private static System.Type ResolveComponentType(string fullName)
         {
             if (string.IsNullOrEmpty(fullName)) return null;
@@ -237,16 +227,11 @@ namespace SiegeEngine.Core.Definitions
                 }
                 catch
                 {
-                    // Some dynamic / reflection-only assemblies throw; ignore.
                 }
             }
             return null;
         }
 
-        /// <summary>
-        /// default(Quaternion) is (0,0,0,0). Quaternion.Normalize of that yields NaN
-        /// and destroys all OBB corner tests against the heightfield.
-        /// </summary>
         public static Quaternion SanitizeRotation(Quaternion q)
         {
             if (float.IsNaN(q.X) || float.IsNaN(q.Y) || float.IsNaN(q.Z) || float.IsNaN(q.W) ||

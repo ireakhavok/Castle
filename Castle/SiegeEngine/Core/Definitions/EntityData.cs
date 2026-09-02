@@ -37,6 +37,9 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("id")]
         public int Id { get; set; }
 
+        [JsonPropertyName("hiddenMeshIndices")]
+        public List<int> HiddenMeshIndices { get; set; }
+
         // NEW: extensible component data list (supports mods, future components, unknown types are gracefully skipped)
         [JsonPropertyName("components")]
         public List<ComponentEntry> Components { get; set; } = new List<ComponentEntry>();
