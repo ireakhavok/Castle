@@ -14,6 +14,6 @@ namespace Keystone
         public string ParentId { get; set; }
         public List<string> Children { get; set; } = new List<string>();
         public object AssociatedObject { get; set; }
-        public bool IsExpanded { get; set; } = true;
+        public bool IsExpanded { get; set; } = false;
     }
 }

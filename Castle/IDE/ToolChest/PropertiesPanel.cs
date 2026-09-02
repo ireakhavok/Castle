@@ -18,6 +18,8 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.UI.Elements;
 using SiegeEngine.Core.Physics;
+using SiegeEngine.Core.Managers;
+using SiegeEngine.Scenes;
 namespace ToolChest
 {
     public class PropertiesPanel : BasePanel, IDataAwarePanel
@@ -55,6 +57,10 @@ namespace ToolChest
                     if (hook == "SetComponentProperty")
                     {
                         _parent.ApplyComponentPropertyFromInput(input);
+                    }
+                    if (hook == "ToggleMeshVisible")
+                    {
+                        _parent.ApplyMeshVisibleFromInput(input);
                     }
                 }
             }
@@ -252,6 +258,18 @@ namespace ToolChest
             {
                 sb.Append($"<div class=\"property-row\" data-context=\"entity-id\"><div class=\"property-name\">ID</div><input type=\"text\" value=\"{entity.Id}\" readonly></div>");
             }
+            if (obj is MeshLayerRef meshRef)
+            {
+                AppendMeshLayerHtml(sb, meshRef);
+                sb.Append("</details>");
+                return sb.ToString();
+            }
+            if (obj is ModelViewerScene viewer)
+            {
+                AppendViewerMeshesHtml(sb, viewer);
+                sb.Append("</details>");
+                return sb.ToString();
+            }
             sb.Append("</details>");
             if (obj is Level level)
             {
@@ -299,6 +317,36 @@ namespace ToolChest
                     if (!string.IsNullOrEmpty(modelComp.Key))
                     {
                         sb.Append($"<div class=\"property-row\" data-context=\"model-key\"><div class=\"property-name\">Asset Key</div><input type=\"text\" value=\"{modelComp.Key}\" readonly></div>");
+                    }
+                    int meshCount = 0;
+                    if (ModelManager.Instance != null && !string.IsNullOrEmpty(modelComp.Key)
+                        && ModelManager.Instance.TryGetModelData(modelComp.Key, out var modelData)
+                        && modelData?.MeshRenders != null)
+                    {
+                        meshCount = modelData.MeshRenders.Count;
+                    }
+                    else if (modelComp.Model?.Meshes != null)
+                    {
+                        meshCount = modelComp.Model.Meshes.Count;
+                    }
+                    if (meshCount > 0)
+                    {
+                        sb.Append("<div class=\"property-row\"><div class=\"property-name\" style=\"font-weight:bold;\">Meshes</div></div>");
+                        for (int mi = 0; mi < meshCount; mi++)
+                        {
+                            bool hidden = modelComp.IsMeshHidden(mi);
+                            string chk = hidden ? "" : " checked";
+                            sb.Append($"<div class=\"property-row\" data-context=\"mesh-row\" data-index=\"{mi}\">");
+                            sb.Append($"<div class=\"property-name\">Mesh {mi}</div>");
+                            sb.Append($"<input type=\"checkbox\"{chk} data-hook=\"ToggleMeshVisible\" data-entityid=\"{ent.Id}\" data-index=\"{mi}\">");
+                            sb.Append("</div>");
+                            var meshMats = GetEntityMeshMaterials(modelComp, mi);
+                            if (meshMats != null && meshMats.Count > 0)
+                            {
+                                for (int m = 0; m < meshMats.Count; m++)
+                                    AppendMaterialReadOnly(sb, meshMats[m], $"Mesh {mi} Material {m}");
+                            }
+                        }
                     }
                     if (modelComp.Material?.TextureSlots?.Count > 0)
                     {
@@ -592,6 +640,121 @@ namespace ToolChest
             }
             return null;
         }
+        public void ApplyMeshVisibleFromInput(InputElement input)
+        {
+            if (input == null) return;
+            string entityIdStr = input.Attributes.GetValueOrDefault("data-entityid", "-1");
+            string indexStr = input.Attributes.GetValueOrDefault("data-index", "-1");
+            if (!int.TryParse(entityIdStr, out int entityId)) entityId = -1;
+            if (!int.TryParse(indexStr, out int meshIndex) || meshIndex < 0) return;
+            bool visible = input.Checked;
+            if (entityId > 0)
+            {
+                var level = ProjectSettings.Current.CurrentLevel;
+                var entity = level?.Entities.FirstOrDefault(e => e.Id == entityId);
+                var modelComp = entity?.GetComponent<ModelComponent>();
+                if (modelComp == null) return;
+                modelComp.SetMeshHidden(meshIndex, !visible);
+                Console.WriteLine($"[PropertiesPanel] ToggleMeshVisible entity={entityId} index={meshIndex} visible={visible} hidden=[{string.Join(",", modelComp.HiddenMeshIndices)}]");
+                return;
+            }
+            ModelViewerScene viewer = _currentTarget as ModelViewerScene;
+            if (_currentTarget is MeshLayerRef meshRef && meshRef.Viewer != null)
+                viewer = meshRef.Viewer;
+            if (viewer == null) return;
+            viewer.SetMeshHidden(meshIndex, !visible);
+            Console.WriteLine($"[PropertiesPanel] ToggleMeshVisible viewer index={meshIndex} visible={visible} hidden=[{string.Join(",", viewer.HiddenMeshIndices)}]");
+        }
+
+        private void AppendMeshLayerHtml(StringBuilder sb, MeshLayerRef meshRef)
+        {
+            sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Mesh</div><input type=\"text\" value=\"{meshRef.Label ?? ("Mesh " + meshRef.MeshIndex)}\" readonly></div>");
+            bool hidden = false;
+            int entityId = meshRef.EntityId;
+            if (meshRef.Entity != null)
+            {
+                var modelComp = meshRef.Entity.GetComponent<ModelComponent>();
+                hidden = modelComp != null && modelComp.IsMeshHidden(meshRef.MeshIndex);
+                entityId = meshRef.Entity.Id;
+            }
+            else if (meshRef.Viewer != null)
+            {
+                hidden = meshRef.Viewer.HiddenMeshIndices != null && meshRef.Viewer.HiddenMeshIndices.Contains(meshRef.MeshIndex);
+            }
+            string chk = hidden ? "" : " checked";
+            sb.Append($"<div class=\"property-row\" data-context=\"mesh-row\" data-index=\"{meshRef.MeshIndex}\">");
+            sb.Append($"<div class=\"property-name\">Visible</div>");
+            sb.Append($"<input type=\"checkbox\"{chk} data-hook=\"ToggleMeshVisible\" data-entityid=\"{entityId}\" data-index=\"{meshRef.MeshIndex}\">");
+            sb.Append("</div>");
+            var mats = GetMaterialsForLayer(meshRef);
+            if (mats == null || mats.Count == 0)
+                sb.Append("<div class=\"property-row\"><i>No materials on this mesh</i></div>");
+            else
+            {
+                for (int i = 0; i < mats.Count; i++)
+                    AppendMaterialReadOnly(sb, mats[i], $"Material {i}");
+            }
+        }
+
+        private void AppendViewerMeshesHtml(StringBuilder sb, ModelViewerScene viewer)
+        {
+            int count = viewer.GetMeshCount();
+            sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Meshes</div><input type=\"text\" value=\"{count}\" readonly></div>");
+            for (int mi = 0; mi < count; mi++)
+            {
+                bool hidden = viewer.HiddenMeshIndices != null && viewer.HiddenMeshIndices.Contains(mi);
+                string chk = hidden ? "" : " checked";
+                sb.Append($"<div class=\"property-row\" data-context=\"mesh-row\" data-index=\"{mi}\">");
+                sb.Append($"<div class=\"property-name\">Mesh {mi}</div>");
+                sb.Append($"<input type=\"checkbox\"{chk} data-hook=\"ToggleMeshVisible\" data-entityid=\"-1\" data-index=\"{mi}\">");
+                sb.Append("</div>");
+                var mats = viewer.GetMeshMaterials(mi);
+                if (mats != null)
+                {
+                    for (int m = 0; m < mats.Count; m++)
+                        AppendMaterialReadOnly(sb, mats[m], $"Mesh {mi} Material {m}");
+                }
+            }
+        }
+
+        private static List<Material> GetEntityMeshMaterials(ModelComponent modelComp, int meshIndex)
+        {
+            var model = modelComp?.Model;
+            if (model == null && modelComp != null && !string.IsNullOrEmpty(modelComp.Key) && ModelManager.Instance != null)
+                ModelManager.Instance.TryGetModel(modelComp.Key, out model);
+            if (model?.Meshes == null || meshIndex < 0 || meshIndex >= model.Meshes.Count)
+                return null;
+            return model.Meshes[meshIndex].Materials;
+        }
+
+        private static List<Material> GetMaterialsForLayer(MeshLayerRef meshRef)
+        {
+            if (meshRef.Viewer != null)
+                return meshRef.Viewer.GetMeshMaterials(meshRef.MeshIndex)?.ToList();
+            if (meshRef.Entity != null)
+                return GetEntityMeshMaterials(meshRef.Entity.GetComponent<ModelComponent>(), meshRef.MeshIndex);
+            return null;
+        }
+
+        private static void AppendMaterialReadOnly(StringBuilder sb, Material mat, string heading)
+        {
+            if (mat == null) return;
+            string name = string.IsNullOrEmpty(mat.Name) ? heading : mat.Name;
+            sb.Append($"<div class=\"property-row\"><div class=\"property-name\">{heading}</div><input type=\"text\" value=\"{name}\" readonly></div>");
+            if (mat.TextureSlots == null || mat.TextureSlots.Count == 0)
+            {
+                sb.Append("<div class=\"property-row\"><i>No texture slots</i></div>");
+                return;
+            }
+            for (int i = 0; i < mat.TextureSlots.Count; i++)
+            {
+                var slot = mat.TextureSlots[i];
+                string slotName = string.IsNullOrEmpty(slot.SlotName) ? $"Slot {i}" : slot.SlotName;
+                string path = slot.TexturePath ?? "";
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">{slotName}</div><input type=\"text\" value=\"{path}\" readonly></div>");
+            }
+        }
+
         public void HandleDataHook(string hook)
         {
             Console.WriteLine($"[PropertiesPanel] HandleDataHook: {hook}");

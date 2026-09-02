@@ -7,6 +7,7 @@ using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Lighting;
 using SiegeEngine.Core.GPU.Shaders;
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 
 namespace SiegeEngine.Core.GPU.Renderers
@@ -16,6 +17,7 @@ namespace SiegeEngine.Core.GPU.Renderers
         private readonly IRenderContext _renderContext;
         private ShaderProgram _modelShader;
         private ShaderProgram _animationShader;
+        private List<int> _hiddenMeshIndices;
 
         public ModelRenderer(IRenderContext renderContext)
         {
@@ -55,12 +57,28 @@ namespace SiegeEngine.Core.GPU.Renderers
                 Matrix4x4[] boneMatrices = modelComp.BoneMatrices;
                 Matrix3x3[] normalMatrices = modelComp.NormalBoneTransforms;
                 bool receiveShadows = modelComp.ReceiveShadows && (modelComp.Material == null || modelComp.Material.ReceiveShadows);
-                RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices, receiveShadows);
+                _hiddenMeshIndices = modelComp.HiddenMeshIndices;
+                try
+                {
+                    RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices, receiveShadows);
+                }
+                finally
+                {
+                    _hiddenMeshIndices = null;
+                }
             }
             else
             {
                 // fallback for legacy entities (preserves everything)
-                RenderModel(modelComp, physics, view, projection, viewPos, modelManager);
+                _hiddenMeshIndices = modelComp.HiddenMeshIndices;
+                try
+                {
+                    RenderModel(modelComp, physics, view, projection, viewPos, modelManager);
+                }
+                finally
+                {
+                    _hiddenMeshIndices = null;
+                }
             }
         }
 
@@ -104,10 +122,13 @@ namespace SiegeEngine.Core.GPU.Renderers
             RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices, receiveShadows: true);
         }
 
-        public void RenderModel(FBXModel fbxModel, ModelManager.ModelData modelData, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, Matrix4x4 modelMatrix, Matrix4x4[] boneMatrices, Matrix3x3[] normalMatrices, bool receiveShadows)
+        public void RenderModel(FBXModel fbxModel, ModelManager.ModelData modelData, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, Matrix4x4 modelMatrix, Matrix4x4[] boneMatrices, Matrix3x3[] normalMatrices, bool receiveShadows, ICollection<int> hiddenMeshIndices = null)
         {
             if (modelData == null) return;
             if (modelMatrix == default) modelMatrix = Matrix4x4.Identity;
+            List<int> prevHidden = _hiddenMeshIndices;
+            if (hiddenMeshIndices != null)
+                _hiddenMeshIndices = hiddenMeshIndices as List<int> ?? new List<int>(hiddenMeshIndices);
 
             bool hasBones = boneMatrices != null && boneMatrices.Length > 0 && fbxModel != null && fbxModel.HasSkin;
             ShaderProgram shader = hasBones ? _animationShader : _modelShader;
@@ -146,8 +167,14 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.Disable(_renderContext.Enums.CullFace);
             _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
 
+            int renderIndex = 0;
             foreach (var mmr in modelData.MeshRenders)
             {
+                int gpuIndex = renderIndex;
+                renderIndex++;
+                if (_hiddenMeshIndices != null && _hiddenMeshIndices.Contains(gpuIndex))
+                    continue;
+
                 try
                 {
                     for (int i = 0; i < Math.Min(mmr.AlbedoTextures.Length, 4); i++)
@@ -187,6 +214,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             }
 
             _renderContext.Disable(_renderContext.Enums.DepthTest);
+            _hiddenMeshIndices = prevHidden;
         }
 
         public void RenderSkeletonDebug(VertexBuffer skeletonBuffer, ShaderProgram pointShader, Matrix4x4 view, Matrix4x4 projection)

@@ -1,0 +1,2162 @@
+Unity / FBX pack inventory
+Generated: 2026-08-31 22:36
+Root: C:\repos\Castle\Castle\Assets\FantasySlavicHut
+
+Counts
+  FBX:        64
+  Materials:  96
+  Textures:   143
+  Prefabs:    64
+  .meta:      400
+  GUID index: 400
+
+Folders (depth 4)
+  [dir] Materials
+  [dir] Meshes
+  [dir] Meshes\Building
+  [dir] Meshes\Building\Materials
+  [dir] Meshes\Foliage
+  [dir] Meshes\Foliage\Materials
+  [dir] Meshes\Props
+  [dir] Meshes\Props\Materials
+  [dir] Meshes\Rocks
+  [dir] Meshes\Rocks\Materials
+  [dir] Prefabs
+  [dir] Scenes
+  [dir] Scenes\L_SlavicHut
+  [dir] Scenes\Overview
+  [dir] Shaders
+  [dir] Terrain
+  [dir] Textures
+
+Textures
+  5181KB  Textures\T_Arch_B.png
+  4623KB  Textures\T_Arch_N.png
+  2266KB  Textures\T_Arch_R.png
+  6192KB  Textures\T_Barrel_B.png
+  5488KB  Textures\T_Barrel_N.png
+  4278KB  Textures\T_Barrel_ORM.png
+  7042KB  Textures\T_Bench_B.png
+  7065KB  Textures\T_Bench_N.png
+  3858KB  Textures\T_Bench_ORM.png
+  15212KB  Textures\T_BigBeam_B.png
+  5418KB  Textures\T_BigBeam_N.png
+  6209KB  Textures\T_BigBeam_R.png
+  6121KB  Textures\T_BigShingle_B.png
+  5723KB  Textures\T_BigShingle_N.png
+  1947KB  Textures\T_BigShingle_R.png
+  4815KB  Textures\T_BirchLeaf_B.png
+  1032KB  Textures\T_BirchLeaf_N.png
+  561KB  Textures\T_Birchleaf_O.png
+  1629KB  Textures\T_BirchLeaf_R.png
+  4818KB  Textures\T_BirchLeaf2_B.png
+  5122KB  Textures\T_BirchTrunk_B.png
+  5976KB  Textures\T_BirchTrunk_N.png
+  2239KB  Textures\T_BirchTrunk_R.png
+  6351KB  Textures\T_Box_B.png
+  6474KB  Textures\T_Box_N.png
+  3734KB  Textures\T_Box_ORM.png
+  1486KB  Textures\T_BuildingRock_B.png
+  2059KB  Textures\T_BuildingRock_N.png
+  874KB  Textures\T_BuildingRock_R.png
+  4992KB  Textures\T_Canopy_B.png
+  6716KB  Textures\T_Canopy_N.png
+  3743KB  Textures\T_Canopy_ORM.png
+  6896KB  Textures\T_Cart_B.png
+  8580KB  Textures\T_Cart_N.png
+  4944KB  Textures\T_Cart_ORM.png
+  5383KB  Textures\T_Column01_B.png
+  3575KB  Textures\T_Column01_N.png
+  2411KB  Textures\T_Column01_R.png
+  18621KB  Textures\T_Column02_B.png
+  17096KB  Textures\T_Column02_N.png
+  8664KB  Textures\T_Column02_R.png
+  101KB  Textures\T_Daisy_B.png
+  335KB  Textures\T_Daisy_N.png
+  1396KB  Textures\T_Daisyleaf_B.PNG
+  342KB  Textures\T_Daisyleaf_N.PNG
+  47KB  Textures\T_Daisyleaf_O.PNG
+  4819KB  Textures\T_DeersKull_B.png
+  6556KB  Textures\T_DeersKull_N.png
+  2591KB  Textures\T_DeersKull_R.png
+  5014KB  Textures\T_Door_B.png
+  8063KB  Textures\T_Door_N.png
+  3581KB  Textures\T_Door_ORM.png
+  5184KB  Textures\T_DormWindow_B.png
+  3986KB  Textures\T_DormWindow_N.png
+  1759KB  Textures\T_DormWindow_R.png
+  12666KB  Textures\T_Earth_B.png
+  10721KB  Textures\T_Earth_N.png
+  5167KB  Textures\T_Earth_R.png
+  3913KB  Textures\T_Flower_B.png
+  492KB  Textures\T_Flower_N.png
+  111KB  Textures\T_flower_O.png
+  22151KB  Textures\T_GableBig_B.png
+  5994KB  Textures\T_GableBig_R.png
+  20538KB  Textures\T_GableGig_N.png
+  12903KB  Textures\T_Grass_B.png
+  11220KB  Textures\T_Grass_N.png
+  5126KB  Textures\T_Grass_R.png
+  2351KB  Textures\T_GrassFoliage_B.png
+  1205KB  Textures\T_GrassFoliage_N.png
+  13012KB  Textures\T_Gravel_B.PNG
+  23487KB  Textures\T_Gravel_N.PNG
+  7237KB  Textures\T_Gravel_R.PNG
+  983KB  Textures\T_Handrails_B.png
+  1009KB  Textures\T_Handrails_N.png
+  434KB  Textures\T_Handrails_R.png
+  5344KB  Textures\T_HangingColumn_B.png
+  8186KB  Textures\T_Hangingcolumn_N.png
+  3737KB  Textures\T_HangingColumn_ORM.png
+  1882KB  Textures\T_Ivy_B.png
+  586KB  Textures\T_Ivy_N.png
+  ... 63 more
+
+Unity materials (.mat) resolved via .meta GUIDs
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Arch.mat
+            _BaseColorTexture -> other  Textures\T_Arch_B.png
+            _Normal -> other  Textures\T_Arch_N.png
+            _Roughness -> other  Textures\T_Arch_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Bark01.mat
+            _BaseColorTexture -> other  Textures\T_TreeBark_B.png
+            _Normal -> other  Textures\T_Barrel_N.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Barrel.mat
+            _BaseColorTexture -> other  Textures\T_Barrel_B.png
+            _Normal -> other  Textures\T_Barrel_N.png
+            _ORM -> other  Textures\T_Barrel_ORM.png
+
+  MATERIAL  M_BaseColor
+            file: Materials\M_BaseColor.mat
+            textures: (none referenced)
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Bench.mat
+            _BaseColorTexture -> other  Textures\T_Bench_B.png
+            _Normal -> other  Textures\T_Bench_N.png
+            _ORM -> other  Textures\T_Bench_ORM.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_BigBeam.mat
+            _BaseColorTexture -> other  Textures\T_BigBeam_B.png
+            _Normal -> other  Textures\T_BigBeam_N.png
+            _Roughness -> other  Textures\T_BigBeam_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_BigShingle.mat
+            _BaseColorTexture -> other  Textures\T_BigShingle_B.png
+            _Normal -> other  Textures\T_BigShingle_N.png
+            _Roughness -> other  Textures\T_BigShingle_R.png
+
+  MATERIAL  M_BirchLeaf01
+            file: Materials\M_BirchLeaf01.mat
+            _BaseMap -> albedo  Textures\T_BirchLeaf_B.png
+            _NormalMap -> normal  Textures\T_BirchLeaf_N.png
+            _RoughnessMap -> other  Textures\T_BirchLeaf_R.png
+
+  MATERIAL  M_BirchLeaf02
+            file: Materials\M_BirchLeaf02.mat
+            _BaseMap -> albedo  Textures\T_BirchLeaf2_B.png
+            _NormalMap -> normal  Textures\T_BirchLeaf_N.png
+            _RoughnessMap -> other  Textures\T_BirchLeaf_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_BirchTrunk.mat
+            _BaseColorTexture -> other  Textures\T_BirchTrunk_B.png
+            _Normal -> other  Textures\T_BirchTrunk_N.png
+            _Roughness -> other  Textures\T_BirchTrunk_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Box.mat
+            _BaseColorTexture -> other  Textures\T_Box_B.png
+            _Normal -> other  Textures\T_Box_N.png
+            _ORM -> other  Textures\T_Box_ORM.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_BuildingRock.mat
+            _BaseColorTexture -> other  Textures\T_BuildingRock_B.png
+            _Normal -> other  Textures\T_BuildingRock_N.png
+            _Roughness -> other  Textures\T_BuildingRock_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Canopy.mat
+            _BaseColorTexture -> other  Textures\T_Canopy_B.png
+            _Normal -> other  Textures\T_Canopy_N.png
+            _ORM -> other  Textures\T_Canopy_ORM.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Cart.mat
+            _BaseColorTexture -> other  Textures\T_Cart_B.png
+            _Normal -> other  Textures\T_Cart_N.png
+            _ORM -> other  Textures\T_Cart_ORM.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Column01.mat
+            _BaseColorTexture -> other  Textures\T_Column01_B.png
+            _Normal -> other  Textures\T_Column01_N.png
+            _Roughness -> other  Textures\T_Column01_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Column02.mat
+            _BaseColorTexture -> other  Textures\T_Column02_B.png
+            _Normal -> other  Textures\T_Column02_N.png
+            _Roughness -> other  Textures\T_Column02_R.png
+
+  MATERIAL  M_DaisyLeaf
+            file: Materials\M_DaisyLeaf.mat
+            _BaseMap -> albedo  Textures\T_Daisyleaf_B.PNG
+            _NormalMap -> normal  Textures\T_Daisyleaf_N.PNG
+            _RoughnessMap -> other  Textures\T_BirchLeaf_R.png
+
+  MATERIAL  M_DaisyPetal
+            file: Materials\M_DaisyPetal.mat
+            _BaseMap -> albedo  Textures\T_Daisy_B.png
+            _NormalMap -> normal  Textures\T_Daisy_N.png
+            _RoughnessMap -> other  Textures\T_BirchLeaf_R.png
+
+  MATERIAL  M_DarkPetal
+            file: Materials\M_DarkPetal.mat
+            _BaseMap -> albedo  Textures\T_Flower_B.png
+            _NormalMap -> normal  Textures\T_Flower_N.png
+            _RoughnessMap -> other  Textures\T_BirchLeaf_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_DeerSkull.mat
+            _BaseColorTexture -> other  Textures\T_DeersKull_B.png
+            _Normal -> other  Textures\T_DeersKull_N.png
+            _ORM -> other  Textures\T_DeersKull_R.png
+            _Roughness -> other  Textures\T_DeersKull_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Door.mat
+            _BaseColorTexture -> other  Textures\T_Door_B.png
+            _Normal -> other  Textures\T_Door_N.png
+            _ORM -> other  Textures\T_Door_ORM.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_DormWindow.mat
+            _BaseColorTexture -> other  Textures\T_DormWindow_B.png
+            _Normal -> other  Textures\T_DormWindow_N.png
+            _Roughness -> other  Textures\T_DormWindow_R.png
+
+  MATERIAL  M_Flower
+            file: Materials\M_Flower.mat
+            _BaseMap -> albedo  Textures\T_Flower_B.png
+            _NormalMap -> normal  Textures\T_Flower_N.png
+            _RoughnessMap -> other  Textures\T_BirchLeaf_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_GableBig.mat
+            _BaseColorTexture -> other  Textures\T_GableBig_B.png
+            _Normal -> other  Textures\T_GableGig_N.png
+            _Roughness -> other  Textures\T_GableBig_R.png
+
+  MATERIAL  M_Grass
+            file: Materials\M_Grass.mat
+            _BaseMap -> albedo  Textures\T_GrassFoliage_B.png
+            _NormalMap -> normal  Textures\T_GrassFoliage_N.png
+            _RoughnessMap -> other  Textures\T_BirchLeaf_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Handrails.mat
+            _BaseColorTexture -> other  Textures\T_Handrails_B.png
+            _Normal -> other  Textures\T_Handrails_N.png
+            _Roughness -> other  Textures\T_Handrails_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_HangingColumn.mat
+            _BaseColorTexture -> other  Textures\T_HangingColumn_B.png
+            _Normal -> other  Textures\T_Hangingcolumn_N.png
+            _ORM -> other  Textures\T_HangingColumn_ORM.png
+
+  MATERIAL  M_IvyLeaf
+            file: Materials\M_IvyLeaf.mat
+            _BaseMap -> albedo  Textures\T_Ivy_B.png
+            _NormalMap -> normal  Textures\T_Ivy_N.png
+            _RoughnessMap -> other  Textures\T_BirchLeaf_R.png
+
+  MATERIAL  M_Leaf
+            file: Materials\M_Leaf.mat
+            _BaseMap -> albedo  Textures\T_Leaf_B.png
+            _NormalMap -> normal  Textures\T_Leaf_N.png
+            _RoughnessMap -> other  Textures\T_BirchLeaf_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Log.mat
+            _BaseColorTexture -> other  Textures\T_Logs_B.png
+            _Normal -> other  Textures\T_Logs_N.png
+            _Roughness -> other  Textures\T_Logs_R.png
+
+  MATERIAL  M_Pistil
+            file: Materials\M_Pistil.mat
+            _BaseMap -> albedo  Textures\T_Pistil_B.png
+            _NormalMap -> normal  Textures\T_Seed_N.png
+            _RoughnessMap -> other  Textures\T_BirchLeaf_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Rocks.mat
+            _Base -> other  Textures\T_Rocks_B.png
+            _Normal -> other  Textures\T_Rocks_R.png
+            _Roughness -> other  Textures\T_Rocks_N.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_SculptedBeam.mat
+            _BaseColorTexture -> other  Textures\T_SculptedBeam_B.png
+            _Normal -> other  Textures\T_SculptedBeam_N.png
+            _Roughness -> other  Textures\T_SculptedBeam_R.png
+
+  MATERIAL  M_Seed
+            file: Materials\M_Seed.mat
+            _BaseMap -> albedo  Textures\T_Seed_B.png
+            _NormalMap -> normal  Textures\T_Seed_N.png
+            _RoughnessMap -> other  Textures\T_BirchLeaf_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_ShinglePlanks.mat
+            _BaseColorTexture -> other  Textures\T_ShinglePlanks_B.png
+            _Normal -> other  Textures\T_ShinglePlanks_N.png
+            _Roughness -> other  Textures\T_ShinglePlanks_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_ShingleRound.mat
+            _BaseColorTexture -> other  Textures\T_ShingleRound_B.png
+            _Normal -> other  Textures\T_ShingleRound_N.png
+            _Roughness -> other  Textures\T_ShingleRound_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_ShingleroundLong.mat
+            _BaseColorTexture -> other  Textures\T_ShingleRoundLong_B.png
+            _Normal -> other  Textures\T_ShingleRoundLong_N.png
+            _Roughness -> other  Textures\T_ShingleRoundLong_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_ShortBeam.mat
+            _BaseColorTexture -> other  Textures\T_ShortBeam_B.png
+            _Normal -> other  Textures\T_ShortBeam_N.png
+            _Roughness -> other  Textures\T_ShortBeam_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Spade.mat
+            _BaseColorTexture -> other  Textures\T_Spade_B.png
+            _Normal -> other  Textures\T_Spade_N.png
+            _ORM -> other  Textures\T_Spade_ORM.png
+
+  MATERIAL  M_Spruce
+            file: Materials\M_Spruce.mat
+            _BaseMap -> albedo  Textures\T_Spruce_B.png
+            _NormalMap -> normal  Textures\T_Spruce_N.png
+            _RoughnessMap -> other  Textures\T_BirchLeaf_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Stairs.mat
+            _BaseColorTexture -> other  Textures\T_Stairs_B.png
+            _Normal -> other  Textures\T_Stairs_N.png
+            _ORM -> other  Textures\T_Stairs_R.png
+
+  MATERIAL  M_Stem
+            file: Materials\M_Stem.mat
+            _BaseMap -> albedo  Textures\T_Pistil_B.png
+            _NormalMap -> normal  Textures\T_Seed_N.png
+            _RoughnessMap -> other  Textures\T_BirchLeaf_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Stump.mat
+            _BaseColorTexture -> other  Textures\T_Stump_B.png
+            _Normal -> other  Textures\T_Stump_N.png
+            _ORM -> other  Textures\T_Stump_ORM.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_ThickBeam.mat
+            _BaseColorTexture -> other  Textures\T_ThickBeam_B.png
+            _Normal -> other  Textures\T_ThickBeam_N.png
+            _ORM -> other  Textures\T_ThickBeam_ORM.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Wall.mat
+            _BaseColorTexture -> other  Textures\T_Wall_B.png
+            _Normal -> other  Textures\T_Wall_N.png
+            _Roughness -> other  Textures\T_Wall_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_Window.mat
+            _BaseColorTexture -> other  Textures\T_Window_B.png
+            _Normal -> other  Textures\T_Window_N.png
+            _Roughness -> other  Textures\T_Window_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Materials\M_WoodSurface.mat
+            _BaseColorTexture -> other  Textures\T_WoodSurface_B.png
+            _Normal -> other  Textures\T_WoodSurface_N.png
+            _Roughness -> other  Textures\T_WoodSurface_R.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Meshes\Building\Materials\MI_Arch.mat
+            _BaseColorMap -> albedo  Textures\T_Arch_B.png
+            _MainTex -> albedo  Textures\T_Arch_B.png
+            _NormalMap -> normal  Textures\T_Arch_N.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Meshes\Building\Materials\MI_BigBeam.mat
+            _BaseColorMap -> albedo  Textures\T_BigBeam_B.png
+            _MainTex -> albedo  Textures\T_BigBeam_B.png
+            _NormalMap -> normal  Textures\T_BigBeam_N.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Meshes\Building\Materials\MI_BigShingle.mat
+            _BaseColorMap -> albedo  Textures\T_BigShingle_B.png
+            _MainTex -> albedo  Textures\T_BigShingle_B.png
+            _NormalMap -> normal  Textures\T_BigShingle_N.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Meshes\Building\Materials\MI_BuildingRock.mat
+            _BaseColorMap -> albedo  Textures\T_BuildingRock_B.png
+            _MainTex -> albedo  Textures\T_BuildingRock_B.png
+            _NormalMap -> normal  Textures\T_BuildingRock_N.png
+
+  MATERIAL  MI_Canopy
+            file: Meshes\Building\Materials\MI_Canopy.mat
+            _BaseColorMap -> albedo  Textures\T_Canopy_B.png
+            _MainTex -> albedo  Textures\T_Canopy_B.png
+            _NormalMap -> normal  Textures\T_Canopy_N.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Meshes\Building\Materials\MI_Column01.mat
+            _BaseColorMap -> albedo  Textures\T_Column01_B.png
+            _MainTex -> albedo  Textures\T_Column01_B.png
+            _NormalMap -> normal  Textures\T_Column01_N.png
+
+  MATERIAL  MI_Column02
+            file: Meshes\Building\Materials\MI_Column02.mat
+            _BaseColorMap -> albedo  Textures\T_Column02_B.png
+            _MainTex -> albedo  Textures\T_Column02_B.png
+            _NormalMap -> normal  Textures\T_Column02_N.png
+
+  MATERIAL  MI_DeerSkull
+            file: Meshes\Building\Materials\MI_DeerSkull.mat
+            _BaseColorMap -> albedo  Textures\T_DeersKull_B.png
+            _MainTex -> albedo  Textures\T_DeersKull_B.png
+            _NormalMap -> normal  Textures\T_DeersKull_N.png
+
+  MATERIAL  MI_Door
+            file: Meshes\Building\Materials\MI_Door.mat
+            _BaseColorMap -> albedo  Textures\T_Door_B.png
+            _MainTex -> albedo  Textures\T_Door_B.png
+            _NormalMap -> normal  Textures\T_Door_N.png
+
+  MATERIAL  MI_DormWindow
+            file: Meshes\Building\Materials\MI_DormWindow.mat
+            _BaseColorMap -> albedo  Textures\T_DormWindow_B.png
+            _MainTex -> albedo  Textures\T_DormWindow_B.png
+            _NormalMap -> normal  Textures\T_DormWindow_N.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Meshes\Building\Materials\MI_GableBig.mat
+            _BaseColorMap -> albedo  Textures\T_GableBig_B.png
+            _MainTex -> albedo  Textures\T_GableBig_B.png
+            _NormalMap -> normal  Textures\T_GableGig_N.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Meshes\Building\Materials\MI_Handrails.mat
+            _BaseColorMap -> albedo  Textures\T_Handrails_B.png
+            _MainTex -> albedo  Textures\T_Handrails_B.png
+            _NormalMap -> normal  Textures\T_Handrails_N.png
+
+  MATERIAL  m_EditorClassIdentifier:
+            file: Meshes\Building\Materials\MI_HangingColumn.mat
+            _BaseColorMap -> albedo  Textures\T_HangingColumn_B.png
+            _MainTex -> albedo  Textures\T_HangingColumn_B.png
+            _NormalMap -> normal  Textures\T_Hangingcolumn_N.png
+
+  ... 36 more materials
+FBX files + name hints
+  FBX  Meshes\Building\SM_Arch.fbx  (125 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTextureo8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi,
+       hint: LayerElementNormal_
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: Materialsi
+       hint: LayerElementNormal;
+       hint: LayerElementMaterial~
+       hint: NormalsdF
+       hint: BinormalsdF
+       hint: LayerElementNormal
+       hint: LayerElementBinormalsf
+       hint: LayerElementMaterialJg
+       hint: MaterialsiJ
+       hint: NormalsdV
+       hint: BinormalsdV
+       hint: Materialsi&
+       hint: LayerElementBinormal{
+       hint: LayerElementMaterialR
+       hint: MaterialL
+
+  FBX  Meshes\Building\SM_BigBeam.fbx  (76 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTextureu8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: NormalsdL
+       hint: LayerElementBinormalI
+       hint: BinormalsdL
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: Normalsd&
+       hint: Binormalsd&
+       hint: Materialsiv
+       hint: LayerElementBinormalM
+       hint: LayerElementMaterial$
+       hint: Normalsd
+       hint: Binormalsd
+       hint: Materialsi:
+       hint: LayerElementBinormal(
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_BigBeam_N.png
+       hint: ..\..\Textures\T_BigBeam_N.png
+
+  FBX  Meshes\Building\SM_BigShingle.fbx  (526 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture{8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd=M
+       hint: LayerElementBinormalI
+       hint: Binormalsd=M
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormalP
+       hint: LayerElementMaterial'
+       hint: LayerElementBinormal2#
+       hint: LayerElementMaterial
+       hint: Normalsd
+       hint: Binormalsd
+       hint: MaterialsiJ
+       hint: LayerElementBinormal)<
+       hint: NormalsdV
+       hint: BinormalsdV
+       hint: Materialsi&
+       hint: LayerElementBinormal1j
+       hint: LayerElementNormal!
+       hint: LayerElementBinormal
+       hint: LayerElementMateriald
+       hint: MaterialL
+       hint: MaterialS
+
+  FBX  Meshes\Building\SM_BuildingRock.fbx  (392 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormalF
+       hint: LayerElementMaterial
+       hint: LayerElementBinormal*
+       hint: LayerElementNormal+c
+       hint: LayerElementBinormal
+       hint: LayerElementMaterialnd
+       hint: Materialsid
+       hint: NormalsdB
+       hint: BinormalsdB
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_BuildingRock_N.png
+       hint: ..\..\Textures\T_BuildingRock_B.png
+       hint: TextureL
+       hint: TextureS
+
+  FBX  Meshes\Building\SM_Canopy.fbx  (159 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTextures8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd$
+       hint: LayerElementBinormalI
+       hint: Binormalsd$
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: LayerElementBinormal+7
+       hint: Normalsd
+       hint: Binormalsd
+       hint: LayerElementBinormal_$
+       hint: LayerElementMaterial6%
+       hint: Normalsd@
+       hint: Binormalsd@
+       hint: Materialsi@
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Canopy_N.png
+       hint: ..\..\Textures\T_Canopy_N.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Canopy_B.png
+
+  FBX  Meshes\Building\SM_Column01.fbx  (152 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexturew8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: MaterialsiL
+       hint: LayerElementNormal6*
+       hint: LayerElementBinormal
+       hint: LayerElementMaterialy+
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementMaterialY8
+       hint: NormalsdV
+       hint: BinormalsdV
+       hint: Materialsi&
+       hint: LayerElementMaterialW
+       hint: Normalsd"
+       hint: Binormalsd"
+       hint: LayerElementNormal>
+       hint: LayerElementMaterial
+       hint: MaterialsiJ
+       hint: LayerElementNormalzA
+       hint: MaterialL
+       hint: MaterialS
+
+  FBX  Meshes\Building\SM_Column02.fbx  (169 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexturew8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd\
+       hint: LayerElementBinormalI
+       hint: Binormalsd\
+       hint: LayerElementMaterialI
+       hint: Materialsi|
+       hint: LayerElementNormal
+       hint: LayerElementBinormalKJ
+       hint: LayerElementMaterial"K
+       hint: Materialsi
+       hint: LayerElementNormal/V
+       hint: LayerElementBinormal
+       hint: LayerElementMaterialrW
+       hint: Normalsd.
+       hint: Binormalsd.
+       hint: Materialsi>
+       hint: LayerElementBinormal-
+       hint: LayerElementMaterial
+       hint: Normalsd
+       hint: Binormalsd
+       hint: LayerElementNormalnD
+       hint: MaterialsiP
+       hint: LayerElementBinormal5
+       hint: MaterialL
+
+  FBX  Meshes\Building\SM_Door.fbx  (287 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTextureo8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd\(
+       hint: LayerElementBinormalI
+       hint: Binormalsd\(
+       hint: LayerElementMaterialI
+       hint: Materialsi|
+       hint: LayerElementNormal
+       hint: LayerElementBinormalsL
+       hint: LayerElementMaterialJM
+       hint: Materialsi
+       hint: LayerElementBinormalOY
+       hint: LayerElementMaterial&Z
+       hint: Normalsd%
+       hint: Binormalsd%
+       hint: Materialsi=
+       hint: LayerElementBinormal:
+       hint: LayerElementMaterial
+       hint: Normalsd
+       hint: Binormalsd
+       hint: LayerElementNormal(
+       hint: LayerElementBinormal
+       hint: LayerElementMaterialk
+       hint: LayerElementNormal-^
+       hint: LayerElementMaterialp_
+
+  FBX  Meshes\Building\SM_DormWindow.fbx  (367 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture{8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd";
+       hint: LayerElementBinormalI
+       hint: Binormalsd";
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormall
+       hint: LayerElementMaterialC
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: Normalsd
+       hint: Binormalsd
+       hint: MaterialsiI
+       hint: LayerElementNormalU%
+       hint: Normalsdk
+       hint: Binormalsdk
+       hint: LayerElementBinormal`
+       hint: LayerElementMaterial7
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_DormWindow_N.png
+
+  FBX  Meshes\Building\SM_Floor.fbx  (56 KB)
+       hint: Material*-
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture+4
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd@
+       hint: LayerElementBinormalI
+       hint: Binormalsd@
+       hint: LayerElementMaterialI
+       hint: Materialsi@
+       hint: LayerElementNormaldh
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormal-q
+       hint: Normalsd
+       hint: Binormalsd
+       hint: LayerElementNormalQ
+       hint: MaterialsiP
+       hint: LayerElementBinormalL
+       hint: LayerElementMaterial#
+       hint: Normalsdh
+       hint: Binormalsdh
+       hint: Materialsi(
+       hint: LayerElementNormalx
+       hint: MaterialL
+       hint: MaterialS
+
+  FBX  Meshes\Building\SM_GableBig.fbx  (190 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexturew8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormalzw
+       hint: LayerElementMaterialQx
+       hint: LayerElementBinormalZ
+       hint: LayerElementMaterial1
+       hint: MaterialsiT
+       hint: LayerElementBinormalW;
+       hint: LayerElementMaterial.<
+       hint: LayerElementNormalx
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: MaterialsiU
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_GableGig_N.png
+       hint: ..\..\Textures\T_GableBig_B.png
+
+  FBX  Meshes\Building\SM_Handrail.fbx  (81 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexturew8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormalz
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: Materialsir
+       hint: LayerElementNormal
+       hint: LayerElementMateriala
+       hint: Materialsi8
+       hint: LayerElementBinormal/
+       hint: LayerElementNormalg%
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_Handrails_N.png
+       hint: ..\..\Textures\T_Handrails_B.png
+       hint: TextureL
+       hint: TextureS
+       hint: TextureVideoClipZ8
+
+  FBX  Meshes\Building\SM_HangingColumn.fbx  (76 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: NormalsdF
+       hint: LayerElementBinormalI
+       hint: BinormalsdF
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: LayerElementNormalG
+       hint: Normalsd
+       hint: Binormalsd
+       hint: MaterialsiJ
+       hint: LayerElementBinormalf
+       hint: LayerElementMaterial=
+       hint: NormalsdV
+       hint: BinormalsdV
+       hint: Materialsi&
+       hint: LayerElementNormalb
+       hint: LayerElementNormalM
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+
+  FBX  Meshes\Building\SM_Logs.fbx  (374 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTextureo8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormalX
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: LayerElementNormal4
+       hint: LayerElementMaterialw
+       hint: NormalsdH$
+       hint: BinormalsdH$
+       hint: LayerElementNormal
+       hint: LayerElementBinormal)4
+       hint: Normalsd$
+       hint: Binormalsd$
+       hint: LayerElementBinormal^
+       hint: LayerElementMaterial5
+       hint: LayerElementBinormale
+       hint: LayerElementMaterial<
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+
+  FBX  Meshes\Building\SM_Pediment.fbx  (41 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexturew8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsdl
+       hint: LayerElementBinormalI
+       hint: Binormalsdl
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal@V
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: LayerElementNormal
+       hint: Normalsd6
+       hint: Binormalsd6
+       hint: LayerElementBinormalZq
+       hint: LayerElementMaterial1r
+       hint: Normalsd
+       hint: Binormalsd
+       hint: LayerElementBinormal!~
+       hint: LayerElementNormal|
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_WallMold_N.png
+       hint: TextureL
+
+  FBX  Meshes\Building\SM_PedimentCurved.fbx  (48 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi,
+       hint: LayerElementNormal;]
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial~^
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementMaterial
+       hint: NormalsdZ
+       hint: BinormalsdZ
+       hint: Normalsd6
+       hint: Binormalsd6
+       hint: LayerElementNormal.
+       hint: LayerElementMaterialq
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_WallMold_N.png
+       hint: TextureL
+
+  FBX  Meshes\Building\SM_SculptedBeam.fbx  (465 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi6
+       hint: LayerElementNormal4
+       hint: LayerElementBinormal
+       hint: LayerElementMaterialw
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementMaterial[
+       hint: LayerElementMaterial
+       hint: Normalsd~
+       hint: Binormalsd~
+       hint: LayerElementNormalv
+       hint: Normalsd6
+       hint: Binormalsd6
+       hint: LayerElementNormalq$
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_SculptedBeam_N.png
+
+  FBX  Meshes\Building\SM_ShingleLong.fbx  (507 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture}8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: MaterialsiH
+       hint: LayerElementNormal
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: Materialsi
+       hint: NormalsdD.
+       hint: BinormalsdD.
+       hint: Materialsi$
+       hint: LayerElementNormalg
+       hint: Normalsd"
+       hint: Binormalsd"
+       hint: LayerElementBinormal\
+       hint: LayerElementMaterial3
+       hint: LayerElementNormalD
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_ShingleRoundLong_N.png
+
+  FBX  Meshes\Building\SM_ShinglePlank.fbx  (146 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal(
+       hint: LayerElementBinormal
+       hint: LayerElementMaterialk
+       hint: LayerElementNormal
+       hint: LayerElementBinormalx
+       hint: LayerElementMaterialO
+       hint: Normalsd~
+       hint: Binormalsd~
+       hint: LayerElementNormalE
+       hint: LayerElementMaterial
+       hint: Normalsdd
+       hint: Binormalsdd
+       hint: MaterialsiD
+       hint: LayerElementBinormalv*
+       hint: LayerElementMaterialM+
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+
+  FBX  Meshes\Building\SM_ShingleShort.fbx  (503 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal5
+       hint: LayerElementBinormal
+       hint: LayerElementMaterialx
+       hint: LayerElementNormal
+       hint: LayerElementMaterial\
+       hint: Normalsdp,
+       hint: Binormalsdp,
+       hint: LayerElementMaterialZ
+       hint: Normalsd8
+       hint: Binormalsd8
+       hint: Materialsix
+       hint: LayerElementNormal8
+       hint: LayerElementMaterial{
+       hint: Materialsi<
+       hint: LayerElementMaterial`
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+
+  FBX  Meshes\Building\SM_ShortBeam.fbx  (81 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexturey8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormalw
+       hint: LayerElementMaterialN
+       hint: LayerElementBinormalX
+       hint: LayerElementMaterial/
+       hint: LayerElementBinormalm
+       hint: LayerElementMaterialD
+       hint: Normalsd@
+       hint: Binormalsd@
+       hint: Materialsi@
+       hint: LayerElementNormalp
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: Normalsd 
+       hint: Binormalsd 
+       hint: Materialsi 
+       hint: MaterialL
+       hint: MaterialS
+
+  FBX  Meshes\Building\SM_Skull.fbx  (1282 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTextureq8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: NormalsdT
+       hint: LayerElementBinormalI
+       hint: BinormalsdT
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormal`-
+       hint: LayerElementMaterial7.
+       hint: LayerElementBinormal=:
+       hint: LayerElementMaterial
+       hint: Normalsd*
+       hint: Binormalsd*
+       hint: MaterialsiZ
+       hint: LayerElementNormal]{
+       hint: LayerElementBinormal
+       hint: Normalsd
+       hint: Binormalsd
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_DeersKull_N.png
+       hint: ..\..\Textures\T_DeersKull_B.png
+
+  FBX  Meshes\Building\SM_Stairs.fbx  (212 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTextures8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormal"
+       hint: LayerElementMaterial
+       hint: LayerElementBinormal
+       hint: MaterialsiT
+       hint: Normalsdz
+       hint: Binormalsdz
+       hint: Materialsi*
+       hint: LayerElementBinormal3
+       hint: Normalsd4
+       hint: Binormalsd4
+       hint: LayerElementMaterialY2
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_Stairs_N.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Stairs_B.png
+
+  FBX  Meshes\Building\SM_ThickBeam.fbx  (33 KB)
+       hint: Materialr*
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Textures1
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi,
+       hint: LayerElementNormal/a
+       hint: LayerElementBinormal
+       hint: LayerElementMaterialrb
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementMaterial
+       hint: MaterialL0
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_ThickBeam_N.png
+       hint: ..\..\Textures\T_ThickBeam_B.png
+       hint: TextureL
+       hint: TextureS
+       hint: TextureVideoClipJ{
+       hint: TextureNameS
+       hint: Texture
+       hint: Texture_Alpha_SourceS
+
+  FBX  Meshes\Building\SM_Wall.fbx  (40 KB)
+       hint: Materialh*
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texturei1
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd@
+       hint: LayerElementBinormalI
+       hint: Binormalsd@
+       hint: LayerElementMaterialI
+       hint: Materialsi@
+       hint: LayerElementNormal
+       hint: LayerElementBinormalMy
+       hint: LayerElementMaterial$z
+       hint: Materialsi
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: MaterialL0
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_WallMold_N.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_N.png
+       hint: ..\..\Textures\T_Wall_N.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_N.pngc
+       hint: ..\..\Textures\T_WallMold_B.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_B.png
+       hint: ..\..\Textures\T_Wall_B.png
+       hint: TextureL
+
+  FBX  Meshes\Building\SM_WallDoor.fbx  (37 KB)
+       hint: Materialp*
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Textureq1
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi,
+       hint: LayerElementNormalzn
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: Materialsi
+       hint: LayerElementNormal"w
+       hint: LayerElementMaterialex
+       hint: MaterialLP
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_WallMold_N.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_N.png=
+       hint: ..\..\Textures\T_Wall_N.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_N.png
+       hint: ..\..\Textures\T_WallMold_B.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_B.png
+       hint: ..\..\Textures\T_Wall_B.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_B.pngT
+
+  FBX  Meshes\Building\SM_WallDoorSmall.fbx  (55 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd|
+       hint: LayerElementBinormalI
+       hint: Binormalsd|
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormalz^
+       hint: LayerElementMaterialQ_
+       hint: LayerElementNormal3g
+       hint: LayerElementBinormal
+       hint: LayerElementMaterialvh
+       hint: Normalsd
+       hint: Binormalsd
+       hint: MaterialsiN
+       hint: LayerElementMaterial 
+       hint: NormalsdV
+       hint: BinormalsdV
+       hint: Materialsi&
+       hint: LayerElementBinormalW
+       hint: LayerElementMaterial.
+       hint: LayerElementMaterial
+       hint: MaterialL
+       hint: MaterialS
+
+  FBX  Meshes\Building\SM_WallSideDoor.fbx  (61 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi,
+       hint: LayerElementNormal`j
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: Materialsi
+       hint: LayerElementNormal<s
+       hint: NormalsdF
+       hint: BinormalsdF
+       hint: LayerElementNormal
+       hint: LayerElementBinormal,
+       hint: MaterialsiJ
+       hint: LayerElementNormalA
+       hint: NormalsdV
+       hint: BinormalsdV
+       hint: Materialsi&
+       hint: LayerElementBinormal<
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+
+  FBX  Meshes\Building\SM_WallSideWindow.fbx  (44 KB)
+       hint: Material|*
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture}1
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd0
+       hint: LayerElementBinormalI
+       hint: Binormalsd0
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormaly
+       hint: LayerElementMaterialP
+       hint: LayerElementBinormalW
+       hint: LayerElementMaterial.
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_WallMold_N.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_N.png
+       hint: ..\..\Textures\T_Wall_N.png
+       hint: ..\..\Textures\T_WallMold_B.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_B.png^
+       hint: ..\..\Textures\T_Wall_B.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_B.png)
+       hint: TextureL
+       hint: TextureS
+
+  FBX  Meshes\Building\SM_WallSmall.fbx  (41 KB)
+       hint: Materialr*
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Textures1
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd@
+       hint: LayerElementBinormalI
+       hint: Binormalsd@
+       hint: LayerElementMaterialI
+       hint: Materialsi@
+       hint: LayerElementNormal
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: Materialsi
+       hint: LayerElementNormal<
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_WallMold_N.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_N.pngY
+       hint: ..\..\Textures\T_Wall_N.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_N.png$
+       hint: ..\..\Textures\T_WallMold_B.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_B.png
+       hint: ..\..\Textures\T_Wall_B.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_B.pngp
+       hint: TextureL0
+
+  FBX  Meshes\Building\SM_WallTiny.fbx  (37 KB)
+       hint: Materialp*
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Textureq1
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd0
+       hint: LayerElementBinormalI
+       hint: Binormalsd0
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: LayerElementBinormal(u
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_WallMold_N.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_N.png
+       hint: ..\..\Textures\T_Wall_N.png
+       hint: ..\..\Textures\T_WallMold_B.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_B.png#
+       hint: ..\..\Textures\T_Wall_B.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_B.png
+       hint: TextureL
+       hint: TextureS
+       hint: TextureVideoClipq
+
+  FBX  Meshes\Building\SM_WallWindow01.fbx  (79 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd0
+       hint: LayerElementBinormalI
+       hint: Binormalsd0
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormal}
+       hint: LayerElementMaterialT
+       hint: LayerElementNormal5
+       hint: LayerElementBinormal
+       hint: LayerElementMaterialx
+       hint: Normalsd
+       hint: Binormalsd
+       hint: LayerElementNormal2
+       hint: LayerElementMaterialu
+       hint: Materialsil
+       hint: LayerElementNormalP
+       hint: LayerElementMaterial
+       hint: Materialsi6
+       hint: LayerElementBinormal+
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+
+  FBX  Meshes\Building\SM_WallWindow02.fbx  (44 KB)
+       hint: Materialx*
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texturey1
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: NormalsdT
+       hint: LayerElementBinormalI
+       hint: BinormalsdT
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: LayerElementNormalF
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_WallMold_N.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_N.pngi
+       hint: ..\..\Textures\T_Wall_N.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_N.png4
+       hint: ..\..\Textures\T_WallMold_B.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_B.png
+       hint: ..\..\Textures\T_Wall_B.png
+       hint: TextureL
+       hint: TextureS
+       hint: TextureVideoClip
+
+  FBX  Meshes\Building\SM_WallWindow03.fbx  (42 KB)
+       hint: Materialx*
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texturey1
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsip
+       hint: LayerElementNormal
+       hint: LayerElementBinormalw
+       hint: LayerElementMaterialN
+       hint: Materialsi
+       hint: LayerElementBinormal#
+       hint: LayerElementMaterial
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_WallMold_N.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_N.png
+       hint: ..\..\Textures\T_Wall_N.png
+       hint: ..\..\Textures\T_WallMold_B.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_B.png&
+       hint: ..\..\Textures\T_Wall_B.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_B.png
+       hint: TextureL
+
+  FBX  Meshes\Building\SM_WallWindowSmall.fbx  (67 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormal^s
+       hint: LayerElementMaterial5t
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial\}
+       hint: Materialsil
+       hint: LayerElementMaterial
+       hint: Materialsi6
+       hint: LayerElementMaterial[
+       hint: LayerElementBinormal:
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\T_WallMold_N.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_N.pngj
+       hint: ..\..\Textures\T_Wall_N.png
+       hint: C:\UnrealToUnity/Assets/BefourStudios/FantasySlavicHut/Textures/T_Wall_N.png5
+
+  FBX  Meshes\Building\SM_Window.fbx  (443 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTextures8
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd.A
+       hint: LayerElementBinormalI
+       hint: Binormalsd.A
+       hint: LayerElementMaterialI
+       hint: Materialsi>
+       hint: LayerElementNormalvw
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: Materialsi
+       hint: LayerElementNormalT
+       hint: Normalsd
+       hint: Binormalsd
+       hint: LayerElementNormal
+       hint: LayerElementMaterialZ[
+       hint: NormalsdG
+       hint: BinormalsdG
+       hint: LayerElementBinormalnJ
+       hint: LayerElementMaterialEK
+       hint: Normalsd(
+       hint: Binormalsd(
+       hint: LayerElementNormalg
+       hint: MaterialL
+       hint: MaterialS
+
+  FBX  Meshes\Foliage\SM_Birch01.fbx  (1139 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: LayerElementMaterial^
+       hint: Normalsdcc
+       hint: Binormalsdcc
+       hint: LayerElementNormalvA
+       hint: LayerElementBinormal.
+       hint: LayerElementBinormall
+       hint: LayerElementMaterialC
+       hint: MaterialL0~
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: MaterialLP,
+       hint: ..\..\Textures\T_BirchLeaf_N.png
+       hint: ..\..\Textures\T_BirchLeaf_B.png
+       hint: ..\..\Textures\T_BirchTrunk_N.png
+
+  FBX  Meshes\Foliage\SM_Birch02.fbx  (1139 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: LayerElementMaterial^
+       hint: Normalsdcc
+       hint: Binormalsdcc
+       hint: LayerElementNormalvA
+       hint: LayerElementBinormal.
+       hint: LayerElementBinormall
+       hint: LayerElementMaterialC
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: MaterialLp*
+       hint: ..\..\Textures\T_BirchLeaf_N.png
+       hint: ..\..\Textures\T_BirchLeaf2_B.png
+       hint: ..\..\Textures\T_BirchTrunk_N.png
+
+  FBX  Meshes\Foliage\SM_Bush.fbx  (813 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal
+       hint: LayerElementBinormal
+       hint: LayerElementMaterial
+       hint: LayerElementBinormaln
+       hint: LayerElementMaterialE
+       hint: Normalsd>+
+       hint: Binormalsd>+
+       hint: Materialsih
+       hint: LayerElementNormal<
+       hint: Materialsi4
+       hint: LayerElementMaterialX
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: ..\..\Textures\Foliage\T_Leaf_N.png
+       hint: ..\..\Textures\Foliage\T_Leaf_B.png
+       hint: TextureL
+
+  FBX  Meshes\Foliage\SM_Daisy.fbx  (490 KB)
+       hint: Material
+       hint: EmissiveColorS
+       hint: EmissiveFactorS
+       hint: DiffuseColorS
+       hint: DiffuseFactorS
+       hint: BumpS
+       hint: NormalMapS
+       hint: BumpFactorS
+       hint: Texture
+       hint: FbxFileTexture
+       hint: TextureTypeUseS
+       hint: Texture alphaS
+       hint: TextureRotationPivotS
+       hint: TextureScalingPivotS
+       hint: CurrentTextureBlendModeS
+       hint: UseMaterialS
+       hint: LayerElementNormalI
+       hint: Normalsd
+       hint: LayerElementBinormalI
+       hint: Binormalsd
+       hint: LayerElementMaterialI
+       hint: Materialsi
+       hint: LayerElementNormal/
+       hint: LayerElementBinormal
+       hint: LayerElementMaterialr
+       hint: LayerElementNormal
+       hint: LayerElementMaterial
+       hint: LayerElementNormal)
+       hint: LayerElementMateriall
+       hint: LayerElementBinormal'
+       hint: Normalsd@
+       hint: Binormalsd@
+       hint: Materialsi@
+       hint: LayerElementBinormalpu
+       hint: LayerElementMaterialGv
+       hint: MaterialL
+       hint: MaterialS
+       hint: EmissiveS
+       hint: DiffuseS
+       hint: MaterialL .
+
+  ... 24 more FBX files
+How to read this
+  - If Textures exist and materials resolve to PNGs, assign those PNGs in Blender.
+  - One atlas PNG used by every slot is common for store packs.
+  - If GUIDs do not resolve, the Textures folder is missing from this copy.
+  - Collision hulls: delete meshes named UCX_/UBX_/Col/Collider/Hull.
+  - Paste pack-inventory.txt back for a slot-by-slot assignment list.
