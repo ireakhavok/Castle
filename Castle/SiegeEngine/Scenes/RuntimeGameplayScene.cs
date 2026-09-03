@@ -193,7 +193,7 @@ namespace SiegeEngine.Scenes
                         phys.Size = m.GetBoundingSize();
                         phys.LocalBoundsMinCm = m.LocalBoundsMinCm;
                         phys.LocalBoundsMaxCm = m.LocalBoundsMaxCm;
-                        phys.RebuildShape(m);
+                        phys.RebuildShape(m, mc);
                     }
                 }
                 if (phys != null && e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase))

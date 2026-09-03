@@ -642,7 +642,7 @@ namespace ToolChest
                         physics.SleepTimer = 0f;
                         physics.InvalidateShape();
                         var modelComp = entity.GetComponent<ModelComponent>();
-                        physics.RebuildShape(modelComp?.Model);
+                        physics.RebuildShape(modelComp?.Model, modelComp);
                         Console.WriteLine($"[PropertiesPanel] Rebuilt physics shape/mass for entity {entityId} (BodyType={physics.BodyType}, InvMass={physics.InvMass}, RollingResistance={physics.RollingResistance})");
                     }
                 }
@@ -717,7 +717,7 @@ namespace ToolChest
                 {
                     modelComp.SetMeshHidden(meshIndex, !visible);
                     applied++;
-                    Console.WriteLine($"[PropertiesPanel] ToggleMeshVisible entity={entityId} index={meshIndex} visible={visible} hidden=[{string.Join(",", modelComp.HiddenMeshIndices)}]");
+                    RebuildPhysicsForModel(entityId, modelComp);
                 }
                 if (applied == 0)
                     Console.WriteLine($"[PropertiesPanel] ToggleMeshVisible missed live/blueprint entity={entityId} index={meshIndex}");
@@ -851,6 +851,29 @@ namespace ToolChest
             return null;
         }
 
+        private void RebuildPhysicsForModel(int entityId, ModelComponent modelComp)
+        {
+            if (modelComp == null) return;
+            void Rebuild(Entity e)
+            {
+                if (e == null) return;
+                var phys = e.GetComponent<PhysicsComponent>();
+                if (phys == null) return;
+                var mc = e.GetComponent<ModelComponent>() ?? modelComp;
+                phys.InvalidateShape();
+                phys.RebuildShape(mc.Model ?? modelComp.Model, mc);
+            }
+            if (_currentTarget is Entity live && (entityId <= 0 || live.Id == entityId))
+                Rebuild(live);
+            if (_currentTarget is MeshLayerRef meshRef && meshRef.Entity != null && (entityId <= 0 || meshRef.Entity.Id == entityId))
+                Rebuild(meshRef.Entity);
+            if (entityId > 0)
+            {
+                var blueprint = ProjectSettings.Current?.CurrentLevel?.Entities?.FirstOrDefault(e => e.Id == entityId);
+                Rebuild(blueprint);
+            }
+        }
+
         private List<ModelComponent> EnumerateModelComponents(int entityId)
         {
             var list = new List<ModelComponent>();
@@ -961,6 +984,11 @@ namespace ToolChest
                     emptyViewer.SaveMaterialOptionsSidecar();
                 WriteOpacityIntoMeshPack(entityId, meshIndex, matIndex, "");
                 SyncOpacityInputValue(entityId, meshIndex, matIndex, "");
+                if (entityId > 0)
+                {
+                    foreach (var mc in EnumerateModelComponents(entityId))
+                        RebuildPhysicsForModel(entityId, mc);
+                }
                 return;
             }
             var opt = GetOrCreateOption(entityId, meshIndex, matIndex);
@@ -979,6 +1007,11 @@ namespace ToolChest
             // and races EditorHistory Backspace into deleting the selected entity.
             if (changed)
                 SyncOpacityInputValue(entityId, meshIndex, matIndex, opt.OpacityPath);
+            if (entityId > 0)
+            {
+                foreach (var mc in EnumerateModelComponents(entityId))
+                    RebuildPhysicsForModel(entityId, mc);
+            }
         }
 
         private string ProjectTexturesDirectory(int entityId = -1)

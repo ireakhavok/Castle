@@ -22,7 +22,7 @@ namespace SiegeEngine.Core.GPU.Renderers
         private List<MeshMaterialOption> _materialOptions;
         private FBXModel _opacityModel;
         private string _opacityModelKey;
-        private readonly Dictionary<string, uint> _opacityTextures = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, uint> _opacityTextures = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
         public const int OpacityTextureUnit = 15;
         public static string ProjectTexturesDirectory { get; set; }
         public static string LastImportedOpacityAbsolute { get; set; }
@@ -363,43 +363,69 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         private void BindOpacityOption(ShaderProgram shader, int meshIndex)
         {
+            BindOpacityToShader(_renderContext, shader, meshIndex, _materialOptions, _opacityModelKey, OpacityTextureUnit);
+        }
+
+        public static bool CollectOpacitySlots(int meshIndex, IList<MeshMaterialOption> options, out string path, out int slots)
+        {
+            path = null;
+            slots = 0;
+            if (options == null) return false;
+            for (int i = 0; i < options.Count; i++)
+            {
+                var o = options[i];
+                if (o == null || o.MeshIndex != meshIndex) continue;
+                if (string.IsNullOrWhiteSpace(o.OpacityPath)) continue;
+                int mat = o.MaterialIndex;
+                if (mat < 0 || mat > 3) continue;
+                if (path == null)
+                    path = o.OpacityPath.Trim();
+                if (string.Equals(path, o.OpacityPath.Trim(), StringComparison.OrdinalIgnoreCase))
+                    slots |= (1 << mat);
+            }
+            return !string.IsNullOrEmpty(path) && slots != 0;
+        }
+
+        public static bool MaterialHasOpacity(IList<MeshMaterialOption> options, int meshIndex, int materialIndex)
+        {
+            if (options == null) return false;
+            for (int i = 0; i < options.Count; i++)
+            {
+                var o = options[i];
+                if (o == null || o.MeshIndex != meshIndex) continue;
+                if (o.MaterialIndex != materialIndex) continue;
+                if (!string.IsNullOrWhiteSpace(o.OpacityPath))
+                    return true;
+            }
+            return false;
+        }
+
+        public static void BindOpacityToShader(IRenderContext rc, ShaderProgram shader, int meshIndex, IList<MeshMaterialOption> options, string modelKey, int unit = OpacityTextureUnit)
+        {
             shader.SetUniform("uHasOpacity", 0);
             shader.SetUniform("uOpacitySlots", 0);
-            string path = null;
-            int slots = 0;
-            if (_materialOptions != null)
-            {
-                for (int i = 0; i < _materialOptions.Count; i++)
-                {
-                    var o = _materialOptions[i];
-                    if (o == null || o.MeshIndex != meshIndex) continue;
-                    if (string.IsNullOrWhiteSpace(o.OpacityPath)) continue;
-                    int mat = o.MaterialIndex;
-                    if (mat < 0 || mat > 3) continue;
-                    if (path == null)
-                        path = o.OpacityPath.Trim();
-                    // One GL unit is free (15). All slots that share this handle
-                    // get the same map; different files on the same mesh wait
-                    // for extra units. Birch leaves all use T_*_O.png.
-                    if (string.Equals(path, o.OpacityPath.Trim(), StringComparison.OrdinalIgnoreCase))
-                        slots |= (1 << mat);
-                }
-            }
-            if (string.IsNullOrEmpty(path) || slots == 0)
+            if (rc == null || shader == null) return;
+            if (!CollectOpacitySlots(meshIndex, options, out string path, out int slots))
                 return;
-            uint tex = GetOrLoadOpacityTexture(path, _opacityModelKey);
+            uint tex = LoadOpacityTexture(rc, path, modelKey);
             if (tex == 0)
                 return;
-            _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + OpacityTextureUnit);
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, tex);
-            shader.SetUniform("uOpacityMap", OpacityTextureUnit);
+            rc.ActiveTexture(rc.Enums.Texture0 + unit);
+            rc.BindTexture(rc.Enums.Texture2D, tex);
+            shader.SetUniform("uOpacityMap", unit);
             shader.SetUniform("uOpacitySlots", slots);
             shader.SetUniform("uHasOpacity", 1);
-            _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
+            rc.ActiveTexture(rc.Enums.Texture0);
         }
 
         private uint GetOrLoadOpacityTexture(string stored, string modelKey = null)
         {
+            return LoadOpacityTexture(_renderContext, stored, modelKey);
+        }
+
+        public static uint LoadOpacityTexture(IRenderContext rc, string stored, string modelKey = null)
+        {
+            if (rc == null) return 0;
             string resolved = ResolveStoredOpacityPath(stored, modelKey);
             if (string.IsNullOrEmpty(resolved) || !System.IO.File.Exists(resolved))
                 return 0;
@@ -407,7 +433,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 return existing;
             try
             {
-                var loaded = TextureLoader.LoadTexture(_renderContext, resolved);
+                var loaded = TextureLoader.LoadTexture(rc, resolved);
                 if (loaded.Item1 == 0)
                     return 0;
                 _opacityTextures[resolved] = loaded.Item1;
