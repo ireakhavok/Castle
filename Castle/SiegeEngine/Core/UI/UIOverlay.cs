@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
+// Folder: SiegeEngine.Core.UI
 // File: UIOverlay.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -76,7 +76,7 @@ namespace SiegeEngine.Core.UI
             // Safety only: if a panel replaces its tree, drop any focused reference that pointed
             // into the old tree. Does not run every frame — only when content is intentionally replaced.
             if (_interactionLayer != null)
-                _interactionLayer.ClearFocus(refresh: false);
+                _interactionLayer.ClearFocus(refresh: false, commit: false);
             _currentBaseDir = baseDir;
             HtmlParser parser = new HtmlParser();
             _cssParser.Clear();
@@ -393,9 +393,10 @@ namespace SiegeEngine.Core.UI
                         {
                             if (!input.IsFocused)
                             {
-                                // Transfer focus: blur previous text input first
+                                // Transfer focus: commit + blur previous text input first
                                 if (_interactionLayer != null && _interactionLayer._currentFocused is InputElement prev && prev != input)
                                 {
+                                    _interactionLayer.CommitFocusedInput();
                                     prev.IsFocused = false;
                                 }
                                 if (!string.IsNullOrEmpty(input.OnFocusJS))
@@ -436,9 +437,10 @@ namespace SiegeEngine.Core.UI
                     {
                         if (!input.IsFocused)
                         {
-                            // Transfer focus: blur previous text input first
+                            // Transfer focus: commit + blur previous text input first
                             if (_interactionLayer != null && _interactionLayer._currentFocused is InputElement prev && prev != input)
                             {
+                                _interactionLayer.CommitFocusedInput();
                                 prev.IsFocused = false;
                             }
                             if (!string.IsNullOrEmpty(input.OnFocusJS))

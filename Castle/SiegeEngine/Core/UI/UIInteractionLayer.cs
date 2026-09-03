@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
+// Folder: SiegeEngine.Core.UI
 // File: UIInteractionLayer.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.GPU.ContextManagement;
@@ -63,11 +63,32 @@ namespace SiegeEngine.Core.UI
             return false;
         }
         /// <summary>
+        /// Commit the focused text/number field if its Value changed, then TriggerChange.
+        /// LoadUI must pass commit:false so replacing the tree does not apply a dying field.
+        /// </summary>
+        public void CommitFocusedInput()
+        {
+            if (_currentFocused is InputElement input && (input.Type == "text" || input.Type == "number"))
+            {
+                string current = input.Value ?? "";
+                string committed = input.CommittedValue ?? "";
+                if (current != committed)
+                {
+                    if (input.Attributes != null)
+                        input.Attributes["value"] = current;
+                    _overlay.TriggerChange(input);
+                }
+            }
+        }
+
+        /// <summary>
         /// Blur the currently focused text input (cursor off, keys no longer routed to it).
         /// </summary>
-        public void ClearFocus(bool refresh = true)
+        public void ClearFocus(bool refresh = true, bool commit = true)
         {
             if (_currentFocused == null) return;
+            if (commit)
+                CommitFocusedInput();
             if (_currentFocused is InputElement old)
                 old.IsFocused = false;
             _currentFocused = null;
@@ -102,7 +123,7 @@ namespace SiegeEngine.Core.UI
             // Field→field transfer is handled inside UIOverlay.HandleUIClick when the new input is focused.
             if (mousePress && _currentFocused != null && !IsPressOverTextInput(clickablesSnapshot))
             {
-                ClearFocus(refresh: true);
+                ClearFocus(refresh: true, commit: true);
             }
             bool dropdownPressHandled = false;
             foreach (var select in _openSelects)
@@ -312,7 +333,11 @@ namespace SiegeEngine.Core.UI
                         {
                             _keyDownTime[key] = currentTime;
                             _lastAddTime[key] = currentTime;
-                            if (key == Key.Backspace)
+                            if (key == Key.Enter || key == Key.KeyPadEnter)
+                            {
+                                CommitFocusedInput();
+                            }
+                            else if (key == Key.Backspace)
                             {
                                 if (input.Value.Length > 0)
                                 {
@@ -372,9 +397,10 @@ namespace SiegeEngine.Core.UI
                 }
                 if (changed)
                 {
+                    if (input.Attributes != null)
+                        input.Attributes["value"] = input.Value ?? "";
                     _overlay.RefreshUI();
                     _overlay.InvokeListeners(input, "input");
-                    _overlay.TriggerChange(input);
                 }
                 needsRefresh = input.Update(deltaTime, _controlContext, _window);
             }

@@ -91,8 +91,7 @@ namespace Keystone
                 Redo();
             if (!ctrl && !textFocus && del && !_prevDelete)
                 RequestDeleteSelection();
-            if (!ctrl && !textFocus && back && !_prevBackspace)
-                RequestDeleteSelection();
+            // Backspace is reserved for text editing. Entity delete is Delete only.
 
             _prevZ = z;
             _prevY = y;

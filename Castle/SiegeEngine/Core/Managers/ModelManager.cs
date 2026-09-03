@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Managers
+// Folder: SiegeEngine/Core/Managers
 // File: ModelManager.cs
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
@@ -277,10 +277,18 @@ namespace SiegeEngine.Core.Managers
             string originalFbxDir = Path.GetDirectoryName(fbxPath);
             int copiedTextureCount = CollectAndCopyReferencedTextures(model, originalFbxDir, packFolder);
             Console.WriteLine($"[ModelManager] Collected and copied {copiedTextureCount} external texture files referenced by materials (from parsed FBXModel)");
+            List<MeshMaterialOption> preservedOptions = null;
+            string existingKey = (packId ?? "").ToLowerInvariant();
+            if (!string.IsNullOrEmpty(existingKey) && _animationPacks.TryGetValue(existingKey, out var existingPack)
+                && existingPack?.MaterialOptions != null)
+            {
+                preservedOptions = MeshMaterialOption.CloneList(existingPack.MaterialOptions);
+            }
             var pack = new AnimationPack(packId, packId)
             {
                 SourceFBXPath = "./" + fbxName,
-                SourceSkeletonPath = "./" + fbxName
+                SourceSkeletonPath = "./" + fbxName,
+                MaterialOptions = preservedOptions
             };
             // In-memory only — [JsonIgnore] on AnimationPack.Animations prevents keyframe dump on serialize
             pack.Animations = model.Animations.Where(a => a.Keyframes.Count > 0).ToList();
@@ -734,6 +742,14 @@ namespace SiegeEngine.Core.Managers
                 mesh.Vertices[i] = newVertex;
             }
         }
+        public bool TryGetFbxDirectory(string key, out string directory)
+        {
+            directory = null;
+            if (string.IsNullOrEmpty(key) || _fbxDirs == null) return false;
+            if (_fbxDirs.TryGetValue(key, out directory)) return !string.IsNullOrEmpty(directory);
+            return _fbxDirs.TryGetValue(key.ToLowerInvariant(), out directory) && !string.IsNullOrEmpty(directory);
+        }
+
         public bool TryGetModel(string key, out FBXModel model)
         {
             key = key.ToLower();

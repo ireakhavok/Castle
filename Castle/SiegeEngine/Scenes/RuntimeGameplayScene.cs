@@ -94,7 +94,12 @@ namespace SiegeEngine.Scenes
             SetupPureRuntimeWorld();
             if (!_panelHosted)
             {
-                _controlContext.SetScrollCallback(_window, (w, xoffset, yoffset) => { });
+                // Play Host feeds wheel via PanelManager → SetScrollDelta.
+                // Play Game has no PanelManager; an empty callback swallowed GLFW scroll.
+                _controlContext.SetScrollCallback(_window, (w, xoffset, yoffset) =>
+                {
+                    _frameScroll += (float)yoffset;
+                });
                 _controlContext.SetWindowSizeCallback(_window, (w, newWidth, newHeight) =>
                 {
                     if (newWidth > 0 && newHeight > 0)

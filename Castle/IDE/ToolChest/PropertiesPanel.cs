@@ -20,6 +20,7 @@ using SiegeEngine.Core.UI.Elements;
 using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Scenes;
+using ReadingChamber;
 namespace ToolChest
 {
     public class PropertiesPanel : BasePanel, IDataAwarePanel
@@ -60,7 +61,15 @@ namespace ToolChest
                     }
                     if (hook == "ToggleMeshVisible")
                     {
-                        _parent.ApplyMeshVisibleFromInput(input);
+                        if (!_parent._rebuildingUI)
+                            _parent.ApplyMeshVisibleFromInput(input);
+                    }
+                    if (hook == "SetMaterialOpacity" || hook == "SetMaterialOption")
+                    {
+                        // TriggerChange for text now only fires on blur/Enter (see UIInteractionLayer).
+                        // Treat that as a commit so an emptied field actually clears the mask.
+                        if (!_parent._ignoreMaterialInput)
+                            _parent.ApplyMaterialOpacityFromInput(input, allowClear: true);
                     }
                 }
             }
@@ -86,6 +95,31 @@ namespace ToolChest
                     ShowContextMenu(mousePos, items);
                     return true;
                 }
+                HtmlElement pathElem = sourceElement;
+                string matCtx = pathElem.Attributes.GetValueOrDefault("data-context", "");
+                if (matCtx != "mat-opt-path" && pathElem.Parent != null)
+                {
+                    pathElem = pathElem.Parent;
+                    matCtx = pathElem.Attributes.GetValueOrDefault("data-context", "");
+                }
+                if (matCtx == "mat-opt-path")
+                {
+                    HtmlElement attrs = sourceElement;
+                    if (!attrs.Attributes.ContainsKey("data-mesh") && !attrs.Attributes.ContainsKey("data-index") && sourceElement.Parent != null)
+                        attrs = sourceElement.Parent;
+                    if (!int.TryParse(attrs.Attributes.GetValueOrDefault("data-entityid", "-1"), out int entityId))
+                        entityId = -1;
+                    if (!int.TryParse(attrs.Attributes.GetValueOrDefault("data-mesh", attrs.Attributes.GetValueOrDefault("data-index", "-1")), out int meshIndex))
+                        meshIndex = -1;
+                    if (!int.TryParse(attrs.Attributes.GetValueOrDefault("data-mat", "0"), out int matIndex))
+                        matIndex = 0;
+                    _parent.StashOpacityBrowseTarget(entityId, meshIndex, matIndex);
+                    ShowContextMenu(mousePos, new List<ContextMenuItem>
+                    {
+                        new ContextMenuItem("Browse...", "BrowseMaterialPath")
+                    });
+                    return true;
+                }
                 return false;
             }
         }
@@ -94,6 +128,13 @@ namespace ToolChest
         // Toggle state for Play / Pause
         private bool _previewIsPlaying;
         private int _previewEntityId = -1;
+        private int _browseEntityId = -1;
+        private int _browseMesh = -1;
+        private int _browseMat = 0;
+        private bool _pendingOpacityBrowse;
+        private bool _allowEmptyOpacityClear;
+        private bool _ignoreMaterialInput;
+        private bool _rebuildingUI;
         public PropertiesPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -106,6 +147,7 @@ namespace ToolChest
             BaseHeight = 620f;
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
+            _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
         }
         protected override UIOverlay CreateUIOverlay()
         {
@@ -115,6 +157,7 @@ namespace ToolChest
         {
             base.Init();
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
+            BindProjectTexturesDirectory();
             LoadPropertiesUI();
         }
         public void FlushLiveSettings()
@@ -135,6 +178,10 @@ namespace ToolChest
                     _previewIsPlaying = false;
                     _previewEntityId = -1;
                     Console.WriteLine($"[PropertiesPanel] Selection changed - nodeId: {nodeId} | Target type: {_currentTarget?.GetType().FullName ?? "null"}");
+                    int selId = -1;
+                    if (_currentTarget is Entity selEnt) selId = selEnt.Id;
+                    else if (_currentTarget is MeshLayerRef selRef) selId = selRef.EntityId;
+                    BindProjectTexturesDirectory();
                     RebuildPropertiesUI();
                 }
             }
@@ -145,6 +192,7 @@ namespace ToolChest
             else if (e.Hook == "FlushUIStateBeforeSave")
             {
                 FlushSceneSettingsFromUI();
+                FlushMaterialOptionsFromUI();
             }
         }
         private void OnEntitySelected(EntitySelectedEvent e)
@@ -176,10 +224,20 @@ namespace ToolChest
                 ? BuildPropertiesHtml(_currentTarget)
                 : "<div class=\"property-row\"><i>No object selected</i></div>";
             string finalHtml = template.Replace("<!--PROPERTIES-->", contentHtml);
-            _uiOverlay.LoadUI(finalHtml);
-            _uiOverlay.PanelWidth = Size.X;
-            _uiOverlay.PanelHeight = Size.Y;
-            _uiOverlay.RefreshUI();
+            _ignoreMaterialInput = true;
+            _rebuildingUI = true;
+            try
+            {
+                _uiOverlay.LoadUI(finalHtml);
+                _uiOverlay.PanelWidth = Size.X;
+                _uiOverlay.PanelHeight = Size.Y;
+                _uiOverlay.RefreshUI();
+            }
+            finally
+            {
+                _ignoreMaterialInput = false;
+                _rebuildingUI = false;
+            }
         }
         private void FlushSceneSettingsFromUI()
         {
@@ -344,7 +402,11 @@ namespace ToolChest
                             if (meshMats != null && meshMats.Count > 0)
                             {
                                 for (int m = 0; m < meshMats.Count; m++)
-                                    AppendMaterialReadOnly(sb, meshMats[m], $"Mesh {mi} Material {m}");
+                                    AppendMaterialBlock(sb, meshMats[m], $"Mesh {mi} Material {m}", ent.Id, mi, m);
+                            }
+                            else
+                            {
+                                AppendMaterialBlock(sb, null, $"Mesh {mi} Material 0", ent.Id, mi, 0);
                             }
                         }
                     }
@@ -650,17 +712,18 @@ namespace ToolChest
             bool visible = input.Checked;
             if (entityId > 0)
             {
-                var level = ProjectSettings.Current.CurrentLevel;
-                var entity = level?.Entities.FirstOrDefault(e => e.Id == entityId);
-                var modelComp = entity?.GetComponent<ModelComponent>();
-                if (modelComp == null) return;
-                modelComp.SetMeshHidden(meshIndex, !visible);
-                Console.WriteLine($"[PropertiesPanel] ToggleMeshVisible entity={entityId} index={meshIndex} visible={visible} hidden=[{string.Join(",", modelComp.HiddenMeshIndices)}]");
+                int applied = 0;
+                foreach (var modelComp in EnumerateModelComponents(entityId))
+                {
+                    modelComp.SetMeshHidden(meshIndex, !visible);
+                    applied++;
+                    Console.WriteLine($"[PropertiesPanel] ToggleMeshVisible entity={entityId} index={meshIndex} visible={visible} hidden=[{string.Join(",", modelComp.HiddenMeshIndices)}]");
+                }
+                if (applied == 0)
+                    Console.WriteLine($"[PropertiesPanel] ToggleMeshVisible missed live/blueprint entity={entityId} index={meshIndex}");
                 return;
             }
-            ModelViewerScene viewer = _currentTarget as ModelViewerScene;
-            if (_currentTarget is MeshLayerRef meshRef && meshRef.Viewer != null)
-                viewer = meshRef.Viewer;
+            ModelViewerScene viewer = ResolveViewer();
             if (viewer == null) return;
             viewer.SetMeshHidden(meshIndex, !visible);
             Console.WriteLine($"[PropertiesPanel] ToggleMeshVisible viewer index={meshIndex} visible={visible} hidden=[{string.Join(",", viewer.HiddenMeshIndices)}]");
@@ -688,11 +751,11 @@ namespace ToolChest
             sb.Append("</div>");
             var mats = GetMaterialsForLayer(meshRef);
             if (mats == null || mats.Count == 0)
-                sb.Append("<div class=\"property-row\"><i>No materials on this mesh</i></div>");
+                AppendMaterialBlock(sb, null, "Material 0", entityId, meshRef.MeshIndex, 0);
             else
             {
                 for (int i = 0; i < mats.Count; i++)
-                    AppendMaterialReadOnly(sb, mats[i], $"Material {i}");
+                    AppendMaterialBlock(sb, mats[i], $"Material {i}", entityId, meshRef.MeshIndex, i);
             }
         }
 
@@ -709,12 +772,30 @@ namespace ToolChest
                 sb.Append($"<input type=\"checkbox\"{chk} data-hook=\"ToggleMeshVisible\" data-entityid=\"-1\" data-index=\"{mi}\">");
                 sb.Append("</div>");
                 var mats = viewer.GetMeshMaterials(mi);
-                if (mats != null)
+                if (mats != null && mats.Count > 0)
                 {
                     for (int m = 0; m < mats.Count; m++)
-                        AppendMaterialReadOnly(sb, mats[m], $"Mesh {mi} Material {m}");
+                        AppendMaterialBlock(sb, mats[m], $"Mesh {mi} Material {m}", -1, mi, m);
+                }
+                else
+                {
+                    AppendMaterialBlock(sb, null, $"Mesh {mi} Material 0", -1, mi, 0);
                 }
             }
+        }
+
+        private static MeshData GetRenderableMesh(FBXModel model, int gpuIndex)
+        {
+            if (model?.Meshes == null || gpuIndex < 0) return null;
+            int i = 0;
+            for (int m = 0; m < model.Meshes.Count; m++)
+            {
+                var mesh = model.Meshes[m];
+                if (mesh == null || mesh.Indices == null || mesh.Indices.Count == 0) continue;
+                if (i == gpuIndex) return mesh;
+                i++;
+            }
+            return null;
         }
 
         private static List<Material> GetEntityMeshMaterials(ModelComponent modelComp, int meshIndex)
@@ -722,9 +803,8 @@ namespace ToolChest
             var model = modelComp?.Model;
             if (model == null && modelComp != null && !string.IsNullOrEmpty(modelComp.Key) && ModelManager.Instance != null)
                 ModelManager.Instance.TryGetModel(modelComp.Key, out model);
-            if (model?.Meshes == null || meshIndex < 0 || meshIndex >= model.Meshes.Count)
-                return null;
-            return model.Meshes[meshIndex].Materials;
+            var mesh = GetRenderableMesh(model, meshIndex);
+            return mesh?.Materials;
         }
 
         private static List<Material> GetMaterialsForLayer(MeshLayerRef meshRef)
@@ -736,28 +816,459 @@ namespace ToolChest
             return null;
         }
 
-        private static void AppendMaterialReadOnly(StringBuilder sb, Material mat, string heading)
+        private void AppendMaterialBlock(StringBuilder sb, Material mat, string heading, int entityId, int meshIndex, int matIndex)
         {
-            if (mat == null) return;
-            string name = string.IsNullOrEmpty(mat.Name) ? heading : mat.Name;
+            string name = mat == null || string.IsNullOrEmpty(mat.Name) ? heading : mat.Name;
             sb.Append($"<div class=\"property-row\"><div class=\"property-name\">{heading}</div><input type=\"text\" value=\"{name}\" readonly></div>");
-            if (mat.TextureSlots == null || mat.TextureSlots.Count == 0)
+            if (mat?.TextureSlots != null && mat.TextureSlots.Count > 0)
             {
-                sb.Append("<div class=\"property-row\"><i>No texture slots</i></div>");
+                for (int i = 0; i < mat.TextureSlots.Count; i++)
+                {
+                    var slot = mat.TextureSlots[i];
+                    string slotName = string.IsNullOrEmpty(slot.SlotName) ? $"Slot {i}" : slot.SlotName;
+                    string path = slot.TexturePath ?? "";
+                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">{slotName}</div><input type=\"text\" value=\"{path}\" readonly></div>");
+                }
+            }
+            var opt = FindMaterialOption(entityId, meshIndex, matIndex);
+            string opacity = opt?.OpacityPath ?? "";
+            sb.Append($"<div class=\"property-row\" data-context=\"mat-opt-path\" data-entityid=\"{entityId}\" data-mesh=\"{meshIndex}\" data-mat=\"{matIndex}\">");
+            sb.Append($"<div class=\"property-name\">Opacity</div>");
+            sb.Append($"<input type=\"text\" value=\"{opacity}\" placeholder=\"\" data-hook=\"SetMaterialOption\" data-context=\"mat-opt-path\" data-entityid=\"{entityId}\" data-mesh=\"{meshIndex}\" data-index=\"{meshIndex}\" data-mat=\"{matIndex}\">");
+            sb.Append("</div>");
+        }
+
+        private MeshMaterialOption FindMaterialOption(int entityId, int meshIndex, int matIndex)
+        {
+            var list = GetOptionsList(entityId);
+            if (list == null) return null;
+            for (int i = 0; i < list.Count; i++)
+            {
+                var o = list[i];
+                if (o != null && o.MeshIndex == meshIndex && o.MaterialIndex == matIndex)
+                    return o;
+            }
+            return null;
+        }
+
+        private List<ModelComponent> EnumerateModelComponents(int entityId)
+        {
+            var list = new List<ModelComponent>();
+            void Add(ModelComponent mc)
+            {
+                if (mc != null && !list.Contains(mc))
+                    list.Add(mc);
+            }
+            if (_currentTarget is Entity liveEnt && (entityId <= 0 || liveEnt.Id == entityId))
+                Add(liveEnt.GetComponent<ModelComponent>());
+            if (_currentTarget is MeshLayerRef meshRef && meshRef.Entity != null && (entityId <= 0 || meshRef.Entity.Id == entityId))
+                Add(meshRef.Entity.GetComponent<ModelComponent>());
+            if (entityId > 0)
+            {
+                var level = ProjectSettings.Current?.CurrentLevel;
+                var blueprint = level?.Entities?.FirstOrDefault(e => e.Id == entityId);
+                Add(blueprint?.GetComponent<ModelComponent>());
+            }
+            return list;
+        }
+
+        private List<MeshMaterialOption> GetOptionsList(int entityId)
+        {
+            if (entityId > 0)
+            {
+                // Prefer the live viewport entity so the first browse/toggle is visible
+                // without waiting for a reload. Also keep the blueprint list in sync.
+                var comps = EnumerateModelComponents(entityId);
+                List<MeshMaterialOption> primary = null;
+                for (int i = 0; i < comps.Count; i++)
+                {
+                    if (comps[i].MaterialOptions == null)
+                        comps[i].MaterialOptions = new List<MeshMaterialOption>();
+                    if (primary == null)
+                        primary = comps[i].MaterialOptions;
+                    else if (!object.ReferenceEquals(primary, comps[i].MaterialOptions))
+                    {
+                        // Share one list so live + blueprint stay identical.
+                        comps[i].MaterialOptions = primary;
+                    }
+                }
+                return primary;
+            }
+            ModelViewerScene viewer = ResolveViewer();
+            if (viewer == null) return null;
+            return viewer.MaterialOptions;
+        }
+
+        private ModelViewerScene ResolveViewer()
+        {
+            if (_currentTarget is ModelViewerScene v) return v;
+            if (_currentTarget is MeshLayerRef meshRef && meshRef.Viewer != null) return meshRef.Viewer;
+            if (_browseViewer != null) return _browseViewer;
+            return null;
+        }
+
+        private MeshMaterialOption GetOrCreateOption(int entityId, int meshIndex, int matIndex)
+        {
+            var list = GetOptionsList(entityId);
+            if (list == null) return null;
+            for (int i = 0; i < list.Count; i++)
+            {
+                var o = list[i];
+                if (o != null && o.MeshIndex == meshIndex && o.MaterialIndex == matIndex)
+                    return o;
+            }
+            var created = new MeshMaterialOption { MeshIndex = meshIndex, MaterialIndex = matIndex, OpacityPath = "" };
+            list.Add(created);
+            return created;
+        }
+
+        private ModelViewerScene _browseViewer;
+
+        public void StashOpacityBrowseTarget(int entityId, int meshIndex, int matIndex)
+        {
+            _browseEntityId = entityId;
+            _browseMesh = meshIndex;
+            _browseMat = matIndex;
+            _browseViewer = ResolveViewer();
+        }
+
+        public void ApplyMaterialOpacityFromInput(InputElement input, bool allowClear = false)
+        {
+            if (input == null) return;
+            if (!int.TryParse(input.Attributes.GetValueOrDefault("data-entityid", "-1"), out int entityId)) entityId = -1;
+            string meshStr = input.Attributes.GetValueOrDefault("data-mesh", input.Attributes.GetValueOrDefault("data-index", "-1"));
+            if (!int.TryParse(meshStr, out int meshIndex) || meshIndex < 0) return;
+            if (!int.TryParse(input.Attributes.GetValueOrDefault("data-mat", "0"), out int matIndex)) matIndex = 0;
+            string raw = input.Value ?? "";
+            if (string.IsNullOrWhiteSpace(raw) && !allowClear)
+                return;
+            ApplyOpacityPath(entityId, meshIndex, matIndex, raw, allowClear);
+        }
+
+        private void ApplyOpacityPath(int entityId, int meshIndex, int matIndex, string path, bool allowClear = false)
+        {
+            path = (path ?? "").Trim();
+            BindProjectTexturesDirectory(entityId);
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                if (!allowClear && !_allowEmptyOpacityClear)
+                    return;
+                var existing = FindMaterialOption(entityId, meshIndex, matIndex);
+                if (existing != null)
+                    existing.OpacityPath = "";
+                ModelViewerScene emptyViewer = ResolveViewer();
+                if (entityId <= 0 && emptyViewer != null)
+                    emptyViewer.SaveMaterialOptionsSidecar();
+                WriteOpacityIntoMeshPack(entityId, meshIndex, matIndex, "");
+                SyncOpacityInputValue(entityId, meshIndex, matIndex, "");
                 return;
             }
-            for (int i = 0; i < mat.TextureSlots.Count; i++)
+            var opt = GetOrCreateOption(entityId, meshIndex, matIndex);
+            if (opt == null)
+                return;
+            string stored = ImportOpacityIntoProject(path, entityId);
+            bool changed = !string.Equals(opt.OpacityPath ?? "", stored ?? "", StringComparison.Ordinal);
+            opt.OpacityPath = stored;
+            ModelViewerScene viewer = ResolveViewer();
+            if (entityId <= 0 && viewer != null)
+                viewer.SaveMaterialOptionsSidecar();
+            WriteOpacityIntoMeshPack(entityId, meshIndex, matIndex, opt.OpacityPath);
+            string modelKey = ResolveModelKey(entityId);
+            SiegeEngine.Core.GPU.Renderers.ModelRenderer.PreloadOpacity(stored, modelKey);
+            // Update the existing field in place. Rebuilding here ClearFocus()s the input
+            // and races EditorHistory Backspace into deleting the selected entity.
+            if (changed)
+                SyncOpacityInputValue(entityId, meshIndex, matIndex, opt.OpacityPath);
+        }
+
+        private string ProjectTexturesDirectory(int entityId = -1)
+        {
+            string project = ProjectSettings.Current?.ActiveProject;
+            if (!string.IsNullOrEmpty(project))
+                return Path.Combine(project, "Textures");
+
+            string fbxDir = TryResolveFbxDirectoryFromContext(entityId);
+            if (!string.IsNullOrEmpty(fbxDir))
+                return Path.GetFullPath(Path.Combine(fbxDir, "..", "..", "Textures"));
+
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Textures");
+        }
+
+        private string TryResolveFbxDirectoryFromContext(int entityId)
+        {
+            try
             {
-                var slot = mat.TextureSlots[i];
-                string slotName = string.IsNullOrEmpty(slot.SlotName) ? $"Slot {i}" : slot.SlotName;
-                string path = slot.TexturePath ?? "";
-                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">{slotName}</div><input type=\"text\" value=\"{path}\" readonly></div>");
+                if (entityId > 0)
+                {
+                    var level = ProjectSettings.Current?.CurrentLevel;
+                    var entity = level?.Entities.FirstOrDefault(e => e.Id == entityId);
+                    string key = entity?.GetComponent<ModelComponent>()?.Key;
+                    string dir = null;
+                    if (!string.IsNullOrEmpty(key) && ModelManager.Instance != null
+                        && ModelManager.Instance.TryGetFbxDirectory(key, out dir)
+                        && !string.IsNullOrEmpty(dir))
+                        return dir;
+                }
+                ModelViewerScene viewer = ResolveViewer();
+                string meshPath = viewer?.MeshPath;
+                if (!string.IsNullOrEmpty(meshPath))
+                    return Path.GetDirectoryName(meshPath);
             }
+            catch { }
+            return null;
+        }
+
+        private void BindProjectTexturesDirectory(int entityId = -1)
+        {
+            string dir = ProjectTexturesDirectory(entityId);
+            Directory.CreateDirectory(dir);
+            SiegeEngine.Core.GPU.Renderers.ModelRenderer.ProjectTexturesDirectory = dir;
+        }
+
+        // Copy the file we already have a handle for into {project}/Textures
+        // and return the pack-relative reference used by FBX albedo slots.
+        // No directory search — the incoming path IS the handle.
+        private string ImportOpacityIntoProject(string handle, int entityId = -1)
+        {
+            BindProjectTexturesDirectory(entityId);
+            string destDir = ProjectTexturesDirectory(entityId);
+            Directory.CreateDirectory(destDir);
+
+            string normalized = (handle ?? "").Trim().Replace('\\', '/');
+            string fileName = Path.GetFileName(normalized.Replace('/', Path.DirectorySeparatorChar));
+            string dest = string.IsNullOrEmpty(fileName) ? null : Path.Combine(destDir, fileName);
+            string packRef = string.IsNullOrEmpty(fileName) ? normalized : "../../Textures/" + fileName;
+
+            // Already the project handle and the file is sitting in Textures.
+            if (!string.IsNullOrEmpty(dest) && File.Exists(dest)
+                && (normalized.EndsWith("/" + fileName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(normalized, fileName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(Path.GetFullPath(normalized), Path.GetFullPath(dest), StringComparison.OrdinalIgnoreCase)))
+            {
+                SiegeEngine.Core.GPU.Renderers.ModelRenderer.LastImportedOpacityAbsolute = Path.GetFullPath(dest);
+                return packRef;
+            }
+
+            string source = null;
+            if (File.Exists(handle))
+                source = handle;
+            else
+            {
+                try
+                {
+                    string full = Path.GetFullPath(handle);
+                    if (File.Exists(full))
+                        source = full;
+                }
+                catch { }
+            }
+
+            if (string.IsNullOrEmpty(source) || !File.Exists(source))
+            {
+                // Already-imported handle with the file sitting in Textures.
+                if (!string.IsNullOrEmpty(dest) && File.Exists(dest))
+                    return packRef;
+                return normalized;
+            }
+
+            string destName = Path.GetFileName(source);
+            dest = Path.Combine(destDir, destName);
+            try
+            {
+                string srcFull = Path.GetFullPath(source);
+                string destFull = Path.GetFullPath(dest);
+                if (!string.Equals(srcFull, destFull, StringComparison.OrdinalIgnoreCase))
+                {
+                    File.Copy(srcFull, destFull, overwrite: true);
+                }
+                SiegeEngine.Core.GPU.Renderers.ModelRenderer.LastImportedOpacityAbsolute = destFull;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PropertiesPanel] Failed to import opacity into Textures: {ex.Message}");
+                return handle.Replace('\\', '/');
+            }
+
+            return "../../Textures/" + destName;
+        }
+
+        private void FlushMaterialOptionsFromUI()
+        {
+            if (_uiOverlay == null) return;
+            var inputs = _uiOverlay.FindElementsByTag("input");
+            if (inputs == null) return;
+            for (int i = 0; i < inputs.Count; i++)
+            {
+                if (inputs[i] is InputElement input)
+                {
+                    string hook = input.Attributes.GetValueOrDefault("data-hook", "");
+                    if (hook == "SetMaterialOption" || hook == "SetMaterialOpacity")
+                        ApplyMaterialOpacityFromInput(input, allowClear: true);
+                }
+            }
+        }
+
+        private void OnFileSelected(FileSelectedEvent e)
+        {
+            if (e == null || string.IsNullOrWhiteSpace(e.Path)) return;
+            string token = e.UserData != null ? e.UserData.ToString() : "";
+            bool ours = _pendingOpacityBrowse
+                || string.Equals(token, "MaterialOpacityPath", StringComparison.Ordinal)
+                || _browseMesh >= 0 && _pendingOpacityBrowse;
+            if (!_pendingOpacityBrowse && !string.Equals(token, "MaterialOpacityPath", StringComparison.Ordinal))
+                return;
+            _pendingOpacityBrowse = false;
+            if (_browseMesh < 0)
+                return;
+            _ignoreMaterialInput = true;
+            try
+            {
+                ApplyOpacityPath(_browseEntityId, _browseMesh, _browseMat, e.Path);
+            }
+            finally
+            {
+                _ignoreMaterialInput = false;
+            }
+        }
+
+
+        private void WriteOpacityIntoMeshPack(int entityId, int meshIndex, int matIndex, string opacityPath)
+        {
+            if (ModelManager.Instance == null) return;
+            string key = null;
+            if (entityId > 0)
+            {
+                var level = ProjectSettings.Current?.CurrentLevel;
+                var entity = level?.Entities.FirstOrDefault(e => e.Id == entityId);
+                key = entity?.GetComponent<ModelComponent>()?.Key;
+            }
+            else
+            {
+                var viewer = ResolveViewer();
+                if (!string.IsNullOrEmpty(viewer?.MeshPath))
+                    key = Path.GetFileNameWithoutExtension(viewer.MeshPath);
+            }
+            if (string.IsNullOrEmpty(key)) return;
+            AnimationPack pack = null;
+            string packKey = key.ToLowerInvariant();
+            if (!packKey.EndsWith("_pack"))
+            {
+                if (!ModelManager.Instance.TryGetAnimationPack(packKey + "_pack", out pack))
+                    ModelManager.Instance.TryGetAnimationPack(packKey, out pack);
+            }
+            else
+                ModelManager.Instance.TryGetAnimationPack(packKey, out pack);
+            if (pack == null) return;
+            if (pack.MaterialOptions == null)
+                pack.MaterialOptions = new List<MeshMaterialOption>();
+            MeshMaterialOption existing = null;
+            for (int i = 0; i < pack.MaterialOptions.Count; i++)
+            {
+                var o = pack.MaterialOptions[i];
+                if (o != null && o.MeshIndex == meshIndex && o.MaterialIndex == matIndex)
+                {
+                    existing = o;
+                    break;
+                }
+            }
+            if (string.IsNullOrWhiteSpace(opacityPath))
+            {
+                if (existing != null) pack.MaterialOptions.Remove(existing);
+            }
+            else
+            {
+                if (existing == null)
+                {
+                    existing = new MeshMaterialOption { MeshIndex = meshIndex, MaterialIndex = matIndex };
+                    pack.MaterialOptions.Add(existing);
+                }
+                existing.OpacityPath = opacityPath;
+            }
+            string project = ProjectSettings.Current?.ActiveProject;
+            string packId = pack.Id ?? packKey;
+            if (!string.IsNullOrEmpty(project) && !string.IsNullOrEmpty(packId))
+            {
+                string jsonPath = Path.Combine(project, "Assets", packId, "assetpack.json");
+                if (!File.Exists(jsonPath))
+                    jsonPath = Path.Combine(project, "Assets", packId.ToLowerInvariant(), "assetpack.json");
+                if (File.Exists(jsonPath))
+                {
+                    try
+                    {
+                        File.WriteAllText(jsonPath, JsonSerializer.Serialize(pack, new JsonSerializerOptions { WriteIndented = true, IncludeFields = true }));
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[PropertiesPanel] Failed writing mesh pack: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+
+        private string ResolveModelKey(int entityId)
+        {
+            foreach (var mc in EnumerateModelComponents(entityId))
+            {
+                if (!string.IsNullOrEmpty(mc.Key))
+                    return mc.Key;
+            }
+            var viewer = ResolveViewer();
+            if (!string.IsNullOrEmpty(viewer?.MeshPath))
+                return Path.GetFileNameWithoutExtension(viewer.MeshPath);
+            return null;
+        }
+
+        private void SyncOpacityInputValue(int entityId, int meshIndex, int matIndex, string stored)
+        {
+            stored = stored ?? "";
+            if (_uiOverlay == null) return;
+            var inputs = _uiOverlay.FindElementsByTag("input");
+            if (inputs == null) return;
+            for (int i = 0; i < inputs.Count; i++)
+            {
+                if (inputs[i] is not InputElement input) continue;
+                string hook = input.Attributes.GetValueOrDefault("data-hook", "");
+                if (hook != "SetMaterialOption" && hook != "SetMaterialOpacity") continue;
+                if (!int.TryParse(input.Attributes.GetValueOrDefault("data-entityid", "-1"), out int id)) id = -1;
+                string meshStr = input.Attributes.GetValueOrDefault("data-mesh", input.Attributes.GetValueOrDefault("data-index", "-1"));
+                if (!int.TryParse(meshStr, out int mi)) mi = -1;
+                if (!int.TryParse(input.Attributes.GetValueOrDefault("data-mat", "0"), out int mat)) mat = 0;
+                if (id != entityId || mi != meshIndex || mat != matIndex) continue;
+                input.Value = stored;
+                input.CommittedValue = stored;
+                input.Attributes["value"] = stored;
+            }
+            _uiOverlay.RefreshUI();
+        }
+
+        private void OpenOpacityFileBrowser()
+        {
+            string startDir = null;
+            string project = ProjectSettings.Current?.ActiveProject;
+            if (!string.IsNullOrEmpty(project))
+            {
+                string projectTextures = Path.Combine(project, "Textures");
+                string projectAssets = Path.Combine(project, "Assets");
+                if (Directory.Exists(projectTextures)) startDir = projectTextures;
+                else if (Directory.Exists(projectAssets)) startDir = projectAssets;
+                else if (Directory.Exists(project)) startDir = project;
+            }
+            if (string.IsNullOrEmpty(startDir))
+            {
+                string exeDir = AppDomain.CurrentDomain.BaseDirectory;
+                string texturesDir = Path.Combine(exeDir, "Assets");
+                startDir = Directory.Exists(texturesDir) ? texturesDir : exeDir;
+            }
+            _pendingOpacityBrowse = true;
+            var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, startDir, ".png", ".jpg", ".jpeg", ".tga");
+            fileSelector.UserData = "MaterialOpacityPath";
+            fileSelector.IsModal = true;
+            _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
         }
 
         public void HandleDataHook(string hook)
         {
-            Console.WriteLine($"[PropertiesPanel] HandleDataHook: {hook}");
             FlushSceneSettingsFromUI();
             if (hook.StartsWith("SetTextureMapping"))
             {
@@ -766,6 +1277,15 @@ namespace ToolChest
             }
             if (hook == "SetComponentProperty")
             {
+                return;
+            }
+            if (hook == "SetMaterialOption" || hook == "SetMaterialOpacity")
+            {
+                return;
+            }
+            if (hook == "BrowseMaterialPath")
+            {
+                OpenOpacityFileBrowser();
                 return;
             }
             if (hook == "RotateSkybox")
@@ -819,7 +1339,9 @@ namespace ToolChest
             if (elem == null) return;
             if (elem.Tag != "option") return;
             var select = elem.Parent as SelectElement;
-            if (select != null && select.Attributes.GetValueOrDefault("data-hook", "") == "SetComponentProperty")
+            if (select == null) return;
+            string hook = select.Attributes.GetValueOrDefault("data-hook", "");
+            if (hook == "SetComponentProperty")
             {
                 ApplyComponentPropertyChange(select);
                 RebuildPropertiesUI();

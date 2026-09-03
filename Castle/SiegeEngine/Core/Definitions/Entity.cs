@@ -88,6 +88,19 @@ namespace SiegeEngine.Core.Definitions
 
                 if (modelComp.HiddenMeshIndices != null && modelComp.HiddenMeshIndices.Count > 0)
                     data.HiddenMeshIndices = new List<int>(modelComp.HiddenMeshIndices);
+
+                if (modelComp.MaterialOptions != null)
+                {
+                    data.MaterialOptions = new List<MeshMaterialOption>();
+                    for (int i = 0; i < modelComp.MaterialOptions.Count; i++)
+                    {
+                        var opt = modelComp.MaterialOptions[i];
+                        if (opt == null || !opt.HasContent()) continue;
+                        data.MaterialOptions.Add(MeshMaterialOption.Clone(opt));
+                    }
+                    if (data.MaterialOptions.Count == 0)
+                        data.MaterialOptions = null;
+                }
             }
 
             data.Components = new List<EntityData.ComponentEntry>();
@@ -146,6 +159,9 @@ namespace SiegeEngine.Core.Definitions
 
                 if (data.HiddenMeshIndices != null && data.HiddenMeshIndices.Count > 0)
                     modelComp.HiddenMeshIndices = new List<int>(data.HiddenMeshIndices);
+
+                if (data.MaterialOptions != null && data.MaterialOptions.Count > 0)
+                    modelComp.MaterialOptions = MeshMaterialOption.CloneList(data.MaterialOptions);
 
                 entity.AddComponent(modelComp);
 
@@ -207,7 +223,7 @@ namespace SiegeEngine.Core.Definitions
                 }
             }
 
-            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} HiddenMeshes={(data.HiddenMeshIndices == null ? 0 : data.HiddenMeshIndices.Count)} Components={entity.Components.Count}");
+            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} HiddenMeshes={(data.HiddenMeshIndices == null ? 0 : data.HiddenMeshIndices.Count)} MaterialOptions={(data.MaterialOptions == null ? 0 : data.MaterialOptions.Count)} Components={entity.Components.Count}");
             return entity;
         }
 

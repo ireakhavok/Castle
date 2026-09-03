@@ -3,6 +3,7 @@
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Lighting;
 using SiegeEngine.Core.GPU.Shaders;
@@ -18,6 +19,44 @@ namespace SiegeEngine.Core.GPU.Renderers
         private ShaderProgram _modelShader;
         private ShaderProgram _animationShader;
         private List<int> _hiddenMeshIndices;
+        private List<MeshMaterialOption> _materialOptions;
+        private FBXModel _opacityModel;
+        private string _opacityModelKey;
+        private readonly Dictionary<string, uint> _opacityTextures = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
+        public const int OpacityTextureUnit = 15;
+        public static string ProjectTexturesDirectory { get; set; }
+        public static string LastImportedOpacityAbsolute { get; set; }
+
+        public string OpacityModelKey
+        {
+            get => _opacityModelKey;
+            set => _opacityModelKey = value;
+        }
+
+        // No-op. Opacity maps are imported into project/Textures; we load that handle only.
+        public static void RegisterTextureSearchRoot(string root) { }
+
+        /// <summary>
+        /// Remember the just-imported file so the first BindOpacityOption this frame
+        /// can resolve ../../Textures/filename before fbxDir is bound.
+        /// </summary>
+        public static void PreloadOpacity(string stored, string modelKey = null)
+        {
+            if (string.IsNullOrWhiteSpace(stored)) return;
+            string resolved = ResolveStoredOpacityPath(stored, modelKey);
+            if (string.IsNullOrEmpty(resolved))
+            {
+                string fileName = System.IO.Path.GetFileName(stored.Replace('/', System.IO.Path.DirectorySeparatorChar));
+                if (!string.IsNullOrEmpty(ProjectTexturesDirectory) && !string.IsNullOrEmpty(fileName))
+                {
+                    string candidate = System.IO.Path.Combine(ProjectTexturesDirectory, fileName);
+                    if (System.IO.File.Exists(candidate))
+                        resolved = System.IO.Path.GetFullPath(candidate);
+                }
+            }
+            if (!string.IsNullOrEmpty(resolved) && System.IO.File.Exists(resolved))
+                LastImportedOpacityAbsolute = resolved;
+        }
 
         public ModelRenderer(IRenderContext renderContext)
         {
@@ -58,6 +97,8 @@ namespace SiegeEngine.Core.GPU.Renderers
                 Matrix3x3[] normalMatrices = modelComp.NormalBoneTransforms;
                 bool receiveShadows = modelComp.ReceiveShadows && (modelComp.Material == null || modelComp.Material.ReceiveShadows);
                 _hiddenMeshIndices = modelComp.HiddenMeshIndices;
+                _materialOptions = modelComp.MaterialOptions;
+                _opacityModelKey = modelKey;
                 try
                 {
                     RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices, receiveShadows);
@@ -65,12 +106,15 @@ namespace SiegeEngine.Core.GPU.Renderers
                 finally
                 {
                     _hiddenMeshIndices = null;
+                    _materialOptions = null;
+                    _opacityModelKey = null;
                 }
             }
             else
             {
                 // fallback for legacy entities (preserves everything)
                 _hiddenMeshIndices = modelComp.HiddenMeshIndices;
+                _materialOptions = modelComp.MaterialOptions;
                 try
                 {
                     RenderModel(modelComp, physics, view, projection, viewPos, modelManager);
@@ -78,6 +122,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 finally
                 {
                     _hiddenMeshIndices = null;
+                    _materialOptions = null;
                 }
             }
         }
@@ -122,13 +167,18 @@ namespace SiegeEngine.Core.GPU.Renderers
             RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices, receiveShadows: true);
         }
 
-        public void RenderModel(FBXModel fbxModel, ModelManager.ModelData modelData, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, Matrix4x4 modelMatrix, Matrix4x4[] boneMatrices, Matrix3x3[] normalMatrices, bool receiveShadows, ICollection<int> hiddenMeshIndices = null)
+        public void RenderModel(FBXModel fbxModel, ModelManager.ModelData modelData, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, Matrix4x4 modelMatrix, Matrix4x4[] boneMatrices, Matrix3x3[] normalMatrices, bool receiveShadows, ICollection<int> hiddenMeshIndices = null, IList<MeshMaterialOption> materialOptions = null)
         {
             if (modelData == null) return;
             if (modelMatrix == default) modelMatrix = Matrix4x4.Identity;
             List<int> prevHidden = _hiddenMeshIndices;
+            List<MeshMaterialOption> prevOpts = _materialOptions;
+            FBXModel prevOpacityModel = _opacityModel;
+            _opacityModel = fbxModel;
             if (hiddenMeshIndices != null)
                 _hiddenMeshIndices = hiddenMeshIndices as List<int> ?? new List<int>(hiddenMeshIndices);
+            if (materialOptions != null)
+                _materialOptions = materialOptions as List<MeshMaterialOption> ?? new List<MeshMaterialOption>(materialOptions);
 
             bool hasBones = boneMatrices != null && boneMatrices.Length > 0 && fbxModel != null && fbxModel.HasSkin;
             ShaderProgram shader = hasBones ? _animationShader : _modelShader;
@@ -206,6 +256,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                     }
                 }
 
+                BindOpacityOption(shader, gpuIndex);
                 BindShadowMaps(shader);
 
                 _renderContext.BindVertexArray(mmr.Vao);
@@ -215,6 +266,8 @@ namespace SiegeEngine.Core.GPU.Renderers
 
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _hiddenMeshIndices = prevHidden;
+            _materialOptions = prevOpts;
+            _opacityModel = prevOpacityModel;
         }
 
         public void RenderSkeletonDebug(VertexBuffer skeletonBuffer, ShaderProgram pointShader, Matrix4x4 view, Matrix4x4 projection)
@@ -306,6 +359,143 @@ namespace SiegeEngine.Core.GPU.Renderers
                 shader.SetUniform("uSpotShadowMap", LightingFrame.SpotShadowUnit);
             }
             rc.ActiveTexture(u0);
+        }
+
+        private void BindOpacityOption(ShaderProgram shader, int meshIndex)
+        {
+            shader.SetUniform("uHasOpacity", 0);
+            shader.SetUniform("uOpacitySlots", 0);
+            string path = null;
+            int slots = 0;
+            if (_materialOptions != null)
+            {
+                for (int i = 0; i < _materialOptions.Count; i++)
+                {
+                    var o = _materialOptions[i];
+                    if (o == null || o.MeshIndex != meshIndex) continue;
+                    if (string.IsNullOrWhiteSpace(o.OpacityPath)) continue;
+                    int mat = o.MaterialIndex;
+                    if (mat < 0 || mat > 3) continue;
+                    if (path == null)
+                        path = o.OpacityPath.Trim();
+                    // One GL unit is free (15). All slots that share this handle
+                    // get the same map; different files on the same mesh wait
+                    // for extra units. Birch leaves all use T_*_O.png.
+                    if (string.Equals(path, o.OpacityPath.Trim(), StringComparison.OrdinalIgnoreCase))
+                        slots |= (1 << mat);
+                }
+            }
+            if (string.IsNullOrEmpty(path) || slots == 0)
+                return;
+            uint tex = GetOrLoadOpacityTexture(path, _opacityModelKey);
+            if (tex == 0)
+                return;
+            _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + OpacityTextureUnit);
+            _renderContext.BindTexture(_renderContext.Enums.Texture2D, tex);
+            shader.SetUniform("uOpacityMap", OpacityTextureUnit);
+            shader.SetUniform("uOpacitySlots", slots);
+            shader.SetUniform("uHasOpacity", 1);
+            _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
+        }
+
+        private uint GetOrLoadOpacityTexture(string stored, string modelKey = null)
+        {
+            string resolved = ResolveStoredOpacityPath(stored, modelKey);
+            if (string.IsNullOrEmpty(resolved) || !System.IO.File.Exists(resolved))
+                return 0;
+            if (_opacityTextures.TryGetValue(resolved, out uint existing) && existing != 0)
+                return existing;
+            try
+            {
+                var loaded = TextureLoader.LoadTexture(_renderContext, resolved);
+                if (loaded.Item1 == 0)
+                    return 0;
+                _opacityTextures[resolved] = loaded.Item1;
+                return loaded.Item1;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        public static string ResolveTexturePath(string stored)
+        {
+            return ResolveStoredOpacityPath(stored, null);
+        }
+
+        private static string ResolveStoredOpacityPath(string stored, string modelKey)
+        {
+            if (string.IsNullOrWhiteSpace(stored)) return null;
+            stored = stored.Trim().Replace('/', System.IO.Path.DirectorySeparatorChar);
+            if (System.IO.File.Exists(stored))
+                return System.IO.Path.GetFullPath(stored);
+
+            string fileName = System.IO.Path.GetFileName(stored);
+
+            // Pack-relative handle: Combine(fbxDir, ../../Textures/file) — same as albedo.
+            if (!string.IsNullOrEmpty(modelKey) && ModelManager.Instance != null
+                && ModelManager.Instance.TryGetFbxDirectory(modelKey, out string fbxDir)
+                && !string.IsNullOrEmpty(fbxDir))
+            {
+                try
+                {
+                    string combined = System.IO.Path.GetFullPath(System.IO.Path.Combine(fbxDir, stored));
+                    if (System.IO.File.Exists(combined))
+                        return combined;
+                    if (!string.IsNullOrEmpty(fileName))
+                    {
+                        string sibling = System.IO.Path.GetFullPath(System.IO.Path.Combine(fbxDir, "..", "..", "Textures", fileName));
+                        if (System.IO.File.Exists(sibling))
+                            return sibling;
+                    }
+                }
+                catch { }
+            }
+
+            if (!string.IsNullOrEmpty(ProjectTexturesDirectory) && !string.IsNullOrEmpty(fileName))
+            {
+                string inProject = System.IO.Path.Combine(ProjectTexturesDirectory, fileName);
+                if (System.IO.File.Exists(inProject))
+                    return System.IO.Path.GetFullPath(inProject);
+            }
+
+            try
+            {
+                string full = System.IO.Path.GetFullPath(stored);
+                if (System.IO.File.Exists(full))
+                    return full;
+            }
+            catch { }
+
+            if (!string.IsNullOrEmpty(LastImportedOpacityAbsolute)
+                && System.IO.File.Exists(LastImportedOpacityAbsolute)
+                && !string.IsNullOrEmpty(fileName)
+                && string.Equals(System.IO.Path.GetFileName(LastImportedOpacityAbsolute), fileName, StringComparison.OrdinalIgnoreCase))
+                return LastImportedOpacityAbsolute;
+
+            return null;
+        }
+
+        public static string ToProjectRelative(string fullPath)
+        {
+            if (string.IsNullOrWhiteSpace(fullPath)) return "";
+            try
+            {
+                if (!string.IsNullOrEmpty(ProjectTexturesDirectory))
+                {
+                    string fileName = System.IO.Path.GetFileName(fullPath);
+                    return "../../Textures/" + fileName;
+                }
+                string root = AppDomain.CurrentDomain.BaseDirectory;
+                string rel = System.IO.Path.GetRelativePath(root, fullPath);
+                if (!string.IsNullOrEmpty(rel) && !rel.StartsWith(".."))
+                    return rel.Replace('\\', '/');
+            }
+            catch
+            {
+            }
+            return fullPath.Replace('\\', '/');
         }
 
         public void Dispose()

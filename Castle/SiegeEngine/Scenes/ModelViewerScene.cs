@@ -16,6 +16,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Text.Json;
 namespace SiegeEngine.Scenes
 {
     public unsafe class ModelViewerScene : Scene
@@ -23,6 +24,8 @@ namespace SiegeEngine.Scenes
         public FBXModel _model;
         private ModelManager.ModelData _modelData;
         public List<int> HiddenMeshIndices { get; private set; } = new List<int>();
+        public List<MeshMaterialOption> MaterialOptions { get; private set; } = new List<MeshMaterialOption>();
+        public string MeshPath => _meshPath;
         private string _currentAnimationPath;
         private VertexBuffer _skeletonBuffer;
         private VertexBuffer _bindSkeletonBuffer;
@@ -110,6 +113,9 @@ namespace SiegeEngine.Scenes
             _currentModelKey = Path.GetFileNameWithoutExtension(path).ToLower();
             _ModelManager.TryGetModel(_currentModelKey, out _model);
             _ModelManager.TryGetModelData(_currentModelKey, out _modelData);
+            BindProjectTexturesDirectory();
+            LoadMaterialOptionsSidecar();
+            LoadMaterialOptionsFromPack();
             ResetAnimationState();
             if (_model.HasSkin)
             {
@@ -580,6 +586,133 @@ namespace SiegeEngine.Scenes
             Console.WriteLine($"[ModelViewerScene] Mesh {meshIndex} hidden={hidden} list=[{string.Join(",", HiddenMeshIndices)}]");
         }
 
+        public MeshMaterialOption GetOrCreateMaterialOption(int meshIndex, int materialIndex)
+        {
+            if (MaterialOptions == null) MaterialOptions = new List<MeshMaterialOption>();
+            for (int i = 0; i < MaterialOptions.Count; i++)
+            {
+                var o = MaterialOptions[i];
+                if (o != null && o.MeshIndex == meshIndex && o.MaterialIndex == materialIndex)
+                    return o;
+            }
+            var created = new MeshMaterialOption { MeshIndex = meshIndex, MaterialIndex = materialIndex };
+            MaterialOptions.Add(created);
+            return created;
+        }
+
+        public MeshMaterialOption FindMaterialOption(int meshIndex, int materialIndex)
+        {
+            if (MaterialOptions == null) return null;
+            for (int i = 0; i < MaterialOptions.Count; i++)
+            {
+                var o = MaterialOptions[i];
+                if (o != null && o.MeshIndex == meshIndex && o.MaterialIndex == materialIndex)
+                    return o;
+            }
+            return null;
+        }
+
+        public void SetMaterialField(int meshIndex, int materialIndex, string fieldName, string path)
+        {
+            var opt = GetOrCreateMaterialOption(meshIndex, materialIndex);
+            path = path ?? "";
+            if (string.Equals(fieldName, "Opacity", StringComparison.OrdinalIgnoreCase))
+                opt.OpacityPath = path;
+            else
+            {
+                if (opt.Fields == null) opt.Fields = new List<MaterialField>();
+                MaterialField field = null;
+                for (int i = 0; i < opt.Fields.Count; i++)
+                {
+                    if (opt.Fields[i] != null && string.Equals(opt.Fields[i].Name, fieldName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        field = opt.Fields[i];
+                        break;
+                    }
+                }
+                if (field == null)
+                {
+                    field = new MaterialField { Name = fieldName };
+                    opt.Fields.Add(field);
+                }
+                field.Path = path;
+            }
+            SaveMaterialOptionsSidecar();
+        }
+
+        private void BindProjectTexturesDirectory()
+        {
+            string destDir = null;
+            if (!string.IsNullOrEmpty(_meshPath))
+            {
+                string fbxDir = Path.GetDirectoryName(_meshPath);
+                if (!string.IsNullOrEmpty(fbxDir))
+                    destDir = Path.GetFullPath(Path.Combine(fbxDir, "..", "..", "Textures"));
+            }
+            if (string.IsNullOrEmpty(destDir))
+                destDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Textures");
+            Directory.CreateDirectory(destDir);
+            SiegeEngine.Core.GPU.Renderers.ModelRenderer.ProjectTexturesDirectory = destDir;
+        }
+
+
+        private void LoadMaterialOptionsFromPack()
+        {
+            if (MaterialOptions != null && MaterialOptions.Count > 0) return;
+            if (ModelManager.Instance == null || string.IsNullOrEmpty(_currentModelKey)) return;
+            AnimationPack pack = null;
+            if (!ModelManager.Instance.TryGetAnimationPack(_currentModelKey + "_pack", out pack))
+                ModelManager.Instance.TryGetAnimationPack(_currentModelKey, out pack);
+            if (pack?.MaterialOptions == null || pack.MaterialOptions.Count == 0) return;
+            MaterialOptions = MeshMaterialOption.CloneList(pack.MaterialOptions);
+        }
+
+        private string MaterialOptionsSidecarPath()
+        {
+            if (string.IsNullOrEmpty(_meshPath)) return null;
+            return Path.ChangeExtension(_meshPath, ".matopt.json");
+        }
+
+        private void LoadMaterialOptionsSidecar()
+        {
+            MaterialOptions = new List<MeshMaterialOption>();
+            string sidecar = MaterialOptionsSidecarPath();
+            if (string.IsNullOrEmpty(sidecar) || !File.Exists(sidecar))
+                return;
+            try
+            {
+                var loaded = JsonSerializer.Deserialize<List<MeshMaterialOption>>(File.ReadAllText(sidecar), EntityData.SerializerOptions);
+                if (loaded != null)
+                    MaterialOptions = loaded;
+            }
+            catch
+            {
+            }
+        }
+
+        public void SaveMaterialOptionsSidecar()
+        {
+            string sidecar = MaterialOptionsSidecarPath();
+            if (string.IsNullOrEmpty(sidecar)) return;
+            try
+            {
+                var toWrite = new List<MeshMaterialOption>();
+                if (MaterialOptions != null)
+                {
+                    for (int i = 0; i < MaterialOptions.Count; i++)
+                    {
+                        var o = MaterialOptions[i];
+                        if (o != null && o.HasContent())
+                            toWrite.Add(MeshMaterialOption.Clone(o));
+                    }
+                }
+                File.WriteAllText(sidecar, JsonSerializer.Serialize(toWrite, EntityData.SerializerOptions));
+            }
+            catch
+            {
+            }
+        }
+
         public int GetMeshCount()
         {
             if (_modelData?.MeshRenders != null) return _modelData.MeshRenders.Count;
@@ -591,15 +724,24 @@ namespace SiegeEngine.Scenes
 
         public IReadOnlyList<Material> GetMeshMaterials(int meshIndex)
         {
-            if (_model?.Meshes == null || meshIndex < 0 || meshIndex >= _model.Meshes.Count)
+            if (_model?.Meshes == null || meshIndex < 0)
                 return System.Array.Empty<Material>();
-            var mats = _model.Meshes[meshIndex].Materials;
-            return mats ?? (IReadOnlyList<Material>)System.Array.Empty<Material>();
+            int i = 0;
+            for (int m = 0; m < _model.Meshes.Count; m++)
+            {
+                var mesh = _model.Meshes[m];
+                if (mesh == null || mesh.Indices == null || mesh.Indices.Count == 0) continue;
+                if (i == meshIndex)
+                    return mesh.Materials ?? (IReadOnlyList<Material>)System.Array.Empty<Material>();
+                i++;
+            }
+            return System.Array.Empty<Material>();
         }
 
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            _modelRenderer.RenderModel(_model, _modelData, view, projection, _cameraPosition, Matrix4x4.Identity, _boneMatrices, _currentNormalTransforms, receiveShadows: false, hiddenMeshIndices: HiddenMeshIndices);
+            _modelRenderer.OpacityModelKey = _currentModelKey;
+            _modelRenderer.RenderModel(_model, _modelData, view, projection, _cameraPosition, Matrix4x4.Identity, _boneMatrices, _currentNormalTransforms, receiveShadows: false, hiddenMeshIndices: HiddenMeshIndices, materialOptions: MaterialOptions);
             if (_showSkeleton) _modelRenderer.RenderSkeletonDebug(_skeletonBuffer, _pointShader, view, projection);
             if (_bindSkeletonBuffer != null && _showBindPoseSkeleton) _modelRenderer.RenderSkeletonDebug(_bindSkeletonBuffer, _pointShader, view, projection);
         }
