@@ -26,7 +26,6 @@ namespace SiegeEngine.Systems
             _server = server ?? throw new ArgumentNullException(nameof(server));
             _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _eventBus.Subscribe<EntityMovedEvent>(OnEntityMoved);
-            _eventBus.Subscribe<EntityReplicationEvent>(OnReplication);
         }
 
         public void EnqueueMovementRequest(int entityId, Vector3 requestedPos, Quaternion requestedRotation, ulong steamId)
@@ -50,17 +49,12 @@ namespace SiegeEngine.Systems
                 _clientTick++;
         }
 
-        private void OnReplication(EntityReplicationEvent e)
-        {
-            if (e?.Deltas == null) return;
-            for (int i = 0; i < e.Deltas.Count; i++)
-                ApplyDelta(e.Deltas[i], e.Authoritative);
-        }
-
         private void OnEntityMoved(EntityMovedEvent e)
         {
             if (e == null) return;
-            ApplyDelta(e.ToDelta(), authoritative: false);
+            var deltas = e.AllDeltas();
+            for (int i = 0; i < deltas.Count; i++)
+                ApplyDelta(deltas[i], e.Authoritative);
         }
 
         private void ApplyDelta(EntityNetDelta d, bool authoritative)

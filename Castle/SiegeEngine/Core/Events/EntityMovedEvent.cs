@@ -1,6 +1,7 @@
 // Folder: SiegeEngine/Core/Events
 // File: EntityMovedEvent.cs
 using System.Collections.Generic;
+using System.IO;
 using System.Numerics;
 using SiegeEngine.Core.Networking;
 
@@ -8,6 +9,7 @@ namespace SiegeEngine.Core.Events
 {
     public class EntityMovedEvent : IEvent
     {
+        public const byte Magic = 0xD1;
         public string Type => "EntityMoved";
         public int EntityId { get; set; }
         public Vector3 Position { get; set; }
@@ -15,6 +17,8 @@ namespace SiegeEngine.Core.Events
         public float AnimTime { get; set; }
         public ulong? PlayerId { get; set; }
         public uint AckTick { get; set; }
+        public bool Authoritative { get; set; }
+        public List<EntityNetDelta> Deltas { get; set; }
 
         public EntityMovedEvent() { }
 
@@ -26,31 +30,93 @@ namespace SiegeEngine.Core.Events
             PlayerId = playerId;
             AckTick = ackTick;
             AnimTime = animTime;
+            Deltas = new List<EntityNetDelta>
+            {
+                EntityDeltaTracker.FromPose(entityId, position, rotation, animTime, ackTick)
+            };
         }
 
-        public EntityNetDelta ToDelta()
+        public List<EntityNetDelta> AllDeltas()
         {
-            return EntityDeltaTracker.FromPose(EntityId, Position, Rotation, AnimTime, AckTick);
+            if (Deltas != null && Deltas.Count > 0) return Deltas;
+            return new List<EntityNetDelta>
+            {
+                EntityDeltaTracker.FromPose(EntityId, Position, Rotation, AnimTime, AckTick)
+            };
         }
 
         public byte[] Serialize()
         {
-            return new EntityReplicationEvent
+            var deltas = AllDeltas();
+            using var ms = new MemoryStream();
+            using var w = new BinaryWriter(ms);
+            w.Write(Magic);
+            w.Write(Authoritative);
+            w.Write(deltas.Count);
+            for (int i = 0; i < deltas.Count; i++)
             {
-                Deltas = new List<EntityNetDelta> { ToDelta() }
-            }.Serialize();
+                var d = deltas[i];
+                w.Write(d.Id);
+                w.Write(d.Dirty);
+                w.Write(d.AckTick);
+                if ((d.Dirty & EntityDeltaTracker.DirtyPos) != 0)
+                {
+                    w.Write(d.Px); w.Write(d.Py); w.Write(d.Pz);
+                }
+                if ((d.Dirty & EntityDeltaTracker.DirtyRot) != 0)
+                {
+                    w.Write(d.Rx); w.Write(d.Ry); w.Write(d.Rz); w.Write(d.Rw);
+                }
+                if ((d.Dirty & EntityDeltaTracker.DirtyAnim) != 0)
+                    w.Write(d.AnimTime);
+            }
+            return ms.ToArray();
         }
 
         public void Deserialize(byte[] data)
         {
-            var list = EntityReplicationEvent.Unpack(data);
-            if (list.Count == 0) return;
-            var d = list[0];
+            Deltas = Unpack(data, out bool auth);
+            Authoritative = auth;
+            if (Deltas.Count == 0) return;
+            var d = Deltas[0];
             EntityId = d.Id;
             Position = new Vector3(d.Px, d.Py, d.Pz);
             Rotation = new Quaternion(d.Rx, d.Ry, d.Rz, d.Rw);
             AnimTime = d.AnimTime;
             AckTick = d.AckTick;
+        }
+
+        public static List<EntityNetDelta> Unpack(byte[] data, out bool authoritative)
+        {
+            authoritative = false;
+            var list = new List<EntityNetDelta>();
+            if (data == null || data.Length < 6 || data[0] != Magic) return list;
+            using var ms = new MemoryStream(data);
+            using var r = new BinaryReader(ms);
+            r.ReadByte();
+            authoritative = r.ReadBoolean();
+            int count = r.ReadInt32();
+            for (int i = 0; i < count; i++)
+            {
+                var d = new EntityNetDelta
+                {
+                    Id = r.ReadInt32(),
+                    Dirty = r.ReadByte(),
+                    AckTick = r.ReadUInt32()
+                };
+                if ((d.Dirty & EntityDeltaTracker.DirtyPos) != 0)
+                {
+                    d.Px = r.ReadSingle(); d.Py = r.ReadSingle(); d.Pz = r.ReadSingle();
+                }
+                if ((d.Dirty & EntityDeltaTracker.DirtyRot) != 0)
+                {
+                    d.Rx = r.ReadSingle(); d.Ry = r.ReadSingle(); d.Rz = r.ReadSingle(); d.Rw = r.ReadSingle();
+                }
+                if ((d.Dirty & EntityDeltaTracker.DirtyAnim) != 0)
+                    d.AnimTime = r.ReadSingle();
+                list.Add(d);
+            }
+            return list;
         }
     }
 }

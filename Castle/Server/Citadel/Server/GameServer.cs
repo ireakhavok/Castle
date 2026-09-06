@@ -185,7 +185,7 @@ namespace Citadel.Server
             var deltas = _deltaTracker.GetDeltas(GetEntities());
             if (deltas.Count > 0)
             {
-                Publish(new EntityReplicationEvent { Deltas = deltas, Authoritative = true }, networkSync: true);
+                Publish(new EntityMovedEvent { Deltas = deltas, Authoritative = true }, networkSync: true);
             }
         }
 
@@ -212,12 +212,12 @@ namespace Citadel.Server
 
         public byte[] Serialize()
         {
-            return new EntityReplicationEvent { Deltas = _deltaTracker.GetDeltas(GetEntities()) }.Serialize();
+            return new EntityMovedEvent { Deltas = _deltaTracker.GetDeltas(GetEntities()), Authoritative = true }.Serialize();
         }
 
         public void Deserialize(byte[] data)
         {
-            var deltas = EntityReplicationEvent.Unpack(data);
+            var deltas = EntityMovedEvent.Unpack(data, out _);
             for (int i = 0; i < deltas.Count; i++)
                 SiegeEngine.Core.Networking.EntityDeltaTracker.Apply(GetEntityById(deltas[i].Id), deltas[i]);
         }

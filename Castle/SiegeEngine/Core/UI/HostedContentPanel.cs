@@ -30,7 +30,7 @@ namespace SiegeEngine.Core.UI
             IControlContext controlContext,
             nint window,
             EventBus eventBus,
-            OpenHostedContentEvent request)
+            OpenGameHudEvent request)
             : base(renderContext, controlContext, window, eventBus)
         {
             _content = request.Content;

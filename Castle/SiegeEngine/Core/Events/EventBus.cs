@@ -90,10 +90,11 @@ namespace SiegeEngine.Core.Events
         }
         public void ProcessNetworkMessage(byte[] data)
         {
-            if (data != null && data.Length > 0 && data[0] == EntityReplicationEvent.Magic)
+            if (data != null && data.Length > 0 && data[0] == EntityMovedEvent.Magic)
             {
-                var ev = new EntityReplicationEvent();
+                var ev = new EntityMovedEvent();
                 ev.Deserialize(data);
+                ev.Authoritative = true;
                 Publish(ev, false);
                 return;
             }

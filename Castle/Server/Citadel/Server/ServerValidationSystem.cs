@@ -73,7 +73,7 @@ namespace Citadel.Server
                 uint ack = 0;
                 var pred = _server.GetSystem<ClientPredictionSystem>();
                 if (pred != null) ack = pred.ClientTick;
-                _server.Publish(new EntityReplicationEvent
+                _server.Publish(new EntityMovedEvent
                 {
                     Deltas = new List<SiegeEngine.Core.Networking.EntityNetDelta>
                     {

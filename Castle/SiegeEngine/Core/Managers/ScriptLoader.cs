@@ -492,9 +492,20 @@ namespace SiegeEngine.Core.Managers
             Directory.CreateDirectory(scriptsDir);
             string libsDir = Path.Combine(scriptsDir, "Libs");
             Directory.CreateDirectory(libsDir);
-            string outputPath = customOutputDir ?? Path.Combine(scriptsDir, "BuildOut", DateTime.UtcNow.ToString("yyyyMMddHHmmssfff"));
+            string outputPath = customOutputDir;
+            if (string.IsNullOrEmpty(outputPath))
+            {
+                string runtimeTemp = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp", "BuildOut");
+                outputPath = Path.Combine(runtimeTemp, DateTime.UtcNow.ToString("yyyyMMddHHmmssfff"));
+            }
             Directory.CreateDirectory(outputPath);
-            PruneBuildOutStamps(Path.Combine(scriptsDir, "BuildOut"), outputPath);
+            PruneBuildOutStamps(Path.GetDirectoryName(outputPath), outputPath);
+            string leftoverProjectBuildOut = Path.Combine(scriptsDir, "BuildOut");
+            if (Directory.Exists(leftoverProjectBuildOut))
+            {
+                try { Directory.Delete(leftoverProjectBuildOut, true); }
+                catch (Exception ex) { Console.WriteLine("[ScriptLoader] Could not remove project Scripts/BuildOut: " + ex.Message); }
+            }
             // Prefer the loaded engine assembly, not a leftover in BaseDirectory.
             string binDir = AppDomain.CurrentDomain.BaseDirectory;
             try
@@ -516,28 +527,25 @@ namespace SiegeEngine.Core.Managers
                     Console.WriteLine($"[ScriptLoader] Core DLL missing at runtime: {dllName}");
                     continue;
                 }
-                string[] targets =
+                try
                 {
-                    Path.Combine(scriptsDir, dllName),
-                    Path.Combine(libsDir, dllName),
-                    Path.Combine(outputPath, dllName)
-                };
-                foreach (string target in targets)
+                    CopyIfNewer(source, Path.Combine(libsDir, dllName));
+                }
+                catch (Exception ex)
                 {
-                    try
-                    {
-                        CopyIfNewer(source, target);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[ScriptLoader] FAILED copying {dllName} to {target}: {ex.Message}");
-                    }
+                    Console.WriteLine($"[ScriptLoader] FAILED copying {dllName} to Libs: {ex.Message}");
+                }
+                string stray = Path.Combine(scriptsDir, dllName);
+                if (File.Exists(stray))
+                {
+                    try { File.Delete(stray); }
+                    catch (Exception ex) { Console.WriteLine("[ScriptLoader] Could not remove extra " + stray + ": " + ex.Message); }
                 }
             }
 
             string csprojPath = Path.Combine(scriptsDir, "SiegeScripts.csproj");
-            string siegeHint = Path.Combine(scriptsDir, "SiegeEngine.dll");
-            string foundationHint = Path.Combine(scriptsDir, "Foundation.dll");
+            string siegeHint = Path.Combine(libsDir, "SiegeEngine.dll");
+            string foundationHint = Path.Combine(libsDir, "Foundation.dll");
             string csproj =
                 "<Project Sdk=\"Microsoft.NET.Sdk\">\n"
                 + "  <PropertyGroup>\n"

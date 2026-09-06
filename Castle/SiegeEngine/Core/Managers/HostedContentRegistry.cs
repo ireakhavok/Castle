@@ -46,7 +46,7 @@ namespace SiegeEngine.Core.Managers
                 }
                 if (content == null) continue;
                 string title = _titles.TryGetValue(kv.Key, out var t) && !string.IsNullOrWhiteSpace(t) ? t : kv.Key;
-                ctx.EventBus.Publish(new OpenHostedContentEvent
+                ctx.EventBus.Publish(new OpenGameHudEvent
                 {
                     Key = kv.Key,
                     Title = title,

@@ -8,6 +8,8 @@ namespace SiegeEngine.Core.Events
     public class OpenGameHudEvent : IEvent
     {
         public string Type => "OpenGameHud";
+        public string Key { get; set; }
+        public IHostedContent Content { get; set; }
         public string HtmlRelativePath { get; set; }
         public string HtmlContent { get; set; }
         public string Title { get; set; } = "HUD";
