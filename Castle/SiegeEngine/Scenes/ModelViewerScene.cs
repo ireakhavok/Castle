@@ -78,7 +78,7 @@ namespace SiegeEngine.Scenes
             : base(renderContext, controlContext, window, server, eventBus)
         {
             SetOwnsFramebuffer(false);
-            _ModelManager = new ModelManager(_renderContext);
+            _ModelManager = new ModelManager(_renderContext, setAsInstance: false);
             _modelData = new ModelManager.ModelData();
         }
         public override void Initialize(int height, int width)
@@ -557,12 +557,14 @@ namespace SiegeEngine.Scenes
             GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection);
             LightingFrame prev = LightingFrame.Current;
             LightingFrame.Current = LightingFrame.Studio(_cameraPosition, _cameraTarget);
+            PushViewerTextureRoot();
             try
             {
                 RenderContent(entities, view, projection);
             }
             finally
             {
+                PopViewerTextureRoot();
                 LightingFrame.Current = prev;
             }
         }
@@ -640,6 +642,9 @@ namespace SiegeEngine.Scenes
             SaveMaterialOptionsSidecar();
         }
 
+        private string _viewerTexturesDirectory;
+        private string _savedProjectTexturesDirectory;
+
         private void BindProjectTexturesDirectory()
         {
             string destDir = null;
@@ -652,17 +657,29 @@ namespace SiegeEngine.Scenes
             if (string.IsNullOrEmpty(destDir))
                 destDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Textures");
             Directory.CreateDirectory(destDir);
-            SiegeEngine.Core.GPU.Renderers.ModelRenderer.ProjectTexturesDirectory = destDir;
+            _viewerTexturesDirectory = destDir;
+        }
+
+        private void PushViewerTextureRoot()
+        {
+            _savedProjectTexturesDirectory = SiegeEngine.Core.GPU.Renderers.ModelRenderer.ProjectTexturesDirectory;
+            if (!string.IsNullOrEmpty(_viewerTexturesDirectory))
+                SiegeEngine.Core.GPU.Renderers.ModelRenderer.ProjectTexturesDirectory = _viewerTexturesDirectory;
+        }
+
+        private void PopViewerTextureRoot()
+        {
+            SiegeEngine.Core.GPU.Renderers.ModelRenderer.ProjectTexturesDirectory = _savedProjectTexturesDirectory;
         }
 
 
         private void LoadMaterialOptionsFromPack()
         {
             if (MaterialOptions != null && MaterialOptions.Count > 0) return;
-            if (ModelManager.Instance == null || string.IsNullOrEmpty(_currentModelKey)) return;
+            if (_ModelManager == null || string.IsNullOrEmpty(_currentModelKey)) return;
             AnimationPack pack = null;
-            if (!ModelManager.Instance.TryGetAnimationPack(_currentModelKey + "_pack", out pack))
-                ModelManager.Instance.TryGetAnimationPack(_currentModelKey, out pack);
+            if (!_ModelManager.TryGetAnimationPack(_currentModelKey + "_pack", out pack))
+                _ModelManager.TryGetAnimationPack(_currentModelKey, out pack);
             if (pack?.MaterialOptions == null || pack.MaterialOptions.Count == 0) return;
             MaterialOptions = MeshMaterialOption.CloneList(pack.MaterialOptions);
         }

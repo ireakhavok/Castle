@@ -50,10 +50,11 @@ namespace SiegeEngine.Core.Managers
             public uint[] MetallicTextures { get; set; }
             public uint IndexCount { get; set; }
         }
-        public ModelManager(IRenderContext renderContext = null)
+        public ModelManager(IRenderContext renderContext = null, bool setAsInstance = true)
         {
             _renderContext = renderContext;
-            Instance = this;
+            if (setAsInstance)
+                Instance = this;
         }
         public void LoadModel(string filePath)
         {

@@ -197,6 +197,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             shader.SetUniform("uHasWorldAligned", 0);
             LightingFrame.Current?.ApplyTo(shader, _renderContext);
             shader.SetUniform("uReceiveShadows", receiveShadows ? 1 : 0);
+            BindShadowMaps(shader);
 
             if (hasBones)
             {
@@ -257,7 +258,6 @@ namespace SiegeEngine.Core.GPU.Renderers
                 }
 
                 BindOpacityOption(shader, gpuIndex);
-                BindShadowMaps(shader);
 
                 _renderContext.BindVertexArray(mmr.Vao);
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
@@ -338,14 +338,20 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         private void BindShadowMaps(ShaderProgram shader)
         {
+            // 7c7a351 had no per-draw shadow binds. LastReady kept those binds
+            // alive after the user turned shadows off.
+            if (LightingSettings.ResolveShadowQuality() == ShadowQuality.Off)
+                return;
             LightingFrame frame = LightingFrame.Current;
             if (frame == null || frame.ShadowAtlas == 0 || !frame.ShadowsReady)
                 frame = LightingFrame.LastReady;
-            IRenderContext rc = _renderContext;
-            int u0 = rc.Enums.Texture0;
             uint atlas = ShadowMapRenderer.WrittenSunAtlas != 0
                 ? ShadowMapRenderer.WrittenSunAtlas
                 : (frame != null ? frame.ShadowAtlas : 0);
+            if (atlas == 0 && (frame == null || frame.PointShadowCube == 0 && frame.SpotShadowMap == 0))
+                return;
+            IRenderContext rc = _renderContext;
+            int u0 = rc.Enums.Texture0;
             rc.ActiveTexture(u0 + LightingFrame.ShadowAtlasUnit);
             rc.BindTexture(rc.Enums.Texture2D, atlas);
             shader.SetUniform("uShadowAtlas", LightingFrame.ShadowAtlasUnit);
