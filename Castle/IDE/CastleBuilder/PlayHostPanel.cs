@@ -17,7 +17,7 @@ using System.Numerics;
 
 namespace CastleBuilder
 {
-    public class PlayHostPanel : BasePanel
+    public class PlayHostPanel : BasePanel, IPlayViewport
     {
         private class PlayHostOverlay : UIOverlay
         {
@@ -35,6 +35,9 @@ namespace CastleBuilder
         private bool _wasLive;
 
         public override bool WantsContinuousUpdate => _playing;
+        public bool IsPlaying => _playing;
+        public Vector2 ViewportPosition => Position;
+        public Vector2 ViewportSize => Size;
 
         public PlayHostPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)

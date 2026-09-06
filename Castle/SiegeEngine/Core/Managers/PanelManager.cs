@@ -71,6 +71,14 @@ namespace SiegeEngine.Core.Managers
             _panels.Add(panel);
             _router.AddPanel(panel);
             panel.Init();
+            if (panel is SiegeEngine.Core.UI.GameHudPanel hud)
+            {
+                hud.DockingMode = DockingMode.Desktop;
+                hud.DockState = DockState.Floating;
+                hud.RenderOrder = 100;
+                PlaceGameHud(hud);
+                return;
+            }
             if (panel is BasePanel bp && bp.IsModal)
             {
                 _modalPanels.Add(panel);
@@ -92,11 +100,7 @@ namespace SiegeEngine.Core.Managers
                 }
                 _desktopStrategy.AddPanel(panel);
             }
-            if (panel is SiegeEngine.Core.UI.GameHudPanel hud)
-            {
-                PlaceGameHud(hud);
-            }
-            else if (!panel.IsModal && panel.DockState == DockState.Floating)
+            if (!panel.IsModal && panel.DockState == DockState.Floating)
             {
                 AutoCenterFloating(panel);
             }
@@ -260,7 +264,26 @@ namespace SiegeEngine.Core.Managers
         private void PlaceGameHud(SiegeEngine.Core.UI.GameHudPanel hud)
         {
             if (hud == null) return;
+            float originX = 0f, originY = 0f;
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
+            float viewW = winW;
+            float viewH = winH;
+            IPlayViewport playView = null;
+            for (int i = 0; i < _panels.Count; i++)
+            {
+                if (_panels[i] is IPlayViewport pv && pv.IsPlaying)
+                {
+                    playView = pv;
+                    break;
+                }
+            }
+            if (playView != null)
+            {
+                originX = playView.ViewportPosition.X;
+                originY = playView.ViewportPosition.Y;
+                viewW = playView.ViewportSize.X;
+                viewH = playView.ViewportSize.Y;
+            }
             float w = hud.Size.X > 1f ? hud.Size.X : 248f;
             float h = hud.Size.Y > 1f ? hud.Size.Y : 520f;
             if (_hudLastPos.TryGetValue(hud.HudKey, out Vector2 last))
@@ -277,24 +300,24 @@ namespace SiegeEngine.Core.Managers
             switch (hud.Anchor)
             {
                 case HudAnchor.Right:
-                    x = winW - w - margin;
-                    y = float.IsNaN(y) ? top : y;
+                    x = originX + viewW - w - margin;
+                    y = originY + (float.IsNaN(y) ? top : y);
                     break;
                 case HudAnchor.Left:
-                    x = margin;
-                    y = float.IsNaN(y) ? top : y;
+                    x = originX + margin;
+                    y = originY + (float.IsNaN(y) ? top : y);
                     break;
                 case HudAnchor.Top:
-                    x = float.IsNaN(x) ? (winW - w) * 0.5f : x;
-                    y = top;
+                    x = originX + (float.IsNaN(x) ? (viewW - w) * 0.5f : x);
+                    y = originY + top;
                     break;
                 case HudAnchor.Bottom:
-                    x = float.IsNaN(x) ? (winW - w) * 0.5f : x;
-                    y = winH - h - margin;
+                    x = originX + (float.IsNaN(x) ? (viewW - w) * 0.5f : x);
+                    y = originY + viewH - h - margin;
                     break;
                 case HudAnchor.Center:
-                    x = (winW - w) * 0.5f;
-                    y = (winH - h) * 0.5f;
+                    x = originX + (viewW - w) * 0.5f;
+                    y = originY + (viewH - h) * 0.5f;
                     break;
                 case HudAnchor.Custom:
                     if (float.IsNaN(x)) x = margin;
