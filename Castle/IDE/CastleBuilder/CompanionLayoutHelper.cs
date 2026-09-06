@@ -53,7 +53,7 @@ namespace CastleBuilder
         {
             if (!_bound || string.IsNullOrEmpty(context)) return;
             CurrentContext = context;
-            CloseCompanionTypes(CompanionTypeNames(context));
+            CloseWorkspaceCompanions(CompanionTypeNames(context));
 
             IPanel[] left = Array.Empty<IPanel>();
             IPanel[] center = Array.Empty<IPanel>();
@@ -74,12 +74,11 @@ namespace CastleBuilder
                 var viewer = OpenDocked(new AnimationViewerPanel(_renderContext, _controlContext, _window, _eventBus));
                 var hierarchy = OpenDocked(new TreeViewPanel(_renderContext, _controlContext, _window, _eventBus));
                 var properties = OpenDocked(new PropertiesPanel(_renderContext, _controlContext, _window, _eventBus));
-                var timeline = OpenDocked(new AnimationTimelinePanel(_renderContext, _controlContext, _window, _eventBus));
                 var blend = OpenDocked(new AnimationBlendPanel(_renderContext, _controlContext, _window, _eventBus));
                 left = new IPanel[] { hierarchy };
                 center = new IPanel[] { viewer };
                 right = new IPanel[] { properties };
-                bottom = new IPanel[] { timeline, blend };
+                bottom = new IPanel[] { blend };
             }
             else if (string.Equals(context, "Scene Editor", StringComparison.OrdinalIgnoreCase))
             {
@@ -87,13 +86,12 @@ namespace CastleBuilder
                 var hierarchy = OpenDocked(new TreeViewPanel(_renderContext, _controlContext, _window, _eventBus));
                 var properties = OpenDocked(new PropertiesPanel(_renderContext, _controlContext, _window, _eventBus));
                 var assets = OpenDocked(new AssetBrowserPanel(_renderContext, _controlContext, _window, _eventBus));
-                var post = OpenDocked(new PostProcessPanel(_renderContext, _controlContext, _window, _eventBus));
                 left = new IPanel[] { hierarchy };
                 center = new IPanel[] { scene };
                 right = new IPanel[] { properties };
-                bottom = new IPanel[] { assets, post };
+                bottom = new IPanel[] { assets };
             }
-            else if (string.Equals(context, "Configuration", StringComparison.OrdinalIgnoreCase))
+            else if (string.Equals(context, "Workshop", StringComparison.OrdinalIgnoreCase))
             {
                 var scripts = OpenDocked(new ScriptEditorPanel(_renderContext, _controlContext, _window, _eventBus));
                 var console = OpenDocked(new ConsolePanel(_renderContext, _controlContext, _window, _eventBus));
@@ -114,27 +112,30 @@ namespace CastleBuilder
         {
             if (panel == null) return null;
             panel.DockingMode = DockingMode.IDE;
-            panel.DockState = DockState.Tabbed;
+            panel.DockState = DockState.Floating;
             panel.IsModal = false;
             panel.HasTitleBar = true;
             panel.IsClosable = true;
             panel.AllowDragging = true;
+            panel.Visible = true;
             _eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Overlay });
             return panel;
         }
 
-        private static void CloseCompanionTypes(string[] typeNames)
+        private static void CloseWorkspaceCompanions(string[] typeNames)
         {
-            var pm = PanelManager.Current;
-            if (pm == null || typeNames == null || typeNames.Length == 0) return;
+            var strategy = PanelManager.Current?.IDEStrategy;
+            if (strategy == null || typeNames == null || typeNames.Length == 0) return;
+            List<IPanel> workspace = strategy.GetWorkspacePanels();
             var toClose = new List<IPanel>();
-            foreach (var panel in pm.GetAllPanels())
+            for (int i = 0; i < workspace.Count; i++)
             {
+                var panel = workspace[i];
                 if (panel == null) continue;
                 string name = panel.GetType().Name;
-                for (int i = 0; i < typeNames.Length; i++)
+                for (int t = 0; t < typeNames.Length; t++)
                 {
-                    if (string.Equals(name, typeNames[i], StringComparison.Ordinal))
+                    if (string.Equals(name, typeNames[t], StringComparison.Ordinal))
                     {
                         toClose.Add(panel);
                         break;
@@ -150,10 +151,10 @@ namespace CastleBuilder
             if (string.Equals(context, "Terrain", StringComparison.OrdinalIgnoreCase))
                 return new[] { "TerrainCreatorPanel", "TreeViewPanel", "PropertiesPanel" };
             if (string.Equals(context, "Animator", StringComparison.OrdinalIgnoreCase))
-                return new[] { "AnimationViewerPanel", "AnimationTimelinePanel", "AnimationBlendPanel", "TreeViewPanel", "PropertiesPanel" };
+                return new[] { "AnimationViewerPanel", "AnimationBlendPanel", "TreeViewPanel", "PropertiesPanel" };
             if (string.Equals(context, "Scene Editor", StringComparison.OrdinalIgnoreCase))
-                return new[] { "SceneEditorPanel", "TreeViewPanel", "PropertiesPanel", "AssetBrowserPanel", "PostProcessPanel" };
-            if (string.Equals(context, "Configuration", StringComparison.OrdinalIgnoreCase))
+                return new[] { "SceneEditorPanel", "TreeViewPanel", "PropertiesPanel", "AssetBrowserPanel" };
+            if (string.Equals(context, "Workshop", StringComparison.OrdinalIgnoreCase))
                 return new[] { "ScriptEditorPanel", "ConsolePanel", "PlayHostPanel" };
             return Array.Empty<string>();
         }

@@ -31,6 +31,27 @@ namespace CastleBuilder
         private string _loadedProjectPath;
         public static EditorScene Current { get; private set; }
 
+        public static void ResetLiveProjectState()
+        {
+            var scene = Current;
+            if (scene == null) return;
+            var live = scene.GetEntities();
+            for (int i = live.Count - 1; i >= 0; i--)
+                scene.RemoveLiveEntity(live[i].Id);
+            scene._sceneCache.Clear();
+            scene._pendingDisposeScene?.Dispose();
+            scene._pendingDisposeScene = null;
+            scene._pendingDisposeHosted?.Dispose();
+            scene._pendingDisposeHosted = null;
+            scene._hostedCustomScene = null;
+            scene._activeGameScene = null;
+            scene._projectData = null;
+            scene._loadedProjectPath = null;
+            scene._currentGameSceneName = string.Empty;
+            scene._scriptsActivatedForProject = false;
+            Console.WriteLine("[EditorScene] Live project state cleared");
+        }
+
         // Editor viewport has no implicit sun. Place a Light entity.
         // Play Game still injects LightingFrame.DefaultSunDirection.
         protected override bool AllowRuntimeDefaultSun => false;
@@ -257,15 +278,9 @@ namespace CastleBuilder
             if (_projectData.Scenes == null) _projectData.Scenes = new Dictionary<string, SceneData>();
             EnsureProjectScriptsActivated(projectPath);
             string levelName = ProjectSettings.Current.CurrentLevel?.Name;
-            if (!string.IsNullOrEmpty(levelName) && levelName != "Main")
+            if (!string.IsNullOrEmpty(levelName) && _projectData.Scenes != null && _projectData.Scenes.ContainsKey(levelName))
             {
                 _currentGameSceneName = levelName;
-                if (!_projectData.Scenes.ContainsKey(_currentGameSceneName))
-                {
-                    var sd = new SceneData { Name = _currentGameSceneName, SceneType = "TerrainTest" };
-                    sd.Terrain = new TerrainData();
-                    _projectData.Scenes[_currentGameSceneName] = sd;
-                }
             }
             else
             {

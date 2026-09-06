@@ -39,11 +39,11 @@ namespace CastleBuilder
             eventBus.Publish(new ContextChangedEvent { Context = "Scene Editor" });
             Console.WriteLine("[MenuCommands] Switched to Scene Editor context (panel opened)");
         }
-        public static void SwitchToConfiguration(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        public static void SwitchToWorkshop(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             CompanionLayoutHelper.Bind(renderContext, controlContext, window, eventBus);
-            eventBus.Publish(new ContextChangedEvent { Context = "Configuration" });
-            Console.WriteLine("[MenuCommands] Switched to Configuration context");
+            eventBus.Publish(new ContextChangedEvent { Context = "Workshop" });
+            Console.WriteLine("[MenuCommands] Switched to Workshop context");
         }
         public static void OpenDefaultPanels(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -205,19 +205,36 @@ namespace CastleBuilder
                     {
                         File.Copy(payloadFile, payloadTarget, true);
                     }
-                    string foundationSource = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Foundation.exe");
+                    string binDir = AppDomain.CurrentDomain.BaseDirectory;
+                    string foundationSource = Path.Combine(binDir, "Foundation.exe");
                     if (!File.Exists(foundationSource))
-                        foundationSource = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
+                        foundationSource = Path.Combine(binDir, "Citadel.exe");
                     string exeName = Path.GetFileName(foundationSource);
+                    string exeStem = Path.GetFileNameWithoutExtension(exeName);
                     File.Copy(foundationSource, Path.Combine(exportRoot, exeName), true);
-                    string[] dlls = { "steam_api64.dll", "Foundation.dll", "SiegeEngine.dll", "Trebuchet.dll" };
-                    foreach (string dll in dlls)
+                    string[] sidecar = { exeStem + ".dll", exeStem + ".runtimeconfig.json", exeStem + ".deps.json", "steam_api64.dll" };
+                    foreach (string name in sidecar)
                     {
-                        string sourceDll = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, dll);
-                        if (File.Exists(sourceDll))
-                        {
-                            File.Copy(sourceDll, Path.Combine(exportRoot, dll), true);
-                        }
+                        string src = Path.Combine(binDir, name);
+                        if (File.Exists(src))
+                            File.Copy(src, Path.Combine(exportRoot, name), true);
+                    }
+                    foreach (string dll in Directory.GetFiles(binDir, "*.dll"))
+                    {
+                        string name = Path.GetFileName(dll);
+                        if (name.StartsWith("CastleBuilder", StringComparison.OrdinalIgnoreCase) ||
+                            name.StartsWith("Keystone", StringComparison.OrdinalIgnoreCase) ||
+                            name.StartsWith("MapRoom", StringComparison.OrdinalIgnoreCase) ||
+                            name.StartsWith("ReadingChamber", StringComparison.OrdinalIgnoreCase) ||
+                            name.StartsWith("ToolChest", StringComparison.OrdinalIgnoreCase))
+                            continue;
+                        File.Copy(dll, Path.Combine(exportRoot, name), true);
+                    }
+                    string runtimeConfig = Path.Combine(exportRoot, exeStem + ".runtimeconfig.json");
+                    if (!File.Exists(runtimeConfig))
+                    {
+                        Console.WriteLine($"[Export ERROR] Missing {exeStem}.runtimeconfig.json next to the IDE exe; cannot launch exported client.");
+                        return;
                     }
                     Process.Start(new ProcessStartInfo
                     {

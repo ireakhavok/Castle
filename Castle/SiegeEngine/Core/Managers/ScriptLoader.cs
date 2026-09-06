@@ -474,7 +474,8 @@ namespace SiegeEngine.Core.Managers
             Directory.CreateDirectory(scriptsDir);
             string libsDir = Path.Combine(scriptsDir, "Libs");
             Directory.CreateDirectory(libsDir);
-            string outputPath = customOutputDir ?? libsDir;
+            string outputPath = customOutputDir ?? Path.Combine(scriptsDir, "BuildOut");
+            Directory.CreateDirectory(outputPath);
             string binDir = AppDomain.CurrentDomain.BaseDirectory;
 
             // Core DLLs are copied for csproj HintPath only – they are never treated as project assemblies
@@ -550,6 +551,15 @@ namespace SiegeEngine.Core.Managers
                         string runtimeTarget = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp", Path.GetFileName(dll));
                         Directory.CreateDirectory(Path.GetDirectoryName(runtimeTarget));
                         File.Copy(dll, runtimeTarget, true);
+                        string libsTarget = Path.Combine(libsDir, Path.GetFileName(dll));
+                        try
+                        {
+                            File.Copy(dll, libsTarget, true);
+                        }
+                        catch (IOException)
+                        {
+                            Console.WriteLine($"[ScriptLoader] {Path.GetFileName(dll)} locked in Libs - using RuntimeTemp copy");
+                        }
                         LoadAndRegister(dll);
                     }
                     ScanProjectScripts(projectPath);

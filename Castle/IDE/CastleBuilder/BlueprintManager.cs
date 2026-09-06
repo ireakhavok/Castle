@@ -520,6 +520,8 @@ namespace CastleBuilder
         }
         private void OnNewProject(NewProjectEvent evt)
         {
+            ProjectStateManager.Current.Clear();
+            EditorScene.ResetLiveProjectState();
             string root = ProjectSettings.Current.ProjectsRoot;
             string dir = evt.Path ?? Path.Combine(root, (evt.Name ?? "MyProject").Replace(" ", "_").ReplaceInvalidFileChars());
             Directory.CreateDirectory(dir);
@@ -540,6 +542,12 @@ namespace CastleBuilder
         private void OnLoadProject(LoadProjectEvent evt)
         {
             if (string.IsNullOrEmpty(evt.Path) || !Directory.Exists(evt.Path)) return;
+            string previousProject = ProjectSettings.Current.ActiveProject;
+            if (!string.Equals(previousProject, evt.Path, StringComparison.OrdinalIgnoreCase))
+            {
+                ProjectStateManager.Current.Clear();
+                EditorScene.ResetLiveProjectState();
+            }
             ProjectSettings.Current.ActiveProject = evt.Path;
             Console.WriteLine($"[BlueprintManager.OnLoadProject] ActiveProject set to: {evt.Path}");
             string jsonPath = Path.Combine(evt.Path, "project.json");

@@ -117,6 +117,19 @@ namespace SiegeEngine.Core.Managers
 
         public void SetCurrentBlade(string context) => SetActiveBlade(context);
 
+        public List<IPanel> GetWorkspacePanels()
+        {
+            var list = new List<IPanel>();
+            foreach (var p in _floatingPanels)
+            {
+                if (p != null && !list.Contains(p))
+                    list.Add(p);
+            }
+            if (_root != null)
+                CollectPanelsRecursive(_root, list);
+            return list;
+        }
+
         public void SwitchBlade(string newContext)
         {
             if (newContext == _lastBlade) return;
@@ -126,6 +139,11 @@ namespace SiegeEngine.Core.Managers
             _bladePanelCache[_lastBlade].Clear();
             foreach (var p in _floatingPanels) _bladePanelCache[_lastBlade].Add(p);
             if (_root != null) CollectPanelsRecursive(_root, _bladePanelCache[_lastBlade]);
+            foreach (var p in _bladePanelCache[_lastBlade])
+            {
+                if (p != null)
+                    p.Visible = false;
+            }
             _bladeLayoutCache[_lastBlade] = SerializeState();
             _floatingPanels.Clear();
             _root = new DockTabbedNode();
@@ -137,6 +155,8 @@ namespace SiegeEngine.Core.Managers
             var toRestore = _bladePanelCache[newContext];
             foreach (var p in toRestore)
             {
+                if (p == null) continue;
+                p.Visible = true;
                 p.Show();
             }
             if (_bladeLayoutCache.TryGetValue(newContext, out var savedLayout) && !string.IsNullOrEmpty(savedLayout))
@@ -313,8 +333,34 @@ namespace SiegeEngine.Core.Managers
                 return tab;
             }
 
+            DockNode CenterNode()
+            {
+                if (center == null || center.Length <= 1)
+                    return Tabs(center);
+                DockNode split = null;
+                IPanel first = null;
+                for (int i = 0; i < center.Length; i++)
+                {
+                    if (center[i] == null) continue;
+                    if (first == null)
+                    {
+                        first = center[i];
+                        split = Tabs(new IPanel[] { first });
+                        continue;
+                    }
+                    split = new DockSplitNode
+                    {
+                        IsVertical = false,
+                        SplitRatio = 0.5f,
+                        Left = split,
+                        Right = Tabs(new IPanel[] { center[i] })
+                    };
+                }
+                return split ?? new DockTabbedNode();
+            }
+
             var leftNode = Tabs(left);
-            var centerNode = Tabs(center);
+            var centerNode = CenterNode();
             var rightNode = Tabs(right);
             var bottomNode = Tabs(bottom);
 

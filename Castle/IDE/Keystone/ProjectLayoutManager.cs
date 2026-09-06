@@ -29,6 +29,8 @@ namespace Keystone
             return !string.IsNullOrEmpty(path) && File.Exists(path);
         }
 
+        public static bool HasDiskLayout(string contextName) => LayoutFileExists(contextName);
+
         public static void ClearMemory()
         {
             _memoryCache.Clear();
