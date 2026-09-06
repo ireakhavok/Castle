@@ -78,6 +78,45 @@ namespace SiegeEngine.Core.Managers
             }
             Console.WriteLine("[IDEDockingStrategy.ClearAll] Workspace fully cleared");
         }
+
+        public void ClearBladeCaches()
+        {
+            var pm = PanelManager.Current;
+            var cached = new List<IPanel>();
+            foreach (var list in _bladePanelCache.Values)
+            {
+                if (list == null) continue;
+                cached.AddRange(list);
+            }
+            _bladePanelCache.Clear();
+            _bladeLayoutCache.Clear();
+            if (pm != null)
+            {
+                foreach (var p in cached)
+                {
+                    if (p != null)
+                        pm.RemovePanel(p);
+                }
+            }
+            Console.WriteLine("[IDEDockingStrategy] Blade caches wiped");
+        }
+
+        public bool HasBladeCache(string context)
+        {
+            if (string.IsNullOrEmpty(context)) return false;
+            if (_bladePanelCache.TryGetValue(context, out var panels) && panels != null && panels.Count > 0)
+                return true;
+            return _bladeLayoutCache.TryGetValue(context, out var layout) && !string.IsNullOrEmpty(layout);
+        }
+
+        public void SetActiveBlade(string context)
+        {
+            if (!string.IsNullOrEmpty(context))
+                _lastBlade = context;
+        }
+
+        public void SetCurrentBlade(string context) => SetActiveBlade(context);
+
         public void SwitchBlade(string newContext)
         {
             if (newContext == _lastBlade) return;
@@ -242,6 +281,96 @@ namespace SiegeEngine.Core.Managers
             if (_floatingPanels.Count > 0) return true;
             if (_root == null) return false;
             return HasContentRecursive(_root);
+        }
+
+        public void ApplyCompanionSeed(IPanel[] left, IPanel[] center, IPanel[] right, IPanel[] bottom)
+        {
+            void Prepare(IPanel panel)
+            {
+                if (panel == null) return;
+                _floatingPanels.Remove(panel);
+                panel.HasTitleBar = true;
+                panel.IsClosable = true;
+                panel.HeaderHeight = BasePanel.TitleHeight;
+                panel.DockingMode = DockingMode.IDE;
+                panel.AllowDragging = true;
+                panel.DockState = DockState.Tabbed;
+                if (!_originalFloatingSizes.ContainsKey(panel))
+                    _originalFloatingSizes[panel] = panel.Size;
+            }
+
+            DockTabbedNode Tabs(IPanel[] panels)
+            {
+                var tab = new DockTabbedNode();
+                if (panels == null) return tab;
+                for (int i = 0; i < panels.Length; i++)
+                {
+                    if (panels[i] == null) continue;
+                    Prepare(panels[i]);
+                    tab.AddPanel(panels[i]);
+                }
+                if (tab.Panels.Count > 0) tab.ActiveIndex = 0;
+                return tab;
+            }
+
+            var leftNode = Tabs(left);
+            var centerNode = Tabs(center);
+            var rightNode = Tabs(right);
+            var bottomNode = Tabs(bottom);
+
+            DockNode mid = centerNode;
+            if (leftNode.Panels.Count > 0 && rightNode.Panels.Count > 0)
+            {
+                mid = new DockSplitNode
+                {
+                    IsVertical = false,
+                    SplitRatio = 0.22f,
+                    Left = leftNode,
+                    Right = new DockSplitNode
+                    {
+                        IsVertical = false,
+                        SplitRatio = 0.72f,
+                        Left = centerNode,
+                        Right = rightNode
+                    }
+                };
+            }
+            else if (leftNode.Panels.Count > 0)
+            {
+                mid = new DockSplitNode
+                {
+                    IsVertical = false,
+                    SplitRatio = 0.22f,
+                    Left = leftNode,
+                    Right = centerNode
+                };
+            }
+            else if (rightNode.Panels.Count > 0)
+            {
+                mid = new DockSplitNode
+                {
+                    IsVertical = false,
+                    SplitRatio = 0.78f,
+                    Left = centerNode,
+                    Right = rightNode
+                };
+            }
+
+            if (bottomNode.Panels.Count > 0)
+            {
+                _root = new DockSplitNode
+                {
+                    IsVertical = true,
+                    SplitRatio = 0.72f,
+                    Left = mid,
+                    Right = bottomNode
+                };
+            }
+            else
+            {
+                _root = mid ?? new DockTabbedNode();
+            }
+            _needsLayout = true;
         }
         private bool HasContentRecursive(DockNode node)
         {

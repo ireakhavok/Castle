@@ -98,6 +98,7 @@ namespace CastleBuilder
             {
                 ScriptLoader.BuildProjectScripts(projectPath);
                 ScriptLoader.CopyProjectScripts(projectPath);
+                ScriptLoader.LoadCustomAssemblies(projectPath);
             }
             catch (Exception ex)
             {

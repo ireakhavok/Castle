@@ -22,24 +22,33 @@ namespace CastleBuilder
         private static readonly string DefaultProjectsPath = ProjectSettings.Current.ProjectsRoot;
         public static void SwitchToTerrain(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
+            CompanionLayoutHelper.Bind(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new ContextChangedEvent { Context = "Terrain" });
             Console.WriteLine("[MenuCommands] Switched to Terrain context");
         }
         public static void SwitchToAnimator(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
+            CompanionLayoutHelper.Bind(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new ContextChangedEvent { Context = "Animator" });
             Console.WriteLine("[MenuCommands] Switched to Animator context");
         }
         public static void SwitchToSceneEditor(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
+            CompanionLayoutHelper.Bind(renderContext, controlContext, window, eventBus);
             BlueprintManager.EnsureDefaultSceneIfNeeded();
             eventBus.Publish(new ContextChangedEvent { Context = "Scene Editor" });
             Console.WriteLine("[MenuCommands] Switched to Scene Editor context (panel opened)");
         }
         public static void SwitchToConfiguration(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
+            CompanionLayoutHelper.Bind(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new ContextChangedEvent { Context = "Configuration" });
             Console.WriteLine("[MenuCommands] Switched to Configuration context");
+        }
+        public static void OpenDefaultPanels(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            CompanionLayoutHelper.Bind(renderContext, controlContext, window, eventBus);
+            CompanionLayoutHelper.OpenDefaultPanels();
         }
         public static void LoadProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -190,27 +199,17 @@ namespace CastleBuilder
                     ScriptLoader.CopyProjectScripts(projectPath);
                     ScriptLoader.CopyScriptsToExport(projectPath, exportRoot);
                     string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
-                    var level = ProjectSettings.Current.CurrentLevel ?? new Level();
-                    var sceneData = new SceneData { Name = levelName };
-                    if (level != null)
+                    string payloadFile = BlueprintManager.BuildPlayPayloadFile();
+                    string payloadTarget = Path.Combine(exportRoot, "play_payload.json");
+                    if (!string.IsNullOrEmpty(payloadFile) && File.Exists(payloadFile))
                     {
-                        sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
-                        sceneData.Terrain = level.Terrain ?? new TerrainData();
-                        sceneData.Environment = level.Environment ?? new EnvironmentSettings();
-                        sceneData.Skybox = level.Skybox ?? new SkyboxData();
-                        sceneData.Settings = ProjectSettings.Current.CurrentSceneSettings;
+                        File.Copy(payloadFile, payloadTarget, true);
                     }
-                    byte[] sceneBytes = JsonSerializer.SerializeToUtf8Bytes(sceneData, EntityData.SerializerOptions);
-                    string scenePayload = Convert.ToBase64String(sceneBytes);
-                    byte[] serialized = level.Serialize();
-                    string levelPayload = Convert.ToBase64String(serialized);
-                    string levelJsonPath = Path.Combine(exportRoot, "Scenes", "starting_level.json");
-                    Directory.CreateDirectory(Path.Combine(exportRoot, "Scenes"));
-                    File.WriteAllBytes(levelJsonPath, serialized);
-                    File.WriteAllText(Path.Combine(exportRoot, "starting_scene.json"), "{\"startingScene\":\"" + levelName + "\"}");
-                    string exeSource = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
-                    string exeTarget = Path.Combine(exportRoot, "Citadel.exe");
-                    File.Copy(exeSource, exeTarget, true);
+                    string foundationSource = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Foundation.exe");
+                    if (!File.Exists(foundationSource))
+                        foundationSource = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
+                    string exeName = Path.GetFileName(foundationSource);
+                    File.Copy(foundationSource, Path.Combine(exportRoot, exeName), true);
                     string[] dlls = { "steam_api64.dll", "Foundation.dll", "SiegeEngine.dll", "Trebuchet.dll" };
                     foreach (string dll in dlls)
                     {
@@ -222,12 +221,12 @@ namespace CastleBuilder
                     }
                     Process.Start(new ProcessStartInfo
                     {
-                        FileName = Path.Combine(exportRoot, "Citadel.exe"),
+                        FileName = Path.Combine(exportRoot, exeName),
                         WorkingDirectory = exportRoot,
                         UseShellExecute = true,
-                        Arguments = $"--client --load-level {levelName} --level-data \"{levelPayload}\" --scene-data \"{scenePayload}\" --custom-assemblies \"{ScriptLoader.GetCustomAssemblyList(projectPath)}\""
+                        Arguments = $"--client --play-project \"{exportRoot}\" --load-level \"{levelName}\" --play-payload-file \"{payloadTarget}\" --custom-assemblies \"{ScriptLoader.GetCustomAssemblyList(projectPath)}\""
                     });
-                    Console.WriteLine($"[Export SUCCESS] Clean game client exported to {exportRoot} with FULL starting Level '{levelName}' and launched as pure runtime client (exact entities, positions, terrain, packs - no server messages, no IDE)");
+                    Console.WriteLine($"[Export SUCCESS] Clean game client exported to {exportRoot} with payload file for level '{levelName}'");
                 }
                 catch (Exception ex)
                 {

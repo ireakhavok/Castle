@@ -45,6 +45,7 @@ namespace SiegeEngine.Core.Managers
             _eventBus.Subscribe<OpenPanelEvent>(OnOpenPanel);
             _eventBus.Subscribe<ClosePanelEvent>(OnClosePanel);
             _eventBus.Subscribe<OpenGameHudEvent>(OnOpenGameHud);
+            _eventBus.Subscribe<OpenHostedContentEvent>(OnOpenHostedContent);
             _controlContext.SetScrollCallback(_window, (nint w, double xoffset, double yoffset) =>
             {
                 _scrollDelta += (float)yoffset;
@@ -270,6 +271,28 @@ namespace SiegeEngine.Core.Managers
             AddPanel(hud);
         }
 
+        private readonly System.Collections.Generic.Dictionary<string, SiegeEngine.Core.UI.HostedContentPanel> _hostedContents = new System.Collections.Generic.Dictionary<string, SiegeEngine.Core.UI.HostedContentPanel>();
+
+        private void OnOpenHostedContent(OpenHostedContentEvent e)
+        {
+            if (e == null || string.IsNullOrEmpty(e.Key)) return;
+            string key = e.Key;
+            if (!e.Open)
+            {
+                if (_hostedContents.TryGetValue(key, out var existing))
+                {
+                    RemovePanel(existing);
+                    _hostedContents.Remove(key);
+                }
+                return;
+            }
+            if (_hostedContents.ContainsKey(key)) return;
+            if (e.Content == null) return;
+            var panel = new SiegeEngine.Core.UI.HostedContentPanel(_renderContext, _controlContext, _window, _eventBus, e);
+            _hostedContents[key] = panel;
+            AddPanel(panel);
+        }
+
         public void RemovePanel(IPanel panel)
         {
             if (_captureManager.CurrentOwner == panel)
@@ -281,6 +304,19 @@ namespace SiegeEngine.Core.Managers
             _dynamicStrategy.RemovePanel(panel);
             _ideStrategy.RemovePanel(panel);
             _panels.Remove(panel);
+            if (panel is SiegeEngine.Core.UI.HostedContentPanel hosted)
+            {
+                string drop = null;
+                foreach (var kv in _hostedContents)
+                {
+                    if (kv.Value == hosted)
+                    {
+                        drop = kv.Key;
+                        break;
+                    }
+                }
+                if (drop != null) _hostedContents.Remove(drop);
+            }
             panel.Dispose();
         }
         public void CapturePanel(IPanel panel)

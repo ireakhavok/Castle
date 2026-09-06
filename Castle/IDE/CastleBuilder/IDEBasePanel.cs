@@ -148,6 +148,7 @@ namespace CastleBuilder
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
 
+            CompanionLayoutHelper.Bind(_renderContext, _controlContext, _window, _eventBus);
             MusicPlayerPanel.Open(_renderContext, _controlContext, _window, _eventBus);
         }
 

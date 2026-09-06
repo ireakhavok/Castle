@@ -552,7 +552,7 @@ namespace CastleBuilder
                     ProjectSettings.Current.CameraType = data.CameraType;
                     _previousContext = data.LastContext ?? "Scene Editor";
                     Console.WriteLine($"[BlueprintManager.OnLoadProject] Loaded project '{data.Name}' - Last Context: {_previousContext}");
-                    ProjectLayoutManager.LoadLayoutForContext(_previousContext);
+                    ProjectLayoutManager.OnProjectOpened(_previousContext);
                     LoadAllPanelStates(data);
                     string currentScene = data.LastOpenedScene ?? (data.Scenes != null && data.Scenes.Count > 0 ? new List<string>(data.Scenes.Keys)[0] : "Main");
                     if (data.Scenes != null && data.Scenes.TryGetValue(currentScene, out var sd))
@@ -606,6 +606,7 @@ namespace CastleBuilder
                 ProjectLayoutManager.SaveCurrentLayout(_previousContext);
             }
             var strategy = PanelManager.Current?.IDEStrategy;
+            bool hadCache = strategy != null && strategy.HasBladeCache(newContext);
             if (strategy is IDEDockingStrategy ide)
             {
                 ide.SwitchBlade(newContext);
@@ -628,6 +629,12 @@ namespace CastleBuilder
                     File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
                 }
             }
+            if (!hadCache && ProjectLayoutManager.LayoutFileExists(newContext)
+                && (strategy == null || !strategy.HasActiveContent()))
+            {
+                ProjectLayoutManager.LoadLayoutForContext(newContext);
+            }
+            CompanionLayoutHelper.EnsureLayout(newContext);
             _previousContext = newContext;
             Console.WriteLine($"[BlueprintManager.OnContextChanged] Context switch complete → '{newContext}' (memory hotswap, no close/dispose)");
         }

@@ -150,14 +150,18 @@ namespace SiegeEngine.Core.Managers
         {
             if (string.IsNullOrEmpty(projectPath)) return;
             string runtimeTemp = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp");
+            bool loadedAny = false;
             if (Directory.Exists(runtimeTemp))
             {
                 foreach (string dll in Directory.GetFiles(runtimeTemp, "*.dll"))
                 {
                     if (IsCoreDll(dll)) continue;
                     LoadAndRegister(dll);
+                    loadedAny = true;
                 }
             }
+            if (!loadedAny)
+                ScanProjectScripts(projectPath);
         }
 
         private static void LoadAndRegister(string dllPath)
@@ -180,6 +184,8 @@ namespace SiegeEngine.Core.Managers
                         Console.WriteLine($"[ScriptLoader] Discovered [CustomPlayerController]: {type.FullName}");
                     if (type.GetCustomAttributes(typeof(CustomSceneEntryAttribute), false).Length > 0)
                         Console.WriteLine($"[ScriptLoader] Discovered [CustomSceneEntry]: {type.FullName}");
+                    if (type.GetCustomAttributes(typeof(RegisterHostedContentAttribute), false).Length > 0)
+                        Console.WriteLine($"[ScriptLoader] Discovered [RegisterHostedContent]: {type.FullName}");
                 }
             }
             catch (Exception ex)
@@ -322,9 +328,43 @@ namespace SiegeEngine.Core.Managers
                                 Console.WriteLine($"[ScriptLoader] Failed to register custom scene {type.Name}: {ex.Message}");
                             }
                         }
+
+                        // Hosted content / HUD (content-only; host supplies chrome)
+                        if (type.GetCustomAttributes(typeof(RegisterHostedContentAttribute), false).Length > 0 &&
+                            typeof(IHostedContent).IsAssignableFrom(type))
+                        {
+                            try
+                            {
+                                string key = type.Name;
+                                Type captured = type;
+                                HostedContentRegistry.Register(key, (SceneContext c) =>
+                                {
+                                    var localServices = new Dictionary<Type, object>(services);
+                                    if (c != null)
+                                    {
+                                        if (c.Server != null) localServices[typeof(IGameServer)] = c.Server;
+                                        if (c.EventBus != null) localServices[typeof(EventBus)] = c.EventBus;
+                                        if (c.RenderContext != null) localServices[typeof(IRenderContext)] = c.RenderContext;
+                                        if (c.ControlContext != null) localServices[typeof(IControlContext)] = c.ControlContext;
+                                        localServices[typeof(SceneContext)] = c;
+                                        if (c.Player != null) localServices[typeof(Player)] = c.Player;
+                                        if (c.ModelManager != null) localServices[typeof(ModelManager)] = c.ModelManager;
+                                        if (c.CurrentLevel != null) localServices[typeof(Level)] = c.CurrentLevel;
+                                    }
+                                    return ResolveInstance(captured, localServices) as IHostedContent;
+                                });
+                                Console.WriteLine($"[ScriptLoader] Registered hosted content: {key}");
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[ScriptLoader] Failed to register hosted content {type.Name}: {ex.Message}");
+                            }
+                        }
                     }
                 }
             }
+
+            HostedContentRegistry.OpenRegistered(ctx);
         }
 
         private static Type FindTypeByName(string name)
@@ -532,4 +572,7 @@ namespace SiegeEngine.Core.Managers
 
     [AttributeUsage(AttributeTargets.Class)]
     public class CustomSceneEntryAttribute : Attribute { }
+
+    [AttributeUsage(AttributeTargets.Class)]
+    public class RegisterHostedContentAttribute : Attribute { }
 }
