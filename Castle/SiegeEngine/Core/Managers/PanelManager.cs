@@ -71,12 +71,13 @@ namespace SiegeEngine.Core.Managers
             _panels.Add(panel);
             _router.AddPanel(panel);
             panel.Init();
-            if (panel is SiegeEngine.Core.UI.GameHudPanel hud)
+            if (panel is SiegeEngine.Core.UI.GameHudPanel or SiegeEngine.Core.UI.HostedContentPanel)
             {
-                hud.DockingMode = DockingMode.Desktop;
-                hud.DockState = DockState.Floating;
-                hud.RenderOrder = 100;
-                PlaceGameHud(hud);
+                panel.DockingMode = DockingMode.Desktop;
+                panel.DockState = DockState.Floating;
+                if (panel is BasePanel bpHud)
+                    bpHud.RenderOrder = 100;
+                PlaceHud(panel);
                 return;
             }
             if (panel is BasePanel bp && bp.IsModal)
@@ -261,9 +262,28 @@ namespace SiegeEngine.Core.Managers
         private readonly System.Collections.Generic.Dictionary<string, SiegeEngine.Core.UI.GameHudPanel> _gameHuds = new System.Collections.Generic.Dictionary<string, SiegeEngine.Core.UI.GameHudPanel>();
         private readonly System.Collections.Generic.Dictionary<string, Vector2> _hudLastPos = new System.Collections.Generic.Dictionary<string, Vector2>();
 
-        private void PlaceGameHud(SiegeEngine.Core.UI.GameHudPanel hud)
+        private void PlaceHud(IPanel panel)
         {
-            if (hud == null) return;
+            HudAnchor anchor = HudAnchor.None;
+            float reqX = float.NaN;
+            float reqY = float.NaN;
+            string hudKey = null;
+            if (panel is SiegeEngine.Core.UI.GameHudPanel gh)
+            {
+                anchor = gh.Anchor;
+                reqX = gh.RequestedX;
+                reqY = gh.RequestedY;
+                hudKey = gh.HudKey;
+            }
+            else if (panel is SiegeEngine.Core.UI.HostedContentPanel hh)
+            {
+                anchor = hh.Anchor;
+                reqX = hh.RequestedX;
+                reqY = hh.RequestedY;
+                hudKey = hh.HudKey;
+            }
+            else return;
+            var hud = panel;
             float originX = 0f, originY = 0f;
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
             float viewW = winW;
@@ -286,18 +306,18 @@ namespace SiegeEngine.Core.Managers
             }
             float w = hud.Size.X > 1f ? hud.Size.X : 248f;
             float h = hud.Size.Y > 1f ? hud.Size.Y : 520f;
-            if (_hudLastPos.TryGetValue(hud.HudKey, out Vector2 last))
+            if (_hudLastPos.TryGetValue(hudKey, out Vector2 last))
             {
                 hud.Size = new Vector2(w, h);
                 hud.Position = last;
                 hud.OnPanelResize(w, h);
                 return;
             }
-            float x = hud.RequestedX;
-            float y = hud.RequestedY;
+            float x = reqX;
+            float y = reqY;
             const float margin = 16f;
             const float top = 48f;
-            switch (hud.Anchor)
+            switch (anchor)
             {
                 case HudAnchor.Right:
                     x = originX + viewW - w - margin;
@@ -333,22 +353,23 @@ namespace SiegeEngine.Core.Managers
 
         private void OnOpenGameHud(OpenGameHudEvent e)
         {
-            if (e == null || string.IsNullOrEmpty(e.HtmlRelativePath)) return;
-            string key = e.HtmlRelativePath;
-            if (!e.Open)
+            if (e == null) return;
+            OnOpenHostedContent(new OpenHostedContentEvent
             {
-                if (_gameHuds.TryGetValue(key, out var existing))
-                {
-                    _hudLastPos[key] = existing.Position;
-                    RemovePanel(existing);
-                    _gameHuds.Remove(key);
-                }
-                return;
-            }
-            if (_gameHuds.ContainsKey(key)) return;
-            var hud = new SiegeEngine.Core.UI.GameHudPanel(_renderContext, _controlContext, _window, _eventBus, e);
-            _gameHuds[key] = hud;
-            AddPanel(hud);
+                Key = e.HtmlRelativePath ?? e.Title ?? "hud",
+                Title = e.Title,
+                HtmlRelativePath = e.HtmlRelativePath,
+                HtmlContent = e.HtmlContent,
+                Chrome = e.Chrome,
+                Docking = e.Docking,
+                Open = e.Open,
+                Width = e.Width,
+                Height = e.Height,
+                Anchor = e.Anchor,
+                PosX = e.PosX,
+                PosY = e.PosY,
+                AllowMove = e.AllowMove
+            });
         }
 
         private readonly System.Collections.Generic.Dictionary<string, SiegeEngine.Core.UI.HostedContentPanel> _hostedContents = new System.Collections.Generic.Dictionary<string, SiegeEngine.Core.UI.HostedContentPanel>();
@@ -361,13 +382,14 @@ namespace SiegeEngine.Core.Managers
             {
                 if (_hostedContents.TryGetValue(key, out var existing))
                 {
+                    _hudLastPos[key] = existing.Position;
                     RemovePanel(existing);
                     _hostedContents.Remove(key);
                 }
                 return;
             }
             if (_hostedContents.ContainsKey(key)) return;
-            if (e.Content == null) return;
+            if (e.Content == null && string.IsNullOrEmpty(e.HtmlContent) && string.IsNullOrEmpty(e.HtmlRelativePath)) return;
             var panel = new SiegeEngine.Core.UI.HostedContentPanel(_renderContext, _controlContext, _window, _eventBus, e);
             _hostedContents[key] = panel;
             AddPanel(panel);

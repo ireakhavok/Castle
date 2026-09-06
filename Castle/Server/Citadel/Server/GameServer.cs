@@ -14,6 +14,7 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Physics;
+using SiegeEngine.Core.Networking;
 
 namespace Citadel.Server
 {
@@ -120,6 +121,11 @@ namespace Citadel.Server
             Console.WriteLine($"GameServer: Added system {system.GetType().Name}");
         }
 
+        public T GetSystem<T>() where T : GameSystem
+        {
+            return _systems.OfType<T>().FirstOrDefault();
+        }
+
         public void Update(float deltaTime)
         {
             while (_networkEventQueue.Count > 0)
@@ -176,7 +182,11 @@ namespace Citadel.Server
                     }
                 }
             }
-            _deltaTracker.Update(GetEntities());
+            var deltas = _deltaTracker.GetDeltas(GetEntities());
+            if (deltas.Count > 0)
+            {
+                Publish(new EntityReplicationEvent { Deltas = deltas }, networkSync: true);
+            }
         }
 
         public bool ValidateAndUpdateMovement(int entityId, Vector2 requestedPosition, Quaternion requestedRotation, ulong steamId)
@@ -202,35 +212,14 @@ namespace Citadel.Server
 
         public byte[] Serialize()
         {
-            var deltas = _deltaTracker.GetDeltas(GetEntities());
-            return JsonSerializer.SerializeToUtf8Bytes(deltas);
+            return new EntityReplicationEvent { Deltas = _deltaTracker.GetDeltas(GetEntities()) }.Serialize();
         }
 
         public void Deserialize(byte[] data)
         {
-            var deltas = JsonSerializer.Deserialize<List<EntityNetDelta>>(data);
-            if (deltas == null) return;
-            foreach (var d in deltas)
-            {
-                var entity = GetEntityById(d.Id);
-                if (entity == null) continue;
-                var physics = entity.GetComponent<PhysicsComponent>();
-                if (physics != null)
-                {
-                    if ((d.Dirty & EntityDeltaTracker.DirtyPos) != 0)
-                    {
-                        Vector3 p = EntityDeltaTracker.DequantizePos(d.Px, d.Py, d.Pz);
-                        physics.Position = new Vector3(p.X, p.Y, p.Z);
-                    }
-                    if ((d.Dirty & EntityDeltaTracker.DirtyRot) != 0)
-                        physics.Rotation = EntityDeltaTracker.DequantizeRot(d.Rx, d.Ry, d.Rz, d.Rw);
-                }
-                if ((d.Dirty & EntityDeltaTracker.DirtyAnim) != 0)
-                {
-                    var anim = entity.GetComponent<AnimationComponent>();
-                    if (anim != null) anim.Time = d.AnimTime / 1000f;
-                }
-            }
+            var deltas = EntityReplicationEvent.Unpack(data);
+            for (int i = 0; i < deltas.Count; i++)
+                SiegeEngine.Core.Networking.EntityDeltaTracker.Apply(GetEntityById(deltas[i].Id), deltas[i]);
         }
 
         public RayTraceResult RequestRayTrace(Vector3 start, Vector3 direction, float maxDistance)

@@ -257,13 +257,7 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
-            bool log = LogResizeRefresh;
-            LogResizeRefresh = false;
-            if (log)
-                _uiOverlay.DumpLayout($"BEFORE RefreshUI {GetType().Name} {Size.X:0}x{Size.Y:0}");
             _uiOverlay.RefreshUI();
-            if (log)
-                _uiOverlay.DumpLayout($"AFTER RefreshUI {GetType().Name} {Size.X:0}x{Size.Y:0}");
         }
         public void ApplyLiveResize(float w, float h)
         {

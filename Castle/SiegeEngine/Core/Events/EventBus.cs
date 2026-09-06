@@ -90,6 +90,13 @@ namespace SiegeEngine.Core.Events
         }
         public void ProcessNetworkMessage(byte[] data)
         {
+            if (data != null && data.Length > 0 && data[0] == EntityReplicationEvent.Magic)
+            {
+                var ev = new EntityReplicationEvent();
+                ev.Deserialize(data);
+                Publish(ev, false);
+                return;
+            }
             string message = Encoding.UTF8.GetString(data);
             if (message.StartsWith("Input:"))
             {

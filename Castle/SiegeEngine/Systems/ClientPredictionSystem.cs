@@ -37,6 +37,7 @@ namespace SiegeEngine.Systems
             _server = server ?? throw new ArgumentNullException(nameof(server));
             _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _eventBus.Subscribe<EntityMovedEvent>(OnEntityMoved);
+            _eventBus.Subscribe<EntityReplicationEvent>(OnReplication);
         }
 
         public void EnqueueMovementRequest(int entityId, Vector2 requestedPos, Quaternion requestedRotation, ulong steamId)
@@ -49,7 +50,6 @@ namespace SiegeEngine.Systems
             }
             list.Add(request);
             _predictedEntities.Add(entityId);
-            Console.WriteLine($"ClientPredictionSystem: Enqueued movement request for entity {entityId} to {requestedPos}, Rotation={requestedRotation}, Tick={_clientTick}");
             while (list.Count > MaxBufferedTicks)
                 list.RemoveAt(0);
         }
@@ -61,6 +61,19 @@ namespace SiegeEngine.Systems
             {
                 _tickAccum -= TickDt;
                 _clientTick++;
+            }
+        }
+
+        private void OnReplication(EntityReplicationEvent e)
+        {
+            if (e?.Deltas == null) return;
+            for (int i = 0; i < e.Deltas.Count; i++)
+            {
+                var d = e.Deltas[i];
+                if (_predictedEntities.Contains(d.Id))
+                    continue;
+                Entity entity = _server.GetEntityById(d.Id);
+                EntityDeltaTracker.Apply(entity, d);
             }
         }
 

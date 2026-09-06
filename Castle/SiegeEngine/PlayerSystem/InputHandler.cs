@@ -77,7 +77,6 @@ namespace SiegeEngine.PlayerSystem
 
             _controlContext.SetMouseButtonCallback(_window, (w, button, action, mods) =>
             {
-                Console.WriteLine($"InputHandler: Mouse callback - Button: {button}, Action: {action}, Pos: {_mousePos}, Callbacks: {_mouseCallbacks.Count}");
                 if (button == MouseButton.Left)
                 {
                     if (action == InputAction.Press)
@@ -108,14 +107,12 @@ namespace SiegeEngine.PlayerSystem
 
             _controlContext.SetKeyCallback(_window, (w, key, scancode, action, mods) =>
             {
-                Console.WriteLine($"InputHandler: Key callback - Key: {key}, Action: {action}, Callbacks: {_keyCallbacks.Count}");
                 SendKeyInput(key, action);
                 KeyEvent?.Invoke(key, action);
                 foreach (var (id, callback) in _keyCallbacks)
                 {
                     try
                     {
-                        Console.WriteLine($"InputHandler: Invoking key callback with ID: {id}");
                         callback?.Invoke(key, action);
                     }
                     catch (Exception ex)
@@ -143,7 +140,6 @@ namespace SiegeEngine.PlayerSystem
             string message = $"Input:MouseButton:{(int)button}:{(int)action}:{_steamEngine.GetSteamId()}";
             byte[] data = Encoding.UTF8.GetBytes(message);
             _steamEngine.SendP2PMessage(data);
-            Console.WriteLine($"InputHandler: Sent mouse button input over Steam network: {message}");
         }
 
         private void SendKeyInput(Key key, InputAction action)
@@ -152,7 +148,6 @@ namespace SiegeEngine.PlayerSystem
             string message = $"Input:Key:{(int)key}:{(int)action}:{_steamEngine.GetSteamId()}";
             byte[] data = Encoding.UTF8.GetBytes(message);
             _steamEngine.SendP2PMessage(data);
-            Console.WriteLine($"InputHandler: Sent key input over Steam network: {message}");
         }
     }
 }
