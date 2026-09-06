@@ -27,7 +27,7 @@ namespace CastleBuilder
             protected override void HandleDataHook(string hook) { _parent.HandleDataHook(hook); }
         }
 
-        private GameScene _runtime;
+        private Scene _runtime;
         private IGameServer _runtimeServer;
         private bool _playing;
         private bool _lookCaptured;

@@ -64,13 +64,13 @@ namespace SiegeEngine.Scenes
             return ctx;
         }
 
-        public static GameScene CreateScene(SceneContext ctx, string levelName)
+        public static Scene CreateScene(SceneContext ctx, string levelName)
         {
             string preferred = SceneRegistry.ResolvePreferredSceneName(levelName, ctx?.SceneData);
             if (!SceneRegistry.IsRegistered(preferred))
                 preferred = "RuntimeGameplay";
             Console.WriteLine("[RuntimePlayStart] Scene '" + preferred + "'");
-            return (GameScene)SceneRegistry.Create(preferred, ctx);
+            return (Scene)SceneRegistry.Create(preferred, ctx);
         }
     }
 }

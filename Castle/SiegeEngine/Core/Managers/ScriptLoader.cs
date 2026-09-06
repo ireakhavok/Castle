@@ -492,7 +492,7 @@ namespace SiegeEngine.Core.Managers
             Directory.CreateDirectory(scriptsDir);
             string libsDir = Path.Combine(scriptsDir, "Libs");
             Directory.CreateDirectory(libsDir);
-            string outputPath = customOutputDir ?? Path.Combine(scriptsDir, "BuildOut");
+            string outputPath = customOutputDir ?? Path.Combine(scriptsDir, "BuildOut", DateTime.UtcNow.ToString("yyyyMMddHHmmssfff"));
             Directory.CreateDirectory(outputPath);
             // Prefer the loaded engine assembly, not a leftover in BaseDirectory.
             string binDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -580,30 +580,30 @@ namespace SiegeEngine.Core.Managers
                 string err = process.StandardError.ReadToEnd();
                 process.WaitForExit();
                 Console.WriteLine($"[ScriptLoader.BuildProjectScripts] dotnet build completed. Exit: {process.ExitCode}\nOutput: {output}");
-                if (process.ExitCode == 0)
+                bool csharpFailed = ContainsCsharpError(output) || ContainsCsharpError(err);
+                string builtDll = FindBuiltProjectDll(outputPath, scriptsDir);
+                if (!csharpFailed && builtDll != null)
                 {
-                    foreach (string dll in Directory.GetFiles(outputPath, "*.dll"))
+                    string runtimeDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp");
+                    Directory.CreateDirectory(runtimeDir);
+                    string runtimeTarget = Path.Combine(runtimeDir, Path.GetFileName(builtDll));
+                    File.Copy(builtDll, runtimeTarget, true);
+                    Console.WriteLine($"[ScriptLoader] Staged compiled scripts at {runtimeTarget}");
+                    string libsTarget = Path.Combine(libsDir, Path.GetFileName(builtDll));
+                    try
                     {
-                        if (IsCoreDll(dll)) continue;
-                        string runtimeTarget = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp", Path.GetFileName(dll));
-                        Directory.CreateDirectory(Path.GetDirectoryName(runtimeTarget));
-                        File.Copy(dll, runtimeTarget, true);
-                        string libsTarget = Path.Combine(libsDir, Path.GetFileName(dll));
-                        try
+                        if (File.Exists(libsTarget))
                         {
-                            if (File.Exists(libsTarget))
-                            {
-                                File.SetAttributes(libsTarget, FileAttributes.Normal);
-                                File.Delete(libsTarget);
-                            }
-                            File.Copy(dll, libsTarget, true);
+                            File.SetAttributes(libsTarget, FileAttributes.Normal);
+                            File.Delete(libsTarget);
                         }
-                        catch (IOException)
-                        {
-                            Console.WriteLine($"[ScriptLoader] {Path.GetFileName(dll)} locked in Libs - using RuntimeTemp copy");
-                        }
-                        LoadAndRegister(dll);
+                        File.Copy(builtDll, libsTarget, true);
                     }
+                    catch (IOException)
+                    {
+                        Console.WriteLine($"[ScriptLoader] {Path.GetFileName(builtDll)} locked in Libs - Play will use RuntimeTemp");
+                    }
+                    LoadAndRegister(builtDll);
                     ScanProjectScripts(projectPath);
                     Console.WriteLine("[ScriptLoader] Build → DLL copy → reflection register COMPLETE. Custom controllers now active for Play/Export.");
                     CopyProjectScripts(projectPath);
@@ -616,6 +616,33 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
+
+        private static bool ContainsCsharpError(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return false;
+            return text.IndexOf("error CS", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static string FindBuiltProjectDll(string outputPath, string scriptsDir)
+        {
+            string Pick(string dir)
+            {
+                if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return null;
+                foreach (string dll in Directory.GetFiles(dir, "*.dll"))
+                {
+                    if (IsCoreDll(dll)) continue;
+                    return dll;
+                }
+                return null;
+            }
+            string found = Pick(outputPath);
+            if (found != null) return found;
+            found = Pick(Path.Combine(scriptsDir, "obj", "Release"));
+            if (found != null) return found;
+            found = Pick(Path.Combine(scriptsDir, "obj", "Release", "net9.0"));
+            return found;
+        }
+
     }
 
     [AttributeUsage(AttributeTargets.Class)]
