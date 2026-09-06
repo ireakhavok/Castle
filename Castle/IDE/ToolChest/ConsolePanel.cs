@@ -43,6 +43,8 @@ namespace ToolChest
 
         private string _filter = "";
         private bool _dirty;
+        private bool _fullRebuild;
+        private int _sourceConsumed;
         private double _lastRebuildTime;
         private float _scrollOffsetY; // pixels from top of log content
         private bool _autoScroll = true;
@@ -135,7 +137,12 @@ namespace ToolChest
             lock (_logLock)
             {
                 _allLogLines.Add(formatted);
-                if (_allLogLines.Count > 2500) _allLogLines.RemoveAt(0);
+                if (_allLogLines.Count > 2500)
+                {
+                    _allLogLines.RemoveAt(0);
+                    if (_activeInstance != null)
+                        _activeInstance._fullRebuild = true;
+                }
             }
             if (_activeInstance != null)
             {
@@ -161,6 +168,7 @@ namespace ToolChest
                     _scrollOffsetY = 0f;
                     _autoScroll = true;
                     _dirty = true;
+                    _fullRebuild = true;
                 }
             }
 
@@ -169,15 +177,6 @@ namespace ToolChest
             {
                 _scrollOffsetY = Math.Max(0f, _scrollOffsetY - scrollDelta * 28f);
                 if (scrollDelta < 0f) _autoScroll = false; // user scrolled up → stop auto-follow
-            }
-
-            // throttled rebuild (~12 fps max when dirty) — keeps CPU at rest when idle
-            double now = _controlContext.GetTime();
-            if (_dirty && (now - _lastRebuildTime) > 0.08)
-            {
-                RebuildVisibleLines();
-                _lastRebuildTime = now;
-                _dirty = false;
             }
 
             // re-enable auto-scroll when user reaches bottom
@@ -193,24 +192,35 @@ namespace ToolChest
         private void RebuildVisibleLines()
         {
             _visibleLines.Clear();
+            _sourceConsumed = 0;
+            AppendNewLines();
+        }
+
+        private void AppendNewLines()
+        {
             List<string> snap;
-            lock (_logLock) { snap = new List<string>(_allLogLines); }
+            int start;
+            lock (_logLock)
+            {
+                start = _sourceConsumed;
+                if (start > _allLogLines.Count) start = 0;
+                snap = _allLogLines.GetRange(start, _allLogLines.Count - start);
+                _sourceConsumed = _allLogLines.Count;
+            }
+            if (snap.Count == 0) return;
 
             string f = _filter?.ToUpperInvariant() ?? "";
             float maxWidth = Math.Max(50f, Size.X - 2f * LogPadding);
-
+            bool added = false;
             foreach (var line in snap)
             {
                 if (!string.IsNullOrEmpty(f) && !line.ToUpperInvariant().Contains(f)) continue;
                 string lvl = GetLevel(line);
                 if (!_enabledLevels.Contains(lvl)) continue;
-
-                Vector4 col = GetLevelColor(lvl);
-                WrapAndAddLine(line, col, maxWidth);
+                WrapAndAddLine(line, GetLevelColor(lvl), maxWidth);
+                added = true;
             }
-
-            // auto-scroll to bottom on new content (unless user has scrolled up)
-            if (_autoScroll)
+            if (added && _autoScroll)
             {
                 float totalH = 0f;
                 foreach (var e in _visibleLines) totalH += e.Height + 1f;
@@ -279,14 +289,17 @@ namespace ToolChest
             {
                 lock (_logLock) _allLogLines.Clear();
                 _visibleLines.Clear();
+                _sourceConsumed = 0;
                 _scrollOffsetY = 0f;
                 _autoScroll = true;
                 _dirty = true;
+                _fullRebuild = true;
             }
             else if (hook == "TogglePause")
             {
                 _isPaused = !_isPaused;
                 _dirty = true;
+                _fullRebuild = true;
             }
             else if (hook.StartsWith("ToggleLevel:"))
             {
@@ -295,6 +308,7 @@ namespace ToolChest
                 _scrollOffsetY = 0f;
                 _autoScroll = true;
                 _dirty = true;
+                _fullRebuild = true;
             }
         }
 
@@ -311,7 +325,15 @@ namespace ToolChest
 
             if (_dirty)
             {
-                RebuildVisibleLines();
+                if (_fullRebuild)
+                {
+                    RebuildVisibleLines();
+                    _fullRebuild = false;
+                }
+                else
+                {
+                    AppendNewLines();
+                }
                 _dirty = false;
             }
 
@@ -381,13 +403,15 @@ namespace ToolChest
         public override void OnPanelResize(float w, float h)
         {
             base.OnPanelResize(w, h);
-            _dirty = true; // re-wrap for new width
+            _dirty = true;
+            _fullRebuild = true;
         }
 
         public override void OnLiveResize(float w, float h)
         {
             base.OnLiveResize(w, h);
             _dirty = true;
+            _fullRebuild = true;
         }
 
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
