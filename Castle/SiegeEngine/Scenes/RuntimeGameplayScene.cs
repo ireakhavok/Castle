@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Numerics;
 namespace SiegeEngine.Scenes
 {
@@ -209,6 +210,15 @@ namespace SiegeEngine.Scenes
                 SetPlayer(_player);
             ModelManager.EnsurePacksLoaded(projectPath, level);
             Console.WriteLine($"[RuntimeGameplayScene] Server entities={_server.GetEntities()?.Count ?? 0} InstanceModels={(ModelManager.Instance != null)}");
+            var settings = ctx?.SceneData?.Settings ?? LoadSceneSettingsFromProject(projectPath, levelName);
+            Console.WriteLine("[RuntimeGameplayScene] Spawn settings=" +
+                (settings == null ? "null" : "ok") +
+                " preferred=[" + (settings?.PreferredSpawnPointIds == null
+                    ? ""
+                    : string.Join(",", settings.PreferredSpawnPointIds)) + "]" +
+                " levelEntities=" + level.Entities.Count +
+                " sceneData=" + (ctx?.SceneData == null ? "null" : ctx.SceneData.Name));
+
             var existingPlayerEntity = level.Entities.FirstOrDefault(e =>
                 e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase));
             Console.WriteLine("[RuntimeGameplayScene] Spawn search Type=Player → " +
@@ -217,11 +227,9 @@ namespace SiegeEngine.Scenes
             {
                 ulong steamId = 0;
                 var existingPhys = existingPlayerEntity.GetComponent<PhysicsComponent>();
-                Vector3 seed = existingPhys != null ? existingPhys.Position : new Vector3(10, 10, 0);
+                Vector3 seed = existingPhys != null ? existingPhys.Position : Vector3.Zero;
                 _player = new Player(existingPlayerEntity.Id, seed, steamId);
                 SetPlayer(_player);
-                Console.WriteLine("[RuntimeGameplayScene] Player from saved Type=Player id=" +
-                    existingPlayerEntity.Id + " pos=" + seed);
                 if (existingPhys != null)
                 {
                     _player.Physics.Position = existingPhys.Position;
@@ -230,42 +238,92 @@ namespace SiegeEngine.Scenes
                     _player.Physics.BodyType = BodyType.Kinematic;
                     _player.Physics.RebuildShape(null);
                 }
+                Console.WriteLine("[RuntimeGameplayScene] Player from saved Type=Player id=" +
+                    existingPlayerEntity.Id + " pos=" + _player.Physics.Position);
             }
-            var settings = ctx?.SceneData?.Settings;
+
+            if (_player == null)
+            {
+                int playerId = 1;
+                for (int i = 0; i < level.Entities.Count; i++)
+                {
+                    if (level.Entities[i].Id >= playerId)
+                        playerId = level.Entities[i].Id + 1;
+                }
+                _player = new Player(playerId, Vector3.Zero, 0);
+                SetPlayer(_player);
+                Console.WriteLine("[RuntimeGameplayScene] Created Player entity id=" + playerId +
+                    " (did not steal Id=1 FBX)");
+            }
+
+            ApplyPreferredSpawn(level, settings);
+
             if (settings != null)
             {
-                if (settings.PreferredSpawnPointIds != null && settings.PreferredSpawnPointIds.Count > 0 && _player != null)
-                {
-                    foreach (int id in settings.PreferredSpawnPointIds)
-                    {
-                        var spawnEntity = level.Entities.FirstOrDefault(e => e.Id == id);
-                        if (spawnEntity != null)
-                        {
-                            var spawnPhysics = spawnEntity.GetComponent<PhysicsComponent>();
-                            if (spawnPhysics != null)
-                            {
-                                Console.WriteLine("[RuntimeGameplayScene] PreferredSpawn id=" + id +
-                                    " spawnPos=" + spawnPhysics.Position +
-                                    " playerBefore=" + _player.Physics.Position);
-                                _player.Physics.Position = spawnPhysics.Position;
-                                _player.Physics.RenderPosition = spawnPhysics.Position;
-                                _server.SnapToGround(_player.Physics);
-                                Console.WriteLine("[RuntimeGameplayScene] PreferredSpawn applied playerAfter=" +
-                                    _player.Physics.Position + " render=" + _player.Physics.RenderPosition);
-                                break;
-                            }
-                        }
-                    }
-                }
                 string avatarKey = null;
                 if (!string.IsNullOrWhiteSpace(settings.AvatarPackKey))
                 {
                     avatarKey = settings.AvatarPackKey.Trim().ToLower();
                     if (_player == null)
                     {
+                        int nextId = 1;
+                        var existing = _server.GetEntities();
+                        if (existing != null)
+                        {
+                            for (int i = 0; i < existing.Count; i++)
+                            {
+                                if (existing[i] != null && existing[i].Id >= nextId)
+                                    nextId = existing[i].Id + 1;
+                            }
+                        }
                         ulong steamId = 0;
-                        _player = new Player(1, new Vector3(10, 10, 0), steamId);
+                        _player = new Player(nextId, Vector3.Zero, steamId);
+                        SetPlayer(_player);
+                        Console.WriteLine("[RuntimeGameplayScene] Created player entity id=" + nextId + " (not stealing Id=1)");
                     }
+                }
+                if (settings.PreferredSpawnPointIds != null && settings.PreferredSpawnPointIds.Count > 0)
+                {
+                    if (_player == null)
+                    {
+                        int nextId = 1;
+                        var existing = _server.GetEntities();
+                        if (existing != null)
+                        {
+                            for (int i = 0; i < existing.Count; i++)
+                            {
+                                if (existing[i] != null && existing[i].Id >= nextId)
+                                    nextId = existing[i].Id + 1;
+                            }
+                        }
+                        _player = new Player(nextId, Vector3.Zero, 0);
+                        SetPlayer(_player);
+                        Console.WriteLine("[RuntimeGameplayScene] Created player for spawn id=" + nextId);
+                    }
+                    foreach (int id in settings.PreferredSpawnPointIds)
+                    {
+                        var spawnEntity = level.Entities.FirstOrDefault(e => e.Id == id);
+                        var spawnPhysics = spawnEntity?.GetComponent<PhysicsComponent>();
+                        Console.WriteLine("[RuntimeGameplayScene] PreferredSpawn id=" + id +
+                            " entity=" + (spawnEntity == null ? "MISSING" : spawnEntity.Type) +
+                            " spawnPos=" + (spawnPhysics == null ? "no-phys" : spawnPhysics.Position.ToString()));
+                        if (spawnPhysics == null) continue;
+                        Vector3 markerPos = spawnPhysics.Position;
+                        Vector3 size = spawnPhysics.Size;
+                        float side = MathF.Max(1.5f, size.X * 0.5f + 1.2f);
+                        Vector3 nextTo = markerPos + new Vector3(side, 0f, 0f);
+                        Console.WriteLine("[RuntimeGameplayScene] PreferredSpawn playerBefore=" + _player.Physics.Position +
+                            " placing next to marker at " + nextTo);
+                        _player.Physics.Position = nextTo;
+                        _player.Physics.RenderPosition = nextTo;
+                        _server.SnapToGround(_player.Physics);
+                        Console.WriteLine("[RuntimeGameplayScene] PreferredSpawn applied playerAfter=" +
+                            _player.Physics.Position + " render=" + _player.Physics.RenderPosition);
+                        break;
+                    }
+                }
+                if (!string.IsNullOrWhiteSpace(avatarKey))
+                {
                     if (_modelManager.TryGetModel(avatarKey, out var avatarModel))
                     {
                         _player.SetModel(avatarModel);
@@ -607,5 +665,87 @@ namespace SiegeEngine.Scenes
             _modelRenderer?.Dispose();
             base.Dispose();
         }
+
+        static SceneSettings LoadSceneSettingsFromProject(string projectPath, string levelName)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(projectPath) || string.IsNullOrEmpty(levelName))
+                    return null;
+                string file = Path.Combine(projectPath, "project.json");
+                if (!File.Exists(file))
+                {
+                    Console.WriteLine("[RuntimeGameplayScene] project.json missing at " + file);
+                    return null;
+                }
+                using var doc = JsonDocument.Parse(File.ReadAllText(file));
+                if (!doc.RootElement.TryGetProperty("Scenes", out var scenes))
+                    return null;
+                JsonElement scene;
+                if (scenes.ValueKind == JsonValueKind.Object && scenes.TryGetProperty(levelName, out scene))
+                { }
+                else
+                    return null;
+                if (!scene.TryGetProperty("settings", out var settingsEl))
+                {
+                    Console.WriteLine("[RuntimeGameplayScene] project.json scene '" + levelName + "' has no settings object");
+                    return null;
+                }
+                var loaded = JsonSerializer.Deserialize<SceneSettings>(settingsEl.GetRawText());
+                Console.WriteLine("[RuntimeGameplayScene] Loaded settings from project.json preferred=[" +
+                    (loaded?.PreferredSpawnPointIds == null ? "" : string.Join(",", loaded.PreferredSpawnPointIds)) +
+                    "] avatar=" + (loaded?.AvatarPackKey ?? ""));
+                return loaded;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[RuntimeGameplayScene] LoadSceneSettingsFromProject failed: " + ex.Message);
+                return null;
+            }
+        }
+
+        void ApplyPreferredSpawn(Level level, SceneSettings settings)
+        {
+            if (_player == null)
+            {
+                Console.WriteLine("[RuntimeGameplayScene] ApplyPreferredSpawn skipped — no player");
+                return;
+            }
+            if (settings?.PreferredSpawnPointIds == null || settings.PreferredSpawnPointIds.Count == 0)
+            {
+                Console.WriteLine("[RuntimeGameplayScene] ApplyPreferredSpawn skipped — no preferredSpawnPointIds");
+                return;
+            }
+            for (int i = 0; i < settings.PreferredSpawnPointIds.Count; i++)
+            {
+                int id = settings.PreferredSpawnPointIds[i];
+                Entity spawnEntity = null;
+                if (level != null)
+                    spawnEntity = level.Entities.FirstOrDefault(e => e.Id == id);
+                if (spawnEntity == null)
+                    spawnEntity = _server.GetEntityById(id);
+                var spawnPhysics = spawnEntity?.GetComponent<PhysicsComponent>();
+                Console.WriteLine("[RuntimeGameplayScene] PreferredSpawn id=" + id +
+                    " entity=" + (spawnEntity == null ? "MISSING" : spawnEntity.Type) +
+                    " phys=" + (spawnPhysics == null ? "null" : spawnPhysics.Position.ToString()));
+                if (spawnPhysics == null)
+                    continue;
+                float side = spawnPhysics.Size.X;
+                if (side < 0.5f) side = 0.5f;
+                Vector3 nextTo = spawnPhysics.Position + new Vector3(side + 0.75f, 0f, 0f);
+                Console.WriteLine("[RuntimeGameplayScene] PreferredSpawn playerBefore=" + _player.Physics.Position +
+                    " marker=" + spawnPhysics.Position + " nextTo=" + nextTo);
+                _player.Physics.Position = nextTo;
+                _player.Physics.RenderPosition = nextTo;
+                _player.Physics.Rotation = spawnPhysics.Rotation;
+                _server.SnapToGround(_player.Physics);
+                _player.Physics.RenderPosition = _player.Physics.Position;
+                Console.WriteLine("[RuntimeGameplayScene] PreferredSpawn applied playerAfter=" +
+                    _player.Physics.Position + " render=" + _player.Physics.RenderPosition);
+                return;
+            }
+            Console.WriteLine("[RuntimeGameplayScene] ApplyPreferredSpawn — none of the ids resolved");
+        }
+
     }
 }
