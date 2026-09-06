@@ -1,4 +1,4 @@
-﻿using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
@@ -33,29 +33,38 @@ namespace ToolChest
             }
         }
 
-        private static readonly List<string> _allLogLines = new List<string>();
+        private const int LogCapacity = 2500;
+
+        private static readonly string[] _logLines = new string[LogCapacity];
+        private static int _logHead;
+        private static int _logCount;
+        private static int _logSeq;
         private static readonly object _logLock = new object();
         private static TextWriter _originalOut;
         private static bool _captureStarted;
         private static bool _isPaused;
         private static readonly HashSet<string> _enabledLevels = new HashSet<string> { "ERROR", "WARN", "INFO", "DEBUG", "UNKNOWN" };
         private static ConsolePanel _activeInstance;
+        private static readonly StringBuilder _partialLine = new StringBuilder();
 
         private string _filter = "";
-        private bool _dirty;
-        private bool _fullRebuild;
-        private int _sourceConsumed;
-        private double _lastRebuildTime;
-        private float _scrollOffsetY; // pixels from top of log content
+        private bool _metricsReady;
+        private float _charWidth = 7f;
+        private float _lineHeight = 14f;
+        private float _scrollOffsetY;
         private bool _autoScroll = true;
-        private readonly List<LogEntry> _visibleLines = new List<LogEntry>();
+        private int _viewSeq = -1;
+        private string _viewFilter = "";
+        private int _viewCharsPerLine;
+        private readonly List<ViewRow> _viewRows = new List<ViewRow>(LogCapacity);
+        private float _viewTotalHeight;
         private const float ToolbarHeight = 32f;
         private const float LogPadding = 8f;
         private const float FontSize = 12f;
         private const string FontFamily = "Consolas";
         private const float ScrollbarWidth = 7f;
 
-        private class LogEntry
+        private struct ViewRow
         {
             public string Text;
             public Vector4 Color;
@@ -76,12 +85,81 @@ namespace ToolChest
         private class LogCaptureWriter : TextWriter
         {
             public override Encoding Encoding => Encoding.UTF8;
+
+            public override void Write(char value)
+            {
+                _originalOut?.Write(value);
+                if (!_captureStarted) return;
+                if (value == '\n') FlushPartial();
+                else if (value != '\r') _partialLine.Append(value);
+            }
+
+            public override void Write(char[] buffer, int index, int count)
+            {
+                if (buffer == null || count <= 0) return;
+                _originalOut?.Write(buffer, index, count);
+                if (!_captureStarted) return;
+                int end = index + count;
+                for (int i = index; i < end; i++)
+                {
+                    char c = buffer[i];
+                    if (c == '\n') FlushPartial();
+                    else if (c != '\r') _partialLine.Append(c);
+                }
+            }
+
+            public override void Write(string value)
+            {
+                if (value == null) return;
+                _originalOut?.Write(value);
+                if (!_captureStarted) return;
+                AppendChunk(value);
+            }
+
             public override void WriteLine(string value)
             {
-                if (_originalOut != null) _originalOut.WriteLine(value);
-                if (_captureStarted && !_isPaused) AddLogInternal(value ?? "");
+                _originalOut?.WriteLine(value);
+                if (!_captureStarted) return;
+                if (_partialLine.Length > 0)
+                {
+                    _partialLine.Append(value ?? "");
+                    FlushPartial();
+                }
+                else
+                {
+                    AddLogInternal(value ?? "");
+                }
             }
-            public override void Write(char value) { }
+
+            public override void WriteLine()
+            {
+                _originalOut?.WriteLine();
+                if (!_captureStarted) return;
+                FlushPartial();
+            }
+
+            private static void AppendChunk(string value)
+            {
+                int start = 0;
+                for (int i = 0; i < value.Length; i++)
+                {
+                    if (value[i] != '\n') continue;
+                    if (i > start) _partialLine.Append(value, start, i - start);
+                    if (_partialLine.Length > 0 && _partialLine[_partialLine.Length - 1] == '\r')
+                        _partialLine.Length--;
+                    FlushPartial();
+                    start = i + 1;
+                }
+                if (start < value.Length)
+                    _partialLine.Append(value, start, value.Length - start);
+            }
+
+            private static void FlushPartial()
+            {
+                string line = _partialLine.ToString();
+                _partialLine.Clear();
+                AddLogInternal(line);
+            }
         }
 
         public ConsolePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -107,10 +185,8 @@ namespace ToolChest
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             _activeInstance = this;
             LoadConsoleUI();
-            if (_allLogLines.Count > 0)
-            {
-                _dirty = true;
-            }
+            EnsureMetrics();
+            _viewSeq = -1;
         }
 
         public override void Detach()
@@ -127,26 +203,34 @@ namespace ToolChest
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
-            if (_allLogLines.Count == 0) AddLog("Console ready — capturing all Console.WriteLine (levels + text filter active).");
+            bool empty;
+            lock (_logLock) empty = _logCount == 0;
+            if (empty) AddLog("Console ready — capturing all Console.WriteLine (levels + text filter active).");
+        }
+
+        private void EnsureMetrics()
+        {
+            if (_metricsReady || _uiOverlay?.TextRenderer == null) return;
+            _lineHeight = _uiOverlay.TextRenderer.GetLineHeight(FontSize, FontFamily);
+            if (_lineHeight <= 0f) _lineHeight = 14f;
+            Vector2 em = _uiOverlay.TextRenderer.GetTextSize("M", FontSize, FontFamily);
+            _charWidth = em.X > 0.5f ? em.X : 7f;
+            _metricsReady = true;
         }
 
         public static void AddLogInternal(string message)
         {
-            if (string.IsNullOrEmpty(message)) return;
-            string formatted = $"[{DateTime.Now:HH:mm:ss}] {message}";
+            if (_isPaused) return;
+            string formatted = $"[{DateTime.Now:HH:mm:ss}] {message ?? ""}";
             lock (_logLock)
             {
-                _allLogLines.Add(formatted);
-                if (_allLogLines.Count > 2500)
-                {
-                    _allLogLines.RemoveAt(0);
-                    if (_activeInstance != null)
-                        _activeInstance._fullRebuild = true;
-                }
-            }
-            if (_activeInstance != null)
-            {
-                _activeInstance._dirty = true;
+                if (_logCount == LogCapacity)
+                    _logHead = (_logHead + 1) % LogCapacity;
+                else
+                    _logCount++;
+                int slot = (_logHead + _logCount - 1) % LogCapacity;
+                _logLines[slot] = formatted;
+                _logSeq++;
             }
         }
 
@@ -157,7 +241,6 @@ namespace ToolChest
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
             if (_uiOverlay == null || !Visible) return;
 
-            // real-time text filter (cheap)
             var filterEl = _uiOverlay.FindElementById("filterInput") as InputElement;
             if (filterEl != null)
             {
@@ -167,109 +250,158 @@ namespace ToolChest
                     _filter = cur;
                     _scrollOffsetY = 0f;
                     _autoScroll = true;
-                    _dirty = true;
-                    _fullRebuild = true;
+                    _viewSeq = -1;
                 }
             }
 
-            // scroll handling + auto-scroll logic
             if (scrollDelta != 0f)
             {
                 _scrollOffsetY = Math.Max(0f, _scrollOffsetY - scrollDelta * 28f);
-                if (scrollDelta < 0f) _autoScroll = false; // user scrolled up → stop auto-follow
+                if (scrollDelta < 0f) _autoScroll = false;
             }
 
-            // re-enable auto-scroll when user reaches bottom
-            float totalH = 0f;
-            foreach (var e in _visibleLines) totalH += e.Height + 1f;
-            float maxScroll = Math.Max(0f, totalH - (Size.Y - (HasTitleBar ? TitleHeight : 0f) - ToolbarHeight) + 20f);
+            float logH = Size.Y - (HasTitleBar ? TitleHeight : 0f) - ToolbarHeight;
+            float maxScroll = Math.Max(0f, _viewTotalHeight - logH + 20f);
             if (_scrollOffsetY >= maxScroll - 5f)
-            {
                 _autoScroll = true;
-            }
         }
 
-        private void RebuildVisibleLines()
+        private void RebuildViewIfNeeded()
         {
-            _visibleLines.Clear();
-            _sourceConsumed = 0;
-            AppendNewLines();
-        }
+            EnsureMetrics();
+            int seq;
+            lock (_logLock) seq = _logSeq;
 
-        private void AppendNewLines()
-        {
-            List<string> snap;
-            int start;
-            lock (_logLock)
+            bool filterChanged = _viewFilter != (_filter ?? "");
+            if (filterChanged)
             {
-                start = _sourceConsumed;
-                if (start > _allLogLines.Count) start = 0;
-                snap = _allLogLines.GetRange(start, _allLogLines.Count - start);
-                _sourceConsumed = _allLogLines.Count;
+                _viewFilter = _filter ?? "";
+                _viewSeq = -1;
             }
-            if (snap.Count == 0) return;
+            if (_viewSeq == seq) return;
 
-            string f = _filter?.ToUpperInvariant() ?? "";
             float maxWidth = Math.Max(50f, Size.X - 2f * LogPadding);
-            bool added = false;
-            foreach (var line in snap)
+            int charsPerLine = Math.Max(8, (int)(maxWidth / _charWidth));
+            bool hasFilter = _viewFilter.Length > 0;
+
+            if (_viewSeq < 0 || charsPerLine != _viewCharsPerLine)
             {
-                if (!string.IsNullOrEmpty(f) && !line.ToUpperInvariant().Contains(f)) continue;
-                string lvl = GetLevel(line);
-                if (!_enabledLevels.Contains(lvl)) continue;
-                WrapAndAddLine(line, GetLevelColor(lvl), maxWidth);
-                added = true;
+                _viewCharsPerLine = charsPerLine;
+                _viewRows.Clear();
+                _viewTotalHeight = 0f;
+                lock (_logLock)
+                {
+                    for (int i = 0; i < _logCount; i++)
+                    {
+                        string line = _logLines[(_logHead + i) % LogCapacity];
+                        if (line == null) continue;
+                        if (hasFilter && line.IndexOf(_viewFilter, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                        string lvl = GetLevel(line);
+                        if (!_enabledLevels.Contains(lvl)) continue;
+                        AddWrappedRows(line, GetLevelColor(lvl), charsPerLine);
+                    }
+                    _viewSeq = _logSeq;
+                }
             }
-            if (added && _autoScroll)
+            else
             {
-                float totalH = 0f;
-                foreach (var e in _visibleLines) totalH += e.Height + 1f;
+                lock (_logLock)
+                {
+                    int pending = _logSeq - _viewSeq;
+                    if (pending < 0) pending = _logCount;
+                    if (pending > _logCount) pending = _logCount;
+                    int start = _logCount - pending;
+                    if (start < 0) start = 0;
+                    for (int i = start; i < _logCount; i++)
+                    {
+                        string line = _logLines[(_logHead + i) % LogCapacity];
+                        if (line == null) continue;
+                        if (hasFilter && line.IndexOf(_viewFilter, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                        string lvl = GetLevel(line);
+                        if (!_enabledLevels.Contains(lvl)) continue;
+                        AddWrappedRows(line, GetLevelColor(lvl), charsPerLine);
+                    }
+                    _viewSeq = _logSeq;
+                }
+                const int viewCap = LogCapacity * 2;
+                if (_viewRows.Count > viewCap)
+                {
+                    int drop = _viewRows.Count - LogCapacity;
+                    float lost = 0f;
+                    for (int i = 0; i < drop; i++)
+                        lost += _viewRows[i].Height + 1f;
+                    _viewRows.RemoveRange(0, drop);
+                    _viewTotalHeight = Math.Max(0f, _viewTotalHeight - lost);
+                    if (!_autoScroll)
+                        _scrollOffsetY = Math.Max(0f, _scrollOffsetY - lost);
+                }
+            }
+
+            if (_autoScroll)
+            {
                 float logH = Size.Y - (HasTitleBar ? TitleHeight : 0f) - ToolbarHeight;
-                _scrollOffsetY = Math.Max(0f, totalH - logH + 20f);
+                _scrollOffsetY = Math.Max(0f, _viewTotalHeight - logH + 20f);
             }
         }
 
-        private void WrapAndAddLine(string line, Vector4 color, float maxWidth)
+        private void AddWrappedRows(string line, Vector4 color, int charsPerLine)
         {
             if (string.IsNullOrEmpty(line))
             {
-                float h = _uiOverlay.TextRenderer.GetLineHeight(FontSize, FontFamily);
-                _visibleLines.Add(new LogEntry { Text = "", Color = color, Height = h });
+                _viewRows.Add(new ViewRow { Text = "", Color = color, Height = _lineHeight });
+                _viewTotalHeight += _lineHeight + 1f;
                 return;
             }
 
-            string[] words = line.Split(' ');
-            string current = "";
-            float lineH = _uiOverlay.TextRenderer.GetLineHeight(FontSize, FontFamily);
+            int remaining = line.Length;
+            int offset = 0;
+            while (remaining > 0)
+            {
+                int take = remaining > charsPerLine ? charsPerLine : remaining;
+                if (take < remaining)
+                {
+                    int br = LastBreak(line, offset, take);
+                    if (br > 0) take = br;
+                }
+                _viewRows.Add(new ViewRow
+                {
+                    Text = line.Substring(offset, take),
+                    Color = color,
+                    Height = _lineHeight
+                });
+                _viewTotalHeight += _lineHeight + 1f;
+                offset += take;
+                remaining -= take;
+                if (remaining > 0 && offset < line.Length && line[offset] == ' ')
+                {
+                    offset++;
+                    remaining--;
+                }
+            }
+        }
 
-            foreach (var word in words)
+        private static int LastBreak(string line, int offset, int take)
+        {
+            int end = offset + take;
+            for (int i = end - 1; i > offset; i--)
             {
-                string test = current.Length == 0 ? word : current + " " + word;
-                Vector2 sz = _uiOverlay.TextRenderer.GetTextSize(test, FontSize, FontFamily);
-                if (sz.X > maxWidth && current.Length > 0)
-                {
-                    _visibleLines.Add(new LogEntry { Text = current, Color = color, Height = lineH });
-                    current = word;
-                }
-                else
-                {
-                    current = test;
-                }
+                if (line[i] == ' ') return i - offset;
             }
-            if (current.Length > 0)
-            {
-                _visibleLines.Add(new LogEntry { Text = current, Color = color, Height = lineH });
-            }
+            return 0;
         }
 
         private static string GetLevel(string line)
         {
-            string u = line.ToUpperInvariant();
-            if (u.Contains("ERROR") || u.Contains("[ERR")) return "ERROR";
-            if (u.Contains("WARN") || u.Contains("[WRN")) return "WARN";
-            if (u.Contains("DEBUG") || u.Contains("[DBG")) return "DEBUG";
-            if (u.Contains("INFO") || u.Contains("[INF")) return "INFO";
+            if (Has(line, "ERROR") || Has(line, "[ERR")) return "ERROR";
+            if (Has(line, "WARN") || Has(line, "[WRN")) return "WARN";
+            if (Has(line, "DEBUG") || Has(line, "[DBG")) return "DEBUG";
+            if (Has(line, "INFO") || Has(line, "[INF")) return "INFO";
             return "UNKNOWN";
+        }
+
+        private static bool Has(string line, string token)
+        {
+            return line.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static Vector4 GetLevelColor(string lvl)
@@ -287,19 +419,20 @@ namespace ToolChest
         {
             if (hook == "Clear")
             {
-                lock (_logLock) _allLogLines.Clear();
-                _visibleLines.Clear();
-                _sourceConsumed = 0;
+                lock (_logLock)
+                {
+                    _logHead = 0;
+                    _logCount = 0;
+                    _logSeq++;
+                    Array.Clear(_logLines, 0, _logLines.Length);
+                }
                 _scrollOffsetY = 0f;
                 _autoScroll = true;
-                _dirty = true;
-                _fullRebuild = true;
+                _viewSeq = -1;
             }
             else if (hook == "TogglePause")
             {
                 _isPaused = !_isPaused;
-                _dirty = true;
-                _fullRebuild = true;
             }
             else if (hook.StartsWith("ToggleLevel:"))
             {
@@ -307,8 +440,7 @@ namespace ToolChest
                 if (_enabledLevels.Contains(lvl)) _enabledLevels.Remove(lvl); else _enabledLevels.Add(lvl);
                 _scrollOffsetY = 0f;
                 _autoScroll = true;
-                _dirty = true;
-                _fullRebuild = true;
+                _viewSeq = -1;
             }
         }
 
@@ -320,44 +452,28 @@ namespace ToolChest
 
         protected override void RenderContentLayer()
         {
-            base.RenderContentLayer(); // draws toolbar HTML + chrome
+            base.RenderContentLayer();
             if (_uiOverlay == null || !Visible) return;
 
-            if (_dirty)
-            {
-                if (_fullRebuild)
-                {
-                    RebuildVisibleLines();
-                    _fullRebuild = false;
-                }
-                else
-                {
-                    AppendNewLines();
-                }
-                _dirty = false;
-            }
+            RebuildViewIfNeeded();
 
             float titleH = HasTitleBar ? TitleHeight : 0f;
-            float logAreaTop = titleH + ToolbarHeight;           // panel-local Y
+            float logAreaTop = titleH + ToolbarHeight;
             float logAreaLeft = LogPadding;
             float logAreaWidth = Size.X - 2f * LogPadding;
             float logAreaHeight = Size.Y - logAreaTop;
-
             if (logAreaWidth < 20f || logAreaHeight < 10f) return;
 
-            // clamp scroll
-            float totalHeight = 0f;
-            foreach (var e in _visibleLines) totalHeight += e.Height + 1f;
-            float maxScroll = Math.Max(0f, totalHeight - logAreaHeight + 20f);
+            float maxScroll = Math.Max(0f, _viewTotalHeight - logAreaHeight + 20f);
             _scrollOffsetY = Math.Clamp(_scrollOffsetY, 0f, maxScroll);
 
             float y = logAreaTop - _scrollOffsetY;
-            float lineSpacing = 1f;
-
-            for (int i = 0; i < _visibleLines.Count; i++)
+            int count = _viewRows.Count;
+            for (int i = 0; i < count; i++)
             {
-                var entry = _visibleLines[i];
-                if (y + entry.Height < logAreaTop) { y += entry.Height + lineSpacing; continue; }
+                ViewRow entry = _viewRows[i];
+                float next = y + entry.Height + 1f;
+                if (next < logAreaTop) { y = next; continue; }
                 if (y > logAreaTop + logAreaHeight) break;
 
                 _uiOverlay.TextRenderer.RenderText(
@@ -369,33 +485,25 @@ namespace ToolChest
                     FontSize,
                     entry.Color,
                     FontFamily);
-
-                y += entry.Height + lineSpacing;
+                y = next;
             }
 
-            // draw scrollbar (only when needed)
-            DrawScrollbar(logAreaTop, logAreaLeft, logAreaWidth, logAreaHeight, totalHeight);
+            DrawScrollbar(logAreaTop, logAreaLeft, logAreaWidth, logAreaHeight, _viewTotalHeight);
         }
 
         private void DrawScrollbar(float logTop, float logLeft, float logW, float logH, float totalH)
         {
-            if (totalH <= logH + 1f) return; // nothing to scroll
-
+            if (totalH <= logH + 1f) return;
             float trackX = logLeft + logW - ScrollbarWidth - 1f;
             float trackY = logTop + 2f;
             float trackW = ScrollbarWidth;
             float trackH = logH - 4f;
-
-            // track
             float[] trackNdc = HtmlLayoutUtils.GetNdcQuad(trackX, trackY, trackW, trackH, Matrix4x4.Identity, Size.X, Size.Y);
             QuadRenderer.DrawNdcQuad(trackNdc, new Vector4(0.18f, 0.18f, 0.18f, 0.95f));
-
-            // thumb
             float thumbRatio = logH / totalH;
             float thumbH = Math.Max(18f, trackH * thumbRatio);
             float thumbTravel = trackH - thumbH;
             float thumbY = trackY + (_scrollOffsetY / Math.Max(1f, totalH - logH)) * thumbTravel;
-
             float[] thumbNdc = HtmlLayoutUtils.GetNdcQuad(trackX + 1f, thumbY, trackW - 2f, thumbH, Matrix4x4.Identity, Size.X, Size.Y);
             QuadRenderer.DrawNdcQuad(thumbNdc, new Vector4(0.45f, 0.45f, 0.45f, 1.0f));
         }
@@ -403,15 +511,14 @@ namespace ToolChest
         public override void OnPanelResize(float w, float h)
         {
             base.OnPanelResize(w, h);
-            _dirty = true;
-            _fullRebuild = true;
+            _metricsReady = false;
+            _viewSeq = -1;
         }
 
         public override void OnLiveResize(float w, float h)
         {
             base.OnLiveResize(w, h);
-            _dirty = true;
-            _fullRebuild = true;
+            _viewSeq = -1;
         }
 
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
