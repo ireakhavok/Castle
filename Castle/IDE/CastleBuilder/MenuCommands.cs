@@ -237,6 +237,16 @@ namespace CastleBuilder
                             continue;
                         File.Copy(dll, Path.Combine(exportRoot, name), true);
                     }
+                    string runtimesSrc = Path.Combine(binDir, "runtimes");
+                    if (Directory.Exists(runtimesSrc))
+                    {
+                        BlueprintManager.CopyDirectory(runtimesSrc, Path.Combine(exportRoot, "runtimes"));
+                        Console.WriteLine("[Export] Copied runtimes/ from build output (Silk native layout)");
+                    }
+                    else
+                    {
+                        Console.WriteLine("[Export] WARNING: no runtimes/ next to the host exe");
+                    }
                     string runtimeConfig = Path.Combine(exportRoot, exeStem + ".runtimeconfig.json");
                     if (!File.Exists(runtimeConfig))
                     {

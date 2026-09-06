@@ -23,6 +23,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="$(NuGetPackageRoot)silk.net.glfw\2.22.0\runtimes\win-x64\native\glfw3.dll"
+                      Condition="Exists('$(NuGetPackageRoot)silk.net.glfw\2.22.0\runtimes\win-x64\native\glfw3.dll')"
+                      LogicalName="SiegeEngine.Native.glfw3.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Update="C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Configs\diagnostics_lists_nav.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

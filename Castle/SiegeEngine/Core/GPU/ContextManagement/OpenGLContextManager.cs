@@ -1,4 +1,4 @@
-﻿using Silk.NET.GLFW;
+using Silk.NET.GLFW;
 using Silk.NET.OpenGL;
 using System;
 
@@ -41,6 +41,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         public override void Terminate()
         {
+            if (_glfw == null) return;
             _glfw.Terminate();
         }
     }
