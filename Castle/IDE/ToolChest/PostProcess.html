@@ -79,7 +79,7 @@
         <div class="title">Post Process</div>
         <div class="section">SUN</div>
         <div class="check">
-            <input id="pp-sun-enabled" type="checkbox">
+            <input id="pp-sun-enabled" type="checkbox" data-hook="PostProcessApply">
             <div class="field">Enable sun</div>
         </div>
         <div class="field">Azimuth</div>
@@ -108,7 +108,7 @@
             </div>
         </div>
         <div class="check">
-            <input id="pp-sun-cast-shadows" type="checkbox" checked>
+            <input id="pp-sun-cast-shadows" data-hook="PostProcessApply" type="checkbox" checked>
             <div class="field">Sun casts shadows</div>
         </div>
         <div class="check">

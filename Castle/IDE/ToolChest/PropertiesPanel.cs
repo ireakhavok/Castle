@@ -21,6 +21,7 @@ using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Scenes;
 using ReadingChamber;
+using SiegeEngine.Core.GPU.Lighting;
 namespace ToolChest
 {
     public class PropertiesPanel : BasePanel, IDataAwarePanel
@@ -636,6 +637,35 @@ namespace ToolChest
                 {
                     prop.SetValue(target, converted);
                     Console.WriteLine($"[PropertiesPanel] Applied {componentName}.{propertyName} = {newValue} on entity {entityId}");
+                    void ApplyToSelected(Entity selected)
+                    {
+                        if (selected == null || selected.Id != entityId || object.ReferenceEquals(selected, entity))
+                            return;
+                        object selectedTarget = null;
+                        if (componentName == "PhysicsComponent" || componentName == "Physics")
+                            selectedTarget = selected.GetComponent<PhysicsComponent>();
+                        else
+                        {
+                            foreach (var kvp in selected.Components)
+                            {
+                                if (kvp.Key.Name == componentName || kvp.Key.FullName == componentName)
+                                {
+                                    selectedTarget = kvp.Value;
+                                    break;
+                                }
+                            }
+                        }
+                        if (selectedTarget == null) return;
+                        var selectedProp = selectedTarget.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+                        if (selectedProp != null && selectedProp.CanWrite)
+                            selectedProp.SetValue(selectedTarget, converted);
+                    }
+                    if (_currentTarget is Entity liveEnt)
+                        ApplyToSelected(liveEnt);
+                    if (_currentTarget is MeshLayerRef layer && layer.Entity != null)
+                        ApplyToSelected(layer.Entity);
+                    if (componentName.IndexOf("Light", StringComparison.OrdinalIgnoreCase) >= 0)
+                        LightingFrame.Current = null;
                     if (target is PhysicsComponent physics)
                     {
                         physics.IsSleeping = false;

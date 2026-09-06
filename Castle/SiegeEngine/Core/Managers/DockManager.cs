@@ -38,6 +38,7 @@ namespace SiegeEngine.Core.Managers
         private float _dragStartRatio = 0.5f;
         private float _splitterSize = 5f;
         private const float SplitterGap = 2f;
+        private static DockSplitNode _activeDrag;
 
         public bool IsDraggingSplitter() => _draggingSplitter;
 
@@ -134,13 +135,17 @@ namespace SiegeEngine.Core.Managers
             {
                 if (FindDeepestSplitter(mousePos, out DockSplitNode deepest) && deepest != null)
                 {
+                    if (_activeDrag != null && _activeDrag != deepest)
+                        _activeDrag._draggingSplitter = false;
+                    _activeDrag = deepest;
                     deepest._draggingSplitter = true;
                     deepest._dragStartRatio = deepest.SplitRatio;
                     return true;
                 }
             }
-            if (_draggingSplitter && mouseDown)
+            if (_activeDrag == this && _draggingSplitter && mouseDown)
             {
+                float oldRatio = SplitRatio;
                 if (IsVertical)
                 {
                     SplitRatio = (mousePos.Y - Rect.Y) / Rect.W;
@@ -150,16 +155,64 @@ namespace SiegeEngine.Core.Managers
                     SplitRatio = (mousePos.X - Rect.X) / Rect.Z;
                 }
                 SplitRatio = Math.Clamp(SplitRatio, 0.1f, 0.9f);
+                PinNestedSplitters(oldRatio, SplitRatio);
                 return true;
             }
             if (mouseReleased && _draggingSplitter)
             {
                 _draggingSplitter = false;
+                if (_activeDrag == this)
+                    _activeDrag = null;
                 SplitterCommitted?.Invoke(this, _dragStartRatio, SplitRatio);
             }
             else if (mouseReleased)
+            {
                 _draggingSplitter = false;
+                if (_activeDrag == this)
+                    _activeDrag = null;
+            }
             return _draggingSplitter || childHandled;
+        }
+
+        private void PinNestedSplitters(float oldRatio, float newRatio)
+        {
+            if (Rect.Z <= 1f || Rect.W <= 1f) return;
+            if (Math.Abs(newRatio - oldRatio) < 0.0001f) return;
+            if (IsVertical)
+            {
+                float h = Rect.W;
+                float oldLeft = h * oldRatio - SplitterGap;
+                float newLeft = h * newRatio - SplitterGap;
+                float oldRightY = Rect.Y + h * oldRatio + SplitterGap;
+                float newRightY = Rect.Y + h * newRatio + SplitterGap;
+                float oldRight = h - h * oldRatio - SplitterGap;
+                float newRight = h - h * newRatio - SplitterGap;
+                PinChild(Left as DockSplitNode, Rect.Y, oldLeft, newLeft);
+                PinChild(Right as DockSplitNode, oldRightY, oldRight, newRight, newRightY);
+            }
+            else
+            {
+                float w = Rect.Z;
+                float oldLeft = w * oldRatio - SplitterGap;
+                float newLeft = w * newRatio - SplitterGap;
+                float oldRightX = Rect.X + w * oldRatio + SplitterGap;
+                float newRightX = Rect.X + w * newRatio + SplitterGap;
+                float oldRight = w - w * oldRatio - SplitterGap;
+                float newRight = w - w * newRatio - SplitterGap;
+                PinChild(Left as DockSplitNode, Rect.X, oldLeft, newLeft);
+                PinChild(Right as DockSplitNode, oldRightX, oldRight, newRight, newRightX);
+            }
+        }
+
+        private void PinChild(DockSplitNode child, float oldOrigin, float oldSize, float newSize, float newOrigin = float.NaN)
+        {
+            if (child == null || child.IsVertical != IsVertical) return;
+            if (oldSize <= 1f || newSize <= 1f) return;
+            float abs = oldOrigin + oldSize * child.SplitRatio;
+            float origin = float.IsNaN(newOrigin) ? oldOrigin : newOrigin;
+            float prev = child.SplitRatio;
+            child.SplitRatio = Math.Clamp((abs - origin) / newSize, 0.1f, 0.9f);
+            child.PinNestedSplitters(prev, child.SplitRatio);
         }
 
         public override void Render(IRenderContext renderContext, int winW, int winH)
