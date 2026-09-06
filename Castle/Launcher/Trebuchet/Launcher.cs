@@ -159,7 +159,7 @@ namespace Trebuchet
                         _sceneManager.Resize(width, height);
                     });
                     _isRunning = true;
-                    float lastFrameTime = 0f;
+                    float lastFrameTime = (float)_controlContext.GetTime();
                     while (_isRunning)
                     {
                         float currentTime = (float)_controlContext.GetTime();

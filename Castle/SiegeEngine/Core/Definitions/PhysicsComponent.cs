@@ -52,7 +52,11 @@ namespace SiegeEngine.Core.Definitions
         public Vector3 Position
         {
             get => _transform.Position;
-            set => _transform.Position = value;
+            set
+            {
+                _transform.Position = value;
+                RenderPosition = value;
+            }
         }
         public Quaternion Rotation
         {

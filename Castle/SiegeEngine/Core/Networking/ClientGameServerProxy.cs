@@ -19,6 +19,9 @@ namespace SiegeEngine.Core.Networking
         public ClientGameServerProxy(EventBus eventBus)
         {
             _eventBus = eventBus;
+            // Local visuals follow frame dt. A 60Hz fixed step at 240fps
+            // makes the world strobe past a side-facing camera.
+            _physicsWorld.UseFixedTimestep = false;
         }
         // Editor / debug surface
         public PhysicsWorld PhysicsWorld => _physicsWorld;

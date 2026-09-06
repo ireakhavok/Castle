@@ -9,6 +9,7 @@ namespace SiegeEngine.Core.Events
     {
         public string Type => "OpenGameHud";
         public string HtmlRelativePath { get; set; }
+        public string HtmlContent { get; set; }
         public string Title { get; set; } = "HUD";
         public PanelChromeStyle Chrome { get; set; } = PanelChromeStyle.Game;
         public DockingMode Docking { get; set; } = DockingMode.Dynamic;

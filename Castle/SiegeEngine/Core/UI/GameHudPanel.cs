@@ -13,6 +13,7 @@ namespace SiegeEngine.Core.UI
     {
         public string HudKey { get; }
         private readonly string _htmlPath;
+        private readonly string _htmlContent;
 
         public GameHudPanel(
             IRenderContext renderContext,
@@ -23,7 +24,8 @@ namespace SiegeEngine.Core.UI
             : base(renderContext, controlContext, window, eventBus)
         {
             HudKey = request.HtmlRelativePath ?? "hud";
-            _htmlPath = ResolveHtml(request.HtmlRelativePath);
+            _htmlContent = request.HtmlContent;
+            _htmlPath = string.IsNullOrEmpty(_htmlContent) ? ResolveHtml(request.HtmlRelativePath) : null;
             ChromeStyle = request.Chrome;
             DockingMode = request.Docking;
             HasTitleBar = request.Chrome != PanelChromeStyle.Bare;
@@ -36,9 +38,16 @@ namespace SiegeEngine.Core.UI
         public override void Init()
         {
             base.Init();
-            if (!string.IsNullOrEmpty(_htmlPath) && File.Exists(_htmlPath))
+            string html = _htmlContent;
+            string baseDir = "";
+            if (string.IsNullOrEmpty(html) && !string.IsNullOrEmpty(_htmlPath) && File.Exists(_htmlPath))
             {
-                _uiOverlay.LoadUI(File.ReadAllText(_htmlPath), Path.GetDirectoryName(_htmlPath) ?? "");
+                html = File.ReadAllText(_htmlPath);
+                baseDir = Path.GetDirectoryName(_htmlPath) ?? "";
+            }
+            if (!string.IsNullOrEmpty(html))
+            {
+                _uiOverlay.LoadUI(html, baseDir);
                 _uiOverlay.RefreshUI();
             }
             else
@@ -52,10 +61,21 @@ namespace SiegeEngine.Core.UI
             if (string.IsNullOrEmpty(path)) return null;
             if (Path.IsPathRooted(path) && File.Exists(path)) return path;
             if (File.Exists(path)) return Path.GetFullPath(path);
-            string cwd = Path.Combine(Directory.GetCurrentDirectory(), path);
-            if (File.Exists(cwd)) return cwd;
-            string underExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path);
-            if (File.Exists(underExe)) return underExe;
+            string name = Path.GetFileName(path);
+            string[] guesses =
+            {
+                path,
+                Path.Combine(Directory.GetCurrentDirectory(), path),
+                Path.Combine(Directory.GetCurrentDirectory(), "Scripts", name),
+                Path.Combine(Directory.GetCurrentDirectory(), "Scripts", "Chess", name),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, name),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path)
+            };
+            for (int i = 0; i < guesses.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(guesses[i]) && File.Exists(guesses[i]))
+                    return Path.GetFullPath(guesses[i]);
+            }
             return path;
         }
     }

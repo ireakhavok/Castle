@@ -209,18 +209,23 @@ namespace SiegeEngine.Scenes
                 SetPlayer(_player);
             ModelManager.EnsurePacksLoaded(projectPath, level);
             Console.WriteLine($"[RuntimeGameplayScene] Server entities={_server.GetEntities()?.Count ?? 0} InstanceModels={(ModelManager.Instance != null)}");
-            var existingPlayerEntity = level.Entities.FirstOrDefault(e => e.Id == 1 || (e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase)));
+            var existingPlayerEntity = level.Entities.FirstOrDefault(e =>
+                e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase));
+            Console.WriteLine("[RuntimeGameplayScene] Spawn search Type=Player → " +
+                (existingPlayerEntity == null ? "none" : ("id=" + existingPlayerEntity.Id)));
             if (existingPlayerEntity != null && _player == null)
             {
                 ulong steamId = 0;
-                _player = new Player(existingPlayerEntity.Id, Vector3.Zero, steamId);
-                SetPlayer(_player);
                 var existingPhys = existingPlayerEntity.GetComponent<PhysicsComponent>();
+                Vector3 seed = existingPhys != null ? existingPhys.Position : new Vector3(10, 10, 0);
+                _player = new Player(existingPlayerEntity.Id, seed, steamId);
+                SetPlayer(_player);
+                Console.WriteLine("[RuntimeGameplayScene] Player from saved Type=Player id=" +
+                    existingPlayerEntity.Id + " pos=" + seed);
                 if (existingPhys != null)
                 {
-                    // Seed initial transform values onto the Player's own PhysicsComponent.
-                    // The shared-instance guarantee below will then make the entity use this exact object.
                     _player.Physics.Position = existingPhys.Position;
+                    _player.Physics.RenderPosition = existingPhys.Position;
                     _player.Physics.Rotation = existingPhys.Rotation;
                     _player.Physics.BodyType = BodyType.Kinematic;
                     _player.Physics.RebuildShape(null);
@@ -239,8 +244,14 @@ namespace SiegeEngine.Scenes
                             var spawnPhysics = spawnEntity.GetComponent<PhysicsComponent>();
                             if (spawnPhysics != null)
                             {
+                                Console.WriteLine("[RuntimeGameplayScene] PreferredSpawn id=" + id +
+                                    " spawnPos=" + spawnPhysics.Position +
+                                    " playerBefore=" + _player.Physics.Position);
                                 _player.Physics.Position = spawnPhysics.Position;
-                                Console.WriteLine($"[RuntimeGameplayScene] Applied PreferredSpawnPointId {id} → player at {spawnPhysics.Position}");
+                                _player.Physics.RenderPosition = spawnPhysics.Position;
+                                _server.SnapToGround(_player.Physics);
+                                Console.WriteLine("[RuntimeGameplayScene] PreferredSpawn applied playerAfter=" +
+                                    _player.Physics.Position + " render=" + _player.Physics.RenderPosition);
                                 break;
                             }
                         }
@@ -317,7 +328,11 @@ namespace SiegeEngine.Scenes
                         playerEntity.AddComponent(_player.Physics);
                         playerEntity.AddComponent(new ModelComponent { Key = avatarKey, Model = _player.Model });
                         _server.AddEntity(playerEntity);
-                        Console.WriteLine($"[RuntimeGameplayScene] Player entity {_player.EntityId} registered with ModelComponent Key='{avatarKey}'");
+                        Console.WriteLine("[RuntimeGameplayScene] Player entity registered id=" +
+                            _player.EntityId + " pos=" + _player.Physics.Position);
+                        _server.SnapToGround(_player.Physics);
+                        Console.WriteLine("[RuntimeGameplayScene] After SnapToGround pos=" +
+                            _player.Physics.Position + " render=" + _player.Physics.RenderPosition);
                     }
                     else
                     {

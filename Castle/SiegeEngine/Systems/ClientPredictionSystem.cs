@@ -20,7 +20,6 @@ namespace SiegeEngine.Systems
         private float _tickAccum;
         private const float TickDt = 1f / 60f;
         private const int MaxBufferedTicks = 120;
-        private const float RemoteInterpSeconds = 0.1f;
 
         public uint ClientTick => _clientTick;
 
@@ -63,23 +62,6 @@ namespace SiegeEngine.Systems
                 _tickAccum -= TickDt;
                 _clientTick++;
             }
-
-            float step = deltaTime / Math.Max(0.0001f, RemoteInterpSeconds);
-            var ids = new List<int>(_remotes.Keys);
-            for (int i = 0; i < ids.Count; i++)
-            {
-                int id = ids[i];
-                RemoteState rs = _remotes[id];
-                rs.T = Math.Min(1f, rs.T + step);
-                Entity entity = _server.GetEntityById(id);
-                var physics = entity?.GetComponent<PhysicsComponent>();
-                if (physics != null)
-                {
-                    physics.Position = Vector3.Lerp(rs.From, rs.To, rs.T);
-                    physics.Rotation = Quaternion.Slerp(rs.FromRot, rs.ToRot, rs.T);
-                }
-                _remotes[id] = rs;
-            }
         }
 
         private void OnEntityMoved(EntityMovedEvent e)
@@ -97,13 +79,8 @@ namespace SiegeEngine.Systems
                 return;
             }
 
-            RemoteState rs;
-            rs.From = physics.Position;
-            rs.FromRot = physics.Rotation;
-            rs.To = serverPos;
-            rs.ToRot = e.Rotation;
-            rs.T = 0f;
-            _remotes[e.EntityId] = rs;
+            physics.Position = serverPos;
+            physics.Rotation = e.Rotation;
         }
 
         private void ReconcileLocal(int entityId, PhysicsComponent physics, Vector3 serverPos, Quaternion serverRot, uint ackTick)

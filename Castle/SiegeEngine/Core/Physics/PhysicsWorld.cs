@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Physics
+// Folder: SiegeEngine/Core/Physics
 // File: PhysicsWorld.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -19,7 +19,7 @@ namespace SiegeEngine.Core.Physics
         private readonly List<Vector3> _triB = new List<Vector3>(64);
         private readonly List<Vector3> _triC = new List<Vector3>(64);
         private const float ContactSkin = 0.03f;
-        public bool UseFixedTimestep { get; set; } = true;
+        public bool UseFixedTimestep { get; set; } = false;
         public float FixedTimestep { get; set; } = 1f / 60f;
         public Vector3 Gravity
         {
@@ -51,7 +51,50 @@ namespace SiegeEngine.Core.Physics
         {
             _bodies.Clear();
         }
-        public void SnapToGround(PhysicsComponent body) { }
+        public void SnapToGround(PhysicsComponent body)
+        {
+            if (body == null) return;
+            if (!_bodies.Contains(body))
+                RegisterBody(body);
+            if (_heightProvider != null)
+            {
+                float ground = _heightProvider.GetInterpolatedHeight(body.Position.X, body.Position.Y);
+                if (!float.IsNaN(ground) && !float.IsInfinity(ground) && body.Position.Z < ground)
+                {
+                    Vector3 p = body.Position;
+                    p.Z = ground;
+                    body.Position = p;
+                }
+            }
+            ResolveSpawnOverlaps(body);
+            body.RenderPosition = body.Position;
+        }
+
+        public void ResolveSpawnOverlaps(PhysicsComponent body)
+        {
+            if (body == null) return;
+            if (!_bodies.Contains(body))
+                RegisterBody(body);
+            for (int pass = 0; pass < 8; pass++)
+            {
+                Vector3 before = body.Position;
+                DetectAndResolveContacts(0f);
+                ProjectPositions();
+                if ((body.Position - before).LengthSquared() < 1e-10f)
+                    break;
+            }
+            if (_heightProvider != null)
+            {
+                float ground = _heightProvider.GetInterpolatedHeight(body.Position.X, body.Position.Y);
+                if (!float.IsNaN(ground) && !float.IsInfinity(ground) && body.Position.Z < ground)
+                {
+                    Vector3 p = body.Position;
+                    p.Z = ground;
+                    body.Position = p;
+                }
+            }
+            body.RenderPosition = body.Position;
+        }
         public void Step(float deltaTime)
         {
             if (deltaTime <= 0f) return;

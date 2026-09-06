@@ -143,12 +143,11 @@ namespace CastleBuilder
             string projectPath = ProjectSettings.Current.ActiveProject ?? string.Empty;
             string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
             string payloadFile = BlueprintManager.BuildPlayPayloadFile();
-            if (!ScriptLoader.BuildProjectScripts(projectPath))
+            if (!ScriptLoader.PrepareProjectForPlay(projectPath))
             {
                 Console.WriteLine("[MenuCommands.PlayGame] ABORTED — project scripts failed to compile. Fix Scripts/ and try Play again.");
                 return;
             }
-            ScriptLoader.CopyProjectScripts(projectPath);
             string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Foundation.exe");
             if (!File.Exists(exe)) exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
             var psi = new ProcessStartInfo
@@ -182,7 +181,11 @@ namespace CastleBuilder
                         Directory.CreateDirectory(projectPath);
                     }
                     BlueprintManager.SaveCurrentProject(renderContext, controlContext, window, eventBus);
-                    ScriptLoader.BuildProjectScripts(projectPath);
+                    if (!ScriptLoader.PrepareProjectForPlay(projectPath))
+                    {
+                        Console.WriteLine("[Export] ABORTED — project scripts failed to compile.");
+                        return;
+                    }
                     string exportRoot = Path.Combine(projectPath, "exported");
                     if (Directory.Exists(exportRoot))
                     {

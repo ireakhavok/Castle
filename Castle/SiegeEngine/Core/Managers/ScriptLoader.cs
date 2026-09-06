@@ -494,6 +494,7 @@ namespace SiegeEngine.Core.Managers
             Directory.CreateDirectory(libsDir);
             string outputPath = customOutputDir ?? Path.Combine(scriptsDir, "BuildOut", DateTime.UtcNow.ToString("yyyyMMddHHmmssfff"));
             Directory.CreateDirectory(outputPath);
+            PruneBuildOutStamps(Path.Combine(scriptsDir, "BuildOut"), outputPath);
             // Prefer the loaded engine assembly, not a leftover in BaseDirectory.
             string binDir = AppDomain.CurrentDomain.BaseDirectory;
             try
@@ -615,6 +616,35 @@ namespace SiegeEngine.Core.Managers
                 return false;
             }
             return false;
+        }
+
+        public static bool PrepareProjectForPlay(string projectPath)
+        {
+            if (!BuildProjectScripts(projectPath))
+                return false;
+            CopyProjectScripts(projectPath);
+            return true;
+        }
+
+        private static void PruneBuildOutStamps(string buildOutRoot, string keepPath)
+        {
+            if (string.IsNullOrEmpty(buildOutRoot) || !Directory.Exists(buildOutRoot)) return;
+            string keepName = Path.GetFileName(keepPath);
+            var dirs = new DirectoryInfo(buildOutRoot).GetDirectories();
+            Array.Sort(dirs, (a, b) => b.CreationTimeUtc.CompareTo(a.CreationTimeUtc));
+            int kept = 0;
+            for (int i = 0; i < dirs.Length; i++)
+            {
+                if (string.Equals(dirs[i].Name, keepName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                kept++;
+                if (kept <= 1) continue; // keep one previous stamp
+                try { dirs[i].Delete(true); }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ScriptLoader] Could not prune {dirs[i].FullName}: {ex.Message}");
+                }
+            }
         }
 
         private static bool ContainsCsharpError(string text)
