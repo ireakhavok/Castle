@@ -600,9 +600,9 @@ namespace SiegeEngine.Core.Managers
                         }
                         File.Copy(builtDll, libsTarget, true);
                     }
-                    catch (IOException)
+                    catch (Exception)
                     {
-                        Console.WriteLine($"[ScriptLoader] {Path.GetFileName(builtDll)} locked in Libs - Play will use RuntimeTemp");
+                        Console.WriteLine("[ScriptLoader] Libs/" + Path.GetFileName(builtDll) + " in use — using RuntimeTemp");
                     }
                     LoadAndRegister(builtDll);
                     ScanProjectScripts(projectPath);

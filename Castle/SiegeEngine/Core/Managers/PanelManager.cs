@@ -92,7 +92,11 @@ namespace SiegeEngine.Core.Managers
                 }
                 _desktopStrategy.AddPanel(panel);
             }
-            if (!panel.IsModal && panel.DockState == DockState.Floating)
+            if (panel is SiegeEngine.Core.UI.GameHudPanel hud)
+            {
+                PlaceGameHud(hud);
+            }
+            else if (!panel.IsModal && panel.DockState == DockState.Floating)
             {
                 AutoCenterFloating(panel);
             }
@@ -251,6 +255,58 @@ namespace SiegeEngine.Core.Managers
             }
         }
         private readonly System.Collections.Generic.Dictionary<string, SiegeEngine.Core.UI.GameHudPanel> _gameHuds = new System.Collections.Generic.Dictionary<string, SiegeEngine.Core.UI.GameHudPanel>();
+        private readonly System.Collections.Generic.Dictionary<string, Vector2> _hudLastPos = new System.Collections.Generic.Dictionary<string, Vector2>();
+
+        private void PlaceGameHud(SiegeEngine.Core.UI.GameHudPanel hud)
+        {
+            if (hud == null) return;
+            _controlContext.GetWindowSize(_window, out int winW, out int winH);
+            float w = hud.Size.X > 1f ? hud.Size.X : 248f;
+            float h = hud.Size.Y > 1f ? hud.Size.Y : 520f;
+            if (_hudLastPos.TryGetValue(hud.HudKey, out Vector2 last))
+            {
+                hud.Size = new Vector2(w, h);
+                hud.Position = last;
+                hud.OnPanelResize(w, h);
+                return;
+            }
+            float x = hud.RequestedX;
+            float y = hud.RequestedY;
+            const float margin = 16f;
+            const float top = 48f;
+            switch (hud.Anchor)
+            {
+                case HudAnchor.Right:
+                    x = winW - w - margin;
+                    y = float.IsNaN(y) ? top : y;
+                    break;
+                case HudAnchor.Left:
+                    x = margin;
+                    y = float.IsNaN(y) ? top : y;
+                    break;
+                case HudAnchor.Top:
+                    x = float.IsNaN(x) ? (winW - w) * 0.5f : x;
+                    y = top;
+                    break;
+                case HudAnchor.Bottom:
+                    x = float.IsNaN(x) ? (winW - w) * 0.5f : x;
+                    y = winH - h - margin;
+                    break;
+                case HudAnchor.Center:
+                    x = (winW - w) * 0.5f;
+                    y = (winH - h) * 0.5f;
+                    break;
+                case HudAnchor.Custom:
+                    if (float.IsNaN(x)) x = margin;
+                    if (float.IsNaN(y)) y = top;
+                    break;
+                default:
+                    return;
+            }
+            hud.Size = new Vector2(w, h);
+            hud.Position = new Vector2(x, y);
+            hud.OnPanelResize(w, h);
+        }
 
         private void OnOpenGameHud(OpenGameHudEvent e)
         {
@@ -260,6 +316,7 @@ namespace SiegeEngine.Core.Managers
             {
                 if (_gameHuds.TryGetValue(key, out var existing))
                 {
+                    _hudLastPos[key] = existing.Position;
                     RemovePanel(existing);
                     _gameHuds.Remove(key);
                 }

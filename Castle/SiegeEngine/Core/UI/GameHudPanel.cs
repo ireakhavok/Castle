@@ -12,6 +12,9 @@ namespace SiegeEngine.Core.UI
     public class GameHudPanel : BasePanel
     {
         public string HudKey { get; }
+        public HudAnchor Anchor { get; }
+        public float RequestedX { get; }
+        public float RequestedY { get; }
         private readonly string _htmlPath;
         private readonly string _htmlContent;
 
@@ -23,14 +26,17 @@ namespace SiegeEngine.Core.UI
             OpenGameHudEvent request)
             : base(renderContext, controlContext, window, eventBus)
         {
-            HudKey = request.HtmlRelativePath ?? "hud";
+            HudKey = request.HtmlRelativePath ?? request.Title ?? "hud";
+            Anchor = request.Anchor;
+            RequestedX = request.PosX;
+            RequestedY = request.PosY;
             _htmlContent = request.HtmlContent;
             _htmlPath = string.IsNullOrEmpty(_htmlContent) ? ResolveHtml(request.HtmlRelativePath) : null;
             ChromeStyle = request.Chrome;
             DockingMode = request.Docking;
-            HasTitleBar = request.Chrome != PanelChromeStyle.Bare;
+            HasTitleBar = request.AllowMove;
             IsClosable = request.Chrome != PanelChromeStyle.Bare;
-            AllowDragging = request.Chrome != PanelChromeStyle.Bare;
+            AllowDragging = request.AllowMove;
             BaseWidth = request.Width > 0 ? request.Width : 360f;
             BaseHeight = request.Height > 0 ? request.Height : 280f;
         }
@@ -67,9 +73,7 @@ namespace SiegeEngine.Core.UI
                 path,
                 Path.Combine(Directory.GetCurrentDirectory(), path),
                 Path.Combine(Directory.GetCurrentDirectory(), "Scripts", name),
-                Path.Combine(Directory.GetCurrentDirectory(), "Scripts", "Chess", name),
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, name),
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path)
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, name)
             };
             for (int i = 0; i < guesses.Length; i++)
             {

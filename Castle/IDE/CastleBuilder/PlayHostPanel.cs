@@ -94,18 +94,18 @@ namespace CastleBuilder
                 Console.WriteLine("[PlayHostPanel] no project");
                 return;
             }
-            if (!ScriptLoader.PrepareProjectForPlay(projectPath))
-            {
-                Console.WriteLine("[PlayHostPanel] ABORTED — project scripts failed to compile.");
-                return;
-            }
             try
             {
+                if (!ScriptLoader.PrepareProjectForPlay(projectPath))
+                {
+                    Console.WriteLine("[PlayHostPanel] ABORTED — project scripts failed to compile.");
+                    return;
+                }
                 ScriptLoader.LoadCustomAssemblies(projectPath);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("[PlayHostPanel] LoadCustomAssemblies: " + ex.Message);
+                Console.WriteLine("[PlayHostPanel] Prepare/load scripts: " + ex.Message);
                 return;
             }
 
