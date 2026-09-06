@@ -3,6 +3,7 @@
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.UI;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
 using System;
@@ -41,6 +42,7 @@ namespace SiegeEngine.Core.Managers
         private static DockSplitNode _activeDrag;
 
         public bool IsDraggingSplitter() => _draggingSplitter;
+        public static bool IsLiveSplitterDrag => _activeDrag != null && _activeDrag._draggingSplitter;
 
         public bool FindDeepestSplitter(Vector2 mousePos, out DockSplitNode deepest)
         {
@@ -164,6 +166,8 @@ namespace SiegeEngine.Core.Managers
                 if (_activeDrag == this)
                     _activeDrag = null;
                 SplitterCommitted?.Invoke(this, _dragStartRatio, SplitRatio);
+                BasePanel.LogResizeRefresh = true;
+                CommitPanelResize(this);
             }
             else if (mouseReleased)
             {
@@ -172,6 +176,25 @@ namespace SiegeEngine.Core.Managers
                     _activeDrag = null;
             }
             return _draggingSplitter || childHandled;
+        }
+
+        private static void CommitPanelResize(DockNode node)
+        {
+            if (node == null) return;
+            if (node is DockTabbedNode tabbed)
+            {
+                foreach (var panel in tabbed.Panels)
+                {
+                    BasePanel.LogResizeRefresh = true;
+                    panel.OnPanelResize(panel.Size.X, panel.Size.Y);
+                }
+                return;
+            }
+            if (node is DockSplitNode split)
+            {
+                CommitPanelResize(split.Left);
+                CommitPanelResize(split.Right);
+            }
         }
 
         private void PinNestedSplitters(float oldRatio, float newRatio)
@@ -279,7 +302,10 @@ namespace SiegeEngine.Core.Managers
                 {
                     panel.Position = new Vector2(x, y);
                     panel.Size = new Vector2(w, h);
-                    panel.OnPanelResize(w, h);
+                    if (DockSplitNode.IsLiveSplitterDrag && panel is BasePanel livePanel)
+                        livePanel.ApplyLiveResize(w, h);
+                    else
+                        panel.OnPanelResize(w, h);
                 }
             }
         }
