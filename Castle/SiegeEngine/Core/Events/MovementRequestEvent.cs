@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Events
+// Folder: SiegeEngine.Events
 // File: MovementRequestEvent.cs
 using System.Collections.Generic;
 using System.Numerics;
@@ -14,13 +14,15 @@ namespace SiegeEngine.Core.Events
         public Vector2 Position { get; private set; }
         public Quaternion Rotation { get; private set; }
         public ulong SteamId { get; private set; }
+        public uint Tick { get; private set; }
 
-        public MovementRequestEvent(int entityId, Vector2 position, Quaternion rotation, ulong steamId)
+        public MovementRequestEvent(int entityId, Vector2 position, Quaternion rotation, ulong steamId, uint tick = 0)
         {
             EntityId = entityId;
             Position = position;
             Rotation = rotation;
             SteamId = steamId;
+            Tick = tick;
         }
 
         public byte[] Serialize()
@@ -35,7 +37,8 @@ namespace SiegeEngine.Core.Events
                 RotationY = Rotation.Y,
                 RotationZ = Rotation.Z,
                 RotationW = Rotation.W,
-                SteamId
+                SteamId,
+                Tick
             });
             return Encoding.UTF8.GetBytes(json);
         }
@@ -48,6 +51,8 @@ namespace SiegeEngine.Core.Events
             Position = new Vector2(float.Parse(obj["PositionX"].ToString()), float.Parse(obj["PositionY"].ToString()));
             Rotation = new Quaternion(float.Parse(obj["RotationX"].ToString()), float.Parse(obj["RotationY"].ToString()), float.Parse(obj["RotationZ"].ToString()), float.Parse(obj["RotationW"].ToString()));
             SteamId = ulong.Parse(obj["SteamId"].ToString());
+            if (obj.ContainsKey("Tick"))
+                Tick = uint.Parse(obj["Tick"].ToString());
         }
     }
 }

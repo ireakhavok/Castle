@@ -1,4 +1,4 @@
-﻿// Folder: Citadel/Server
+// Folder: Citadel/Server
 // File: GameServer.cs
 using System;
 using System.Collections.Generic;
@@ -203,31 +203,32 @@ namespace Citadel.Server
         public byte[] Serialize()
         {
             var deltas = _deltaTracker.GetDeltas(GetEntities());
-            var visibleDeltas = new Dictionary<int, Vector3>();
-            foreach (var entity in GetEntities())
-            {
-                var physics = entity.GetComponent<PhysicsComponent>();
-                if (physics != null && physics.IsVisible)
-                {
-                    visibleDeltas[entity.Id] = physics.Position;
-                }
-            }
-            return JsonSerializer.SerializeToUtf8Bytes(new { Deltas = visibleDeltas });
+            return JsonSerializer.SerializeToUtf8Bytes(deltas);
         }
 
         public void Deserialize(byte[] data)
         {
-            var state = JsonSerializer.Deserialize<Dictionary<string, Dictionary<int, Vector3>>>(data);
-            if (state != null && state.TryGetValue("Deltas", out var deltas))
+            var deltas = JsonSerializer.Deserialize<List<EntityNetDelta>>(data);
+            if (deltas == null) return;
+            foreach (var d in deltas)
             {
-                foreach (var kvp in deltas)
+                var entity = GetEntityById(d.Id);
+                if (entity == null) continue;
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (physics != null)
                 {
-                    var entity = GetEntityById(kvp.Key);
-                    if (entity != null)
+                    if ((d.Dirty & EntityDeltaTracker.DirtyPos) != 0)
                     {
-                        var physics = entity.GetComponent<PhysicsComponent>();
-                        if (physics != null) physics.Position = kvp.Value;
+                        Vector3 p = EntityDeltaTracker.DequantizePos(d.Px, d.Py, d.Pz);
+                        physics.Position = new Vector3(p.X, p.Y, p.Z);
                     }
+                    if ((d.Dirty & EntityDeltaTracker.DirtyRot) != 0)
+                        physics.Rotation = EntityDeltaTracker.DequantizeRot(d.Rx, d.Ry, d.Rz, d.Rw);
+                }
+                if ((d.Dirty & EntityDeltaTracker.DirtyAnim) != 0)
+                {
+                    var anim = entity.GetComponent<AnimationComponent>();
+                    if (anim != null) anim.Time = d.AnimTime / 1000f;
                 }
             }
         }

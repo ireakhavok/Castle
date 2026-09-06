@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using SiegeEngine.Core.Definitions;
@@ -13,12 +13,25 @@ namespace SiegeEngine.Systems
     {
         private readonly IGameServer _server;
         private readonly EventBus _eventBus;
-        private readonly Queue<MovementRequest> _pendingMoves = new Queue<MovementRequest>();
-        private readonly Dictionary<int, Vector3> _lastServerPositions = new Dictionary<int, Vector3>();
-        private readonly Dictionary<int, Quaternion> _lastServerRotations = new Dictionary<int, Quaternion>();
-        private readonly float _reconciliationThreshold = 0.1f;
-        private readonly float _bufferDuration = 0.1f; // Buffer moves for 0.1s
-        private readonly float _maxDistance = 20.0f; // Match ServerValidationSystem
+        private readonly Dictionary<int, List<MovementRequest>> _buffer = new Dictionary<int, List<MovementRequest>>();
+        private readonly Dictionary<int, RemoteState> _remotes = new Dictionary<int, RemoteState>();
+        private readonly HashSet<int> _predictedEntities = new HashSet<int>();
+        private uint _clientTick;
+        private float _tickAccum;
+        private const float TickDt = 1f / 60f;
+        private const int MaxBufferedTicks = 120;
+        private const float RemoteInterpSeconds = 0.1f;
+
+        public uint ClientTick => _clientTick;
+
+        private struct RemoteState
+        {
+            public Vector3 From;
+            public Vector3 To;
+            public Quaternion FromRot;
+            public Quaternion ToRot;
+            public float T;
+        }
 
         public ClientPredictionSystem(IGameServer server, EventBus eventBus) : base(server)
         {
@@ -29,88 +42,100 @@ namespace SiegeEngine.Systems
 
         public void EnqueueMovementRequest(int entityId, Vector2 requestedPos, Quaternion requestedRotation, ulong steamId)
         {
-            var request = new MovementRequest(requestedPos, requestedRotation, steamId, DateTime.UtcNow.Ticks);
-            _pendingMoves.Enqueue(request);
-            Console.WriteLine($"ClientPredictionSystem: Enqueued movement request for entity {entityId} to {requestedPos}, Rotation={requestedRotation}");
+            var request = new MovementRequest(requestedPos, requestedRotation, steamId, DateTime.UtcNow.Ticks, _clientTick);
+            if (!_buffer.TryGetValue(entityId, out var list))
+            {
+                list = new List<MovementRequest>();
+                _buffer[entityId] = list;
+            }
+            list.Add(request);
+            _predictedEntities.Add(entityId);
+            Console.WriteLine($"ClientPredictionSystem: Enqueued movement request for entity {entityId} to {requestedPos}, Rotation={requestedRotation}, Tick={_clientTick}");
+            while (list.Count > MaxBufferedTicks)
+                list.RemoveAt(0);
         }
 
         public override void Update(float deltaTime)
         {
-            // No sending in Update; requests are sent via PlayerMovement.sendMovementRequest
+            _tickAccum += deltaTime;
+            while (_tickAccum >= TickDt)
+            {
+                _tickAccum -= TickDt;
+                _clientTick++;
+            }
+
+            float step = deltaTime / Math.Max(0.0001f, RemoteInterpSeconds);
+            var ids = new List<int>(_remotes.Keys);
+            for (int i = 0; i < ids.Count; i++)
+            {
+                int id = ids[i];
+                RemoteState rs = _remotes[id];
+                rs.T = Math.Min(1f, rs.T + step);
+                Entity entity = _server.GetEntityById(id);
+                var physics = entity?.GetComponent<PhysicsComponent>();
+                if (physics != null)
+                {
+                    physics.Position = Vector3.Lerp(rs.From, rs.To, rs.T);
+                    physics.Rotation = Quaternion.Slerp(rs.FromRot, rs.ToRot, rs.T);
+                }
+                _remotes[id] = rs;
+            }
         }
 
         private void OnEntityMoved(EntityMovedEvent e)
         {
             Entity entity = _server.GetEntityById(e.EntityId);
             if (entity == null) return;
-
             var physics = entity.GetComponent<PhysicsComponent>();
             if (physics == null) return;
 
-            var player = entity.GetComponent<Player>();
-            if (player == null) return;
+            Vector3 serverPos = new Vector3(e.Position.X, e.Position.Y, physics.Position.Z);
 
-            // Validate position to mirror server logic
-            bool isValid = Vector2.Distance(new Vector2(physics.Position.X, physics.Position.Y), e.Position) <= _maxDistance &&
-                           e.Position.X >= 0 && e.Position.X <= 128 && e.Position.Y >= 0 && e.Position.Y <= 72;
-
-            Console.WriteLine($"ClientPredictionSystem: Processed movement for entity {e.EntityId} to {e.Position}, Rotation={e.Rotation}, IsValid={isValid}");
-
-            // Check if server sent identity rotation (likely validation failure)
-            bool isIdentityRotation = e.Rotation.X == 0 && e.Rotation.Y == 0 && e.Rotation.Z == 0 && e.Rotation.W == 1;
-
-            if (isValid && !isIdentityRotation)
+            if (_predictedEntities.Contains(e.EntityId) && entity.GetComponent<Player>() != null)
             {
-                _lastServerPositions[e.EntityId] = new Vector3(e.Position.X, e.Position.Y, physics.Position.Z);
-                _lastServerRotations[e.EntityId] = e.Rotation;
-
-                if (Vector3.Distance(physics.Position, _lastServerPositions[e.EntityId]) < _reconciliationThreshold)
-                {
-                    Console.WriteLine($"ClientPredictionSystem: Skipped reconciliation for entity {e.EntityId} due to recent server state");
-                    return;
-                }
+                ReconcileLocal(e.EntityId, physics, serverPos, e.Rotation, e.AckTick);
+                return;
             }
-            else
-            {
-                if (_pendingMoves.Count > 0 && (DateTime.UtcNow.Ticks - _pendingMoves.Peek().Timestamp) / 10000000f < _bufferDuration)
-                {
-                    Console.WriteLine($"ClientPredictionSystem: Buffering moves for entity {e.EntityId}");
-                    // Apply latest pending move to smooth transition
-                    var latestRequest = _pendingMoves.Peek();
-                    physics.Position = new Vector3(latestRequest.Position.X, latestRequest.Position.Y, physics.Position.Z);
-                    physics.Rotation = latestRequest.Rotation;
-                    Console.WriteLine($"ClientPredictionSystem: Applied buffered move for entity {e.EntityId} to {latestRequest.Position}, Rotation={latestRequest.Rotation}");
-                    return;
-                }
 
-                physics.Position = new Vector3(e.Position.X, e.Position.Y, physics.Position.Z);
-                _lastServerPositions[e.EntityId] = physics.Position;
-                // Retain client rotation if server sent identity
-                if (isIdentityRotation && _pendingMoves.Count > 0)
-                {
-                    physics.Rotation = _pendingMoves.Peek().Rotation;
-                    Console.WriteLine($"ClientPredictionSystem: Retained buffered rotation for entity {e.EntityId}: {physics.Rotation}");
-                }
-                else
-                {
-                    physics.Rotation = e.Rotation;
-                }
-                _lastServerRotations[e.EntityId] = physics.Rotation;
-                Console.WriteLine($"ClientPredictionSystem: Reverted entity {e.EntityId} to server position {physics.Position}, rotation {physics.Rotation}");
-
-                var tempQueue = new Queue<MovementRequest>(_pendingMoves);
-                _pendingMoves.Clear();
-                while (tempQueue.Count > 0)
-                {
-                    var pendingRequest = tempQueue.Dequeue();
-                    physics.Position = new Vector3(pendingRequest.Position.X, pendingRequest.Position.Y, physics.Position.Z);
-                    physics.Rotation = pendingRequest.Rotation;
-                    _pendingMoves.Enqueue(pendingRequest);
-                    Console.WriteLine($"ClientPredictionSystem: Reapplied pending moves for entity {e.EntityId} to {pendingRequest.Position}, Rotation={pendingRequest.Rotation}");
-                }
-            }
+            RemoteState rs;
+            rs.From = physics.Position;
+            rs.FromRot = physics.Rotation;
+            rs.To = serverPos;
+            rs.ToRot = e.Rotation;
+            rs.T = 0f;
+            _remotes[e.EntityId] = rs;
         }
 
-        private static Vector4 ToVector4(Quaternion q) => new Vector4(q.X, q.Y, q.Z, q.W);
+        private void ReconcileLocal(int entityId, PhysicsComponent physics, Vector3 serverPos, Quaternion serverRot, uint ackTick)
+        {
+            if (!_buffer.TryGetValue(entityId, out var list) || list.Count == 0)
+            {
+                physics.Position = serverPos;
+                physics.Rotation = serverRot;
+                return;
+            }
+
+            int keep = 0;
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i].Tick > ackTick)
+                {
+                    keep = i;
+                    break;
+                }
+                keep = i + 1;
+            }
+            if (keep > 0)
+                list.RemoveRange(0, keep);
+
+            physics.Position = serverPos;
+            physics.Rotation = serverRot;
+            for (int i = 0; i < list.Count; i++)
+            {
+                MovementRequest pending = list[i];
+                physics.Position = new Vector3(pending.Position.X, pending.Position.Y, physics.Position.Z);
+                physics.Rotation = pending.Rotation;
+            }
+        }
     }
 }

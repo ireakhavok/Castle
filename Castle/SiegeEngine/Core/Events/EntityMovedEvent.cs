@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Events
+// Folder: SiegeEngine/Core/Events
 // File: EntityMovedEvent.cs
 using System;
 using System.Collections.Generic;
@@ -14,13 +14,15 @@ namespace SiegeEngine.Core.Events
         public Vector2 Position { get; set; }
         public Quaternion Rotation { get; set; }
         public ulong? PlayerId { get; set; }
+        public uint AckTick { get; set; }
 
-        public EntityMovedEvent(int entityId, Vector2 position, Quaternion rotation, ulong? playerId = 0)
+        public EntityMovedEvent(int entityId, Vector2 position, Quaternion rotation, ulong? playerId = 0, uint ackTick = 0)
         {
             EntityId = entityId;
             Position = position;
             Rotation = rotation;
             PlayerId = playerId;
+            AckTick = ackTick;
         }
 
         public byte[] Serialize()
@@ -31,7 +33,8 @@ namespace SiegeEngine.Core.Events
                 EntityId,
                 Position = new { Position.X, Position.Y },
                 Rotation = new { Rotation.X, Rotation.Y, Rotation.Z, Rotation.W },
-                PlayerId
+                PlayerId,
+                AckTick
             });
             return System.Text.Encoding.UTF8.GetBytes(json);
         }
@@ -46,6 +49,8 @@ namespace SiegeEngine.Core.Events
             var rot = JsonSerializer.Deserialize<Dictionary<string, float>>(obj["Rotation"].ToString());
             Rotation = new Quaternion(rot["X"], rot["Y"], rot["Z"], rot["W"]);
             PlayerId = obj["PlayerId"] != null ? Convert.ToUInt64(obj["PlayerId"]) : null;
+            if (obj.ContainsKey("AckTick"))
+                AckTick = Convert.ToUInt32(obj["AckTick"]);
         }
     }
 }

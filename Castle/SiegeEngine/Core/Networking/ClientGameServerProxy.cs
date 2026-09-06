@@ -201,7 +201,11 @@ namespace SiegeEngine.Core.Networking
         }
         public bool ValidateAndUpdateMovement(int entityId, Vector2 requestedPosition, Quaternion requestedRotation, ulong steamId)
         {
-            _eventBus.Publish(new MovementRequestEvent(entityId, requestedPosition, requestedRotation, steamId), true);
+            uint tick = 0;
+            var prediction = GetSystem<ClientPredictionSystem>();
+            if (prediction != null)
+                tick = prediction.ClientTick;
+            _eventBus.Publish(new MovementRequestEvent(entityId, requestedPosition, requestedRotation, steamId, tick), true);
             return true;
         }
         public bool ValidateInventory(int entityId, string action, object data)
