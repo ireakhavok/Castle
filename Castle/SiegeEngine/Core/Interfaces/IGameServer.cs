@@ -15,7 +15,7 @@ namespace SiegeEngine.Core.Interfaces
         void AddSystem(GameSystem system);
         T GetSystem<T>() where T : GameSystem;
         void Update(float deltaTime);
-        bool ValidateAndUpdateMovement(int entityId, Vector2 requestedPosition, Quaternion requestedRotation, ulong steamId);
+        bool ValidateAndUpdateMovement(int entityId, Vector3 requestedPosition, Quaternion requestedRotation, ulong steamId);
         bool ValidateInventory(int entityId, string action, object data);
         void Publish<T>(T eventData, bool networkSync = false) where T : class;
         RayTraceResult RequestRayTrace(Vector3 start, Vector3 direction, float maxDistance);

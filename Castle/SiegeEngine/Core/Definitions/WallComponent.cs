@@ -33,7 +33,7 @@ namespace SiegeEngine.Core.Definitions
 
         public virtual bool Validate(IGameServer server)
         {
-            return server.ValidateAndUpdateMovement(0, new Vector2(Position.X, Position.Y), Quaternion.Identity, 0);
+            return server.ValidateAndUpdateMovement(0, Position, Quaternion.Identity, 0);
         }
 
         public virtual void Render(GL gl, bool isPreview)

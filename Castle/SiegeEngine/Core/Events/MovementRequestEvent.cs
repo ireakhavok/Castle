@@ -11,12 +11,12 @@ namespace SiegeEngine.Core.Events
     {
         public string Type => "MovementRequest";
         public int EntityId { get; private set; }
-        public Vector2 Position { get; private set; }
+        public Vector3 Position { get; private set; }
         public Quaternion Rotation { get; private set; }
         public ulong SteamId { get; private set; }
         public uint Tick { get; private set; }
 
-        public MovementRequestEvent(int entityId, Vector2 position, Quaternion rotation, ulong steamId, uint tick = 0)
+        public MovementRequestEvent(int entityId, Vector3 position, Quaternion rotation, ulong steamId, uint tick = 0)
         {
             EntityId = entityId;
             Position = position;
@@ -33,6 +33,7 @@ namespace SiegeEngine.Core.Events
                 EntityId,
                 PositionX = Position.X,
                 PositionY = Position.Y,
+                PositionZ = Position.Z,
                 RotationX = Rotation.X,
                 RotationY = Rotation.Y,
                 RotationZ = Rotation.Z,
@@ -48,7 +49,10 @@ namespace SiegeEngine.Core.Events
             var json = Encoding.UTF8.GetString(data);
             var obj = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
             EntityId = int.Parse(obj["EntityId"].ToString());
-            Position = new Vector2(float.Parse(obj["PositionX"].ToString()), float.Parse(obj["PositionY"].ToString()));
+            float z = 0f;
+            if (obj.ContainsKey("PositionZ"))
+                z = float.Parse(obj["PositionZ"].ToString());
+            Position = new Vector3(float.Parse(obj["PositionX"].ToString()), float.Parse(obj["PositionY"].ToString()), z);
             Rotation = new Quaternion(float.Parse(obj["RotationX"].ToString()), float.Parse(obj["RotationY"].ToString()), float.Parse(obj["RotationZ"].ToString()), float.Parse(obj["RotationW"].ToString()));
             SteamId = ulong.Parse(obj["SteamId"].ToString());
             if (obj.ContainsKey("Tick"))

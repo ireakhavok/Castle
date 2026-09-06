@@ -14,23 +14,12 @@ namespace SiegeEngine.Systems
         private readonly IGameServer _server;
         private readonly EventBus _eventBus;
         private readonly Dictionary<int, List<MovementRequest>> _buffer = new Dictionary<int, List<MovementRequest>>();
-        private readonly Dictionary<int, RemoteState> _remotes = new Dictionary<int, RemoteState>();
         private readonly HashSet<int> _predictedEntities = new HashSet<int>();
         private uint _clientTick;
         private float _tickAccum;
-        private const float TickDt = 1f / 60f;
         private const int MaxBufferedTicks = 120;
 
         public uint ClientTick => _clientTick;
-
-        private struct RemoteState
-        {
-            public Vector3 From;
-            public Vector3 To;
-            public Quaternion FromRot;
-            public Quaternion ToRot;
-            public float T;
-        }
 
         public ClientPredictionSystem(IGameServer server, EventBus eventBus) : base(server)
         {
@@ -40,7 +29,7 @@ namespace SiegeEngine.Systems
             _eventBus.Subscribe<EntityReplicationEvent>(OnReplication);
         }
 
-        public void EnqueueMovementRequest(int entityId, Vector2 requestedPos, Quaternion requestedRotation, ulong steamId)
+        public void EnqueueMovementRequest(int entityId, Vector3 requestedPos, Quaternion requestedRotation, ulong steamId)
         {
             var request = new MovementRequest(requestedPos, requestedRotation, steamId, DateTime.UtcNow.Ticks, _clientTick);
             if (!_buffer.TryGetValue(entityId, out var list))
@@ -57,58 +46,54 @@ namespace SiegeEngine.Systems
         public override void Update(float deltaTime)
         {
             _tickAccum += deltaTime;
-            while (_tickAccum >= TickDt)
-            {
-                _tickAccum -= TickDt;
+            if (deltaTime > 0f)
                 _clientTick++;
-            }
         }
 
         private void OnReplication(EntityReplicationEvent e)
         {
             if (e?.Deltas == null) return;
             for (int i = 0; i < e.Deltas.Count; i++)
-            {
-                var d = e.Deltas[i];
-                if (_predictedEntities.Contains(d.Id))
-                    continue;
-                Entity entity = _server.GetEntityById(d.Id);
-                EntityDeltaTracker.Apply(entity, d);
-            }
+                ApplyDelta(e.Deltas[i], e.Authoritative);
         }
 
         private void OnEntityMoved(EntityMovedEvent e)
         {
-            Entity entity = _server.GetEntityById(e.EntityId);
-            if (entity == null) return;
-            var physics = entity.GetComponent<PhysicsComponent>();
-            if (physics == null) return;
-
-            Vector3 serverPos = new Vector3(e.Position.X, e.Position.Y, physics.Position.Z);
-
-            if (_predictedEntities.Contains(e.EntityId) && entity.GetComponent<Player>() != null)
-            {
-                ReconcileLocal(e.EntityId, physics, serverPos, e.Rotation, e.AckTick);
-                return;
-            }
-
-            physics.Position = serverPos;
-            physics.Rotation = e.Rotation;
+            if (e == null) return;
+            ApplyDelta(e.ToDelta(), authoritative: false);
         }
 
-        private void ReconcileLocal(int entityId, PhysicsComponent physics, Vector3 serverPos, Quaternion serverRot, uint ackTick)
+        private void ApplyDelta(EntityNetDelta d, bool authoritative)
         {
-            if (!_buffer.TryGetValue(entityId, out var list) || list.Count == 0)
+            if (d == null) return;
+            Entity entity = _server.GetEntityById(d.Id);
+            if (entity == null) return;
+
+            if (_predictedEntities.Contains(d.Id) && entity.GetComponent<Player>() != null)
             {
-                physics.Position = serverPos;
-                physics.Rotation = serverRot;
+                if (!authoritative)
+                    return;
+                ReconcileLocal(d);
                 return;
             }
+            EntityDeltaTracker.Apply(entity, d);
+        }
+
+        private void ReconcileLocal(EntityNetDelta d)
+        {
+            Entity entity = _server.GetEntityById(d.Id);
+            var physics = entity?.GetComponent<PhysicsComponent>();
+            if (physics == null) return;
+
+            EntityDeltaTracker.Apply(entity, d);
+
+            if (!_buffer.TryGetValue(d.Id, out var list) || list.Count == 0)
+                return;
 
             int keep = 0;
             for (int i = 0; i < list.Count; i++)
             {
-                if (list[i].Tick > ackTick)
+                if (list[i].Tick > d.AckTick)
                 {
                     keep = i;
                     break;
@@ -118,13 +103,12 @@ namespace SiegeEngine.Systems
             if (keep > 0)
                 list.RemoveRange(0, keep);
 
-            physics.Position = serverPos;
-            physics.Rotation = serverRot;
             for (int i = 0; i < list.Count; i++)
             {
                 MovementRequest pending = list[i];
-                physics.Position = new Vector3(pending.Position.X, pending.Position.Y, physics.Position.Z);
+                physics.Position = pending.Position;
                 physics.Rotation = pending.Rotation;
+                physics.RenderPosition = pending.Position;
             }
         }
     }

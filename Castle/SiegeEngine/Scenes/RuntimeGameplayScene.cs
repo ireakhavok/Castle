@@ -239,7 +239,8 @@ namespace SiegeEngine.Scenes
                     if (level.Entities[i].Id >= playerId)
                         playerId = level.Entities[i].Id + 1;
                 }
-                _player = new Player(playerId, Vector3.Zero, 0);
+                Vector3 spawnAt = ResolvePreferredSpawn(level, settings);
+                _player = new Player(playerId, spawnAt, 0);
                 SetPlayer(_player);
             }
 
@@ -676,6 +677,23 @@ namespace SiegeEngine.Scenes
                 Console.WriteLine("[RuntimeGameplayScene] LoadSceneSettingsFromProject failed: " + ex.Message);
                 return null;
             }
+        }
+
+        static Vector3 ResolvePreferredSpawn(Level level, SceneSettings settings)
+        {
+            if (settings?.PreferredSpawnPointIds == null || level?.Entities == null)
+                return Vector3.Zero;
+            for (int i = 0; i < settings.PreferredSpawnPointIds.Count; i++)
+            {
+                int id = settings.PreferredSpawnPointIds[i];
+                Entity spawnEntity = level.Entities.FirstOrDefault(e => e.Id == id);
+                var spawnPhysics = spawnEntity?.GetComponent<PhysicsComponent>();
+                if (spawnPhysics == null) continue;
+                float side = spawnPhysics.Size.X;
+                if (side < 0.5f) side = 0.5f;
+                return spawnPhysics.Position + new Vector3(side + 0.75f, 0f, 0f);
+            }
+            return Vector3.Zero;
         }
 
         void ApplyPreferredSpawn(Level level, SceneSettings settings)

@@ -185,11 +185,11 @@ namespace Citadel.Server
             var deltas = _deltaTracker.GetDeltas(GetEntities());
             if (deltas.Count > 0)
             {
-                Publish(new EntityReplicationEvent { Deltas = deltas }, networkSync: true);
+                Publish(new EntityReplicationEvent { Deltas = deltas, Authoritative = true }, networkSync: true);
             }
         }
 
-        public bool ValidateAndUpdateMovement(int entityId, Vector2 requestedPosition, Quaternion requestedRotation, ulong steamId)
+        public bool ValidateAndUpdateMovement(int entityId, Vector3 requestedPosition, Quaternion requestedRotation, ulong steamId)
         {
             bool validated = _validationSystem.ValidateMovement(entityId, requestedPosition, requestedRotation, steamId);
             Console.WriteLine($"GameServer: Movement validation for entity {entityId} (SteamID: {steamId}) to {requestedPosition}, Rotation={requestedRotation} - {(validated ? "Success" : "Failed")}");

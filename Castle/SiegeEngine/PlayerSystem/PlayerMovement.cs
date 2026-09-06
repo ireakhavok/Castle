@@ -101,7 +101,7 @@ namespace SiegeEngine.PlayerSystem
             _movementInput = new Vector2(x, y);
         }
 
-        public virtual void Update(Player player, float deltaTime, Action<int, Vector2, Quaternion> sendMovementRequest, CameraController camera)
+        public virtual void Update(Player player, float deltaTime, Action<int, Vector3, Quaternion> sendMovementRequest, CameraController camera)
         {
             if (player == null || camera == null) return;
 
@@ -163,9 +163,8 @@ namespace SiegeEngine.PlayerSystem
 
             if (currentVelXY.LengthSquared() > 0.001f || _movementInput != Vector2.Zero)
             {
-                Vector2 requestedPos = new Vector2(player.Physics.Position.X, player.Physics.Position.Y);
-                _predictionSystem.EnqueueMovementRequest(player.EntityId, requestedPos, newRotation, player.SteamId);
-                sendMovementRequest(player.EntityId, requestedPos, newRotation);
+                _predictionSystem.EnqueueMovementRequest(player.EntityId, player.Physics.Position, newRotation, player.SteamId);
+                sendMovementRequest(player.EntityId, player.Physics.Position, newRotation);
             }
 
             if (player.BlendComponent != null && player.BlendComponent.Pack != null)

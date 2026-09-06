@@ -11,9 +11,10 @@ namespace SiegeEngine.Core.Networking
     {
         public int Id;
         public byte Dirty;
-        public short Px, Py, Pz;
-        public short Rx, Ry, Rz, Rw;
-        public ushort AnimTime;
+        public float Px, Py, Pz;
+        public float Rx, Ry, Rz, Rw;
+        public float AnimTime;
+        public uint AckTick;
     }
 
     public class EntityDeltaTracker
@@ -48,13 +49,18 @@ namespace SiegeEngine.Core.Networking
                     if (!_lastPositions.TryGetValue(entity.Id, out var lastPos) || lastPos != physics.Position)
                     {
                         dirty |= DirtyPos;
-                        QuantizePos(physics.Position, out d.Px, out d.Py, out d.Pz);
+                        d.Px = physics.Position.X;
+                        d.Py = physics.Position.Y;
+                        d.Pz = physics.Position.Z;
                         _lastPositions[entity.Id] = physics.Position;
                     }
                     if (!_lastRotations.TryGetValue(entity.Id, out var lastRot) || lastRot != physics.Rotation)
                     {
                         dirty |= DirtyRot;
-                        QuantizeRot(physics.Rotation, out d.Rx, out d.Ry, out d.Rz, out d.Rw);
+                        d.Rx = physics.Rotation.X;
+                        d.Ry = physics.Rotation.Y;
+                        d.Rz = physics.Rotation.Z;
+                        d.Rw = physics.Rotation.W;
                         _lastRotations[entity.Id] = physics.Rotation;
                     }
                 }
@@ -73,13 +79,10 @@ namespace SiegeEngine.Core.Networking
                 }
                 if (hasAnim)
                 {
-                    if (!_lastAnimTimes.TryGetValue(entity.Id, out var lastT) || Math.Abs(lastT - animTime) > 0.001f)
+                    if (!_lastAnimTimes.TryGetValue(entity.Id, out var lastT) || lastT != animTime)
                     {
                         dirty |= DirtyAnim;
-                        float t = animTime;
-                        if (t < 0f) t = 0f;
-                        if (t > 65f) t = 65f;
-                        d.AnimTime = (ushort)(t * 1000f);
+                        d.AnimTime = animTime;
                         _lastAnimTimes[entity.Id] = animTime;
                     }
                 }
@@ -91,6 +94,19 @@ namespace SiegeEngine.Core.Networking
             return deltas;
         }
 
+        public static EntityNetDelta FromPose(int id, Vector3 pos, Quaternion rot, float animTime, uint ackTick)
+        {
+            return new EntityNetDelta
+            {
+                Id = id,
+                Dirty = (byte)(DirtyPos | DirtyRot | DirtyAnim),
+                Px = pos.X, Py = pos.Y, Pz = pos.Z,
+                Rx = rot.X, Ry = rot.Y, Rz = rot.Z, Rw = rot.W,
+                AnimTime = animTime,
+                AckTick = ackTick
+            };
+        }
+
         public static void Apply(Entity entity, EntityNetDelta d)
         {
             if (entity == null || d == null) return;
@@ -99,57 +115,19 @@ namespace SiegeEngine.Core.Networking
             {
                 if ((d.Dirty & DirtyPos) != 0)
                 {
-                    physics.Position = DequantizePos(d.Px, d.Py, d.Pz);
+                    physics.Position = new Vector3(d.Px, d.Py, d.Pz);
                     physics.RenderPosition = physics.Position;
                 }
                 if ((d.Dirty & DirtyRot) != 0)
-                    physics.Rotation = DequantizeRot(d.Rx, d.Ry, d.Rz, d.Rw);
+                    physics.Rotation = new Quaternion(d.Rx, d.Ry, d.Rz, d.Rw);
             }
             if ((d.Dirty & DirtyAnim) != 0)
             {
-                float t = d.AnimTime / 1000f;
                 var blend = entity.GetComponent<BlendedAnimationComponent>();
-                if (blend != null) blend.GlobalTime = t;
+                if (blend != null) blend.GlobalTime = d.AnimTime;
                 var anim = entity.GetComponent<AnimationComponent>();
-                if (anim != null) anim.Time = t;
+                if (anim != null) anim.Time = d.AnimTime;
             }
-        }
-
-        public static void QuantizePos(Vector3 p, out short x, out short y, out short z)
-        {
-            x = ClampShort(p.X * 100f);
-            y = ClampShort(p.Y * 100f);
-            z = ClampShort(p.Z * 100f);
-        }
-
-        public static Vector3 DequantizePos(short x, short y, short z)
-        {
-            return new Vector3(x / 100f, y / 100f, z / 100f);
-        }
-
-        public static void QuantizeRot(Quaternion q, out short x, out short y, out short z, out short w)
-        {
-            float len = MathF.Sqrt(q.X * q.X + q.Y * q.Y + q.Z * q.Z + q.W * q.W);
-            if (len > 1e-8f) q = new Quaternion(q.X / len, q.Y / len, q.Z / len, q.W / len);
-            x = ClampShort(q.X * 32767f);
-            y = ClampShort(q.Y * 32767f);
-            z = ClampShort(q.Z * 32767f);
-            w = ClampShort(q.W * 32767f);
-        }
-
-        public static Quaternion DequantizeRot(short x, short y, short z, short w)
-        {
-            var q = new Quaternion(x / 32767f, y / 32767f, z / 32767f, w / 32767f);
-            float len = MathF.Sqrt(q.X * q.X + q.Y * q.Y + q.Z * q.Z + q.W * q.W);
-            if (len > 1e-8f) q = new Quaternion(q.X / len, q.Y / len, q.Z / len, q.W / len);
-            return q;
-        }
-
-        private static short ClampShort(float v)
-        {
-            if (v > short.MaxValue) return short.MaxValue;
-            if (v < short.MinValue) return short.MinValue;
-            return (short)Math.Round(v);
         }
     }
 }

@@ -15,6 +15,7 @@ namespace SiegeEngine.Core.Networking
         private readonly List<Entity> _entities = new List<Entity>();
         private readonly List<GameSystem> _systems = new List<GameSystem>();
         private readonly PhysicsWorld _physicsWorld = new PhysicsWorld();
+        private readonly EntityDeltaTracker _deltaTracker = new EntityDeltaTracker();
         private int _nextEntityId = 1;
         public ClientGameServerProxy(EventBus eventBus)
         {
@@ -202,13 +203,13 @@ namespace SiegeEngine.Core.Networking
             foreach (var system in _systems)
                 system.Update(deltaTime);
         }
-        public bool ValidateAndUpdateMovement(int entityId, Vector2 requestedPosition, Quaternion requestedRotation, ulong steamId)
+        public bool ValidateAndUpdateMovement(int entityId, Vector3 requestedPosition, Quaternion requestedRotation, ulong steamId)
         {
             uint tick = 0;
             var prediction = GetSystem<ClientPredictionSystem>();
             if (prediction != null)
                 tick = prediction.ClientTick;
-            _eventBus.Publish(new MovementRequestEvent(entityId, requestedPosition, requestedRotation, steamId, tick), true);
+            _eventBus.Publish(new MovementRequestEvent(entityId, requestedPosition, requestedRotation, steamId, tick), false);
             return true;
         }
         public bool ValidateInventory(int entityId, string action, object data)

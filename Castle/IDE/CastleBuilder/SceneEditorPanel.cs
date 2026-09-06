@@ -861,7 +861,7 @@ namespace CastleBuilder
                                         }
                                     }
                                 }
-                                _eventBus.Publish(new EntityMovedEvent(_selectedEntityIds[0], new Vector2(physics.Position.X, physics.Position.Y), physics.Rotation));
+                                _eventBus.Publish(new EntityMovedEvent(_selectedEntityIds[0], physics.Position, physics.Rotation));
                             }
                         }
                     }
