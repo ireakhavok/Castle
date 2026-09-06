@@ -65,13 +65,8 @@ namespace SiegeEngine.Core.Managers
                 }
             }
 
-            string[] csFiles = Directory.GetFiles(scriptsDir, "*.cs");
-            bool hasTopLevelDll = Directory.GetFiles(scriptsDir, "*.dll").Any(d => !IsCoreDll(d));
-            bool hasLibsDll = Directory.Exists(libsDir) && Directory.GetFiles(libsDir, "*.dll").Any(d => !IsCoreDll(d));
-            if (csFiles.Length > 0 && !hasTopLevelDll && !hasLibsDll)
-            {
-                BuildProjectScripts(projectPath);
-            }
+            // Rebuild is owned by BuildProjectScripts (Play / Editor EnsureProjectScriptsActivated).
+            // Do not skip-load when Libs exists — caller builds first when sources changed.
         }
 
         public static void CopyProjectScripts(string projectPath)
@@ -467,65 +462,107 @@ namespace SiegeEngine.Core.Managers
             Console.WriteLine("[ScriptLoader] ApplyControllerByTypeName (legacy) – activation deferred to ActivateProjectScripts");
         }
 
-        public static void BuildProjectScripts(string projectPath, string customOutputDir = null)
+
+        private static void CopyIfNewer(string source, string target)
         {
-            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath)) return;
+            if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(target)) return;
+            if (!File.Exists(source)) return;
+            Directory.CreateDirectory(Path.GetDirectoryName(target) ?? ".");
+            var srcInfo = new FileInfo(source);
+            if (File.Exists(target))
+            {
+                var dstInfo = new FileInfo(target);
+                if (dstInfo.Length == srcInfo.Length && dstInfo.LastWriteTimeUtc >= srcInfo.LastWriteTimeUtc)
+                {
+                    Console.WriteLine($"[ScriptLoader] {Path.GetFileName(target)} up to date ({dstInfo.Length} bytes) at {target}");
+                    return;
+                }
+                File.SetAttributes(target, FileAttributes.Normal);
+                File.Delete(target);
+            }
+            File.Copy(source, target, true);
+            var copied = new FileInfo(target);
+            Console.WriteLine($"[ScriptLoader] Copied {Path.GetFileName(target)} ({copied.Length} bytes, {srcInfo.LastWriteTimeUtc:u}) -> {target}");
+        }
+
+        public static bool BuildProjectScripts(string projectPath, string customOutputDir = null)
+        {
+            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath)) return false;
             string scriptsDir = Path.Combine(projectPath, "Scripts");
             Directory.CreateDirectory(scriptsDir);
             string libsDir = Path.Combine(scriptsDir, "Libs");
             Directory.CreateDirectory(libsDir);
             string outputPath = customOutputDir ?? Path.Combine(scriptsDir, "BuildOut");
             Directory.CreateDirectory(outputPath);
+            // Prefer the loaded engine assembly, not a leftover in BaseDirectory.
             string binDir = AppDomain.CurrentDomain.BaseDirectory;
+            try
+            {
+                string loaded = typeof(SceneContext).Assembly.Location;
+                if (!string.IsNullOrEmpty(loaded) && File.Exists(loaded))
+                    binDir = Path.GetDirectoryName(loaded) ?? binDir;
+            }
+            catch { }
 
-            // Core DLLs are copied for csproj HintPath only – they are never treated as project assemblies
             string[] coreDlls = { "SiegeEngine.dll", "Foundation.dll" };
             foreach (string dllName in coreDlls)
             {
                 string source = Path.Combine(binDir, dllName);
-                string target = Path.Combine(scriptsDir, dllName);
-                if (File.Exists(source))
+                if (!File.Exists(source))
+                    source = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, dllName);
+                if (!File.Exists(source))
                 {
-                    File.Copy(source, target, true);
-                    Console.WriteLine($"[ScriptLoader] Copied core DLL {dllName} to Scripts/ for build reference");
+                    Console.WriteLine($"[ScriptLoader] Core DLL missing at runtime: {dllName}");
+                    continue;
+                }
+                string[] targets =
+                {
+                    Path.Combine(scriptsDir, dllName),
+                    Path.Combine(libsDir, dllName),
+                    Path.Combine(outputPath, dllName)
+                };
+                foreach (string target in targets)
+                {
+                    try
+                    {
+                        CopyIfNewer(source, target);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[ScriptLoader] FAILED copying {dllName} to {target}: {ex.Message}");
+                    }
                 }
             }
 
             string csprojPath = Path.Combine(scriptsDir, "SiegeScripts.csproj");
-            if (!File.Exists(csprojPath))
-            {
-                string template = @"<Project Sdk=""Microsoft.NET.Sdk"">
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <OutputType>Library</OutputType>
-    <OutputPath>Libs\</OutputPath>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-  </PropertyGroup>
-  <ItemGroup>
-    <Reference Include=""SiegeEngine"">
-      <HintPath>SiegeEngine.dll</HintPath>
-    </Reference>
-    <Reference Include=""Foundation"">
-      <HintPath>Foundation.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include=""**/*.cs"" />
-  </ItemGroup>
-</Project>";
-                File.WriteAllText(csprojPath, template);
-                if (Directory.GetFiles(scriptsDir, "*.cs").Length == 0)
-                {
-                    string exampleSrc = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SiegeEngine", "PlayerSystem", "CustomPlayerController.cs");
-                    if (File.Exists(exampleSrc))
-                    {
-                        File.Copy(exampleSrc, Path.Combine(scriptsDir, "CustomPlayerController.cs"), true);
-                        Console.WriteLine("[ScriptLoader] Copied CustomPlayerController.cs starter template to Scripts/ (ready to edit/override)");
-                    }
-                }
-                Console.WriteLine($"[ScriptLoader] Generated SiegeScripts.csproj at {csprojPath}");
-            }
+            string siegeHint = Path.Combine(scriptsDir, "SiegeEngine.dll");
+            string foundationHint = Path.Combine(scriptsDir, "Foundation.dll");
+            string csproj =
+                "<Project Sdk=\"Microsoft.NET.Sdk\">\n"
+                + "  <PropertyGroup>\n"
+                + "    <TargetFramework>net9.0</TargetFramework>\n"
+                + "    <OutputType>Library</OutputType>\n"
+                + "    <OutputPath>Libs\\</OutputPath>\n"
+                + "    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>\n"
+                + "    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>\n"
+                + "    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>\n"
+                + "  </PropertyGroup>\n"
+                + "  <ItemGroup>\n"
+                + "    <Reference Include=\"SiegeEngine\">\n"
+                + "      <HintPath>" + siegeHint + "</HintPath>\n"
+                + "      <Private>false</Private>\n"
+                + "    </Reference>\n"
+                + "    <Reference Include=\"Foundation\">\n"
+                + "      <HintPath>" + foundationHint + "</HintPath>\n"
+                + "      <Private>false</Private>\n"
+                + "    </Reference>\n"
+                + "  </ItemGroup>\n"
+                + "  <ItemGroup>\n"
+                + "    <Compile Include=\"**/*.cs\" Exclude=\"obj/**/*.cs;Libs/**/*.cs;BuildOut/**/*.cs\" />\n"
+                + "  </ItemGroup>\n"
+                + "</Project>\n";
+            File.WriteAllText(csprojPath, csproj);
+            Console.WriteLine("[ScriptLoader] Wrote SiegeScripts.csproj HintPath=" + siegeHint);
 
             var psi = new ProcessStartInfo
             {
@@ -554,6 +591,11 @@ namespace SiegeEngine.Core.Managers
                         string libsTarget = Path.Combine(libsDir, Path.GetFileName(dll));
                         try
                         {
+                            if (File.Exists(libsTarget))
+                            {
+                                File.SetAttributes(libsTarget, FileAttributes.Normal);
+                                File.Delete(libsTarget);
+                            }
                             File.Copy(dll, libsTarget, true);
                         }
                         catch (IOException)
@@ -564,13 +606,15 @@ namespace SiegeEngine.Core.Managers
                     }
                     ScanProjectScripts(projectPath);
                     Console.WriteLine("[ScriptLoader] Build → DLL copy → reflection register COMPLETE. Custom controllers now active for Play/Export.");
+                    CopyProjectScripts(projectPath);
+                    return true;
                 }
-                else
-                {
-                    Console.WriteLine($"[ScriptLoader] Build warning: {err}");
-                }
+                Console.WriteLine($"[ScriptLoader] Build FAILED. Exit {process.ExitCode}. Not copying stale Libs DLL.");
+                if (!string.IsNullOrEmpty(err))
+                    Console.WriteLine($"[ScriptLoader] Build error: {err}");
+                return false;
             }
-            CopyProjectScripts(projectPath);
+            return false;
         }
     }
 

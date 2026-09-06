@@ -300,6 +300,7 @@ namespace CastleBuilder
                 return;
             try
             {
+                ScriptLoader.BuildProjectScripts(projectPath);
                 ScriptLoader.ScanProjectScripts(projectPath);
                 var regCtx = new SceneContext
                 {
@@ -419,6 +420,8 @@ namespace CastleBuilder
                     catch (Exception ex)
                     {
                         Console.WriteLine($"[EditorScene] Failed to host custom scene '{hostedName}': {ex.Message}");
+                        if (ex.InnerException != null)
+                            Console.WriteLine($"[EditorScene] Inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
                         _hostedCustomScene?.Dispose();
                         _hostedCustomScene = null;
                     }

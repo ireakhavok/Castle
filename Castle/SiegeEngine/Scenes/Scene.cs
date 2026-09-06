@@ -54,6 +54,16 @@ namespace SiegeEngine.Scenes
             _modelRenderer = new ModelRenderer(_renderContext);
         }
 
+        public Scene(SceneContext context)
+            : this(
+                context != null ? context.RenderContext : null,
+                context != null ? context.ControlContext : null,
+                context != null ? context.Window : IntPtr.Zero,
+                context != null ? context.Server : null,
+                context != null ? context.EventBus : null)
+        {
+        }
+
         public IReadOnlyList<Entity> GetEntities() => _server.GetEntities();
         public void SetPlayer(Player player) => _player = player;
 

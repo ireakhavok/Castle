@@ -143,7 +143,11 @@ namespace CastleBuilder
             string projectPath = ProjectSettings.Current.ActiveProject ?? string.Empty;
             string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
             string payloadFile = BlueprintManager.BuildPlayPayloadFile();
-            ScriptLoader.BuildProjectScripts(projectPath);
+            if (!ScriptLoader.BuildProjectScripts(projectPath))
+            {
+                Console.WriteLine("[MenuCommands.PlayGame] ABORTED — project scripts failed to compile. Fix Scripts/ and try Play again.");
+                return;
+            }
             ScriptLoader.CopyProjectScripts(projectPath);
             string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Foundation.exe");
             if (!File.Exists(exe)) exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
