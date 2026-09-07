@@ -55,7 +55,6 @@ namespace SiegeEngine.Core.Definitions
             set
             {
                 _transform.Position = value;
-                RenderPosition = value;
             }
         }
         public Quaternion Rotation
@@ -314,6 +313,15 @@ namespace SiegeEngine.Core.Definitions
                 if (LocalCentreOfMass == Vector3.Zero)
                     return Position;
                 return Position + Vector3.Transform(LocalCentreOfMass, Rotation);
+            }
+        }
+        public Vector3 RenderWorldCentreOfMass
+        {
+            get
+            {
+                if (LocalCentreOfMass == Vector3.Zero)
+                    return RenderPosition;
+                return RenderPosition + Vector3.Transform(LocalCentreOfMass, Rotation);
             }
         }
         public Vector3 ApplyInvInertiaWorld(Vector3 worldTorque)

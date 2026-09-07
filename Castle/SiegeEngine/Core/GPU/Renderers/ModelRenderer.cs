@@ -91,7 +91,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                     Matrix4x4.CreateScale(unitScale * physics.Scale) *
                     Matrix4x4.CreateTranslation(-physics.LocalCentreOfMass) *
                     Matrix4x4.CreateFromQuaternion(physics.Rotation) *
-                    Matrix4x4.CreateTranslation(physics.WorldCentreOfMass);
+                    Matrix4x4.CreateTranslation(physics.RenderWorldCentreOfMass);
 
                 Matrix4x4[] boneMatrices = modelComp.BoneMatrices;
                 Matrix3x3[] normalMatrices = modelComp.NormalBoneTransforms;
@@ -145,7 +145,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 Matrix4x4.CreateScale(unitScale * physics.Scale) *
                 Matrix4x4.CreateTranslation(-physics.LocalCentreOfMass) *
                 Matrix4x4.CreateFromQuaternion(physics.Rotation) *
-                Matrix4x4.CreateTranslation(physics.WorldCentreOfMass);
+                Matrix4x4.CreateTranslation(physics.RenderWorldCentreOfMass);
 
             _renderContext.Enable(_renderContext.Enums.CullFace);
             _renderContext.CullFace(_renderContext.Enums.Back);

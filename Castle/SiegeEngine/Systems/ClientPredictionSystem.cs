@@ -11,13 +11,25 @@ namespace SiegeEngine.Systems
 {
     public class ClientPredictionSystem : GameSystem
     {
+        private struct PoseSnapshot
+        {
+            public uint Tick;
+            public Vector3 Position;
+            public Quaternion Rotation;
+            public float AnimTime;
+        }
+
         private readonly IGameServer _server;
         private readonly EventBus _eventBus;
         private readonly Dictionary<int, List<MovementRequest>> _buffer = new Dictionary<int, List<MovementRequest>>();
         private readonly HashSet<int> _predictedEntities = new HashSet<int>();
+        private readonly Dictionary<int, PoseSnapshot> _snapFrom = new Dictionary<int, PoseSnapshot>();
+        private readonly Dictionary<int, PoseSnapshot> _snapTo = new Dictionary<int, PoseSnapshot>();
+        private readonly Dictionary<int, float> _interpT = new Dictionary<int, float>();
         private uint _clientTick;
         private float _tickAccum;
         private const int MaxBufferedTicks = 120;
+        private const float InterpWindow = 0.1f;
 
         public uint ClientTick => _clientTick;
 
@@ -47,6 +59,30 @@ namespace SiegeEngine.Systems
             _tickAccum += deltaTime;
             if (deltaTime > 0f)
                 _clientTick++;
+            InterpolateRemotes(deltaTime);
+        }
+
+        private void InterpolateRemotes(float deltaTime)
+        {
+            foreach (var kv in _snapTo)
+            {
+                int id = kv.Key;
+                if (_predictedEntities.Contains(id)) continue;
+                Entity entity = _server.GetEntityById(id);
+                var physics = entity?.GetComponent<PhysicsComponent>();
+                if (physics == null) continue;
+                if (!_snapFrom.TryGetValue(id, out var from))
+                {
+                    physics.RenderPosition = kv.Value.Position;
+                    continue;
+                }
+                float t = 0f;
+                _interpT.TryGetValue(id, out t);
+                t += InterpWindow > 0f ? deltaTime / InterpWindow : 1f;
+                if (t > 1f) t = 1f;
+                _interpT[id] = t;
+                physics.RenderPosition = Vector3.Lerp(from.Position, kv.Value.Position, t);
+            }
         }
 
         private void OnEntityMoved(EntityMovedEvent e)
@@ -70,7 +106,31 @@ namespace SiegeEngine.Systems
                 ReconcileLocal(d);
                 return;
             }
+            PushRemoteSnapshot(entity, d);
             EntityDeltaTracker.Apply(entity, d);
+        }
+
+        private void PushRemoteSnapshot(Entity entity, EntityNetDelta d)
+        {
+            var physics = entity.GetComponent<PhysicsComponent>();
+            if (physics == null) return;
+            PoseSnapshot next = new PoseSnapshot
+            {
+                Tick = d.AckTick,
+                Position = (d.Dirty & EntityDeltaTracker.DirtyPos) != 0
+                    ? new Vector3(d.Px, d.Py, d.Pz)
+                    : physics.Position,
+                Rotation = (d.Dirty & EntityDeltaTracker.DirtyRot) != 0
+                    ? new Quaternion(d.Rx, d.Ry, d.Rz, d.Rw)
+                    : physics.Rotation,
+                AnimTime = d.AnimTime
+            };
+            if (_snapTo.TryGetValue(d.Id, out var prev))
+                _snapFrom[d.Id] = prev;
+            else
+                _snapFrom[d.Id] = new PoseSnapshot { Tick = 0, Position = physics.RenderPosition, Rotation = physics.Rotation, AnimTime = 0f };
+            _snapTo[d.Id] = next;
+            _interpT[d.Id] = 0f;
         }
 
         private void ReconcileLocal(EntityNetDelta d)
@@ -80,6 +140,7 @@ namespace SiegeEngine.Systems
             if (physics == null) return;
 
             EntityDeltaTracker.Apply(entity, d);
+            physics.RenderPosition = physics.Position;
 
             if (!_buffer.TryGetValue(d.Id, out var list) || list.Count == 0)
                 return;

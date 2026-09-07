@@ -39,6 +39,11 @@ namespace CastleBuilder
         public Vector2 ViewportPosition => Position;
         public Vector2 ViewportSize => Size;
 
+        public void HandleGameHud(OpenGameHudEvent request)
+        {
+            (_runtime as RuntimeGameplayScene)?.HandleGameHud(request);
+        }
+
         public PlayHostPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {

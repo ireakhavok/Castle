@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Systems
+// Folder: SiegeEngine.Systems
 // File: AnimationSystem.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Interfaces;
@@ -29,31 +29,39 @@ namespace SiegeEngine.Systems
         private void UpdateBlendedAnimation(BlendedAnimationComponent blendComp, ModelComponent modelComp, float deltaTime)
         {
             if (!blendComp.Playing || blendComp.Pack == null) return;
-            // MMO performance: static characters skip blending entirely
+            int boneCount = modelComp.Model.Skeleton.Bones.Count;
             if (blendComp.IsStatic)
             {
+                if (modelComp.BoneMatrices == null || modelComp.BoneMatrices.Length != boneCount
+                    || modelComp.NormalBoneTransforms == null || modelComp.NormalBoneTransforms.Length != boneCount)
+                {
+                    var restGlobals = modelComp.Model.Skeleton.ComputeGlobalTransforms();
+                    WriteSkinning(modelComp, restGlobals);
+                }
                 return;
             }
-            // Always advance while Playing so LocalTime progresses for idle and continuous locomotion
             blendComp.GlobalTime += deltaTime * blendComp.MasterSpeed;
-
-            // Own a long-lived stack so LocalTime advances continuously.
-            // CreateBlendStack deep-copies once; subsequent frames reuse the same instance.
             if (blendComp.RuntimeStack == null)
             {
                 blendComp.RuntimeStack = blendComp.Pack.CreateBlendStack();
             }
             var stack = blendComp.RuntimeStack;
             var params3D = blendComp.CurrentBlendParams;
-
-            // ComputeBlendedLocals is contractually non-null when model.Skeleton exists.
-            // Always write the resulting matrices; residual locomotion matrices are architecturally impossible.
             var blendedLocals = stack.ComputeBlendedLocals(params3D, deltaTime, blendComp.Playing, modelComp.Model);
             var globals = modelComp.Model.Skeleton.ComputeGlobalTransforms(blendedLocals);
+            WriteSkinning(modelComp, globals);
+        }
+        private static void EnsureBoneArrays(ModelComponent modelComp, int boneCount)
+        {
+            if (modelComp.BoneMatrices == null || modelComp.BoneMatrices.Length != boneCount)
+                modelComp.BoneMatrices = new Matrix4x4[boneCount];
+            if (modelComp.NormalBoneTransforms == null || modelComp.NormalBoneTransforms.Length != boneCount)
+                modelComp.NormalBoneTransforms = new Matrix3x3[boneCount];
+        }
+        private static void WriteSkinning(ModelComponent modelComp, Matrix4x4[] globals)
+        {
             int boneCount = modelComp.Model.Skeleton.Bones.Count;
-            modelComp.BoneMatrices = new Matrix4x4[boneCount];
-            modelComp.NormalBoneTransforms = new Matrix3x3[boneCount];
-            // Exact pipeline from ModelViewerScene (BindPose * global)
+            EnsureBoneArrays(modelComp, boneCount);
             for (int i = 0; i < boneCount; i++)
             {
                 modelComp.BoneMatrices[i] = modelComp.Model.Skeleton.Bones[i].BindPose * globals[i];

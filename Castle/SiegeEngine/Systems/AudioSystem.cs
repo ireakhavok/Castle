@@ -65,6 +65,7 @@ namespace SiegeEngine.Systems
         /// Bind this to an IDE checkbox / ProjectSettings key.
         /// </summary>
         public bool EnableFreeSurfaceAudio { get; set; } = true;
+        public string ContentRoot { get; set; }
         // ---- Publish-subscribe surface (single producer) ----
         public bool FreeSurfaceReady =>
             _gpuOcclusionReady && _geometryUploaded && _acousticRayTracer != null && _acousticRayTracer.VisibilityCacheValid;
@@ -899,41 +900,21 @@ namespace SiegeEngine.Systems
             if (Path.IsPathRooted(clipNameOrPath) && File.Exists(clipNameOrPath))
                 return clipNameOrPath;
             string cleaned = clipNameOrPath.TrimStart('\\', '/').Replace('/', Path.DirectorySeparatorChar);
-            string fileName = Path.GetFileName(cleaned);
-            string exeDir = null;
-            try { exeDir = Path.GetDirectoryName(Environment.ProcessPath); } catch { }
             string[] roots =
             {
-                exeDir,
-                Environment.CurrentDirectory,
+                ContentRoot,
                 AppDomain.CurrentDomain.BaseDirectory,
-                AppContext.BaseDirectory
+                Environment.CurrentDirectory
             };
-            var candidates = new List<string>();
-            for (int r = 0; r < roots.Length; r++)
+            for (int i = 0; i < roots.Length; i++)
             {
-                string root = roots[r];
-                if (string.IsNullOrEmpty(root)) continue;
-                candidates.Add(Path.Combine(root, cleaned));
-                candidates.Add(Path.Combine(root, "Assets", cleaned));
-                candidates.Add(Path.Combine(root, "Assets", "Sounds", cleaned));
-                candidates.Add(Path.Combine(root, "Assets", "Sounds", fileName));
-                candidates.Add(Path.Combine(root, "Assets", "Sounds", "IDE", "Music", fileName));
-                candidates.Add(Path.Combine(root, "Sounds", cleaned));
-                candidates.Add(Path.Combine(root, "Sounds", fileName));
-            }
-            foreach (var c in candidates)
-            {
+                if (string.IsNullOrEmpty(roots[i])) continue;
                 try
                 {
-                    string full = Path.GetFullPath(c);
+                    string full = Path.GetFullPath(Path.Combine(roots[i], cleaned));
                     if (File.Exists(full)) return full;
                 }
                 catch { }
-            }
-            if (_missingClips.Add("resolve:" + clipNameOrPath))
-            {
-                Console.WriteLine("AudioSystem: Resolve miss '" + clipNameOrPath + "' exeDir=" + (exeDir ?? "null") + " cwd=" + Environment.CurrentDirectory + " base=" + AppDomain.CurrentDomain.BaseDirectory);
             }
             return null;
         }

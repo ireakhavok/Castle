@@ -29,6 +29,11 @@ namespace SiegeEngine.Core.Networking
 
         public List<EntityNetDelta> GetDeltas(IReadOnlyList<Entity> entities)
         {
+            return GetDeltas(entities, 0);
+        }
+
+        public List<EntityNetDelta> GetDeltas(IReadOnlyList<Entity> entities, uint ackTick)
+        {
             var deltas = new List<EntityNetDelta>();
             if (entities == null) return deltas;
             for (int i = 0; i < entities.Count; i++)
@@ -42,7 +47,7 @@ namespace SiegeEngine.Core.Networking
                 if (physics != null && !physics.IsVisible) continue;
 
                 byte dirty = 0;
-                var d = new EntityNetDelta { Id = entity.Id };
+                var d = new EntityNetDelta { Id = entity.Id, AckTick = ackTick };
 
                 if (physics != null)
                 {
@@ -114,10 +119,7 @@ namespace SiegeEngine.Core.Networking
             if (physics != null)
             {
                 if ((d.Dirty & DirtyPos) != 0)
-                {
                     physics.Position = new Vector3(d.Px, d.Py, d.Pz);
-                    physics.RenderPosition = physics.Position;
-                }
                 if ((d.Dirty & DirtyRot) != 0)
                     physics.Rotation = new Quaternion(d.Rx, d.Ry, d.Rz, d.Rw);
             }

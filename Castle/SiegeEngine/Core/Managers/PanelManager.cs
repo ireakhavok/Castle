@@ -347,6 +347,14 @@ namespace SiegeEngine.Core.Managers
         private void OnOpenGameHud(OpenGameHudEvent e)
         {
             if (e == null) return;
+            for (int i = 0; i < _panels.Count; i++)
+            {
+                if (_panels[i] is IPlayViewport pv && pv.IsPlaying)
+                {
+                    pv.HandleGameHud(e);
+                    return;
+                }
+            }
             string key = e.Key;
             if (string.IsNullOrEmpty(key)) key = e.HtmlRelativePath ?? e.Title ?? "hud";
             if (!e.Open)

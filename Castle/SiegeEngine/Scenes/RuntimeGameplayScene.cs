@@ -9,6 +9,7 @@ using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.GPU.Shaders;
 using SiegeEngine.Core.Terrain;
+using SiegeEngine.Core.UI;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Systems;
 using System;
@@ -34,6 +35,7 @@ namespace SiegeEngine.Scenes
         private bool _inputLive = false;
         private float _frameScroll = 0f;
         private bool _paused = false;
+        private readonly Dictionary<string, HostedContentPanel> _hostedHuds = new Dictionary<string, HostedContentPanel>(StringComparer.OrdinalIgnoreCase);
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -210,40 +212,8 @@ namespace SiegeEngine.Scenes
                 SetPlayer(_player);
             ModelManager.EnsurePacksLoaded(projectPath, level);
             Console.WriteLine($"[RuntimeGameplayScene] Server entities={_server.GetEntities()?.Count ?? 0} InstanceModels={(ModelManager.Instance != null)}");
-            var settings = ctx?.SceneData?.Settings ?? LoadSceneSettingsFromProject(projectPath, levelName);
-
-            var existingPlayerEntity = level.Entities.FirstOrDefault(e =>
-                e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase));
-            if (existingPlayerEntity != null && _player == null)
-            {
-                ulong steamId = 0;
-                var existingPhys = existingPlayerEntity.GetComponent<PhysicsComponent>();
-                Vector3 seed = existingPhys != null ? existingPhys.Position : Vector3.Zero;
-                _player = new Player(existingPlayerEntity.Id, seed, steamId);
-                SetPlayer(_player);
-                if (existingPhys != null)
-                {
-                    _player.Physics.Position = existingPhys.Position;
-                    _player.Physics.RenderPosition = existingPhys.Position;
-                    _player.Physics.Rotation = existingPhys.Rotation;
-                    _player.Physics.BodyType = BodyType.Kinematic;
-                    _player.Physics.RebuildShape(null);
-                }
-            }
-
-            if (_player == null)
-            {
-                int playerId = 1;
-                for (int i = 0; i < level.Entities.Count; i++)
-                {
-                    if (level.Entities[i].Id >= playerId)
-                        playerId = level.Entities[i].Id + 1;
-                }
-                Vector3 spawnAt = ResolvePreferredSpawn(level, settings);
-                _player = new Player(playerId, spawnAt, 0);
-                SetPlayer(_player);
-            }
-
+            var settings = ctx?.SceneData?.Settings;
+            EnsurePlayer(level, settings);
             ApplyPreferredSpawn(level, settings);
 
             if (settings != null)
@@ -252,55 +222,6 @@ namespace SiegeEngine.Scenes
                 if (!string.IsNullOrWhiteSpace(settings.AvatarPackKey))
                 {
                     avatarKey = settings.AvatarPackKey.Trim().ToLower();
-                    if (_player == null)
-                    {
-                        int nextId = 1;
-                        var existing = _server.GetEntities();
-                        if (existing != null)
-                        {
-                            for (int i = 0; i < existing.Count; i++)
-                            {
-                                if (existing[i] != null && existing[i].Id >= nextId)
-                                    nextId = existing[i].Id + 1;
-                            }
-                        }
-                        ulong steamId = 0;
-                        _player = new Player(nextId, Vector3.Zero, steamId);
-                        SetPlayer(_player);
-                        Console.WriteLine("[RuntimeGameplayScene] Created player entity id=" + nextId + " (not stealing Id=1)");
-                    }
-                }
-                if (settings.PreferredSpawnPointIds != null && settings.PreferredSpawnPointIds.Count > 0)
-                {
-                    if (_player == null)
-                    {
-                        int nextId = 1;
-                        var existing = _server.GetEntities();
-                        if (existing != null)
-                        {
-                            for (int i = 0; i < existing.Count; i++)
-                            {
-                                if (existing[i] != null && existing[i].Id >= nextId)
-                                    nextId = existing[i].Id + 1;
-                            }
-                        }
-                        _player = new Player(nextId, Vector3.Zero, 0);
-                        SetPlayer(_player);
-                    }
-                    foreach (int id in settings.PreferredSpawnPointIds)
-                    {
-                        var spawnEntity = level.Entities.FirstOrDefault(e => e.Id == id);
-                        var spawnPhysics = spawnEntity?.GetComponent<PhysicsComponent>();
-                        if (spawnPhysics == null) continue;
-                        Vector3 markerPos = spawnPhysics.Position;
-                        Vector3 size = spawnPhysics.Size;
-                        float side = MathF.Max(1.5f, size.X * 0.5f + 1.2f);
-                        Vector3 nextTo = markerPos + new Vector3(side, 0f, 0f);
-                        _player.Physics.Position = nextTo;
-                        _player.Physics.RenderPosition = nextTo;
-                        _server.SnapToGround(_player.Physics);
-                        break;
-                    }
                 }
                 if (!string.IsNullOrWhiteSpace(avatarKey))
                 {
@@ -553,6 +474,79 @@ namespace SiegeEngine.Scenes
             }
             _terrainBuffer.UpdateCustomWithUV(vertices, indices);
         }
+        public void HandleGameHud(OpenGameHudEvent request)
+        {
+            if (request == null) return;
+            string key = request.Key;
+            if (string.IsNullOrEmpty(key)) key = request.HtmlRelativePath ?? request.Title ?? "hud";
+            if (!request.Open)
+            {
+                if (_hostedHuds.TryGetValue(key, out var existing))
+                {
+                    existing.Dispose();
+                    _hostedHuds.Remove(key);
+                }
+                return;
+            }
+            if (_hostedHuds.ContainsKey(key)) return;
+            if (request.Content == null && string.IsNullOrEmpty(request.HtmlContent) && string.IsNullOrEmpty(request.HtmlRelativePath)) return;
+            var panel = new HostedContentPanel(_renderContext, _controlContext, _window, _eventBus, request);
+            panel.Init();
+            PlaceSceneHud(panel, request);
+            _hostedHuds[key] = panel;
+        }
+
+        private void PlaceSceneHud(HostedContentPanel panel, OpenGameHudEvent request)
+        {
+            float w = request.Width > 1f ? request.Width : 248f;
+            float h = request.Height > 1f ? request.Height : 520f;
+            float viewW = _width > 0 ? _width : w;
+            float viewH = _height > 0 ? _height : h;
+            const float margin = 16f;
+            const float top = 48f;
+            float x = request.PosX;
+            float y = request.PosY;
+            switch (request.Anchor)
+            {
+                case HudAnchor.Right:
+                    x = viewW - w - margin;
+                    y = float.IsNaN(y) ? top : y;
+                    break;
+                case HudAnchor.Left:
+                    x = margin;
+                    y = float.IsNaN(y) ? top : y;
+                    break;
+                case HudAnchor.Top:
+                    x = float.IsNaN(x) ? (viewW - w) * 0.5f : x;
+                    y = top;
+                    break;
+                case HudAnchor.Bottom:
+                    x = float.IsNaN(x) ? (viewW - w) * 0.5f : x;
+                    y = viewH - h - margin;
+                    break;
+                case HudAnchor.Center:
+                    x = (viewW - w) * 0.5f;
+                    y = (viewH - h) * 0.5f;
+                    break;
+                default:
+                    if (float.IsNaN(x)) x = margin;
+                    if (float.IsNaN(y)) y = top;
+                    break;
+            }
+            panel.Size = new Vector2(w, h);
+            panel.Position = new Vector2(x, y);
+            panel.OnPanelResize(w, h);
+        }
+
+        private void UpdateHostedHuds(float deltaTime)
+        {
+            foreach (var kv in _hostedHuds)
+            {
+                if (kv.Value != null && kv.Value.Visible)
+                    kv.Value.Update(deltaTime, Vector2.Zero, false, false, false, 0f);
+            }
+        }
+
         public void SetInputLive(bool live)
         {
             _inputLive = live;
@@ -598,6 +592,7 @@ namespace SiegeEngine.Scenes
                 if (!_usePlayerCamera)
                     ForceVisibleOverheadCamera();
             }
+            UpdateHostedHuds(deltaTime);
         }
         protected override Vector3 GetViewPosition()
         {
@@ -631,14 +626,24 @@ namespace SiegeEngine.Scenes
 
         protected override void RenderOverlay(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            // Standalone Play Game draws HUD through PanelManager.
-            // Hosted in PlayHostPanel we are ALREADY inside PanelManager.Render —
-            // calling it again is a stack overflow.
-            if (_panelHosted) return;
+            if (_panelHosted)
+            {
+                foreach (var kv in _hostedHuds)
+                {
+                    if (kv.Value != null && kv.Value.Visible)
+                        kv.Value.Render();
+                }
+                return;
+            }
             PanelManager.Current?.Render();
         }
         public override void Dispose()
         {
+            foreach (var kv in _hostedHuds)
+            {
+                try { kv.Value?.Dispose(); } catch { }
+            }
+            _hostedHuds.Clear();
             try { HostedAudio?.StopAll(); } catch { }
             try { HostedAudio?.Dispose(); } catch { }
             _terrainShader?.Dispose();
@@ -694,6 +699,46 @@ namespace SiegeEngine.Scenes
                 return spawnPhysics.Position + new Vector3(side + 0.75f, 0f, 0f);
             }
             return Vector3.Zero;
+        }
+
+        void EnsurePlayer(Level level, SceneSettings settings)
+        {
+            if (_player != null)
+            {
+                SetPlayer(_player);
+                return;
+            }
+            var existingPlayerEntity = level?.Entities?.FirstOrDefault(e =>
+                e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase));
+            if (existingPlayerEntity != null)
+            {
+                var existingPhys = existingPlayerEntity.GetComponent<PhysicsComponent>();
+                Vector3 seed = existingPhys != null ? existingPhys.Position : ResolvePreferredSpawn(level, settings);
+                _player = new Player(existingPlayerEntity.Id, seed, 0);
+                SetPlayer(_player);
+                if (existingPhys != null)
+                {
+                    _player.Physics.Position = existingPhys.Position;
+                    _player.Physics.RenderPosition = existingPhys.Position;
+                    _player.Physics.Rotation = existingPhys.Rotation;
+                    _player.Physics.BodyType = BodyType.Kinematic;
+                    _player.Physics.RebuildShape(null);
+                }
+                return;
+            }
+            int playerId = 1;
+            var source = level?.Entities;
+            if (source != null)
+            {
+                for (int i = 0; i < source.Count; i++)
+                {
+                    if (source[i] != null && source[i].Id >= playerId)
+                        playerId = source[i].Id + 1;
+                }
+            }
+            Vector3 spawnAt = ResolvePreferredSpawn(level, settings);
+            _player = new Player(playerId, spawnAt, 0);
+            SetPlayer(_player);
         }
 
         void ApplyPreferredSpawn(Level level, SceneSettings settings)

@@ -34,6 +34,7 @@ namespace Citadel.Server
         private readonly bool _isEditor;
         private int _nextEntityId = 1;  // FIXED: track next ID server-side for authoritative placement
         private readonly PhysicsSystem _physicsSystem;
+        private uint _serverTick;
 
         public GameServer(EventBus eventBus, NetworkManager networkManager = null, bool isEditor = false)
         {
@@ -182,7 +183,8 @@ namespace Citadel.Server
                     }
                 }
             }
-            var deltas = _deltaTracker.GetDeltas(GetEntities());
+            _serverTick++;
+            var deltas = _deltaTracker.GetDeltas(GetEntities(), _serverTick);
             if (deltas.Count > 0)
             {
                 Publish(new EntityMovedEvent { Deltas = deltas, Authoritative = true }, networkSync: true);
@@ -212,7 +214,7 @@ namespace Citadel.Server
 
         public byte[] Serialize()
         {
-            return new EntityMovedEvent { Deltas = _deltaTracker.GetDeltas(GetEntities()), Authoritative = true }.Serialize();
+            return new EntityMovedEvent { Deltas = _deltaTracker.GetDeltas(GetEntities(), _serverTick), Authoritative = true }.Serialize();
         }
 
         public void Deserialize(byte[] data)

@@ -50,7 +50,9 @@ namespace SiegeEngine.Scenes
             var prediction = new ClientPredictionSystem(server, eventBus);
             server.AddSystem(prediction);
             server.AddSystem(new AnimationSystem(server));
-            server.AddSystem(new AudioSystem(server, eventBus, isServer: false, validationSystem: null, renderContext: renderContext));
+            var audio = new AudioSystem(server, eventBus, isServer: false, validationSystem: null, renderContext: renderContext);
+            audio.ContentRoot = projectPath;
+            server.AddSystem(audio);
 
             ctx.Player = null;
             ctx.PlayerMovement = null;
