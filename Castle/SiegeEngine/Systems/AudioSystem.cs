@@ -899,21 +899,29 @@ namespace SiegeEngine.Systems
             if (Path.IsPathRooted(clipNameOrPath) && File.Exists(clipNameOrPath))
                 return clipNameOrPath;
             string cleaned = clipNameOrPath.TrimStart('\\', '/').Replace('/', Path.DirectorySeparatorChar);
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
             string fileName = Path.GetFileName(cleaned);
-            string[] candidates =
+            string exeDir = null;
+            try { exeDir = Path.GetDirectoryName(Environment.ProcessPath); } catch { }
+            string[] roots =
             {
-                Path.Combine(baseDir, cleaned),
-                Path.Combine(baseDir, "Assets", cleaned),
-                Path.Combine(baseDir, "Assets", "Sounds", cleaned),
-                Path.Combine(baseDir, "Assets", "Sounds", fileName),
-                Path.Combine(baseDir, "Assets", "Sounds", "IDE", "Music", fileName),
-                Path.Combine(baseDir, "Sounds", cleaned),
-                Path.Combine(baseDir, "Sounds", fileName),
-                Path.Combine(baseDir, "..", "Assets", "Sounds", fileName),
-                Path.Combine(baseDir, "..", "..", "Assets", "Sounds", fileName),
-                Path.Combine(baseDir, "..", "..", "..", "Assets", "Sounds", fileName),
+                exeDir,
+                Environment.CurrentDirectory,
+                AppDomain.CurrentDomain.BaseDirectory,
+                AppContext.BaseDirectory
             };
+            var candidates = new List<string>();
+            for (int r = 0; r < roots.Length; r++)
+            {
+                string root = roots[r];
+                if (string.IsNullOrEmpty(root)) continue;
+                candidates.Add(Path.Combine(root, cleaned));
+                candidates.Add(Path.Combine(root, "Assets", cleaned));
+                candidates.Add(Path.Combine(root, "Assets", "Sounds", cleaned));
+                candidates.Add(Path.Combine(root, "Assets", "Sounds", fileName));
+                candidates.Add(Path.Combine(root, "Assets", "Sounds", "IDE", "Music", fileName));
+                candidates.Add(Path.Combine(root, "Sounds", cleaned));
+                candidates.Add(Path.Combine(root, "Sounds", fileName));
+            }
             foreach (var c in candidates)
             {
                 try
@@ -922,6 +930,10 @@ namespace SiegeEngine.Systems
                     if (File.Exists(full)) return full;
                 }
                 catch { }
+            }
+            if (_missingClips.Add("resolve:" + clipNameOrPath))
+            {
+                Console.WriteLine("AudioSystem: Resolve miss '" + clipNameOrPath + "' exeDir=" + (exeDir ?? "null") + " cwd=" + Environment.CurrentDirectory + " base=" + AppDomain.CurrentDomain.BaseDirectory);
             }
             return null;
         }

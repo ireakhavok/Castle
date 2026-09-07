@@ -250,6 +250,26 @@ namespace CastleBuilder
             return "2628760";
         }
 
+
+        private static void CopyGameContent(string projectPath, string exportDir, string hostBin)
+        {
+            void CopyTree(string src, string dest)
+            {
+                if (string.IsNullOrEmpty(src) || !Directory.Exists(src))
+                {
+                    Console.WriteLine("[Export] skip missing " + src);
+                    return;
+                }
+                BlueprintManager.CopyDirectory(src, dest);
+                Console.WriteLine("[Export] copied " + src + " -> " + dest);
+            }
+            CopyTree(Path.Combine(projectPath, "Textures"), Path.Combine(exportDir, "Textures"));
+            CopyTree(Path.Combine(projectPath, "Sounds"), Path.Combine(exportDir, "Sounds"));
+            string hostSounds = Path.Combine(hostBin, "Assets", "Sounds");
+            CopyTree(hostSounds, Path.Combine(exportDir, "Assets", "Sounds"));
+            CopyTree(hostSounds, Path.Combine(exportDir, "Sounds"));
+        }
+
         public static void ExportGame(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             Console.WriteLine("[MenuCommands.ExportGame] Writing game-only client into the project exported folder");
@@ -280,7 +300,7 @@ namespace CastleBuilder
                             Console.WriteLine("[Export ERROR] GameHost publish failed for " + config);
                             continue;
                         }
-                        foreach (string folder in new[] { "Assets", "Scenes", "Scripts" })
+                        foreach (string folder in new[] { "Assets", "Scenes", "Scripts", "Sounds", "Textures" })
                         {
                             string source = Path.Combine(projectPath, folder);
                             if (!Directory.Exists(source)) continue;
@@ -291,6 +311,8 @@ namespace CastleBuilder
                         string payloadTarget = Path.Combine(exportDir, "play_payload.json");
                         if (!string.IsNullOrEmpty(payloadFile) && File.Exists(payloadFile))
                             File.Copy(payloadFile, payloadTarget, true);
+                        CopyGameContent(projectPath, exportDir, AppDomain.CurrentDomain.BaseDirectory);
+                        BlueprintManager.MaterializeSoundsTo(ProjectSettings.Current.CurrentLevel, exportDir);
                         string steam = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "steam_api64.dll");
                         if (File.Exists(steam))
                             File.Copy(steam, Path.Combine(exportDir, "steam_api64.dll"), true);
