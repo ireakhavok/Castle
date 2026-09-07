@@ -62,6 +62,16 @@ namespace SiegeEngine.Core.Definitions
             get => _transform.Rotation;
             set => _transform.Rotation = value;
         }
+        /// <summary>
+        /// Editor/authored pose write. Keeps simulation Position and draw RenderPosition together.
+        /// Runtime interpolation and EntityDeltaTracker.Apply must not use this.
+        /// </summary>
+        public void SetAuthoredPose(Vector3 position, Quaternion rotation)
+        {
+            Position = position;
+            Rotation = rotation;
+            RenderPosition = position;
+        }
         public Vector3 Scale
         {
             get => _transform.Scale;

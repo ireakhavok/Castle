@@ -81,8 +81,7 @@ namespace CastleBuilder
             var entity = GetEntityById(entityId);
             var physics = entity?.GetComponent<PhysicsComponent>();
             if (physics == null) return;
-            physics.Position = pos;
-            physics.Rotation = rot;
+            physics.SetAuthoredPose(pos, rot);
         }
         /// <summary>
         /// Same core systems SceneManager registers for Play.

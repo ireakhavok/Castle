@@ -289,6 +289,7 @@ namespace ToolChest
                 physics.IsSleeping = false;
                 physics.SleepTimer = 0f;
             }
+            physics.SetAuthoredPose(physics.Position, physics.Rotation);
             _lastDragMouse = contentMouse;
             var level = ProjectSettings.Current.CurrentLevel;
             if (level != null)
@@ -299,8 +300,7 @@ namespace ToolChest
                     var bpPhysics = blueprintEntity.GetComponent<PhysicsComponent>();
                     if (bpPhysics != null)
                     {
-                        bpPhysics.Position = physics.Position;
-                        bpPhysics.Rotation = physics.Rotation;
+                        bpPhysics.SetAuthoredPose(physics.Position, physics.Rotation);
                         if (bpPhysics.BodyType == BodyType.Dynamic)
                         {
                             bpPhysics.IsSleeping = false;
@@ -309,7 +309,9 @@ namespace ToolChest
                     }
                 }
             }
-            _eventBus.Publish(new EntityMovedEvent(_selectedEntityId, physics.Position, physics.Rotation));
+            var movedEvent = new EntityMovedEvent(_selectedEntityId, physics.Position, physics.Rotation);
+            movedEvent.Authoritative = true;
+            _eventBus.Publish(movedEvent);
         }
         private void EndDrag()
         {
