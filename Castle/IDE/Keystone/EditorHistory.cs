@@ -420,8 +420,7 @@ namespace Keystone
             var entity = level.Entities.Find(e => e.Id == _entityId);
             var physics = entity?.GetComponent<PhysicsComponent>();
             if (physics == null) return;
-            physics.Position = pos;
-            physics.Rotation = rot;
+            physics.SetAuthoredPose(pos, rot);
             EditorHistory.TransformApplied?.Invoke(_entityId, pos, rot);
         }
     }
