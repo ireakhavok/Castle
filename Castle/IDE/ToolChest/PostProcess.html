@@ -3,100 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body {
-            font-family: Segoe UI, system-ui, sans-serif;
-            background: #1e1e1e;
-            color: #ddd;
-            padding: 12px;
+        html, body {
             margin: 0;
-            overflow: hidden;
-        }
-        .panel {
-            background: #252526;
-            border: 1px solid #383838;
-            padding: 12px;
-            overflow: hidden;
-        }
-        .title { color: #f0f0f0; margin: 0 0 8px 0; }
-        .section { color: #c9a227; font-size: 11px; letter-spacing: 0.08em; margin: 10px 0 4px; }
-        .field {
+            padding: 0;
+            height: 100%;
+            background: #1e1e1e;
+            color: #d6d6d6;
+            font-family: "Segoe UI", system-ui, sans-serif;
             font-size: 12px;
-            color: #aaa;
-            margin: 6px 0 2px;
-            display: block;
-            white-space: nowrap;
+            overflow: hidden;
         }
-        select, input {
-            background: #3c3c3c;
-            color: #ddd;
-            border: 1px solid #555;
-            padding: 4px 6px;
-            width: 100%;
+        .wrap {
+            height: 100%;
+            overflow: auto;
+            padding: 10px;
             box-sizing: border-box;
         }
-        input[type="range"] {
-            padding: 0;
-            height: 22px;
+        .box {
+            border: 1px solid #3a3a3a;
+            background: #242424;
+            padding: 8px 10px 10px;
+            margin: 0 0 10px 0;
         }
-        .row { display: flex; gap: 8px; }
-        .row > div { flex: 1; }
+        .box-title {
+            font-size: 11px;
+            color: #9a9a9a;
+            letter-spacing: 0.08em;
+            margin: 0 0 8px 0;
+        }
+        .row {
+            display: block;
+            height: 26px;
+            margin: 0 0 4px 0;
+        }
+        .lbl {
+            display: inline-block;
+            width: 88px;
+            color: #9a9a9a;
+            font-size: 11px;
+        }
+        input[type="range"] {
+            display: inline-block;
+            width: 160px;
+            height: 22px;
+            margin: 0;
+            padding: 0;
+            vertical-align: middle;
+        }
+        input[type="text"], input:not([type]), select {
+            display: inline-block;
+            width: 160px;
+            height: 22px;
+            box-sizing: border-box;
+            padding: 0 6px;
+            background: #2a2a2a;
+            color: #e6e6e6;
+            border: 1px solid #555;
+            vertical-align: middle;
+            font-size: 12px;
+        }
+        .val {
+            display: inline-block;
+            width: 44px;
+            margin-left: 6px;
+            font-size: 11px;
+            color: #c8c8c8;
+            vertical-align: middle;
+        }
         .hint {
             display: block;
-            white-space: nowrap;
             font-size: 11px;
-            color: #888;
-            margin: 2px 0;
-            line-height: 1.2;
+            color: #7a7a7a;
+            margin: 4px 0 0 0;
         }
-        .readout {
+        .check {
             display: block;
-            font-size: 12px;
-            color: #7CFFCB;
-            background: #1a1a1a;
-            border: 1px solid #383838;
-            padding: 4px 6px;
-            margin: 2px 0 6px;
-            white-space: nowrap;
+            height: 22px;
+            margin: 0 0 4px 0;
         }
-        .actions { display: flex; gap: 8px; margin-top: 10px; }
-        button {
-            background: #c9a227;
-            color: #111;
-            padding: 8px 16px;
-            border: none;
+        input[type="checkbox"] {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            min-width: 16px;
+            min-height: 16px;
+            margin: 0 8px 0 0;
+            padding: 0;
+            vertical-align: middle;
+        }
+        .check .lbl {
+            width: auto;
+            vertical-align: middle;
+        }
+        .actions {
+            display: block;
+            margin-top: 4px;
+        }
+        .btn-primary, .btn-ghost {
+            display: inline-block;
+            width: 110px;
+            height: 26px;
+            margin-right: 8px;
+            border-radius: 3px;
             cursor: pointer;
-            font-weight: 600;
+            font-size: 12px;
         }
-        button:hover { background: #e0b83a; }
-        button.secondary { background: #444; color: #ddd; font-weight: 500; }
-        button.secondary:hover { background: #555; }
-        .check { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-        .check input { width: auto; }
+        .btn-primary {
+            background: #2f6f62;
+            color: #eafff8;
+            border: 1px solid #3d8a7a;
+        }
+        .btn-ghost {
+            background: #333;
+            color: #ddd;
+            border: 1px solid #555;
+        }
     </style>
 </head>
 <body>
-    <div class="panel">
-        <div class="title">Post Process</div>
-        <div class="section">SUN</div>
-        <div class="check">
-            <input id="pp-sun-enabled" type="checkbox" data-hook="PostProcessApply">
-            <div class="field">Enable sun</div>
-        </div>
-        <div class="field">Azimuth</div>
-        <input id="pp-sun-azimuth" type="range" min="0" max="360" step="1" value="187">
-        <div id="pp-sun-azimuth-val" class="readout">187</div>
-        <div class="field">Elevation</div>
-        <input id="pp-sun-elevation" type="range" min="5" max="85" step="1" value="31">
-        <div id="pp-sun-elevation-val" class="readout">31</div>
-        <div class="field">Travel vector</div>
-        <div id="pp-sun-vector" class="readout">-0.850, 0.100, -0.520</div>
-        <div class="row">
-            <div>
-                <div class="field">Intensity</div>
+    <div class="wrap">
+        <div class="box">
+            <div class="box-title">SUN</div>
+            <div class="check">
+                <input id="pp-sun-enabled" type="checkbox" data-hook="PostProcessApply">
+                <span class="lbl">Enable sun</span>
+            </div>
+            <div class="row">
+                <span class="lbl">Azimuth</span>
+                <input id="pp-sun-azimuth" type="range" min="0" max="360" step="1" value="187">
+                <span id="pp-sun-azimuth-val" class="val">187</span>
+            </div>
+            <div class="row">
+                <span class="lbl">Elevation</span>
+                <input id="pp-sun-elevation" type="range" min="5" max="85" step="1" value="31">
+                <span id="pp-sun-elevation-val" class="val">31</span>
+            </div>
+            <div class="row">
+                <span class="lbl">Travel</span>
+                <span id="pp-sun-vector" class="val" style="width:200px;">-0.850, 0.100, -0.520</span>
+            </div>
+            <div class="row">
+                <span class="lbl">Intensity</span>
                 <input id="pp-sun-intensity" value="1">
             </div>
-            <div>
-                <div class="field">Shadows</div>
+            <div class="row">
+                <span class="lbl">Shadows</span>
                 <select id="pp-shadow-quality">
                     <option value="Off">Off</option>
                     <option value="Low">Low</option>
@@ -106,28 +157,30 @@
                     <option value="Cinematic">Cinematic</option>
                 </select>
             </div>
+            <div class="check">
+                <input id="pp-sun-cast-shadows" data-hook="PostProcessApply" type="checkbox" checked>
+                <span class="lbl">Sun casts shadows</span>
+            </div>
+            <div class="check">
+                <input id="pp-shadow-smooth" type="checkbox">
+                <span class="lbl">Smooth shadows</span>
+            </div>
+            <div class="hint">Smooth filters the depth map.</div>
         </div>
-        <div class="check">
-            <input id="pp-sun-cast-shadows" data-hook="PostProcessApply" type="checkbox" checked>
-            <div class="field">Sun casts shadows</div>
-        </div>
-        <div class="check">
-            <input id="pp-shadow-smooth" type="checkbox">
-            <div class="field">Smooth shadows</div>
-        </div>
-        <div class="hint">Smooth filters the depth map. Off keeps crisp edges.</div>
 
-        <div class="section">FOG</div>
-        <div class="field">Fog mode</div>
-        <select id="pp-fog-mode">
-            <option value="Off" selected>Off</option>
-            <option value="Exponential">Exponential</option>
-            <option value="Height">Height</option>
-            <option value="Volumetric">Volumetric</option>
-        </select>
-        <div class="row">
-            <div>
-                <div class="field">Fog quality</div>
+        <div class="box">
+            <div class="box-title">FOG</div>
+            <div class="row">
+                <span class="lbl">Mode</span>
+                <select id="pp-fog-mode">
+                    <option value="Off" selected>Off</option>
+                    <option value="Exponential">Exponential</option>
+                    <option value="Height">Height</option>
+                    <option value="Volumetric">Volumetric</option>
+                </select>
+            </div>
+            <div class="row">
+                <span class="lbl">Quality</span>
                 <select id="pp-fog-quality">
                     <option value="Off" selected>Off</option>
                     <option value="Low">Low</option>
@@ -135,72 +188,82 @@
                     <option value="High">High</option>
                 </select>
             </div>
-            <div>
-                <div class="field">Density</div>
+            <div class="row">
+                <span class="lbl">Density</span>
                 <input id="pp-fog-density" value="0.003">
             </div>
-        </div>
-        <div class="field">Fog start</div>
-        <input id="pp-fog-start" value="0">
-
-        <div class="section">EXPOSURE</div>
-        <div class="row">
-            <div>
-                <div class="field">Exposure</div>
-                <input id="pp-exposure" type="range" min="0.2" max="3" step="0.05" value="1">
-                <div id="pp-exposure-val" class="readout">1.00</div>
+            <div class="row">
+                <span class="lbl">Start</span>
+                <input id="pp-fog-start" value="0">
             </div>
-            <div>
-                <div class="field">Tonemap</div>
+        </div>
+
+        <div class="box">
+            <div class="box-title">EXPOSURE</div>
+            <div class="row">
+                <span class="lbl">Exposure</span>
+                <input id="pp-exposure" type="range" min="0.2" max="3" step="0.05" value="1">
+                <span id="pp-exposure-val" class="val">1.00</span>
+            </div>
+            <div class="row">
+                <span class="lbl">Tonemap</span>
                 <select id="pp-tonemap">
                     <option value="Off" selected>Off</option>
                     <option value="ACES">ACES</option>
                     <option value="Reinhard">Reinhard</option>
                 </select>
             </div>
+            <div class="check">
+                <input id="pp-auto-exposure" type="checkbox">
+                <span class="lbl">Auto exposure</span>
+            </div>
+            <div class="row">
+                <span class="lbl">Adapt</span>
+                <input id="pp-adapt-seconds" type="range" min="0.4" max="3" step="0.05" value="1.4">
+                <span id="pp-adapt-seconds-val" class="val">1.40</span>
+            </div>
         </div>
-        <div class="check">
-            <input id="pp-auto-exposure" type="checkbox">
-            <div class="field">Auto exposure</div>
-        </div>
-        <div class="field">Adapt seconds</div>
-        <input id="pp-adapt-seconds" type="range" min="0.4" max="3" step="0.05" value="1.4">
-        <div id="pp-adapt-seconds-val" class="readout">1.40</div>
-        <div class="hint">Leave tonemap Off. Auto exposure meters the view and eases as you enter a room.</div>
 
-        <div class="section">BLOOM</div>
-        <div class="check">
-            <input id="pp-bloom-enabled" type="checkbox">
-            <div class="field">Enable bloom</div>
-        </div>
-        <div class="row">
-            <div>
-                <div class="field">Threshold</div>
+        <div class="box">
+            <div class="box-title">BLOOM</div>
+            <div class="check">
+                <input id="pp-bloom-enabled" type="checkbox">
+                <span class="lbl">Enable bloom</span>
+            </div>
+            <div class="row">
+                <span class="lbl">Threshold</span>
                 <input id="pp-bloom-threshold" type="range" min="0.2" max="2.5" step="0.05" value="1">
-                <div id="pp-bloom-threshold-val" class="readout">1.00</div>
+                <span id="pp-bloom-threshold-val" class="val">1.00</span>
             </div>
-            <div>
-                <div class="field">Intensity</div>
+            <div class="row">
+                <span class="lbl">Intensity</span>
                 <input id="pp-bloom-intensity" type="range" min="0" max="2" step="0.05" value="0.35">
-                <div id="pp-bloom-intensity-val" class="readout">0.35</div>
+                <span id="pp-bloom-intensity-val" class="val">0.35</span>
             </div>
         </div>
-        <div class="hint">Threshold is scene brightness. On this path 0.7-1.0 blooms highlights. 2.5 blooms nothing.</div>
 
-        <div class="section">GRADE</div>
-        <div class="field">Contrast</div>
-        <input id="pp-contrast" type="range" min="0.5" max="1.8" step="0.02" value="1">
-        <div id="pp-contrast-val" class="readout">1.00</div>
-        <div class="field">Saturation</div>
-        <input id="pp-saturation" type="range" min="0" max="2" step="0.02" value="1">
-        <div id="pp-saturation-val" class="readout">1.00</div>
-        <div class="field">Temperature</div>
-        <input id="pp-temperature" type="range" min="-1" max="1" step="0.02" value="0">
-        <div id="pp-temperature-val" class="readout">0.00</div>
-        <div class="hint">Play Game uses these settings.</div>
+        <div class="box">
+            <div class="box-title">GRADE</div>
+            <div class="row">
+                <span class="lbl">Contrast</span>
+                <input id="pp-contrast" type="range" min="0.5" max="1.8" step="0.02" value="1">
+                <span id="pp-contrast-val" class="val">1.00</span>
+            </div>
+            <div class="row">
+                <span class="lbl">Saturation</span>
+                <input id="pp-saturation" type="range" min="0" max="2" step="0.02" value="1">
+                <span id="pp-saturation-val" class="val">1.00</span>
+            </div>
+            <div class="row">
+                <span class="lbl">Temperature</span>
+                <input id="pp-temperature" type="range" min="-1" max="1" step="0.02" value="0">
+                <span id="pp-temperature-val" class="val">0.00</span>
+            </div>
+        </div>
+
         <div class="actions">
-            <button data-hook="PostProcessApply">Apply</button>
-            <button class="secondary" data-hook="CancelPostProcess">Cancel</button>
+            <button class="btn-primary" data-hook="PostProcessApply">Apply</button>
+            <button class="btn-ghost" data-hook="CancelPostProcess">Cancel</button>
         </div>
     </div>
 </body>
