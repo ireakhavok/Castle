@@ -32,6 +32,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             _window = (nint)_internalWindow;
 
             _glfw.MakeContextCurrent(_internalWindow);
+            _glfw.SwapInterval(0);
 
             GL gl = GL.GetApi(_glfw.GetProcAddress);
 

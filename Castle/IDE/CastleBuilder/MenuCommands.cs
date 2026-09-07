@@ -160,6 +160,66 @@ namespace CastleBuilder
             Process.Start(psi);
             Console.WriteLine($"[PlayGame SUCCESS] New runtime window launched with pure in-memory Level + SceneData via temp payload file (no forced save, no command-line length limit)");
         }
+
+        private static void CopyReferencedEngineAssets(string projectPath, string exportRoot, string engineBin)
+        {
+            var refs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            void ScanText(string text)
+            {
+                if (string.IsNullOrEmpty(text)) return;
+                string[] exts = { ".wav", ".ogg", ".mp3" };
+                for (int e = 0; e < exts.Length; e++)
+                {
+                    int i = 0;
+                    while (true)
+                    {
+                        int hit = text.IndexOf(exts[e], i, StringComparison.OrdinalIgnoreCase);
+                        if (hit < 0) break;
+                        int start = hit;
+                        while (start > 0)
+                        {
+                            char c = text[start - 1];
+                            if (char.IsLetterOrDigit(c) || c == '\\' || c == '/' || c == '.' || c == ' ' || c == '_' || c == '-')
+                                start--;
+                            else break;
+                        }
+                        string rel = text.Substring(start, hit + exts[e].Length - start).Trim().Trim('"', '\'');
+                        if (!string.IsNullOrWhiteSpace(rel))
+                            refs.Add(rel.Replace('/', '\\'));
+                        i = hit + exts[e].Length;
+                    }
+                }
+            }
+            string payload = Path.Combine(exportRoot, "play_payload.json");
+            if (File.Exists(payload)) ScanText(File.ReadAllText(payload));
+            string projectJson = Path.Combine(projectPath, "project.json");
+            if (File.Exists(projectJson)) ScanText(File.ReadAllText(projectJson));
+            string engineAssets = Path.Combine(engineBin, "Assets");
+            foreach (string rel in refs)
+            {
+                string cleaned = rel.TrimStart('\\', '/');
+                string[] sources =
+                {
+                    Path.Combine(engineAssets, cleaned),
+                    Path.Combine(engineBin, cleaned),
+                    Path.Combine(engineAssets, "Sounds", Path.GetFileName(cleaned)),
+                    Path.Combine(engineAssets, "Sounds", "IDE", "Music", Path.GetFileName(cleaned))
+                };
+                foreach (string src in sources)
+                {
+                    if (!File.Exists(src)) continue;
+                    string destRel = cleaned.StartsWith("Assets", StringComparison.OrdinalIgnoreCase)
+                        ? cleaned
+                        : Path.Combine("Assets", cleaned);
+                    string dest = Path.Combine(exportRoot, destRel);
+                    Directory.CreateDirectory(Path.GetDirectoryName(dest));
+                    File.Copy(src, dest, true);
+                    Console.WriteLine("[Export] Copied referenced asset " + destRel);
+                    break;
+                }
+            }
+        }
+
         public static void SandboxRegressionTest(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             Console.WriteLine("[Tests] Sandbox Regression Test launched (vertical slice/demo only)");
@@ -212,6 +272,7 @@ namespace CastleBuilder
                     {
                         File.Copy(payloadFile, payloadTarget, true);
                     }
+                    CopyReferencedEngineAssets(projectPath, exportRoot, AppDomain.CurrentDomain.BaseDirectory);
                     string binDir = AppDomain.CurrentDomain.BaseDirectory;
                     string foundationSource = Path.Combine(binDir, "Foundation.exe");
                     if (!File.Exists(foundationSource))
@@ -241,11 +302,6 @@ namespace CastleBuilder
                     if (Directory.Exists(runtimesSrc))
                     {
                         BlueprintManager.CopyDirectory(runtimesSrc, Path.Combine(exportRoot, "runtimes"));
-                        Console.WriteLine("[Export] Copied runtimes/ from build output (Silk native layout)");
-                    }
-                    else
-                    {
-                        Console.WriteLine("[Export] WARNING: no runtimes/ next to the host exe");
                     }
                     string runtimeConfig = Path.Combine(exportRoot, exeStem + ".runtimeconfig.json");
                     if (!File.Exists(runtimeConfig))
@@ -253,14 +309,14 @@ namespace CastleBuilder
                         Console.WriteLine($"[Export ERROR] Missing {exeStem}.runtimeconfig.json next to the IDE exe; cannot launch exported client.");
                         return;
                     }
-                    Process.Start(new ProcessStartInfo
+                    var exported = Process.Start(new ProcessStartInfo
                     {
                         FileName = Path.Combine(exportRoot, exeName),
                         WorkingDirectory = exportRoot,
                         UseShellExecute = true,
                         Arguments = $"--client --play-project \"{exportRoot}\" --load-level \"{levelName}\" --play-payload-file \"{payloadTarget}\" --custom-assemblies \"{ScriptLoader.GetCustomAssemblyList(projectPath)}\""
                     });
-                    Console.WriteLine($"[Export SUCCESS] Clean game client exported to {exportRoot} with payload file for level '{levelName}'");
+                    Console.WriteLine($"[Export SUCCESS] Separate process pid={(exported != null ? exported.Id : 0)} at {exportRoot} level '{levelName}'");
                 }
                 catch (Exception ex)
                 {

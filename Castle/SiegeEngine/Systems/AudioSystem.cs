@@ -38,6 +38,7 @@ namespace SiegeEngine.Systems
         private readonly Dictionary<int, PlaybackInstance> _activePlayers = new Dictionary<int, PlaybackInstance>();
         private readonly Dictionary<int, WaveOutPlayer> _spatialPlayers = new Dictionary<int, WaveOutPlayer>();
         private readonly List<AutoPlayRegistration> _autoPlayRegs = new List<AutoPlayRegistration>();
+        private readonly HashSet<string> _missingClips = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly object _regsLock = new object();
         private readonly List<AutoPlayRegistration> _workerSnapshot = new List<AutoPlayRegistration>();
         private bool _autoPlayScanned;
@@ -113,6 +114,7 @@ namespace SiegeEngine.Systems
             public Vector3 SmoothedDirection = Vector3.Zero;
             public float SmoothedLowPass = 12000f;
             public bool HasSmoothedState;
+            public bool StartFailed;
         }
         public AudioSystem(IGameServer server, EventBus eventBus, bool isServer,
             ISoundValidator validationSystem = null, IRenderContext renderContext = null)
@@ -353,10 +355,16 @@ namespace SiegeEngine.Systems
                 }
                 if (!reg.Started)
                 {
+                    if (reg.StartFailed) continue;
                     if (MasterMuted) continue;
                     if (!_listenerValid) continue;
                     var bootstrap = PrimaryLosRayInternal(reg.Source.Position, _listenerPosition);
                     int h = PlaySpatial(reg.Source, bootstrap);
+                    if (h < 0)
+                    {
+                        reg.StartFailed = true;
+                        continue;
+                    }
                     if (h >= 0)
                     {
                         reg.Handle = h;
@@ -555,7 +563,8 @@ namespace SiegeEngine.Systems
             string path = ResolveSoundPath(clipNameOrPath);
             if (path == null || !File.Exists(path))
             {
-                Console.WriteLine($"AudioSystem: Sound file not found for '{clipNameOrPath}'.");
+                if (_missingClips.Add(clipNameOrPath))
+                    Console.WriteLine($"AudioSystem: Sound file not found for '{clipNameOrPath}'.");
                 return -1;
             }
             try
@@ -593,7 +602,8 @@ namespace SiegeEngine.Systems
             string resolved = ResolveSoundPath(pathHint);
             if (resolved == null)
             {
-                Console.WriteLine($"AudioSystem: [Spatial] file not found for '{pathHint}'.");
+                if (_missingClips.Add(pathHint ?? ""))
+                    Console.WriteLine($"AudioSystem: [Spatial] file not found for '{pathHint}'.");
                 return -1;
             }
             MonoPcmClip clip = GetOrLoadMonoClip(resolved);
