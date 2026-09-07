@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI.Elements
+// Folder: SiegeEngine.Core.UI.Elements
 // File: RangeElement.cs
 using System;
 using System.Numerics;
@@ -14,6 +14,7 @@ namespace SiegeEngine.Core.UI.Elements
         public float Step { get; set; } = 0.5f;
         public float Value { get; set; } = 10f;
         public float CommittedValue { get; set; } = 10f;
+        private bool _seededValue;
         public RangeElement()
         {
             Tag = "input";
@@ -41,9 +42,13 @@ namespace SiegeEngine.Core.UI.Elements
             {
                 Step = stepVal;
             }
-            if (Attributes.TryGetValue("value", out string valStr) && float.TryParse(valStr, NumberStyles.Any, CultureInfo.InvariantCulture, out float parsed))
+            // Seed once from the HTML default. Live drags write Value + Attributes["value"];
+            // re-parsing the attribute every layout is fine if drag updated it, but Prefill
+            // and drag both own Value — do not snap back to the original markup.
+            if (!_seededValue && Attributes.TryGetValue("value", out string valStr) && float.TryParse(valStr, NumberStyles.Any, CultureInfo.InvariantCulture, out float parsed))
             {
                 Value = parsed;
+                _seededValue = true;
             }
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
         }

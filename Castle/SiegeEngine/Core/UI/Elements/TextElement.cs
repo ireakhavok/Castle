@@ -16,9 +16,15 @@ namespace SiegeEngine.Core.UI.Elements
             get => _content;
             set
             {
-                if (_content != value)
+                string next = value ?? "";
+                if (_content != next)
                 {
-                    _content = value;
+                    _content = next;
+                    // Paint on the next frame without waiting for a full relayout.
+                    // PostProcess slider readouts call this every Update().
+                    _lines = new List<string> { _content };
+                    if (_lineHeight <= 0f)
+                        _lineHeight = (Style.FontSize > 0f ? Style.FontSize : 13f) * 1.2f;
                     MarkTextDirty();
                 }
             }
@@ -111,8 +117,11 @@ namespace SiegeEngine.Core.UI.Elements
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
 
             float fs = Style.FontSize;
+            if (_lineHeight <= 0f) _lineHeight = fs * 1.2f;
+            if (_lines == null || _lines.Count == 0)
+                _lines = new List<string> { Content ?? "" };
             float y = ComputedContentY;
-            Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : new Vector4(0f, 0f, 0f, 1f);
+            Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : new Vector4(0.8f, 0.8f, 0.8f, 1f);
             string textAlign = string.IsNullOrEmpty(Style.TextAlign) ? "left" : Style.TextAlign;
 
             foreach (string line in _lines)
