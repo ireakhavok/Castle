@@ -27,10 +27,25 @@ namespace SiegeEngine.Core.UI.Elements
             {
                 Style.Display = "none";
             }
+            bool isCheck = this.Type == "checkbox" || this.Type == "radio";
+            if (isCheck)
+            {
+                // Checkboxes stay a compact square. flex:1 on the generic `input`
+                // rule must not stretch them across the right column.
+                Style.Flex = "0 0 18px";
+                Style.FlexGrow = 0f;
+                Style.FlexShrink = 0f;
+                Style.WidthStr = "18px";
+                Style.HeightStr = "18px";
+                Style.MinWidthStr = "18px";
+                Style.MaxWidthStr = "18px";
+                forcedWidth = 18f;
+                forcedHeight = 18f;
+            }
             // Fill the slot we were given. Do not steal the flex row's full width —
             // that paints the field on top of a flex-shrink:0 label.
             bool parentIsFlex = Parent != null && Parent.Style.Display == "flex";
-            if (float.IsNaN(forcedWidth) && string.IsNullOrEmpty(Style.WidthStr) && (this.Type == "text" || this.Type == "number") && !parentIsFlex)
+            if (!isCheck && float.IsNaN(forcedWidth) && string.IsNullOrEmpty(Style.WidthStr) && (this.Type == "text" || this.Type == "number") && !parentIsFlex)
             {
                 Vector4 m = HtmlLayoutUtils.ParseMargins(Style, parentWidth, viewportWidth, viewportHeight);
                 float ml = float.IsNaN(m.W) ? 0 : m.W;
@@ -38,11 +53,14 @@ namespace SiegeEngine.Core.UI.Elements
                 forcedWidth = parentWidth - ml - mr;
             }
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
-            if (this.Type == "checkbox" || this.Type == "radio")
+            if (isCheck)
             {
-                float fs = Style.FontSize;
-                if (float.IsNaN(ComputedWidth)) ComputedWidth = fs * 1.5f;
-                if (float.IsNaN(ComputedHeight)) ComputedHeight = fs;
+                ComputedWidth = 18f;
+                ComputedHeight = 18f;
+                ComputedBackgroundWidth = 18f;
+                ComputedBackgroundHeight = 18f;
+                ComputedContentWidth = 18f;
+                ComputedContentHeight = 18f;
             }
             else if (this.Type == "text" || this.Type == "number")
             {
@@ -101,11 +119,7 @@ namespace SiegeEngine.Core.UI.Elements
         {
             if (this.Type == "checkbox" || this.Type == "radio")
             {
-                Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
-                Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
-                float iw = fs + pad.W + pad.Y + borderW.W + borderW.Y;
-                float ih = fs + pad.X + pad.Z + borderW.X + borderW.Z;
-                return new Vector2(iw, ih);
+                return new Vector2(18f, 18f);
             }
             if (this.Type == "text" || this.Type == "number")
             {
