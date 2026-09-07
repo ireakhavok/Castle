@@ -28,6 +28,7 @@ namespace SiegeEngine.Scenes
         protected uint _terrainTextureId;
         protected bool _hasColorTexture;
         protected bool _terrainWireframe;
+        private readonly List<ShadowCaster> _gameShadowCasters = new List<ShadowCaster>();
 
         public string SceneName => _sceneData?.Name ?? GetType().Name;
 
@@ -75,7 +76,7 @@ namespace SiegeEngine.Scenes
 
         protected override List<ShadowCaster> CollectShadowCasters(IReadOnlyList<Entity> entities)
         {
-            var list = ShadowMapRenderer.CollectCasters(entities);
+            var list = ShadowMapRenderer.CollectCasters(entities, _gameShadowCasters);
             if (_terrainBuffer != null && _terrainBuffer.GetIndexCount() > 0 && _heightmap != null)
             {
                 list.Add(new ShadowCaster

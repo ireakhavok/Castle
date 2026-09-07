@@ -41,6 +41,9 @@ namespace SiegeEngine.Systems
         private readonly HashSet<string> _missingClips = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly object _regsLock = new object();
         private readonly List<AutoPlayRegistration> _workerSnapshot = new List<AutoPlayRegistration>();
+        private readonly List<AutoPlayRegistration> _updateSnapshot = new List<AutoPlayRegistration>();
+        private readonly List<Vector3> _freeSurfaceSources = new List<Vector3>();
+        private readonly List<(int entityId, Vector3 pos)> _freeSurfaceSecondary = new List<(int entityId, Vector3 pos)>();
         private bool _autoPlayScanned;
         private bool _geometryUploaded;
         private int _lastGeometryEntityCount = -1;
@@ -313,10 +316,14 @@ namespace SiegeEngine.Systems
                 List<AutoPlayRegistration> snapshot;
                 lock (_regsLock)
                 {
-                    snapshot = new List<AutoPlayRegistration>(_autoPlayRegs);
+                    _updateSnapshot.Clear();
+                    _updateSnapshot.AddRange(_autoPlayRegs);
+                    snapshot = _updateSnapshot;
                 }
-                var sources = new List<Vector3>();
-                var secondary = new List<(int entityId, Vector3 pos)>();
+                var sources = _freeSurfaceSources;
+                sources.Clear();
+                var secondary = _freeSurfaceSecondary;
+                secondary.Clear();
                 for (int i = 0; i < snapshot.Count; i++)
                 {
                     if (!snapshot[i].Started) continue;
@@ -343,7 +350,9 @@ namespace SiegeEngine.Systems
             List<AutoPlayRegistration> snapshot;
             lock (_regsLock)
             {
-                snapshot = new List<AutoPlayRegistration>(_autoPlayRegs);
+                _updateSnapshot.Clear();
+                _updateSnapshot.AddRange(_autoPlayRegs);
+                snapshot = _updateSnapshot;
             }
             foreach (var reg in snapshot)
             {

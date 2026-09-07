@@ -21,6 +21,18 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public MovementBlendConfig BlendConfig { get; set; } = new MovementBlendConfig();
         public bool SnapEnabled { get; set; } = true;
 
+        [JsonIgnore] private Matrix4x4[] _localsScratch;
+        [JsonIgnore] private Animation[] _resolvedAnims;
+        [JsonIgnore] private float[] _clipDurs;
+        [JsonIgnore] private bool[] _sampleValid;
+        [JsonIgnore] private float[] _weights;
+        [JsonIgnore] private Vector3[][] _samplePos;
+        [JsonIgnore] private Quaternion[][] _sampleRot;
+        [JsonIgnore] private Vector3[][] _sampleScale;
+        [JsonIgnore] private Vector3[] _finalPos;
+        [JsonIgnore] private Quaternion[] _finalRot;
+        [JsonIgnore] private Vector3[] _finalScale;
+
         public class MovementBlendConfig
         {
             public float XMin { get; set; } = -1f;
@@ -113,9 +125,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
 
             if (Clips.Count == 0)
             {
-                var rest = new Matrix4x4[boneCount];
-                for (int b = 0; b < boneCount; b++) rest[b] = model.Skeleton.Bones[b].LocalRest;
-                return rest;
+                return FillRestLocals(model, boneCount);
             }
 
             // ------------------------------------------------------------------
@@ -126,9 +136,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 var clip = Clips[0];
                 if (string.IsNullOrEmpty(clip.AnimationPath))
                 {
-                    var rest = new Matrix4x4[boneCount];
-                    for (int b = 0; b < boneCount; b++) rest[b] = model.Skeleton.Bones[b].LocalRest;
-                    return rest;
+                    return FillRestLocals(model, boneCount);
                 }
 
                 string desiredName = Path.GetFileNameWithoutExtension(clip.AnimationPath).ToLowerInvariant();
@@ -136,9 +144,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
                            ?? model.Animations.LastOrDefault();
                 if (anim == null || anim.Keyframes == null || anim.Keyframes.Count == 0)
                 {
-                    var rest = new Matrix4x4[boneCount];
-                    for (int b = 0; b < boneCount; b++) rest[b] = model.Skeleton.Bones[b].LocalRest;
-                    return rest;
+                    return FillRestLocals(model, boneCount);
                 }
 
                 float firstTime = anim.Keyframes[0].Time;
@@ -158,13 +164,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 float sampleTime = clip.StartFrame + clip.LocalTime;
                 sampleTime = WrapSampleTime(sampleTime, firstTime, lastTime);
 
-                int lower = 0, upper = anim.Keyframes.Count - 1;
-                for (int i = 1; i < anim.Keyframes.Count; i++)
-                {
-                    if (anim.Keyframes[i].Time > sampleTime) { upper = i; lower = i - 1; break; }
-                }
-                // Safety: never let frac exceed 1
-                if (upper == lower) upper = Math.Min(lower + 1, anim.Keyframes.Count - 1);
+                FindKeyframeSpan(anim.Keyframes, sampleTime, out int lower, out int upper);
 
                 float t0 = anim.Keyframes[lower].Time;
                 float t1 = anim.Keyframes[upper].Time;
@@ -172,7 +172,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
 
                 var l0 = anim.Keyframes[lower].BoneTransforms;
                 var l1 = anim.Keyframes[upper].BoneTransforms;
-                var lerpedLocals = new Matrix4x4[boneCount];
+                var lerpedLocals = EnsureLocals(boneCount);
                 for (int b = 0; b < Math.Min(boneCount, l0.Count); b++)
                 {
                     if (Matrix4x4.Decompose(l0[b], out Vector3 s0, out Quaternion r0, out Vector3 p0) &&
@@ -197,9 +197,10 @@ namespace SiegeEngine.Core.AssetParsing.Model
             // Multi-clip inverse-distance weighting
             // ------------------------------------------------------------------
             float shortestDur = float.MaxValue;
-            var resolvedAnims = new Animation[Clips.Count];
-            var clipDurs = new float[Clips.Count];
-            var sampleValid = new bool[Clips.Count];
+            EnsureClipScratch(Clips.Count);
+            var resolvedAnims = _resolvedAnims;
+            var clipDurs = _clipDurs;
+            var sampleValid = _sampleValid;
 
             for (int c = 0; c < Clips.Count; c++)
             {
@@ -222,9 +223,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
 
             if (shortestDur == float.MaxValue || shortestDur <= 0f)
             {
-                var rest = new Matrix4x4[boneCount];
-                for (int b = 0; b < boneCount; b++) rest[b] = model.Skeleton.Bones[b].LocalRest;
-                return rest;
+                return FillRestLocals(model, boneCount);
             }
 
             // Advance every valid clip against the SHARED shortest duration
@@ -245,7 +244,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
 
             // Weight calculation
             float totalWeight = 0f;
-            var weights = new float[Clips.Count];
+            var weights = _weights;
             for (int i = 0; i < Clips.Count; i++)
             {
                 float dist = Vector3.Distance(params3D, Clips[i].BlendCoordinate);
@@ -257,23 +256,18 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             if (totalWeight <= 0f)
             {
-                var rest = new Matrix4x4[boneCount];
-                for (int b = 0; b < boneCount; b++) rest[b] = model.Skeleton.Bones[b].LocalRest;
-                return rest;
+                return FillRestLocals(model, boneCount);
             }
-            for (int i = 0; i < weights.Length; i++) weights[i] /= totalWeight;
+            for (int i = 0; i < Clips.Count; i++) weights[i] /= totalWeight;
 
             // Sample every valid clip
-            var samplePos = new Vector3[Clips.Count][];
-            var sampleRot = new Quaternion[Clips.Count][];
-            var sampleScale = new Vector3[Clips.Count][];
+            EnsureSampleScratch(Clips.Count, boneCount);
+            var samplePos = _samplePos;
+            var sampleRot = _sampleRot;
+            var sampleScale = _sampleScale;
 
             for (int c = 0; c < Clips.Count; c++)
             {
-                samplePos[c] = new Vector3[boneCount];
-                sampleRot[c] = new Quaternion[boneCount];
-                sampleScale[c] = new Vector3[boneCount];
-
                 if (!sampleValid[c]) continue;
 
                 var clip = Clips[c];
@@ -285,12 +279,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 float sampleTime = clip.StartFrame + localT;
                 sampleTime = WrapSampleTime(sampleTime, firstTime, lastTime);
 
-                int lower = 0, upper = anim.Keyframes.Count - 1;
-                for (int i = 1; i < anim.Keyframes.Count; i++)
-                {
-                    if (anim.Keyframes[i].Time > sampleTime) { upper = i; lower = i - 1; break; }
-                }
-                if (upper == lower) upper = Math.Min(lower + 1, anim.Keyframes.Count - 1);
+                FindKeyframeSpan(anim.Keyframes, sampleTime, out int lower, out int upper);
 
                 float t0 = anim.Keyframes[lower].Time;
                 float t1 = anim.Keyframes[upper].Time;
@@ -336,14 +325,13 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             if (baseClip < 0)
             {
-                var rest = new Matrix4x4[boneCount];
-                for (int b = 0; b < boneCount; b++) rest[b] = model.Skeleton.Bones[b].LocalRest;
-                return rest;
+                return FillRestLocals(model, boneCount);
             }
 
-            var finalPos = new Vector3[boneCount];
-            var finalRot = new Quaternion[boneCount];
-            var finalScale = new Vector3[boneCount];
+            EnsureFinalScratch(boneCount);
+            var finalPos = _finalPos;
+            var finalRot = _finalRot;
+            var finalScale = _finalScale;
             for (int b = 0; b < boneCount; b++)
             {
                 finalPos[b] = Vector3.Zero;
@@ -366,12 +354,97 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 finalRot[b] = Quaternion.Normalize(finalRot[b]);
             }
 
-            var blendedLocals = new Matrix4x4[boneCount];
+            var blendedLocals = EnsureLocals(boneCount);
             for (int b = 0; b < boneCount; b++)
             {
                 blendedLocals[b] = model.Skeleton.Bones[b].ComputeLocal(finalPos[b], finalRot[b], finalScale[b]);
             }
             return blendedLocals;
+        }
+
+        private Matrix4x4[] FillRestLocals(FBXModel model, int boneCount)
+        {
+            var rest = EnsureLocals(boneCount);
+            for (int b = 0; b < boneCount; b++)
+                rest[b] = model.Skeleton.Bones[b].LocalRest;
+            return rest;
+        }
+
+        private Matrix4x4[] EnsureLocals(int boneCount)
+        {
+            if (_localsScratch == null || _localsScratch.Length != boneCount)
+                _localsScratch = new Matrix4x4[boneCount];
+            return _localsScratch;
+        }
+
+        private void EnsureClipScratch(int clipCount)
+        {
+            if (_resolvedAnims == null || _resolvedAnims.Length < clipCount)
+            {
+                _resolvedAnims = new Animation[clipCount];
+                _clipDurs = new float[clipCount];
+                _sampleValid = new bool[clipCount];
+                _weights = new float[clipCount];
+            }
+            else
+            {
+                Array.Clear(_resolvedAnims, 0, clipCount);
+                Array.Clear(_sampleValid, 0, clipCount);
+            }
+        }
+
+        private void EnsureSampleScratch(int clipCount, int boneCount)
+        {
+            if (_samplePos == null || _samplePos.Length < clipCount)
+            {
+                _samplePos = new Vector3[clipCount][];
+                _sampleRot = new Quaternion[clipCount][];
+                _sampleScale = new Vector3[clipCount][];
+            }
+            for (int c = 0; c < clipCount; c++)
+            {
+                if (_samplePos[c] == null || _samplePos[c].Length != boneCount)
+                {
+                    _samplePos[c] = new Vector3[boneCount];
+                    _sampleRot[c] = new Quaternion[boneCount];
+                    _sampleScale[c] = new Vector3[boneCount];
+                }
+            }
+        }
+
+        private void EnsureFinalScratch(int boneCount)
+        {
+            if (_finalPos == null || _finalPos.Length != boneCount)
+            {
+                _finalPos = new Vector3[boneCount];
+                _finalRot = new Quaternion[boneCount];
+                _finalScale = new Vector3[boneCount];
+            }
+        }
+
+        private static void FindKeyframeSpan(List<Keyframe> keys, float sampleTime, out int lower, out int upper)
+        {
+            int last = keys.Count - 1;
+            lower = 0;
+            upper = last;
+            int lo = 1;
+            int hi = last;
+            while (lo <= hi)
+            {
+                int mid = (lo + hi) >> 1;
+                if (keys[mid].Time > sampleTime)
+                {
+                    upper = mid;
+                    hi = mid - 1;
+                }
+                else
+                {
+                    lo = mid + 1;
+                }
+            }
+            lower = upper > 0 ? upper - 1 : 0;
+            if (upper == lower)
+                upper = Math.Min(lower + 1, last);
         }
     }
 }

@@ -108,9 +108,16 @@ namespace SiegeEngine.Core.GPU.Lighting
         public float ShadowDistance = 2048f;
         public bool ShadowSmooth;
 
-        public static LightingFrame Build(IReadOnlyList<Entity> entities, EnvironmentSettings environment, Vector3 fallbackSunDirection, bool allowFallbackSun = true)
+        public static LightingFrame Build(IReadOnlyList<Entity> entities, EnvironmentSettings environment, Vector3 fallbackSunDirection, bool allowFallbackSun = true, LightingFrame dest = null)
         {
-            var frame = new LightingFrame();
+            var frame = dest ?? new LightingFrame();
+            frame.PointCount = 0;
+            frame.SpotCount = 0;
+            frame.ShadowsReady = false;
+            frame.ShadowAtlas = 0;
+            frame.PointShadowCube = 0;
+            frame.SpotShadowMap = 0;
+            frame.CascadeCount = 0;
             frame.ShadowQuality = LightingSettings.ResolveShadowQuality();
             frame.ShadowSmooth = LightingSettings.ResolveShadowSmooth();
             frame.ShadowDistance = LightingSettings.ResolveShadowDistance();

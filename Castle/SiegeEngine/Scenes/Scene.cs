@@ -35,6 +35,8 @@ namespace SiegeEngine.Scenes
         private ShadowMapRenderer _shadowMapRenderer;
         private FogPass _fogPass;
         private ColorComposePass _composePass;
+        private readonly LightingFrame _lightingFrame = new LightingFrame();
+        private readonly List<ShadowCaster> _shadowCasters = new List<ShadowCaster>();
 
         public DockingMode DefaultDockingMode { get; protected set; } = DockingMode.Desktop;
         public bool OwnsFramebuffer { get; protected set; } = true;
@@ -233,7 +235,7 @@ namespace SiegeEngine.Scenes
             IReadOnlyList<Entity> list = _server?.GetEntities();
             if (list == null || list.Count == 0)
                 list = entities;
-            LightingFrame frame = LightingFrame.Build(list, environment, LightingFrame.DefaultSunDirection, AllowRuntimeDefaultSun);
+            LightingFrame frame = LightingFrame.Build(list, environment, LightingFrame.DefaultSunDirection, AllowRuntimeDefaultSun, _lightingFrame);
             InheritReadyShadows(frame);
             LightingFrame.Current = frame;
 
@@ -277,7 +279,7 @@ namespace SiegeEngine.Scenes
 
         protected virtual List<ShadowCaster> CollectShadowCasters(IReadOnlyList<Entity> entities)
         {
-            return ShadowMapRenderer.CollectCasters(entities);
+            return ShadowMapRenderer.CollectCasters(entities, _shadowCasters);
         }
 
         public List<ShadowCaster> GatherShadowCasters(IReadOnlyList<Entity> entities)
