@@ -14,6 +14,8 @@ namespace SiegeEngine.Core.GPU.Shaders
         private readonly uint _program;
         private bool _disposed;
         private readonly Dictionary<string, int> _uniformLocations = new Dictionary<string, int>();
+        private float[] _mat4Scratch = new float[16];
+        private float[] _mat3Scratch = new float[9];
 
         public ShaderProgram(IRenderContext renderContext, string vertexShaderSource, string fragmentShaderSource)
         {
@@ -137,13 +139,16 @@ namespace SiegeEngine.Core.GPU.Shaders
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
             int location = GetLocation(name);
             if (location == -1) return;
-            float[] matrixArray = new float[16]
+            float[] matrixArray = _mat4Scratch;
+            if (matrixArray.Length < 16)
             {
-                matrix.M11, matrix.M12, matrix.M13, matrix.M14,
-                matrix.M21, matrix.M22, matrix.M23, matrix.M24,
-                matrix.M31, matrix.M32, matrix.M33, matrix.M34,
-                matrix.M41, matrix.M42, matrix.M43, matrix.M44
-            };
+                matrixArray = new float[16];
+                _mat4Scratch = matrixArray;
+            }
+            matrixArray[0] = matrix.M11; matrixArray[1] = matrix.M12; matrixArray[2] = matrix.M13; matrixArray[3] = matrix.M14;
+            matrixArray[4] = matrix.M21; matrixArray[5] = matrix.M22; matrixArray[6] = matrix.M23; matrixArray[7] = matrix.M24;
+            matrixArray[8] = matrix.M31; matrixArray[9] = matrix.M32; matrixArray[10] = matrix.M33; matrixArray[11] = matrix.M34;
+            matrixArray[12] = matrix.M41; matrixArray[13] = matrix.M42; matrixArray[14] = matrix.M43; matrixArray[15] = matrix.M44;
             fixed (float* matrixPtr = matrixArray)
             {
                 _renderContext.UniformMatrix4(location, 1, false, matrixPtr);
@@ -156,7 +161,13 @@ namespace SiegeEngine.Core.GPU.Shaders
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
             int location = GetLocation(name);
             if (location == -1) return;
-            float[] data = new float[matrices.Length * 16];
+            int needed = matrices.Length * 16;
+            float[] data = _mat4Scratch;
+            if (data.Length < needed)
+            {
+                data = new float[needed];
+                _mat4Scratch = data;
+            }
             for (int i = 0; i < matrices.Length; i++)
             {
                 data[i * 16 + 0] = matrices[i].M11;
@@ -188,7 +199,13 @@ namespace SiegeEngine.Core.GPU.Shaders
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
             int location = GetLocation(name);
             if (location == -1) return;
-            float[] data = new float[matrices.Length * 9];
+            int needed = matrices.Length * 9;
+            float[] data = _mat3Scratch;
+            if (data.Length < needed)
+            {
+                data = new float[needed];
+                _mat3Scratch = data;
+            }
             for (int i = 0; i < matrices.Length; i++)
             {
                 data[i * 9 + 0] = matrices[i].M11;

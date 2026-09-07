@@ -74,7 +74,8 @@ namespace SiegeEngine.Core.GPU.Renderers
         {
             if (modelComp == null || physics == null) return;
 
-            var modelManager = ModelManager.Instance ?? new ModelManager(_renderContext);
+            var modelManager = ModelManager.Instance;
+            if (modelManager == null) return;
             string modelKey = modelComp.Key?.ToLower() ?? "man_mesh_pack";
             FBXModel fbxModel = null;
             ModelManager.ModelData modelData = null;
@@ -95,6 +96,8 @@ namespace SiegeEngine.Core.GPU.Renderers
 
                 Matrix4x4[] boneMatrices = modelComp.BoneMatrices;
                 Matrix3x3[] normalMatrices = modelComp.NormalBoneTransforms;
+                if (!IsVisibleInView(view * projection, modelMatrix, fbxModel, physics))
+                    return;
                 bool receiveShadows = modelComp.ReceiveShadows && (modelComp.Material == null || modelComp.Material.ReceiveShadows);
                 _hiddenMeshIndices = modelComp.HiddenMeshIndices;
                 _materialOptions = modelComp.MaterialOptions;
@@ -202,9 +205,15 @@ namespace SiegeEngine.Core.GPU.Renderers
             if (hasBones)
             {
                 shader.SetUniform("uHasBones", 1);
-                shader.SetMatrix4Array("uBoneMatrices", boneMatrices);
-                shader.SetMatrix4Array("uBoneTransforms", boneMatrices);
-                if (normalMatrices != null) shader.SetMatrix3Array("uNormalMatrices", normalMatrices);
+                if (hasBones && shader == _animationShader)
+                {
+                    shader.SetMatrix4Array("uBoneMatrices", boneMatrices);
+                    if (normalMatrices != null) shader.SetMatrix3Array("uNormalMatrices", normalMatrices);
+                }
+                else
+                {
+                    shader.SetMatrix4Array("uBoneTransforms", boneMatrices);
+                }
             }
             else
             {
@@ -223,7 +232,9 @@ namespace SiegeEngine.Core.GPU.Renderers
             {
                 int gpuIndex = renderIndex;
                 renderIndex++;
-                if (_hiddenMeshIndices != null && _hiddenMeshIndices.Contains(gpuIndex))
+                float lodDist = Vector3.Distance(viewPos, modelMatrix.Translation);
+                float lodSize = EstimateRadius(fbxModel, modelData, Vector3.One) * 2f;
+                if (IsMeshSkipped(_hiddenMeshIndices, fbxModel?.Meshes, gpuIndex, lodDist, lodSize))
                     continue;
 
                 try
@@ -528,6 +539,144 @@ namespace SiegeEngine.Core.GPU.Renderers
             {
             }
             return fullPath.Replace('\\', '/');
+        }
+
+        public static bool IsMeshSkipped(List<int> authoredHidden, IList<MeshData> meshes, int meshIndex, float distance, float size)
+        {
+            if (authoredHidden != null)
+            {
+                for (int i = 0; i < authoredHidden.Count; i++)
+                {
+                    if (authoredHidden[i] == meshIndex)
+                        return true;
+                }
+            }
+            return MeshData.ShouldSkipLod(meshes, meshIndex, distance, size);
+        }
+
+        public const float FrustumBoundsPad = 0.05f;
+
+        public static bool IsVisibleInView(Matrix4x4 viewProjection, Matrix4x4 modelMatrix, FBXModel model, PhysicsComponent physics)
+        {
+            if (!TryGetLocalVertexBounds(model, physics, out Vector3 localMin, out Vector3 localMax))
+                return true;
+            WorldAabbFromLocal(modelMatrix, localMin, localMax, FrustumBoundsPad, out Vector3 worldMin, out Vector3 worldMax);
+            return AabbIntersectsView(viewProjection, worldMin, worldMax);
+        }
+
+        public static bool IsVisibleInView(Matrix4x4 viewProjection, Matrix4x4 modelMatrix, Vector3 localMin, Vector3 localMax)
+        {
+            WorldAabbFromLocal(modelMatrix, localMin, localMax, FrustumBoundsPad, out Vector3 worldMin, out Vector3 worldMax);
+            return AabbIntersectsView(viewProjection, worldMin, worldMax);
+        }
+
+        public static bool TryGetLocalVertexBounds(FBXModel model, PhysicsComponent physics, out Vector3 min, out Vector3 max)
+        {
+            min = new Vector3(float.MaxValue);
+            max = new Vector3(float.MinValue);
+            bool any = false;
+            if (model?.Meshes != null)
+            {
+                for (int i = 0; i < model.Meshes.Count; i++)
+                {
+                    MeshData mesh = model.Meshes[i];
+                    if (mesh == null) continue;
+                    if (mesh.Bounds.LengthSquared() <= 1e-12f)
+                        continue;
+                    // BoundsMin is written at parse. Default zero with a non-zero size
+                    // means an older in-memory pack — do not assume the mesh starts at origin.
+                    if (mesh.BoundsMin == Vector3.Zero)
+                        continue;
+                    Vector3 meshMin = mesh.BoundsMin;
+                    Vector3 meshMax = mesh.BoundsMin + mesh.Bounds;
+                    min = Vector3.Min(min, meshMin);
+                    max = Vector3.Max(max, meshMax);
+                    any = true;
+                }
+            }
+            if (any)
+                return true;
+
+            float unit = model != null && model.UnitToMeters > 1e-8f ? model.UnitToMeters : 0.01f;
+            if (physics != null && physics.LocalBoundsMinCm.X <= physics.LocalBoundsMaxCm.X
+                && !float.IsInfinity(physics.LocalBoundsMinCm.X) && !float.IsInfinity(physics.LocalBoundsMaxCm.X))
+            {
+                min = physics.LocalBoundsMinCm / unit;
+                max = physics.LocalBoundsMaxCm / unit;
+                return min.X <= max.X;
+            }
+            if (model != null && model.LocalBoundsMinCm.X <= model.LocalBoundsMaxCm.X
+                && !float.IsInfinity(model.LocalBoundsMinCm.X) && !float.IsInfinity(model.LocalBoundsMaxCm.X))
+            {
+                min = model.LocalBoundsMinCm / unit;
+                max = model.LocalBoundsMaxCm / unit;
+                return min.X <= max.X;
+            }
+            return false;
+        }
+
+        public static void WorldAabbFromLocal(Matrix4x4 modelMatrix, Vector3 localMin, Vector3 localMax, float pad, out Vector3 worldMin, out Vector3 worldMax)
+        {
+            worldMin = new Vector3(float.MaxValue);
+            worldMax = new Vector3(float.MinValue);
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 local = new Vector3(
+                    (i & 1) == 0 ? localMin.X : localMax.X,
+                    (i & 2) == 0 ? localMin.Y : localMax.Y,
+                    (i & 4) == 0 ? localMin.Z : localMax.Z);
+                Vector3 world = Vector3.Transform(local, modelMatrix);
+                worldMin = Vector3.Min(worldMin, world);
+                worldMax = Vector3.Max(worldMax, world);
+            }
+            Vector3 center = (worldMin + worldMax) * 0.5f;
+            Vector3 extent = (worldMax - worldMin) * 0.5f;
+            float inflate = 1f + (pad > 0f ? pad : 0f);
+            extent *= inflate;
+            worldMin = center - extent;
+            worldMax = center + extent;
+        }
+
+        public static bool AabbIntersectsView(Matrix4x4 viewProjection, Vector3 worldMin, Vector3 worldMax)
+        {
+            Vector3 center = (worldMin + worldMax) * 0.5f;
+            Vector3 extent = (worldMax - worldMin) * 0.5f;
+            Vector4 c1 = new Vector4(viewProjection.M11, viewProjection.M21, viewProjection.M31, viewProjection.M41);
+            Vector4 c2 = new Vector4(viewProjection.M12, viewProjection.M22, viewProjection.M32, viewProjection.M42);
+            Vector4 c3 = new Vector4(viewProjection.M13, viewProjection.M23, viewProjection.M33, viewProjection.M43);
+            Vector4 c4 = new Vector4(viewProjection.M14, viewProjection.M24, viewProjection.M34, viewProjection.M44);
+            if (!AabbVsPlane(center, extent, c4 + c1)) return false;
+            if (!AabbVsPlane(center, extent, c4 - c1)) return false;
+            if (!AabbVsPlane(center, extent, c4 + c2)) return false;
+            if (!AabbVsPlane(center, extent, c4 - c2)) return false;
+            if (!AabbVsPlane(center, extent, c4 + c3)) return false;
+            if (!AabbVsPlane(center, extent, c4 - c3)) return false;
+            return true;
+        }
+
+        private static bool AabbVsPlane(Vector3 center, Vector3 extent, Vector4 plane)
+        {
+            float dist = plane.X * center.X + plane.Y * center.Y + plane.Z * center.Z + plane.W;
+            float r = MathF.Abs(plane.X) * extent.X + MathF.Abs(plane.Y) * extent.Y + MathF.Abs(plane.Z) * extent.Z;
+            return dist + r >= 0f;
+        }
+
+        public static float EstimateRadius(ModelManager.ModelData modelData, float scale)
+        {
+            return EstimateRadius(null, modelData, new Vector3(scale, scale, scale));
+        }
+
+        public static float EstimateRadius(FBXModel model, ModelManager.ModelData modelData, Vector3 scale)
+        {
+            float s = MathF.Max(MathF.Abs(scale.X), MathF.Max(MathF.Abs(scale.Y), MathF.Abs(scale.Z)));
+            if (s < 1e-4f) s = 1f;
+            if (TryGetLocalVertexBounds(model, null, out Vector3 min, out Vector3 max))
+            {
+                float unit = model != null ? model.UnitToMeters : 0.01f;
+                Vector3 sizeM = (max - min) * unit;
+                return 0.5f * sizeM.Length() * s;
+            }
+            return 0.5f * s;
         }
 
         public void Dispose()

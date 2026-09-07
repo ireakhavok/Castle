@@ -233,7 +233,13 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         public static List<ShadowCaster> CollectCasters(IReadOnlyList<Entity> entities)
         {
-            var list = new List<ShadowCaster>();
+            return CollectCasters(entities, null);
+        }
+
+        public static List<ShadowCaster> CollectCasters(IReadOnlyList<Entity> entities, List<ShadowCaster> dest)
+        {
+            var list = dest ?? new List<ShadowCaster>();
+            list.Clear();
             if (entities == null) return list;
             var modelManager = ModelManager.Instance;
 
@@ -297,6 +303,16 @@ namespace SiegeEngine.Core.GPU.Lighting
                 });
             }
             return list;
+        }
+
+        private static bool IsHigherLodMesh(IList<MeshData> meshes, int meshIndex)
+        {
+            if (meshes == null || meshIndex < 0 || meshIndex >= meshes.Count)
+                return false;
+            MeshData mesh = meshes[meshIndex];
+            if (mesh == null || string.IsNullOrEmpty(mesh.LodGroup))
+                return false;
+            return mesh.LodLevel > 0;
         }
 
         private static bool IsEditorHelperKey(string key)
@@ -364,11 +380,17 @@ namespace SiegeEngine.Core.GPU.Lighting
                     _depthShader.SetMatrix4Array("uBoneTransforms", caster.BoneMatrices);
                     _depthShader.SetMatrix4Array("uBoneMatrices", caster.BoneMatrices);
                 }
+                IList<MeshData> lodMeshes = null;
+                if (!string.IsNullOrEmpty(caster.ModelKey) && ModelManager.Instance != null
+                    && ModelManager.Instance.TryGetModel(caster.ModelKey, out FBXModel lodModel))
+                    lodMeshes = lodModel.Meshes;
                 int gpuIndex = 0;
                 foreach (var mmr in caster.ModelData.MeshRenders)
                 {
                     int meshIndex = gpuIndex++;
                     if (caster.HiddenMeshIndices != null && caster.HiddenMeshIndices.Contains(meshIndex))
+                        continue;
+                    if (IsHigherLodMesh(lodMeshes, meshIndex))
                         continue;
                     ModelRenderer.BindOpacityToShader(_rc, _depthShader, meshIndex, caster.MaterialOptions, caster.ModelKey, 0);
                     _rc.BindVertexArray(mmr.Vao);
@@ -452,16 +474,26 @@ namespace SiegeEngine.Core.GPU.Lighting
                 }
             }
 
-            // Play Game pixelation was scene-fit C0 covering the whole level.
-            // One 16k tile over 500m is 6cm blocks. C0 is camera-centered and
-            // sized by quality so nearby contact is millimetres, far uses C1-C3.
-            Vector3 sceneCenter = new Vector3(cameraPos.X, cameraPos.Y, cameraPos.Z);
-            float worldRadius = MathF.Max(far, 2048f);
+            // C0/C1 stay camera-centered for nearby contact. C2 and C3 sit on
+            // the caster AABB so pulling the editor camera 200m out does not
+            // drop the scene onto a 2km tile (or off every tile).
+            Vector3 cameraCenter = new Vector3(cameraPos.X, cameraPos.Y, cameraPos.Z);
+            Vector3 sceneCenter = cameraCenter;
+            float sceneRadius = 0f;
+            if (haveCaster)
+            {
+                sceneCenter = (sceneMin + sceneMax) * 0.5f;
+                Vector3 extent = (sceneMax - sceneMin) * 0.5f;
+                sceneRadius = extent.Length() * 1.05f;
+                if (sceneRadius < 1f) sceneRadius = 1f;
+            }
 
             float[] radii = new float[LightingFrame.MaxCascades];
-            CascadeRadii(frame.ShadowQuality, worldRadius, radii);
+            CascadeRadii(frame.ShadowQuality, MathF.Max(sceneRadius, 1f), radii);
+            if (cascadeCount > 2 && haveCaster)
+                radii[2] = MathF.Max(radii[2], sceneRadius);
             if (cascadeCount > 0)
-                radii[cascadeCount - 1] = worldRadius;
+                radii[cascadeCount - 1] = haveCaster ? MathF.Max(radii[cascadeCount - 1], sceneRadius) : MathF.Max(far, sceneRadius);
             for (int r = 0; r < LightingFrame.MaxCascades; r++)
                 _cascadeRadii[r] = radii[r];
             frame.CascadeSplits = new Vector4(radii[0], radii[1], radii[2], radii[3]);
@@ -477,7 +509,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             {
                 float radius = radii[i];
                 float texel = MathF.Max((radius * 2f) / tile, 0.05f);
-                Vector3 focus = SnapToTexel(sceneCenter, texel);
+                Vector3 focusBase = (i >= 2 && haveCaster) ? sceneCenter : cameraCenter;
+                Vector3 focus = SnapToTexel(focusBase, texel);
 
                 // Z span follows this tile so inner cascades keep centimetre
                 // contact (arms, model-to-model). Scene-wide padding on every

@@ -41,15 +41,20 @@ namespace SiegeEngine.Core.AssetParsing
                 var perVertBones = ParseSkin(geomId, conns, objectsById, boneIndexById, model, rootIndices, P4, invP4, modelScale, numVerts, geoMat);
                 NormalizeWeights(perVertBones);
                 var (expandedVertices, newIndices) = BuildExpandedVerticesAndIndices(pviArray, vertsD, sourceToTarget, signs, modelScale, norms, normIdx, normMapping, normRef, uvs, uvIdx, uvMapping, uvRef, tans, tanIdx, tanMapping, tanRef, matIndices, matMapping, perVertBones, numVerts);
+                string meshName = "";
+                if (geom.properties.Count >= 2 && geom.properties[1].Value is string rawName)
+                    meshName = rawName.Split('\0')[0];
                 MeshData mesh = new MeshData
                 {
+                    Name = meshName,
                     Vertices = expandedVertices,
                     Indices = newIndices,
                     Materials = ExtractMaterials(geomId, objectsNode, conns, objectsById, forest)
                 };
-                mesh.Bounds = CalculateBounds(expandedVertices, model);
+                mesh.Bounds = CalculateBounds(expandedVertices, model, mesh);
                 model.Meshes.Add(mesh);
             }
+            MeshData.AssignLodFromNames(model.Meshes);
         }
 
         // Parses the Vertices array from Geometry node as doubles.
@@ -758,7 +763,7 @@ namespace SiegeEngine.Core.AssetParsing
 
         // Computes axis-aligned bounding box size from vertex positions.
         // UPDATED: also populates FBXModel.LocalBoundsMinCm / MaxCm for raycast OBB.
-        private static Vector3 CalculateBounds(List<FBXVertex> vertices, FBXModel model)
+        private static Vector3 CalculateBounds(List<FBXVertex> vertices, FBXModel model, MeshData mesh)
         {
             Vector3 min = new Vector3(float.MaxValue);
             Vector3 max = new Vector3(float.MinValue);
@@ -767,10 +772,20 @@ namespace SiegeEngine.Core.AssetParsing
                 min = Vector3.Min(min, v.Position);
                 max = Vector3.Max(max, v.Position);
             }
+            if (mesh != null)
+                mesh.BoundsMin = min;
             if (model != null)
             {
-                model.LocalBoundsMinCm = min;
-                model.LocalBoundsMaxCm = max;
+                if (model.LocalBoundsMinCm.X > model.LocalBoundsMaxCm.X)
+                {
+                    model.LocalBoundsMinCm = min;
+                    model.LocalBoundsMaxCm = max;
+                }
+                else
+                {
+                    model.LocalBoundsMinCm = Vector3.Min(model.LocalBoundsMinCm, min);
+                    model.LocalBoundsMaxCm = Vector3.Max(model.LocalBoundsMaxCm, max);
+                }
             }
             return new Vector3(max.X - min.X, max.Y - min.Y, max.Z - min.Z);
         }

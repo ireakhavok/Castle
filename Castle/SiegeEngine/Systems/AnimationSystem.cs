@@ -4,7 +4,6 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Interfaces;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
 namespace SiegeEngine.Systems
 {
@@ -35,8 +34,9 @@ namespace SiegeEngine.Systems
                 if (modelComp.BoneMatrices == null || modelComp.BoneMatrices.Length != boneCount
                     || modelComp.NormalBoneTransforms == null || modelComp.NormalBoneTransforms.Length != boneCount)
                 {
-                    var restGlobals = modelComp.Model.Skeleton.ComputeGlobalTransforms();
-                    WriteSkinning(modelComp, restGlobals);
+                    EnsureBoneArrays(modelComp, boneCount);
+                    modelComp.Model.Skeleton.ComputeGlobalTransforms(null, modelComp.BoneMatrices);
+                    WriteSkinning(modelComp);
                 }
                 return;
             }
@@ -48,8 +48,9 @@ namespace SiegeEngine.Systems
             var stack = blendComp.RuntimeStack;
             var params3D = blendComp.CurrentBlendParams;
             var blendedLocals = stack.ComputeBlendedLocals(params3D, deltaTime, blendComp.Playing, modelComp.Model);
-            var globals = modelComp.Model.Skeleton.ComputeGlobalTransforms(blendedLocals);
-            WriteSkinning(modelComp, globals);
+            EnsureBoneArrays(modelComp, boneCount);
+            modelComp.Model.Skeleton.ComputeGlobalTransforms(blendedLocals, modelComp.BoneMatrices);
+            WriteSkinning(modelComp);
         }
         private static void EnsureBoneArrays(ModelComponent modelComp, int boneCount)
         {
@@ -58,13 +59,13 @@ namespace SiegeEngine.Systems
             if (modelComp.NormalBoneTransforms == null || modelComp.NormalBoneTransforms.Length != boneCount)
                 modelComp.NormalBoneTransforms = new Matrix3x3[boneCount];
         }
-        private static void WriteSkinning(ModelComponent modelComp, Matrix4x4[] globals)
+        private static void WriteSkinning(ModelComponent modelComp)
         {
             int boneCount = modelComp.Model.Skeleton.Bones.Count;
             EnsureBoneArrays(modelComp, boneCount);
             for (int i = 0; i < boneCount; i++)
             {
-                modelComp.BoneMatrices[i] = modelComp.Model.Skeleton.Bones[i].BindPose * globals[i];
+                modelComp.BoneMatrices[i] = modelComp.Model.Skeleton.Bones[i].BindPose * modelComp.BoneMatrices[i];
                 if (Matrix4x4.Invert(modelComp.BoneMatrices[i], out Matrix4x4 inv))
                 {
                     Matrix4x4 invT = Matrix4x4.Transpose(inv);
