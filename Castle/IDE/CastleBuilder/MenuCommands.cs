@@ -226,9 +226,33 @@ namespace CastleBuilder
             eventBus.Publish(new ContextChangedEvent { Context = "Runtime Gameplay" });
             SandboxScene.Launch(renderContext, controlContext, window, eventBus);
         }
+        private static string ReadProjectSteamAppId(string projectPath)
+        {
+            try
+            {
+                string jsonPath = Path.Combine(projectPath, "project.json");
+                if (File.Exists(jsonPath))
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(jsonPath));
+                    var root = doc.RootElement;
+                    foreach (string key in new[] { "SteamAppId", "steamAppId", "AppId", "appId" })
+                    {
+                        if (!root.TryGetProperty(key, out var el)) continue;
+                        if (el.ValueKind == System.Text.Json.JsonValueKind.Number && el.TryGetUInt32(out uint n) && n != 0)
+                            return n.ToString();
+                        string s = el.GetString();
+                        if (!string.IsNullOrWhiteSpace(s))
+                            return s.Trim();
+                    }
+                }
+            }
+            catch { }
+            return "2628760";
+        }
+
         public static void ExportGame(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            Console.WriteLine("[MenuCommands.ExportGame] Starting clean GAME export (client-only, no IDE files, no server mode, serialized starting Level)");
+            Console.WriteLine("[MenuCommands.ExportGame] Writing game-only client into the project exported folder");
             Task.Run(() =>
             {
                 try
@@ -236,91 +260,61 @@ namespace CastleBuilder
                     string projectPath = ProjectSettings.Current.ActiveProject;
                     if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
                     {
-                        Console.WriteLine("[Export] No active project - using default in-memory Level");
-                        projectPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "CastleBuilder", "Projects", "Default");
-                        Directory.CreateDirectory(projectPath);
+                        Console.WriteLine("[Export] No active project.");
+                        return;
                     }
                     BlueprintManager.SaveCurrentProject(renderContext, controlContext, window, eventBus);
-                    if (!ScriptLoader.PrepareProjectForPlay(projectPath))
+                    ScriptLoader.PrepareProjectForPlay(projectPath);
+                    string ideConfig = AppDomain.CurrentDomain.BaseDirectory.IndexOf(Path.DirectorySeparatorChar + "Debug" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) >= 0
+                        ? "Debug" : "Release";
+                    var configs = ideConfig == "Debug"
+                        ? new[] { "Debug", "Release" }
+                        : new[] { "Release" };
+                    string lastDir = null;
+                    foreach (string config in configs)
                     {
-                        Console.WriteLine("[Export] ABORTED — project scripts failed to compile.");
-                        return;
-                    }
-                    string exportRoot = Path.Combine(projectPath, "exported");
-                    if (Directory.Exists(exportRoot))
-                    {
-                        Directory.Delete(exportRoot, true);
-                    }
-                    Directory.CreateDirectory(exportRoot);
-                    string[] runtimeFolders = { "Assets", "Scenes", "Scripts" };
-                    foreach (string folder in runtimeFolders)
-                    {
-                        string source = Path.Combine(projectPath, folder);
-                        if (Directory.Exists(source))
+                        string exportDir = Path.Combine(projectPath, "exported", config);
+                        Directory.CreateDirectory(exportDir);
+                        if (!ScriptLoader.PublishGameClient(exportDir, config))
                         {
-                            string target = Path.Combine(exportRoot, folder);
-                            Directory.CreateDirectory(target);
-                            BlueprintManager.CopyDirectory(source, target);
-                        }
-                    }
-                    ScriptLoader.CopyProjectScripts(projectPath);
-                    ScriptLoader.CopyScriptsToExport(projectPath, exportRoot);
-                    string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
-                    string payloadFile = BlueprintManager.BuildPlayPayloadFile();
-                    string payloadTarget = Path.Combine(exportRoot, "play_payload.json");
-                    if (!string.IsNullOrEmpty(payloadFile) && File.Exists(payloadFile))
-                    {
-                        File.Copy(payloadFile, payloadTarget, true);
-                    }
-                    CopyReferencedEngineAssets(projectPath, exportRoot, AppDomain.CurrentDomain.BaseDirectory);
-                    string binDir = AppDomain.CurrentDomain.BaseDirectory;
-                    string foundationSource = Path.Combine(binDir, "Foundation.exe");
-                    if (!File.Exists(foundationSource))
-                        foundationSource = Path.Combine(binDir, "Citadel.exe");
-                    string exeName = Path.GetFileName(foundationSource);
-                    string exeStem = Path.GetFileNameWithoutExtension(exeName);
-                    File.Copy(foundationSource, Path.Combine(exportRoot, exeName), true);
-                    string[] sidecar = { exeStem + ".dll", exeStem + ".runtimeconfig.json", exeStem + ".deps.json", "steam_api64.dll" };
-                    foreach (string name in sidecar)
-                    {
-                        string src = Path.Combine(binDir, name);
-                        if (File.Exists(src))
-                            File.Copy(src, Path.Combine(exportRoot, name), true);
-                    }
-                    foreach (string dll in Directory.GetFiles(binDir, "*.dll"))
-                    {
-                        string name = Path.GetFileName(dll);
-                        if (name.StartsWith("CastleBuilder", StringComparison.OrdinalIgnoreCase) ||
-                            name.StartsWith("Keystone", StringComparison.OrdinalIgnoreCase) ||
-                            name.StartsWith("MapRoom", StringComparison.OrdinalIgnoreCase) ||
-                            name.StartsWith("ReadingChamber", StringComparison.OrdinalIgnoreCase) ||
-                            name.StartsWith("ToolChest", StringComparison.OrdinalIgnoreCase))
+                            Console.WriteLine("[Export ERROR] GameHost publish failed for " + config);
                             continue;
-                        File.Copy(dll, Path.Combine(exportRoot, name), true);
+                        }
+                        foreach (string folder in new[] { "Assets", "Scenes", "Scripts" })
+                        {
+                            string source = Path.Combine(projectPath, folder);
+                            if (!Directory.Exists(source)) continue;
+                            BlueprintManager.CopyDirectory(source, Path.Combine(exportDir, folder));
+                        }
+                        ScriptLoader.CopyScriptsToExport(projectPath, exportDir);
+                        string payloadFile = BlueprintManager.BuildPlayPayloadFile();
+                        string payloadTarget = Path.Combine(exportDir, "play_payload.json");
+                        if (!string.IsNullOrEmpty(payloadFile) && File.Exists(payloadFile))
+                            File.Copy(payloadFile, payloadTarget, true);
+                        string steam = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "steam_api64.dll");
+                        if (File.Exists(steam))
+                            File.Copy(steam, Path.Combine(exportDir, "steam_api64.dll"), true);
+                        File.WriteAllText(Path.Combine(exportDir, "steam_appid.txt"), ReadProjectSteamAppId(projectPath));
+                        lastDir = exportDir;
+                        Console.WriteLine("[Export] Ready " + Path.Combine(exportDir, "Game.exe"));
                     }
-                    string runtimesSrc = Path.Combine(binDir, "runtimes");
-                    if (Directory.Exists(runtimesSrc))
+                    if (string.IsNullOrEmpty(lastDir) || !File.Exists(Path.Combine(lastDir, "Game.exe")))
                     {
-                        BlueprintManager.CopyDirectory(runtimesSrc, Path.Combine(exportRoot, "runtimes"));
-                    }
-                    string runtimeConfig = Path.Combine(exportRoot, exeStem + ".runtimeconfig.json");
-                    if (!File.Exists(runtimeConfig))
-                    {
-                        Console.WriteLine($"[Export ERROR] Missing {exeStem}.runtimeconfig.json next to the IDE exe; cannot launch exported client.");
+                        Console.WriteLine("[Export ERROR] No Game.exe produced.");
                         return;
                     }
-                    var exported = Process.Start(new ProcessStartInfo
+                    Process.Start(new ProcessStartInfo
                     {
-                        FileName = Path.Combine(exportRoot, exeName),
-                        WorkingDirectory = exportRoot,
-                        UseShellExecute = true,
-                        Arguments = $"--client --play-project \"{exportRoot}\" --load-level \"{levelName}\" --play-payload-file \"{payloadTarget}\" --custom-assemblies \"{ScriptLoader.GetCustomAssemblyList(projectPath)}\""
+                        FileName = "cmd.exe",
+                        Arguments = "/c start \"Game\" /D \"" + lastDir + "\" \"" + Path.Combine(lastDir, "Game.exe") + "\"",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
                     });
-                    Console.WriteLine($"[Export SUCCESS] Separate process pid={(exported != null ? exported.Id : 0)} at {exportRoot} level '{levelName}'");
+                    Console.WriteLine("[Export SUCCESS] " + Path.Combine(lastDir, "Game.exe") + " (double-click also works)");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[Export ERROR] {ex.Message}");
+                    Console.WriteLine("[Export ERROR] " + ex.Message);
                 }
             });
         }

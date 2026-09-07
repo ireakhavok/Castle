@@ -626,6 +626,105 @@ namespace SiegeEngine.Core.Managers
             return false;
         }
 
+
+        public static bool PublishGameClient(string exportDir, string configuration)
+        {
+            if (string.IsNullOrEmpty(exportDir)) return false;
+            Directory.CreateDirectory(exportDir);
+            string binDir = AppDomain.CurrentDomain.BaseDirectory;
+            string[] csprojHits =
+            {
+                Path.GetFullPath(Path.Combine(binDir, "..", "..", "..", "..", "GameHost", "GameHost.csproj")),
+                Path.GetFullPath(Path.Combine(binDir, "..", "..", "..", "GameHost", "GameHost.csproj")),
+                Path.GetFullPath(Path.Combine(binDir, "..", "..", "..", "..", "..", "Launcher", "GameHost", "GameHost.csproj"))
+            };
+            string csproj = null;
+            for (int i = 0; i < csprojHits.Length; i++)
+            {
+                if (File.Exists(csprojHits[i])) { csproj = csprojHits[i]; break; }
+            }
+            if (csproj == null)
+            {
+                Console.WriteLine("[ScriptLoader] GameHost.csproj not found. Tried:");
+                for (int i = 0; i < csprojHits.Length; i++)
+                    Console.WriteLine("  " + csprojHits[i]);
+                return false;
+            }
+            Console.WriteLine("[ScriptLoader] GameHost csproj " + csproj);
+            string config = string.IsNullOrWhiteSpace(configuration) ? "Release" : configuration;
+            Console.WriteLine("[ScriptLoader] GameHost publish " + config + " -> " + exportDir);
+            var psi = new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            psi.ArgumentList.Add("publish");
+            psi.ArgumentList.Add(csproj);
+            psi.ArgumentList.Add("-c");
+            psi.ArgumentList.Add(config);
+            psi.ArgumentList.Add("-r");
+            psi.ArgumentList.Add("win-x64");
+            psi.ArgumentList.Add("--self-contained");
+            psi.ArgumentList.Add("true");
+            psi.ArgumentList.Add("-p:PublishSingleFile=true");
+            psi.ArgumentList.Add("-p:IncludeNativeLibrariesForSelfExtract=true");
+            psi.ArgumentList.Add("-p:EnableCompressionInSingleFile=true");
+            psi.ArgumentList.Add("-o");
+            psi.ArgumentList.Add(exportDir);
+            psi.ArgumentList.Add("--nologo");
+            using (var process = Process.Start(psi))
+            {
+                string output = process.StandardOutput.ReadToEnd();
+                string err = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+                if (!string.IsNullOrWhiteSpace(output)) Console.WriteLine(output);
+                if (!string.IsNullOrWhiteSpace(err)) Console.WriteLine(err);
+                if (process.ExitCode != 0)
+                {
+                    Console.WriteLine("[ScriptLoader] GameHost publish FAILED exit " + process.ExitCode);
+                    return false;
+                }
+            }
+            string exe = Path.Combine(exportDir, "Game.exe");
+            if (!File.Exists(exe))
+            {
+                Console.WriteLine("[ScriptLoader] Game.exe missing after publish in " + exportDir);
+                return false;
+            }
+            Console.WriteLine("[ScriptLoader] Game.exe " + new FileInfo(exe).Length + " bytes");
+            PlaceGlfwNative(exportDir, AppDomain.CurrentDomain.BaseDirectory);
+            return true;
+        }
+
+
+        private static void PlaceGlfwNative(string exportDir, string hostBin)
+        {
+            string dest = Path.Combine(exportDir, "glfw3.dll");
+            if (File.Exists(dest))
+            {
+                Console.WriteLine("[ScriptLoader] glfw3.dll already next to Game.exe");
+                return;
+            }
+            string[] hits =
+            {
+                Path.Combine(exportDir, "runtimes", "win-x64", "native", "glfw3.dll"),
+                Path.Combine(hostBin, "glfw3.dll"),
+                Path.Combine(hostBin, "runtimes", "win-x64", "native", "glfw3.dll"),
+                Path.Combine(hostBin, "native", "glfw3.dll")
+            };
+            for (int i = 0; i < hits.Length; i++)
+            {
+                if (!File.Exists(hits[i])) continue;
+                File.Copy(hits[i], dest, true);
+                Console.WriteLine("[ScriptLoader] Placed glfw3.dll next to Game.exe from " + hits[i]);
+                return;
+            }
+            Console.WriteLine("[ScriptLoader] glfw3.dll not found to place next to Game.exe");
+        }
+
         public static bool PrepareProjectForPlay(string projectPath)
         {
             if (!BuildProjectScripts(projectPath))

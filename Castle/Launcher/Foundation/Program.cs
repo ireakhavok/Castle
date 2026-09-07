@@ -95,8 +95,12 @@ namespace Foundation
                         }
                     }
                     Console.WriteLine($"[Program] Play payload loaded - levelData={(levelDataPayload != null)}, sceneData={(sceneDataPayload != null)}, levelName={loadLevelName}");
-                    // Best-effort cleanup of the transfer file.
-                    try { File.Delete(playPayloadFile); } catch { }
+                    string payloadDir = Path.GetDirectoryName(playPayloadFile) ?? "";
+                    bool tempTransfer = payloadDir.IndexOf(Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase) >= 0;
+                    if (tempTransfer)
+                    {
+                        try { File.Delete(playPayloadFile); } catch { }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -106,6 +110,17 @@ namespace Foundation
             else if (!string.IsNullOrEmpty(playPayloadFile))
             {
                 Console.WriteLine($"[Program] Play payload file not found: {playPayloadFile}");
+            }
+
+            if (!isClientRuntime && string.IsNullOrEmpty(playProjectPath))
+            {
+                string beside = Path.Combine(AppContext.BaseDirectory, "play_payload.json");
+                if (File.Exists(beside))
+                {
+                    isClientRuntime = true;
+                    playProjectPath = AppContext.BaseDirectory;
+                    playPayloadFile = beside;
+                }
             }
 
             if (isClientRuntime || !string.IsNullOrEmpty(playProjectPath))
