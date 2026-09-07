@@ -186,6 +186,8 @@ namespace SiegeEngine.Core.UI
                     elem.Style.FontSizeStr = parent.Style.FontSizeStr;
                 if (string.IsNullOrEmpty(elem.Style.TextAlign))
                     elem.Style.TextAlign = parent.Style.TextAlign;
+                if (string.IsNullOrEmpty(elem.Style.WhiteSpace))
+                    elem.Style.WhiteSpace = parent.Style.WhiteSpace;
                 if (elem is InputElement inp && (inp.Type == "text" || inp.Type == "number") && elem.Style.BackgroundColor == Vector4.Zero)
                     elem.Style.BackgroundColor = parent.Style.BackgroundColor;
             }

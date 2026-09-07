@@ -83,7 +83,14 @@ namespace SiegeEngine.Core.UI.Elements
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             Vector2 intrinsic = ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, parentFs);
-            forcedWidth = intrinsic.X;
+            // Keep a parent-forced popup column width so menu items fill the
+            // dropdown instead of collapsing to glyph width (or 0 from display:none).
+            if (float.IsNaN(forcedWidth))
+                forcedWidth = intrinsic.X;
+            else
+                forcedWidth = Math.Max(forcedWidth, intrinsic.X);
+            if (!float.IsNaN(parentWidth) && parentWidth > forcedWidth)
+                forcedWidth = parentWidth;
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
         }
 
@@ -149,10 +156,39 @@ namespace SiegeEngine.Core.UI.Elements
             int items = 1;
             if (dropdownUl != null)
                 items = Math.Max(1, dropdownUl.Children.Count(c => c.Tag.ToLower() == "li"));
-            w = Math.Max(200f, ComputedWidth);
-            if (dropdownUl != null && dropdownUl.ComputedWidth > 20f)
-                w = dropdownUl.ComputedWidth;
+            w = MeasurePopupWidth(dropdownUl);
             h = items * 32f + 8f;
+            if (dropdownUl != null && dropdownUl.ComputedHeight > h)
+                h = dropdownUl.ComputedHeight;
+        }
+
+        private float MeasurePopupWidth(HtmlElement dropdownUl)
+        {
+            float w = Math.Max(200f, ComputedWidth);
+            if (dropdownUl == null) return w;
+            float minW = HtmlLayoutUtils.ParseSize(dropdownUl.Style.MinWidthStr, 0, 0, 0);
+            if (!float.IsNaN(minW)) w = Math.Max(w, minW);
+            if (dropdownUl.ComputedWidth > 20f) w = Math.Max(w, dropdownUl.ComputedWidth);
+            foreach (var child in dropdownUl.Children)
+            {
+                if (child.Tag.ToLower() != "li") continue;
+                if (child.ComputedWidth > 20f) w = Math.Max(w, child.ComputedWidth);
+                string text = "";
+                Queue<HtmlElement> q = new Queue<HtmlElement>(child.Children);
+                while (q.Count > 0)
+                {
+                    var n = q.Dequeue();
+                    if (n is TextElement te && !string.IsNullOrWhiteSpace(te.Content))
+                    {
+                        text = te.Content.Trim();
+                        break;
+                    }
+                    foreach (var c in n.Children) q.Enqueue(c);
+                }
+                if (text.Length > 0)
+                    w = Math.Max(w, 16f + text.Length * 7.5f);
+            }
+            return w;
         }
 
         private static bool PixelHit(float x, float y, float w, float h, Vector2 mouse)
@@ -215,13 +251,23 @@ namespace SiegeEngine.Core.UI.Elements
                 float dropdownX = ComputedContentX;
                 float dropdownY = ComputedPosition.Y + ComputedHeight;
                 dropdownUl.Style.Display = "block";
-                dropdownUl.ComputeLayout(dropdownX, dropdownY, dropdownUl.ComputedWidth, dropdownUl.ComputedHeight, viewportWidth, viewportHeight, textRenderer, Style.FontSize);
+                float popupW = MeasurePopupWidth(dropdownUl);
+                if (string.IsNullOrEmpty(dropdownUl.Style.WhiteSpace))
+                    dropdownUl.Style.WhiteSpace = "nowrap";
+                foreach (var item in dropdownUl.Children)
+                {
+                    if (item.Tag.ToLower() != "li") continue;
+                    if (string.IsNullOrEmpty(item.Style.WhiteSpace))
+                        item.Style.WhiteSpace = "nowrap";
+                }
+                // Never pass the 0-size left over from the display:none first pass.
+                dropdownUl.ComputeLayout(dropdownX, dropdownY, popupW, float.NaN, viewportWidth, viewportHeight, textRenderer, Style.FontSize, popupW, float.NaN);
 
                 CssStyle ulStyle = dropdownUl.Style;
                 Vector4 panelColor = ulStyle.BackgroundColor != Vector4.Zero
                     ? ulStyle.BackgroundColor
                     : new Vector4(0.145f, 0.145f, 0.149f, 1f);
-                float panelW = dropdownUl.ComputedWidth > 0 ? dropdownUl.ComputedWidth : Math.Max(200f, ComputedWidth);
+                float panelW = Math.Max(popupW, dropdownUl.ComputedWidth > 0 ? dropdownUl.ComputedWidth : 0f);
                 float panelH = dropdownUl.ComputedHeight > 0 ? dropdownUl.ComputedHeight : 8f;
                 float[] dropdownNdc = HtmlLayoutUtils.GetNdcQuad(dropdownX, dropdownY, panelW, panelH, ComputedFullTransform, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(dropdownNdc, panelColor);

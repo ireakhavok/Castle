@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI.Elements
+// Folder: SiegeEngine.Core.UI.Elements
 // File: InputElement.cs
 using SiegeEngine.Core.Definitions; // Needed for Key enum
 using System;
@@ -27,10 +27,15 @@ namespace SiegeEngine.Core.UI.Elements
             {
                 Style.Display = "none";
             }
-            // FIXED: Input elements (text boxes) now take full available width when no explicit width is set
-            if (float.IsNaN(forcedWidth) && string.IsNullOrEmpty(Style.WidthStr) && (this.Type == "text" || this.Type == "number"))
+            // Fill the slot we were given. Do not steal the flex row's full width —
+            // that paints the field on top of a flex-shrink:0 label.
+            bool parentIsFlex = Parent != null && Parent.Style.Display == "flex";
+            if (float.IsNaN(forcedWidth) && string.IsNullOrEmpty(Style.WidthStr) && (this.Type == "text" || this.Type == "number") && !parentIsFlex)
             {
-                forcedWidth = parentWidth - HtmlLayoutUtils.ParseMargins(Style, parentWidth, viewportWidth, viewportHeight).W - HtmlLayoutUtils.ParseMargins(Style, parentWidth, viewportWidth, viewportHeight).Y;
+                Vector4 m = HtmlLayoutUtils.ParseMargins(Style, parentWidth, viewportWidth, viewportHeight);
+                float ml = float.IsNaN(m.W) ? 0 : m.W;
+                float mr = float.IsNaN(m.Y) ? 0 : m.Y;
+                forcedWidth = parentWidth - ml - mr;
             }
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
             if (this.Type == "checkbox" || this.Type == "radio")
