@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
+// Folder: SiegeEngine.Core.UI
 // File: UIOverlay.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -40,6 +40,7 @@ namespace SiegeEngine.Core.UI
         public JSContext _jsContext = new JSContext();
         public JSDocument _document;
         public float PanelWidth { get; set; }
+        private Dictionary<string, (float x, float y, float w, float h)> _lastDump;
         public float PanelHeight { get; set; }
         public float ReservedHeaderHeight { get; set; } = 0f;
         public float ScrollOffsetY { get; set; } = 0f;
@@ -76,7 +77,7 @@ namespace SiegeEngine.Core.UI
             // Safety only: if a panel replaces its tree, drop any focused reference that pointed
             // into the old tree. Does not run every frame — only when content is intentionally replaced.
             if (_interactionLayer != null)
-                _interactionLayer.ClearFocus(refresh: false);
+                _interactionLayer.ClearFocus(refresh: false, commit: false);
             _currentBaseDir = baseDir;
             HtmlParser parser = new HtmlParser();
             _cssParser.Clear();
@@ -248,6 +249,56 @@ namespace SiegeEngine.Core.UI
             _uiClickables.Clear();
             CollectClickables(_uiRoot);
         }
+        public void DumpLayout(string tag)
+        {
+            Console.WriteLine($"[LayoutDump] {tag}");
+            if (_uiRoot == null)
+            {
+                Console.WriteLine("[LayoutDump]   (no ui root)");
+                return;
+            }
+            var now = new Dictionary<string, (float x, float y, float w, float h)>();
+            int n = 0;
+            int moved = 0;
+            void Walk(HtmlElement e, int depth)
+            {
+                if (e == null) return;
+                string id = "";
+                if (e.Attributes != null)
+                    e.Attributes.TryGetValue("id", out id);
+                string hook = "";
+                if (e.Attributes != null)
+                    e.Attributes.TryGetValue("data-hook", out hook);
+                string text = "";
+                if (e is TextElement te && !string.IsNullOrEmpty(te.Content))
+                    text = te.Content.Replace("\n", " ").Trim();
+                if (text.Length > 40)
+                    text = text.Substring(0, 40);
+                string key = $"{n}:{e.Tag}:{id}:{hook}:{text}";
+                var box = (e.ComputedPosition.X, e.ComputedPosition.Y, e.ComputedWidth, e.ComputedHeight);
+                now[key] = box;
+                string delta = "";
+                if (_lastDump != null && _lastDump.TryGetValue(key, out var prev))
+                {
+                    if (Math.Abs(prev.x - box.Item1) > 0.05f || Math.Abs(prev.y - box.Item2) > 0.05f
+                        || Math.Abs(prev.w - box.Item3) > 0.05f || Math.Abs(prev.h - box.Item4) > 0.05f)
+                    {
+                        delta = $"  DELTA from ({prev.x:0.0},{prev.y:0.0}) {prev.w:0.0}x{prev.h:0.0}";
+                        moved++;
+                    }
+                }
+                Console.WriteLine(
+                    $"[LayoutDump]   {new string(' ', depth * 2)}{e.Tag} id={id ?? ""} hook={hook ?? ""} text=\"{text}\" pos=({box.Item1:0.0},{box.Item2:0.0}) size={box.Item3:0.0}x{box.Item4:0.0}{delta}");
+                n++;
+                if (e.Children == null) return;
+                foreach (var child in e.Children)
+                    Walk(child, depth + 1);
+            }
+            Walk(_uiRoot, 0);
+            Console.WriteLine($"[LayoutDump]   count={n} moved={moved} panel={PanelWidth:0}x{PanelHeight:0} header={ReservedHeaderHeight:0}");
+            _lastDump = now;
+        }
+
         public HtmlElement FindElementById(string id)
         {
             return FindElementById(_uiRoot, id);
@@ -393,9 +444,10 @@ namespace SiegeEngine.Core.UI
                         {
                             if (!input.IsFocused)
                             {
-                                // Transfer focus: blur previous text input first
+                                // Transfer focus: commit + blur previous text input first
                                 if (_interactionLayer != null && _interactionLayer._currentFocused is InputElement prev && prev != input)
                                 {
+                                    _interactionLayer.CommitFocusedInput();
                                     prev.IsFocused = false;
                                 }
                                 if (!string.IsNullOrEmpty(input.OnFocusJS))
@@ -436,9 +488,10 @@ namespace SiegeEngine.Core.UI
                     {
                         if (!input.IsFocused)
                         {
-                            // Transfer focus: blur previous text input first
+                            // Transfer focus: commit + blur previous text input first
                             if (_interactionLayer != null && _interactionLayer._currentFocused is InputElement prev && prev != input)
                             {
+                                _interactionLayer.CommitFocusedInput();
                                 prev.IsFocused = false;
                             }
                             if (!string.IsNullOrEmpty(input.OnFocusJS))
@@ -785,13 +838,11 @@ namespace SiegeEngine.Core.UI
         }
         public bool InvokeListeners(HtmlElement elem, string eventName, JSElement jsElem = null)
         {
-            Console.WriteLine($"[UIOverlay] InvokeListeners ENTER - eventName={eventName}, hasListeners={elem.EventListeners.ContainsKey(eventName)}");
             if (elem.EventListeners.ContainsKey(eventName))
             {
                 if (jsElem == null) jsElem = new JSElement(elem, this);
                 foreach (var cb in elem.EventListeners[eventName])
                 {
-                    Console.WriteLine($"[UIOverlay] InvokeListeners - calling cb type={(cb?.GetType().Name ?? "null")}");
                     _jsContext.Evaluator.CallFunction(cb, new List<object> { jsElem });
                 }
                 return true;

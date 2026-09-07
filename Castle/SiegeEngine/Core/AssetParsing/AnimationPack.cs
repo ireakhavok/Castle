@@ -1,10 +1,11 @@
-﻿// Folder: SiegeEngine.Core.AssetParsing.Model
+// Folder: SiegeEngine.Core.AssetParsing.Model
 // File: AnimationPack.cs
 using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text.Json.Serialization;
 using SiegeEngine.Core.AssetParsing.Model;
+using SiegeEngine.Core.Definitions;
 namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class AnimationPack
@@ -23,6 +24,9 @@ namespace SiegeEngine.Core.AssetParsing.Model
         // Material data (including world-aligned TextureSlots) is now part of the pack manifest
         // This allows full save/load of material configuration exactly like animation data
         public Material Material { get; set; }
+        // Manual per-mesh opacity (and future fields). Empty paths are a no-op.
+        // Do not write these into Material.TextureSlots — that is what broke walls.
+        public List<MeshMaterialOption> MaterialOptions { get; set; }
         public AnimationPack()
         {
         }

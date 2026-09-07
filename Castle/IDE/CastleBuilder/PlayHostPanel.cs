@@ -17,7 +17,7 @@ using System.Numerics;
 
 namespace CastleBuilder
 {
-    public class PlayHostPanel : BasePanel
+    public class PlayHostPanel : BasePanel, IPlayViewport
     {
         private class PlayHostOverlay : UIOverlay
         {
@@ -27,7 +27,7 @@ namespace CastleBuilder
             protected override void HandleDataHook(string hook) { _parent.HandleDataHook(hook); }
         }
 
-        private GameScene _runtime;
+        private Scene _runtime;
         private IGameServer _runtimeServer;
         private bool _playing;
         private bool _lookCaptured;
@@ -35,6 +35,14 @@ namespace CastleBuilder
         private bool _wasLive;
 
         public override bool WantsContinuousUpdate => _playing;
+        public bool IsPlaying => _playing;
+        public Vector2 ViewportPosition => Position;
+        public Vector2 ViewportSize => Size;
+
+        public void HandleGameHud(OpenGameHudEvent request)
+        {
+            (_runtime as RuntimeGameplayScene)?.HandleGameHud(request);
+        }
 
         public PlayHostPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
@@ -96,12 +104,16 @@ namespace CastleBuilder
             }
             try
             {
-                ScriptLoader.BuildProjectScripts(projectPath);
-                ScriptLoader.CopyProjectScripts(projectPath);
+                if (!ScriptLoader.PrepareProjectForPlay(projectPath))
+                {
+                    Console.WriteLine("[PlayHostPanel] ABORTED — project scripts failed to compile.");
+                    return;
+                }
+                ScriptLoader.LoadCustomAssemblies(projectPath);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("[PlayHostPanel] Build failed: " + ex.Message);
+                Console.WriteLine("[PlayHostPanel] Prepare/load scripts: " + ex.Message);
                 return;
             }
 

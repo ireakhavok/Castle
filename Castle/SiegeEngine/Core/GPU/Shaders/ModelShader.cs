@@ -89,6 +89,10 @@ uniform sampler2D uAlbedoMap[4];
 uniform sampler2D uNormalMap[4];
 uniform sampler2D uMetallicMap[4];
 
+uniform int uHasOpacity;
+uniform int uOpacitySlots;
+uniform sampler2D uOpacityMap;
+
 uniform int uDebugTextureOnly;
 uniform int uDebugMaterialIndex;
 
@@ -342,6 +346,13 @@ void main() {
     int matIdx = int(vMaterialIndex);
     if (matIdx < 0) matIdx = 0;
     if (matIdx > 3) matIdx = 3;
+
+    // Opacity is per-material, same indexing as albedo. A leaf mask must
+    // not clip bark faces that share this MeshRender but have a different MatIdx.
+    if (uHasOpacity == 1 && ((uOpacitySlots >> matIdx) & 1) == 1) {
+        float mask = texture(uOpacityMap, vTexCoord).r;
+        if (mask <= 0.0) discard;
+    }
 
     if (uDebugMaterialIndex == 1) {
         if (matIdx == 0) FragColor = vec4(1.0, 0.0, 0.0, 1.0);

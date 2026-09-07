@@ -153,7 +153,7 @@ namespace SiegeEngine.PlayerSystem
         {
             if (_player != null)
             {
-                Vector3 bodyPos = _player.Physics.RenderPosition;
+                Vector3 bodyPos = _player.Physics.Position;
                 Vector3 head = bodyPos + new Vector3(0, 0, _playerHeight);
                 Vector3 chest = bodyPos + new Vector3(0, 0, _playerHeight * 0.55f);
                 float yawRad = _yaw * (float)(Math.PI / 180);

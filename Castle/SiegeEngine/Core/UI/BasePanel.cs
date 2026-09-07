@@ -164,7 +164,7 @@ namespace SiegeEngine.Core.UI
                     newSize.Y = Math.Max(newSize.Y, 150f);
                     Position = newPos;
                     Size = newSize;
-                    OnLiveResize(Size.X, Size.Y);
+                    ApplyLiveResize(Size.X, Size.Y);
                 }
                 if (mouseReleased)
                 {
@@ -225,12 +225,7 @@ namespace SiegeEngine.Core.UI
             {
                 _lastW = (int)Size.X;
                 _lastH = (int)Size.Y;
-                OnLiveResize(Size.X, Size.Y);
-                _uiOverlay.PanelWidth = Size.X;
-                _uiOverlay.PanelHeight = Size.Y;
-                // Live size change only updates dimensions.
-                // Full RefreshUI is reserved for OnPanelResize (mouse-up) and explicit content/style changes.
-                // This matches the contract used by SceneEditorPanel and TerrainCreatorPanel.
+                ApplyLiveResize(Size.X, Size.Y);
             }
             _layeredRenderer.RenderPanel(this);
         }
@@ -251,6 +246,7 @@ namespace SiegeEngine.Core.UI
             if (chrome != null) chrome.Dispose();
         }
         public virtual void Detach() { }
+        public static bool LogResizeRefresh;
         public virtual void OnPanelResize(float w, float h)
         {
             Size = new Vector2(w, h);
@@ -262,6 +258,18 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
             _uiOverlay.RefreshUI();
+        }
+        public void ApplyLiveResize(float w, float h)
+        {
+            Size = new Vector2(w, h);
+            if (_uiOverlay != null)
+            {
+                _uiOverlay.PanelWidth = Size.X;
+                _uiOverlay.PanelHeight = Size.Y;
+                _uiOverlay.ReservedHeaderHeight = HeaderHeight;
+                _uiOverlay.RecomputeLayout(Size.X, Size.Y);
+            }
+            OnLiveResize(w, h);
         }
         public virtual void OnLiveResize(float w, float h)
         {

@@ -51,9 +51,9 @@ namespace CastleBuilder
                 {
                     Console.WriteLine("  Panels menu now shows: Hierarchy, Properties, Asset Browser, Scene List, Load Game Scene, Play Game, Export Game");
                 }
-                else if (context == "Configuration")
+                else if (context == "Workshop")
                 {
-                    Console.WriteLine("  Panels menu now shows: Project Settings, Mod Manager, Server Rules, Blueprint Governance");
+                    Console.WriteLine("  Panels menu now shows: Script Editor, Console, Play Host");
                 }
                 else if (context == "Runtime Gameplay")
                 {
@@ -148,6 +148,7 @@ namespace CastleBuilder
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
 
+            CompanionLayoutHelper.Bind(_renderContext, _controlContext, _window, _eventBus);
             MusicPlayerPanel.Open(_renderContext, _controlContext, _window, _eventBus);
         }
 

@@ -63,7 +63,7 @@ namespace SiegeEngine.Systems
                 }
 
                 // Use client's predicted rotation
-                _server.Publish(new EntityMovedEvent(player.EntityId, new Vector2(player.Physics.Position.X, player.Physics.Position.Y), player.Physics.Rotation, player.SteamId));
+                _server.Publish(new EntityMovedEvent(player.EntityId, player.Physics.Position, player.Physics.Rotation, player.SteamId));
                 Console.WriteLine($"PlayerControllerSystem: Updated entity {player.EntityId}, Position={player.Physics.Position}, Rotation={player.Physics.Rotation}");
             }
         }

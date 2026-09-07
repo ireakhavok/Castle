@@ -219,6 +219,7 @@ namespace CastleBuilder
             if (level != null && !string.IsNullOrEmpty(currentSceneName) && data.Scenes.ContainsKey(currentSceneName))
             {
                 var sceneData = data.Scenes[currentSceneName];
+                EnsureSoundAssetsInProject(level, projectPath);
                 sceneData.Entities.Clear();
                 sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
                 sceneData.Terrain = level.Terrain ?? new TerrainData();
@@ -375,6 +376,92 @@ namespace CastleBuilder
             public string LevelDataBase64 { get; set; }
             public SceneData SceneData { get; set; }
         }
+        public static void MaterializeSoundsTo(Level level, string projectPath)
+        {
+            EnsureSoundAssetsInProject(level, projectPath);
+        }
+
+        private static void EnsureSoundAssetsInProject(Level level, string projectPath)
+        {
+            if (level?.Entities == null || string.IsNullOrEmpty(projectPath)) return;
+            string hostBin = AppDomain.CurrentDomain.BaseDirectory;
+            int copied = 0;
+            foreach (var entity in level.Entities)
+            {
+                var sound = entity.GetComponent<SoundComponent>();
+                if (sound == null || string.IsNullOrWhiteSpace(sound.AudioClip)) continue;
+                string clip = sound.AudioClip.Trim();
+                string source = ResolveSoundFile(clip, projectPath, hostBin);
+                if (source == null)
+                {
+                    Console.WriteLine("[BlueprintManager] Sound clip not found to materialize: " + clip);
+                    continue;
+                }
+                string rel = clip.Replace('/', Path.DirectorySeparatorChar).TrimStart('\\', '/');
+                if (rel.StartsWith("Assets" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    rel = rel.Substring("Assets".Length).TrimStart('\\', '/');
+                if (!rel.StartsWith("Sounds" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(rel, "Sounds", StringComparison.OrdinalIgnoreCase))
+                    rel = Path.Combine("Sounds", Path.GetFileName(rel));
+                string dest = Path.Combine(projectPath, "Assets", rel);
+                Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+                string fullSrc = Path.GetFullPath(source);
+                string fullDest = Path.GetFullPath(dest);
+                if (!string.Equals(fullSrc, fullDest, StringComparison.OrdinalIgnoreCase))
+                {
+                    try { File.Copy(fullSrc, fullDest, true); }
+                    catch (IOException ex) { Console.WriteLine("[BlueprintManager] Sound copy skipped: " + ex.Message); }
+                }
+                if (!File.Exists(fullDest))
+                {
+                    Console.WriteLine("[BlueprintManager] Sound dest missing after copy: " + fullDest);
+                    continue;
+                }
+                sound.AudioClip = Path.GetRelativePath(projectPath, fullDest).Replace("\\", "/");
+                copied++;
+                Console.WriteLine("[BlueprintManager] Sound materialized " + clip + " -> " + sound.AudioClip + " (" + new FileInfo(fullDest).Length + " bytes)");
+            }
+            if (copied > 0)
+                Console.WriteLine("[BlueprintManager] Materialized " + copied + " sound clip(s) into Assets/Sounds");
+        }
+
+        private static string ResolveSoundFile(string clip, string projectPath, string hostBin)
+        {
+            if (Path.IsPathRooted(clip) && File.Exists(clip)) return clip;
+            string cleaned = clip.TrimStart('\\', '/').Replace('/', Path.DirectorySeparatorChar);
+            string fileName = Path.GetFileName(cleaned);
+            string[] hits =
+            {
+                Path.Combine(projectPath, cleaned),
+                Path.Combine(projectPath, "Assets", cleaned),
+                Path.Combine(hostBin, cleaned),
+                Path.Combine(hostBin, "Assets", cleaned),
+                Path.Combine(hostBin, "Assets", "Sounds", cleaned),
+                Path.Combine(hostBin, "Assets", "Sounds", fileName),
+                Path.Combine(hostBin, "Assets", "Sounds", "IDE", "Music", fileName)
+            };
+            for (int i = 0; i < hits.Length; i++)
+            {
+                if (File.Exists(hits[i])) return hits[i];
+            }
+            string walk = hostBin;
+            for (int i = 0; i < 8 && !string.IsNullOrEmpty(walk); i++)
+            {
+                string sounds = Path.Combine(walk, "Assets", "Sounds");
+                if (Directory.Exists(sounds))
+                {
+                    try
+                    {
+                        string[] found = Directory.GetFiles(sounds, fileName, SearchOption.AllDirectories);
+                        if (found.Length > 0) return found[0];
+                    }
+                    catch { }
+                }
+                walk = Path.GetDirectoryName(walk);
+            }
+            return null;
+        }
+
         private static void EnsureSkyboxAssetsInProject(SkyboxData skybox, string projectPath, string sceneName)
         {
             if (skybox == null) return;
@@ -520,6 +607,8 @@ namespace CastleBuilder
         }
         private void OnNewProject(NewProjectEvent evt)
         {
+            ProjectStateManager.Current.Clear();
+            EditorScene.ResetLiveProjectState();
             string root = ProjectSettings.Current.ProjectsRoot;
             string dir = evt.Path ?? Path.Combine(root, (evt.Name ?? "MyProject").Replace(" ", "_").ReplaceInvalidFileChars());
             Directory.CreateDirectory(dir);
@@ -540,6 +629,12 @@ namespace CastleBuilder
         private void OnLoadProject(LoadProjectEvent evt)
         {
             if (string.IsNullOrEmpty(evt.Path) || !Directory.Exists(evt.Path)) return;
+            string previousProject = ProjectSettings.Current.ActiveProject;
+            if (!string.Equals(previousProject, evt.Path, StringComparison.OrdinalIgnoreCase))
+            {
+                ProjectStateManager.Current.Clear();
+                EditorScene.ResetLiveProjectState();
+            }
             ProjectSettings.Current.ActiveProject = evt.Path;
             Console.WriteLine($"[BlueprintManager.OnLoadProject] ActiveProject set to: {evt.Path}");
             string jsonPath = Path.Combine(evt.Path, "project.json");
@@ -552,7 +647,7 @@ namespace CastleBuilder
                     ProjectSettings.Current.CameraType = data.CameraType;
                     _previousContext = data.LastContext ?? "Scene Editor";
                     Console.WriteLine($"[BlueprintManager.OnLoadProject] Loaded project '{data.Name}' - Last Context: {_previousContext}");
-                    ProjectLayoutManager.LoadLayoutForContext(_previousContext);
+                    ProjectLayoutManager.OnProjectOpened(_previousContext);
                     LoadAllPanelStates(data);
                     string currentScene = data.LastOpenedScene ?? (data.Scenes != null && data.Scenes.Count > 0 ? new List<string>(data.Scenes.Keys)[0] : "Main");
                     if (data.Scenes != null && data.Scenes.TryGetValue(currentScene, out var sd))
@@ -606,6 +701,7 @@ namespace CastleBuilder
                 ProjectLayoutManager.SaveCurrentLayout(_previousContext);
             }
             var strategy = PanelManager.Current?.IDEStrategy;
+            bool hadCache = strategy != null && strategy.HasBladeCache(newContext);
             if (strategy is IDEDockingStrategy ide)
             {
                 ide.SwitchBlade(newContext);
@@ -628,6 +724,12 @@ namespace CastleBuilder
                     File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
                 }
             }
+            if (!hadCache && ProjectLayoutManager.LayoutFileExists(newContext)
+                && (strategy == null || !strategy.HasActiveContent()))
+            {
+                ProjectLayoutManager.LoadLayoutForContext(newContext);
+            }
+            CompanionLayoutHelper.EnsureLayout(newContext);
             _previousContext = newContext;
             Console.WriteLine($"[BlueprintManager.OnContextChanged] Context switch complete → '{newContext}' (memory hotswap, no close/dispose)");
         }

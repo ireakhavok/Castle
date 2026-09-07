@@ -85,6 +85,10 @@ uniform sampler2D uAlbedoMap[4];
 uniform sampler2D uNormalMap[4];
 uniform sampler2D uMetallicMap[4];
 
+uniform int uHasOpacity;
+uniform int uOpacitySlots;
+uniform sampler2D uOpacityMap;
+
 uniform vec3 uLightDir;
 uniform vec3 uLightColor;
 uniform float uLightIntensity;
@@ -320,6 +324,11 @@ void main()
     int matIdx = int(MaterialIndex);
     if (matIdx < 0) matIdx = 0;
     if (matIdx > 3) matIdx = 3;
+
+    if (uHasOpacity == 1 && ((uOpacitySlots >> matIdx) & 1) == 1) {
+        float mask = texture(uOpacityMap, TexCoord).r;
+        if (mask <= 0.0) discard;
+    }
 
     vec3 albedo = SampleAlbedo(matIdx, TexCoord);
     float metallic = 0.0;

@@ -1,4 +1,4 @@
-﻿using Silk.NET.GLFW;
+using Silk.NET.GLFW;
 using Silk.NET.OpenGL;
 using System;
 
@@ -32,6 +32,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             _window = (nint)_internalWindow;
 
             _glfw.MakeContextCurrent(_internalWindow);
+            _glfw.SwapInterval(0);
 
             GL gl = GL.GetApi(_glfw.GetProcAddress);
 
@@ -41,6 +42,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         public override void Terminate()
         {
+            if (_glfw == null) return;
             _glfw.Terminate();
         }
     }

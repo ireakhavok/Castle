@@ -1,6 +1,7 @@
 ﻿// Folder: SiegeEngine/Core/Definitions
 // File: PhysicsComponent.cs
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Text.Json;
 using SiegeEngine.Core.AssetParsing.Model;
@@ -51,7 +52,10 @@ namespace SiegeEngine.Core.Definitions
         public Vector3 Position
         {
             get => _transform.Position;
-            set => _transform.Position = value;
+            set
+            {
+                _transform.Position = value;
+            }
         }
         public Quaternion Rotation
         {
@@ -190,15 +194,23 @@ namespace SiegeEngine.Core.Definitions
         }
         public void RebuildShape(FBXModel model = null)
         {
+            RebuildShape(model, null, null);
+        }
+
+        public void RebuildShape(FBXModel model, ModelComponent modelComp)
+        {
+            RebuildShape(model, modelComp?.HiddenMeshIndices, modelComp?.MaterialOptions);
+        }
+
+        public void RebuildShape(FBXModel model, IList<int> hiddenMeshIndices, IList<MeshMaterialOption> materialOptions)
+        {
             if (BodyType == BodyType.Kinematic)
             {
                 Shape = new CapsuleShape(0.4f, 1.8f);
             }
             else if (model != null && model.Meshes != null && model.Meshes.Count > 0)
             {
-                // Always use the real FBX triangle mesh for both Dynamic and Static.
-                // This is the only way a ball mesh stays a ball and a wall mesh stays a wall.
-                Shape = new TriangleMeshShape(model);
+                Shape = new TriangleMeshShape(model, hiddenMeshIndices, materialOptions);
             }
             else
             {
@@ -301,6 +313,15 @@ namespace SiegeEngine.Core.Definitions
                 if (LocalCentreOfMass == Vector3.Zero)
                     return Position;
                 return Position + Vector3.Transform(LocalCentreOfMass, Rotation);
+            }
+        }
+        public Vector3 RenderWorldCentreOfMass
+        {
+            get
+            {
+                if (LocalCentreOfMass == Vector3.Zero)
+                    return RenderPosition;
+                return RenderPosition + Vector3.Transform(LocalCentreOfMass, Rotation);
             }
         }
         public Vector3 ApplyInvInertiaWorld(Vector3 worldTorque)

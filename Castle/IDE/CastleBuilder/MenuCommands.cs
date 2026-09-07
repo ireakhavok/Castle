@@ -22,24 +22,33 @@ namespace CastleBuilder
         private static readonly string DefaultProjectsPath = ProjectSettings.Current.ProjectsRoot;
         public static void SwitchToTerrain(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
+            CompanionLayoutHelper.Bind(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new ContextChangedEvent { Context = "Terrain" });
             Console.WriteLine("[MenuCommands] Switched to Terrain context");
         }
         public static void SwitchToAnimator(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
+            CompanionLayoutHelper.Bind(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new ContextChangedEvent { Context = "Animator" });
             Console.WriteLine("[MenuCommands] Switched to Animator context");
         }
         public static void SwitchToSceneEditor(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
+            CompanionLayoutHelper.Bind(renderContext, controlContext, window, eventBus);
             BlueprintManager.EnsureDefaultSceneIfNeeded();
             eventBus.Publish(new ContextChangedEvent { Context = "Scene Editor" });
             Console.WriteLine("[MenuCommands] Switched to Scene Editor context (panel opened)");
         }
-        public static void SwitchToConfiguration(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        public static void SwitchToWorkshop(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            eventBus.Publish(new ContextChangedEvent { Context = "Configuration" });
-            Console.WriteLine("[MenuCommands] Switched to Configuration context");
+            CompanionLayoutHelper.Bind(renderContext, controlContext, window, eventBus);
+            eventBus.Publish(new ContextChangedEvent { Context = "Workshop" });
+            Console.WriteLine("[MenuCommands] Switched to Workshop context");
+        }
+        public static void OpenDefaultPanels(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            CompanionLayoutHelper.Bind(renderContext, controlContext, window, eventBus);
+            CompanionLayoutHelper.OpenDefaultPanels();
         }
         public static void LoadProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -134,8 +143,11 @@ namespace CastleBuilder
             string projectPath = ProjectSettings.Current.ActiveProject ?? string.Empty;
             string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
             string payloadFile = BlueprintManager.BuildPlayPayloadFile();
-            ScriptLoader.BuildProjectScripts(projectPath);
-            ScriptLoader.CopyProjectScripts(projectPath);
+            if (!ScriptLoader.PrepareProjectForPlay(projectPath))
+            {
+                Console.WriteLine("[MenuCommands.PlayGame] ABORTED — project scripts failed to compile. Fix Scripts/ and try Play again.");
+                return;
+            }
             string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Foundation.exe");
             if (!File.Exists(exe)) exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
             var psi = new ProcessStartInfo
@@ -148,15 +160,57 @@ namespace CastleBuilder
             Process.Start(psi);
             Console.WriteLine($"[PlayGame SUCCESS] New runtime window launched with pure in-memory Level + SceneData via temp payload file (no forced save, no command-line length limit)");
         }
+
         public static void SandboxRegressionTest(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             Console.WriteLine("[Tests] Sandbox Regression Test launched (vertical slice/demo only)");
             eventBus.Publish(new ContextChangedEvent { Context = "Runtime Gameplay" });
             SandboxScene.Launch(renderContext, controlContext, window, eventBus);
         }
+        private static string ReadProjectSteamAppId(string projectPath)
+        {
+            try
+            {
+                string jsonPath = Path.Combine(projectPath, "project.json");
+                if (File.Exists(jsonPath))
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(jsonPath));
+                    var root = doc.RootElement;
+                    foreach (string key in new[] { "SteamAppId", "steamAppId", "AppId", "appId" })
+                    {
+                        if (!root.TryGetProperty(key, out var el)) continue;
+                        if (el.ValueKind == System.Text.Json.JsonValueKind.Number && el.TryGetUInt32(out uint n) && n != 0)
+                            return n.ToString();
+                        string s = el.GetString();
+                        if (!string.IsNullOrWhiteSpace(s))
+                            return s.Trim();
+                    }
+                }
+            }
+            catch { }
+            return "2628760";
+        }
+
+
+        private static void CopyGameContent(string projectPath, string exportDir, string hostBin)
+        {
+            void CopyTree(string src, string dest)
+            {
+                if (string.IsNullOrEmpty(src) || !Directory.Exists(src))
+                {
+                    Console.WriteLine("[Export] skip missing " + src);
+                    return;
+                }
+                BlueprintManager.CopyDirectory(src, dest);
+                Console.WriteLine("[Export] copied " + src + " -> " + dest);
+            }
+            CopyTree(Path.Combine(projectPath, "Textures"), Path.Combine(exportDir, "Textures"));
+            CopyTree(Path.Combine(projectPath, "Sounds"), Path.Combine(exportDir, "Sounds"));
+        }
+
         public static void ExportGame(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            Console.WriteLine("[MenuCommands.ExportGame] Starting clean GAME export (client-only, no IDE files, no server mode, serialized starting Level)");
+            Console.WriteLine("[MenuCommands.ExportGame] Writing game-only client into the project exported folder");
             Task.Run(() =>
             {
                 try
@@ -164,74 +218,62 @@ namespace CastleBuilder
                     string projectPath = ProjectSettings.Current.ActiveProject;
                     if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
                     {
-                        Console.WriteLine("[Export] No active project - using default in-memory Level");
-                        projectPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "CastleBuilder", "Projects", "Default");
-                        Directory.CreateDirectory(projectPath);
+                        Console.WriteLine("[Export] No active project.");
+                        return;
                     }
                     BlueprintManager.SaveCurrentProject(renderContext, controlContext, window, eventBus);
-                    ScriptLoader.BuildProjectScripts(projectPath);
-                    string exportRoot = Path.Combine(projectPath, "exported");
-                    if (Directory.Exists(exportRoot))
+                    ScriptLoader.PrepareProjectForPlay(projectPath);
+                    string ideConfig = AppDomain.CurrentDomain.BaseDirectory.IndexOf(Path.DirectorySeparatorChar + "Debug" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) >= 0
+                        ? "Debug" : "Release";
+                    var configs = ideConfig == "Debug"
+                        ? new[] { "Debug", "Release" }
+                        : new[] { "Release" };
+                    string lastDir = null;
+                    foreach (string config in configs)
                     {
-                        Directory.Delete(exportRoot, true);
-                    }
-                    Directory.CreateDirectory(exportRoot);
-                    string[] runtimeFolders = { "Assets", "Scenes", "Scripts" };
-                    foreach (string folder in runtimeFolders)
-                    {
-                        string source = Path.Combine(projectPath, folder);
-                        if (Directory.Exists(source))
+                        string exportDir = Path.Combine(projectPath, "exported", config);
+                        Directory.CreateDirectory(exportDir);
+                        if (!ScriptLoader.PublishGameClient(exportDir, config))
                         {
-                            string target = Path.Combine(exportRoot, folder);
-                            Directory.CreateDirectory(target);
-                            BlueprintManager.CopyDirectory(source, target);
+                            Console.WriteLine("[Export ERROR] GameHost publish failed for " + config);
+                            continue;
                         }
-                    }
-                    ScriptLoader.CopyProjectScripts(projectPath);
-                    ScriptLoader.CopyScriptsToExport(projectPath, exportRoot);
-                    string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
-                    var level = ProjectSettings.Current.CurrentLevel ?? new Level();
-                    var sceneData = new SceneData { Name = levelName };
-                    if (level != null)
-                    {
-                        sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
-                        sceneData.Terrain = level.Terrain ?? new TerrainData();
-                        sceneData.Environment = level.Environment ?? new EnvironmentSettings();
-                        sceneData.Skybox = level.Skybox ?? new SkyboxData();
-                        sceneData.Settings = ProjectSettings.Current.CurrentSceneSettings;
-                    }
-                    byte[] sceneBytes = JsonSerializer.SerializeToUtf8Bytes(sceneData, EntityData.SerializerOptions);
-                    string scenePayload = Convert.ToBase64String(sceneBytes);
-                    byte[] serialized = level.Serialize();
-                    string levelPayload = Convert.ToBase64String(serialized);
-                    string levelJsonPath = Path.Combine(exportRoot, "Scenes", "starting_level.json");
-                    Directory.CreateDirectory(Path.Combine(exportRoot, "Scenes"));
-                    File.WriteAllBytes(levelJsonPath, serialized);
-                    File.WriteAllText(Path.Combine(exportRoot, "starting_scene.json"), "{\"startingScene\":\"" + levelName + "\"}");
-                    string exeSource = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
-                    string exeTarget = Path.Combine(exportRoot, "Citadel.exe");
-                    File.Copy(exeSource, exeTarget, true);
-                    string[] dlls = { "steam_api64.dll", "Foundation.dll", "SiegeEngine.dll", "Trebuchet.dll" };
-                    foreach (string dll in dlls)
-                    {
-                        string sourceDll = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, dll);
-                        if (File.Exists(sourceDll))
+                        foreach (string folder in new[] { "Assets", "Scenes", "Scripts", "Sounds", "Textures" })
                         {
-                            File.Copy(sourceDll, Path.Combine(exportRoot, dll), true);
+                            string source = Path.Combine(projectPath, folder);
+                            if (!Directory.Exists(source)) continue;
+                            BlueprintManager.CopyDirectory(source, Path.Combine(exportDir, folder));
                         }
+                        ScriptLoader.CopyScriptsToExport(projectPath, exportDir);
+                        string payloadFile = BlueprintManager.BuildPlayPayloadFile();
+                        string payloadTarget = Path.Combine(exportDir, "play_payload.json");
+                        if (!string.IsNullOrEmpty(payloadFile) && File.Exists(payloadFile))
+                            File.Copy(payloadFile, payloadTarget, true);
+                        CopyGameContent(projectPath, exportDir, AppDomain.CurrentDomain.BaseDirectory);
+                        string steam = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "steam_api64.dll");
+                        if (File.Exists(steam))
+                            File.Copy(steam, Path.Combine(exportDir, "steam_api64.dll"), true);
+                        File.WriteAllText(Path.Combine(exportDir, "steam_appid.txt"), ReadProjectSteamAppId(projectPath));
+                        lastDir = exportDir;
+                        Console.WriteLine("[Export] Ready " + Path.Combine(exportDir, "Game.exe"));
+                    }
+                    if (string.IsNullOrEmpty(lastDir) || !File.Exists(Path.Combine(lastDir, "Game.exe")))
+                    {
+                        Console.WriteLine("[Export ERROR] No Game.exe produced.");
+                        return;
                     }
                     Process.Start(new ProcessStartInfo
                     {
-                        FileName = Path.Combine(exportRoot, "Citadel.exe"),
-                        WorkingDirectory = exportRoot,
-                        UseShellExecute = true,
-                        Arguments = $"--client --load-level {levelName} --level-data \"{levelPayload}\" --scene-data \"{scenePayload}\" --custom-assemblies \"{ScriptLoader.GetCustomAssemblyList(projectPath)}\""
+                        FileName = "cmd.exe",
+                        Arguments = "/c start \"Game\" /D \"" + lastDir + "\" \"" + Path.Combine(lastDir, "Game.exe") + "\"",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
                     });
-                    Console.WriteLine($"[Export SUCCESS] Clean game client exported to {exportRoot} with FULL starting Level '{levelName}' and launched as pure runtime client (exact entities, positions, terrain, packs - no server messages, no IDE)");
+                    Console.WriteLine("[Export SUCCESS] " + Path.Combine(lastDir, "Game.exe") + " (double-click also works)");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[Export ERROR] {ex.Message}");
+                    Console.WriteLine("[Export ERROR] " + ex.Message);
                 }
             });
         }

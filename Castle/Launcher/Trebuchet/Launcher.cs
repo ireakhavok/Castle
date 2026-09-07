@@ -40,7 +40,8 @@ namespace Trebuchet
         public void Start(string context, bool discoverDedicated = false, ulong specificLobbyId = 0, ulong connectToServerSteamId = 0, bool discoverP2PHost = false, ulong joinLobbyId = 0, bool isClientRuntime = false, string playProjectPath = null, string loadLevelName = "Main", string levelDataPayload = null, string sceneDataPayload = null)
         {
 #if DEBUG
-            System.Diagnostics.Debugger.Launch();
+            if (!isClientRuntime && string.IsNullOrEmpty(playProjectPath))
+                System.Diagnostics.Debugger.Launch();
 #endif
             try
             {
@@ -59,7 +60,6 @@ namespace Trebuchet
                     _settingsManager.LoadSettings();
                     AntiAliasingSettings.BindMachine(_settingsManager);
                     LightingSettings.BindMachine(_settingsManager);
-                    _panelManager = null;
                     _menuPanel = null;
                 }
                 else if (!discoverDedicated && connectToServerSteamId == 0 && !discoverP2PHost)
@@ -134,10 +134,11 @@ namespace Trebuchet
                     Console.WriteLine($"Launcher: Resolved MainMenu.html path: {initialHtmlPath}, Exists: {File.Exists(initialHtmlPath)}");
                     if (isClientRuntime || !string.IsNullOrEmpty(playProjectPath))
                     {
+                        _panelManager = new PanelManager(_renderContext, _controlContext, _window, _eventBus);
                         _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler, null);
-                        ScriptLoader.LoadCustomAssemblies(playProjectPath); // Phase 1 addition
+                        ScriptLoader.LoadCustomAssemblies(playProjectPath);
                         _sceneManager.SwitchToRuntimeGameplay(playProjectPath, loadLevelName, levelDataPayload, sceneDataPayload);
-                        Console.WriteLine("[Launcher] Pure client runtime - IDE panels skipped, Gameplay scene loaded from passed Level name");
+                        Console.WriteLine("[Launcher] Pure client runtime - hosted content docked, no IDE chrome, Gameplay scene loaded from passed Level name");
                     }
                     else
                     {
@@ -159,7 +160,7 @@ namespace Trebuchet
                         _sceneManager.Resize(width, height);
                     });
                     _isRunning = true;
-                    float lastFrameTime = 0f;
+                    float lastFrameTime = (float)_controlContext.GetTime();
                     while (_isRunning)
                     {
                         float currentTime = (float)_controlContext.GetTime();

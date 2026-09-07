@@ -1,4 +1,4 @@
-﻿// Folder: Citadel/Server
+// Folder: Citadel/Server
 // File: GameServer.cs
 using System;
 using System.Collections.Generic;
@@ -14,6 +14,7 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Physics;
+using SiegeEngine.Core.Networking;
 
 namespace Citadel.Server
 {
@@ -33,6 +34,7 @@ namespace Citadel.Server
         private readonly bool _isEditor;
         private int _nextEntityId = 1;  // FIXED: track next ID server-side for authoritative placement
         private readonly PhysicsSystem _physicsSystem;
+        private uint _serverTick;
 
         public GameServer(EventBus eventBus, NetworkManager networkManager = null, bool isEditor = false)
         {
@@ -120,6 +122,11 @@ namespace Citadel.Server
             Console.WriteLine($"GameServer: Added system {system.GetType().Name}");
         }
 
+        public T GetSystem<T>() where T : GameSystem
+        {
+            return _systems.OfType<T>().FirstOrDefault();
+        }
+
         public void Update(float deltaTime)
         {
             while (_networkEventQueue.Count > 0)
@@ -176,10 +183,15 @@ namespace Citadel.Server
                     }
                 }
             }
-            _deltaTracker.Update(GetEntities());
+            _serverTick++;
+            var deltas = _deltaTracker.GetDeltas(GetEntities(), _serverTick);
+            if (deltas.Count > 0)
+            {
+                Publish(new EntityMovedEvent { Deltas = deltas, Authoritative = true }, networkSync: true);
+            }
         }
 
-        public bool ValidateAndUpdateMovement(int entityId, Vector2 requestedPosition, Quaternion requestedRotation, ulong steamId)
+        public bool ValidateAndUpdateMovement(int entityId, Vector3 requestedPosition, Quaternion requestedRotation, ulong steamId)
         {
             bool validated = _validationSystem.ValidateMovement(entityId, requestedPosition, requestedRotation, steamId);
             Console.WriteLine($"GameServer: Movement validation for entity {entityId} (SteamID: {steamId}) to {requestedPosition}, Rotation={requestedRotation} - {(validated ? "Success" : "Failed")}");
@@ -202,34 +214,14 @@ namespace Citadel.Server
 
         public byte[] Serialize()
         {
-            var deltas = _deltaTracker.GetDeltas(GetEntities());
-            var visibleDeltas = new Dictionary<int, Vector3>();
-            foreach (var entity in GetEntities())
-            {
-                var physics = entity.GetComponent<PhysicsComponent>();
-                if (physics != null && physics.IsVisible)
-                {
-                    visibleDeltas[entity.Id] = physics.Position;
-                }
-            }
-            return JsonSerializer.SerializeToUtf8Bytes(new { Deltas = visibleDeltas });
+            return new EntityMovedEvent { Deltas = _deltaTracker.GetDeltas(GetEntities(), _serverTick), Authoritative = true }.Serialize();
         }
 
         public void Deserialize(byte[] data)
         {
-            var state = JsonSerializer.Deserialize<Dictionary<string, Dictionary<int, Vector3>>>(data);
-            if (state != null && state.TryGetValue("Deltas", out var deltas))
-            {
-                foreach (var kvp in deltas)
-                {
-                    var entity = GetEntityById(kvp.Key);
-                    if (entity != null)
-                    {
-                        var physics = entity.GetComponent<PhysicsComponent>();
-                        if (physics != null) physics.Position = kvp.Value;
-                    }
-                }
-            }
+            var deltas = EntityMovedEvent.Unpack(data, out _);
+            for (int i = 0; i < deltas.Count; i++)
+                SiegeEngine.Core.Networking.EntityDeltaTracker.Apply(GetEntityById(deltas[i].Id), deltas[i]);
         }
 
         public RayTraceResult RequestRayTrace(Vector3 start, Vector3 direction, float maxDistance)

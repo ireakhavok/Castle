@@ -309,7 +309,7 @@ namespace ToolChest
                     }
                 }
             }
-            _eventBus.Publish(new EntityMovedEvent(_selectedEntityId, new Vector2(physics.Position.X, physics.Position.Y), physics.Rotation));
+            _eventBus.Publish(new EntityMovedEvent(_selectedEntityId, physics.Position, physics.Rotation));
         }
         private void EndDrag()
         {

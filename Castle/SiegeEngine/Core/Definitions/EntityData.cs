@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Definitions
+// Folder: SiegeEngine/Core/Definitions
 // File: EntityData.cs
 using System.Collections.Generic;
 using System.Numerics;
@@ -40,6 +40,9 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("hiddenMeshIndices")]
         public List<int> HiddenMeshIndices { get; set; }
 
+        [JsonPropertyName("materialOptions")]
+        public List<MeshMaterialOption> MaterialOptions { get; set; }
+
         // NEW: extensible component data list (supports mods, future components, unknown types are gracefully skipped)
         [JsonPropertyName("components")]
         public List<ComponentEntry> Components { get; set; } = new List<ComponentEntry>();
@@ -68,5 +71,76 @@ namespace SiegeEngine.Core.Definitions
 
         [JsonPropertyName("textureSlots")]
         public List<TextureSlot> TextureSlots { get; set; } = new List<TextureSlot>();
+    }
+
+    public class MaterialField
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
+
+        [JsonPropertyName("path")]
+        public string Path { get; set; }
+    }
+
+    public class MeshMaterialOption
+    {
+        [JsonPropertyName("meshIndex")]
+        public int MeshIndex { get; set; }
+
+        [JsonPropertyName("materialIndex")]
+        public int MaterialIndex { get; set; }
+
+        [JsonPropertyName("opacityPath")]
+        public string OpacityPath { get; set; }
+
+        [JsonPropertyName("fields")]
+        public List<MaterialField> Fields { get; set; } = new List<MaterialField>();
+
+        public bool HasContent()
+        {
+            if (!string.IsNullOrWhiteSpace(OpacityPath)) return true;
+            if (Fields == null) return false;
+            for (int i = 0; i < Fields.Count; i++)
+            {
+                var f = Fields[i];
+                if (f != null && !string.IsNullOrWhiteSpace(f.Path))
+                    return true;
+            }
+            return false;
+        }
+
+        public static MeshMaterialOption Clone(MeshMaterialOption src)
+        {
+            if (src == null) return null;
+            var copy = new MeshMaterialOption
+            {
+                MeshIndex = src.MeshIndex,
+                MaterialIndex = src.MaterialIndex,
+                OpacityPath = src.OpacityPath
+            };
+            if (src.Fields != null)
+            {
+                copy.Fields = new List<MaterialField>();
+                for (int i = 0; i < src.Fields.Count; i++)
+                {
+                    var f = src.Fields[i];
+                    if (f == null) continue;
+                    copy.Fields.Add(new MaterialField { Name = f.Name, Path = f.Path });
+                }
+            }
+            return copy;
+        }
+
+        public static List<MeshMaterialOption> CloneList(List<MeshMaterialOption> src)
+        {
+            if (src == null) return new List<MeshMaterialOption>();
+            var list = new List<MeshMaterialOption>();
+            for (int i = 0; i < src.Count; i++)
+            {
+                var c = Clone(src[i]);
+                if (c != null) list.Add(c);
+            }
+            return list;
+        }
     }
 }

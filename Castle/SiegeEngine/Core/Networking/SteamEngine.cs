@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Collections.Generic;
@@ -34,8 +35,31 @@ namespace SiegeEngine.Core.Networking
             _eventBus = eventBus ?? new EventBus(this);
         }
 
+        public const uint DefaultAppId = 2628760;
+
+        private static void BindAppId()
+        {
+            string file = Path.Combine(AppContext.BaseDirectory, "steam_appid.txt");
+            string id = Environment.GetEnvironmentVariable("SteamAppId");
+            if (string.IsNullOrWhiteSpace(id) && File.Exists(file))
+            {
+                try { id = File.ReadAllText(file).Trim(); } catch { }
+            }
+            if (string.IsNullOrWhiteSpace(id))
+                id = DefaultAppId.ToString();
+            Environment.SetEnvironmentVariable("SteamAppId", id);
+            Environment.SetEnvironmentVariable("SteamGameId", id);
+            try
+            {
+                if (!File.Exists(file))
+                    File.WriteAllText(file, id);
+            }
+            catch { }
+        }
+
         public bool Initialize()
         {
+            BindAppId();
             if (!SteamAPI_InitSafe())
             {
                 Console.WriteLine("SteamAPI_InitSafe failed.");

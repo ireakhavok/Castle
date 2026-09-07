@@ -4,6 +4,7 @@ using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.GPU.Shaders;
 using SiegeEngine.Core.Managers;
 using System;
@@ -20,6 +21,9 @@ namespace SiegeEngine.Core.GPU.Lighting
         public bool HasBones;
         public bool CastShadows;
         public VertexBuffer TerrainMesh;
+        public List<int> HiddenMeshIndices;
+        public List<MeshMaterialOption> MaterialOptions;
+        public string ModelKey;
     }
 
     /// <summary>
@@ -286,7 +290,10 @@ namespace SiegeEngine.Core.GPU.Lighting
                     ModelData = modelData,
                     BoneMatrices = modelComp.BoneMatrices,
                     HasBones = modelComp.BoneMatrices != null && modelComp.BoneMatrices.Length > 0 && fbxModel != null && fbxModel.HasSkin,
-                    CastShadows = true
+                    CastShadows = true,
+                    HiddenMeshIndices = modelComp.HiddenMeshIndices,
+                    MaterialOptions = modelComp.MaterialOptions,
+                    ModelKey = modelComp.Key
                 });
             }
             return list;
@@ -342,6 +349,8 @@ namespace SiegeEngine.Core.GPU.Lighting
                     _rc.CullFace(_e.Back);
                     _depthShader.SetMatrix4("uModel", caster.ModelMatrix);
                     _depthShader.SetUniform("uHasBones", 0);
+                    _depthShader.SetUniform("uHasOpacity", 0);
+                    _depthShader.SetUniform("uOpacitySlots", 0);
                     caster.TerrainMesh.Bind();
                     _rc.DrawElements(_e.Triangles, caster.TerrainMesh.GetIndexCount(), _e.UnsignedInt, null);
                     _rc.Disable(_e.CullFace);
@@ -355,8 +364,13 @@ namespace SiegeEngine.Core.GPU.Lighting
                     _depthShader.SetMatrix4Array("uBoneTransforms", caster.BoneMatrices);
                     _depthShader.SetMatrix4Array("uBoneMatrices", caster.BoneMatrices);
                 }
+                int gpuIndex = 0;
                 foreach (var mmr in caster.ModelData.MeshRenders)
                 {
+                    int meshIndex = gpuIndex++;
+                    if (caster.HiddenMeshIndices != null && caster.HiddenMeshIndices.Contains(meshIndex))
+                        continue;
+                    ModelRenderer.BindOpacityToShader(_rc, _depthShader, meshIndex, caster.MaterialOptions, caster.ModelKey, 0);
                     _rc.BindVertexArray(mmr.Vao);
                     _rc.DrawElements(_e.Triangles, mmr.IndexCount, _e.UnsignedInt, null);
                 }

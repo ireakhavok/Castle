@@ -8,13 +8,20 @@ namespace SiegeEngine.Core.Events
     public class OpenGameHudEvent : IEvent
     {
         public string Type => "OpenGameHud";
+        public string Key { get; set; }
+        public IHostedContent Content { get; set; }
         public string HtmlRelativePath { get; set; }
+        public string HtmlContent { get; set; }
         public string Title { get; set; } = "HUD";
         public PanelChromeStyle Chrome { get; set; } = PanelChromeStyle.Game;
-        public DockingMode Docking { get; set; } = DockingMode.Dynamic;
+        public DockingMode Docking { get; set; } = DockingMode.Desktop;
         public bool Open { get; set; } = true;
         public float Width { get; set; } = 360f;
         public float Height { get; set; } = 280f;
+        public HudAnchor Anchor { get; set; } = HudAnchor.None;
+        public float PosX { get; set; } = float.NaN;
+        public float PosY { get; set; } = float.NaN;
+        public bool AllowMove { get; set; } = true;
 
         public byte[] Serialize() => null;
         public void Deserialize(byte[] data) { }

@@ -8,6 +8,7 @@ using SiegeEngine.Systems;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Networking;
 namespace Citadel.Server
 {
     public class ServerValidationSystem : GameSystem, ISoundValidator
@@ -30,15 +31,14 @@ namespace Citadel.Server
         public override void Update(float deltaTime)
         {
         }
-        public bool ValidateMovement(int entityId, Vector2 position, Quaternion rotation, ulong steamId)
+        public bool ValidateMovement(int entityId, Vector3 position, Quaternion rotation, ulong steamId)
         {
             Entity entity = _server.GetEntityById(entityId);
             if (entity == null) return false;
             var physics = entity.GetComponent<PhysicsComponent>();
             if (physics == null) return false;
-            Vector2 currentPosition = new Vector2(physics.Position.X, physics.Position.Y);
-            float distance = Vector2.Distance(currentPosition, position);
-            if (distance > _maxDistance || position.X < 0 || position.X > 128 || position.Y < 0 || position.Y > 72)
+            float distance = Vector3.Distance(physics.Position, position);
+            if (distance > _maxDistance)
             {
                 Console.WriteLine($"ServerValidation: Invalid movement for entity {entityId}: Distance={distance}, MaxAllowed={_maxDistance}, Position={position}");
                 _lastRotations[entityId] = rotation;
@@ -61,7 +61,7 @@ namespace Citadel.Server
             }
             if (_isAuthoritative)
             {
-                physics.Position = new Vector3(position.X, position.Y, physics.Position.Z);
+                physics.Position = position;
                 physics.Rotation = rotation;
                 var player = entity.GetComponent<Player>();
                 if (player != null)
@@ -70,7 +70,17 @@ namespace Citadel.Server
                 }
                 _lastRotations[entityId] = rotation;
                 Console.WriteLine($"ServerValidation: Moved entity {entityId} to: X={physics.Position.X}, Y={physics.Position.Y}, Z={physics.Position.Z}, Rotation={physics.Rotation}");
-                _server.Publish(new EntityMovedEvent(entityId, position, physics.Rotation));
+                uint ack = 0;
+                var pred = _server.GetSystem<ClientPredictionSystem>();
+                if (pred != null) ack = pred.ClientTick;
+                _server.Publish(new EntityMovedEvent
+                {
+                    Deltas = new List<SiegeEngine.Core.Networking.EntityNetDelta>
+                    {
+                        SiegeEngine.Core.Networking.EntityDeltaTracker.FromPose(entityId, physics.Position, physics.Rotation, 0f, ack)
+                    }
+                }, true);
+
             }
             else
             {

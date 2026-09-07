@@ -50,7 +50,9 @@ namespace SiegeEngine.Scenes
             var prediction = new ClientPredictionSystem(server, eventBus);
             server.AddSystem(prediction);
             server.AddSystem(new AnimationSystem(server));
-            server.AddSystem(new AudioSystem(server, eventBus, isServer: false, validationSystem: null, renderContext: renderContext));
+            var audio = new AudioSystem(server, eventBus, isServer: false, validationSystem: null, renderContext: renderContext);
+            audio.ContentRoot = projectPath;
+            server.AddSystem(audio);
 
             ctx.Player = null;
             ctx.PlayerMovement = null;
@@ -64,13 +66,13 @@ namespace SiegeEngine.Scenes
             return ctx;
         }
 
-        public static GameScene CreateScene(SceneContext ctx, string levelName)
+        public static Scene CreateScene(SceneContext ctx, string levelName)
         {
             string preferred = SceneRegistry.ResolvePreferredSceneName(levelName, ctx?.SceneData);
             if (!SceneRegistry.IsRegistered(preferred))
                 preferred = "RuntimeGameplay";
             Console.WriteLine("[RuntimePlayStart] Scene '" + preferred + "'");
-            return (GameScene)SceneRegistry.Create(preferred, ctx);
+            return (Scene)SceneRegistry.Create(preferred, ctx);
         }
     }
 }
