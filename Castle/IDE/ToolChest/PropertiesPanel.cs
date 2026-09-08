@@ -151,6 +151,7 @@ namespace ToolChest
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
+            _eventBus.Subscribe<EntityMovedEvent>(OnEntityMoved);
         }
         protected override UIOverlay CreateUIOverlay()
         {
@@ -207,6 +208,40 @@ namespace ToolChest
                 return;
             FlushSceneSettingsFromUI();
             RebuildPropertiesUI();
+        }
+        private void OnEntityMoved(EntityMovedEvent e)
+        {
+            if (e == null || _uiOverlay == null || _rebuildingUI) return;
+            int id = e.EntityId;
+            bool ours = (_currentTarget is Entity ent && ent.Id == id)
+                || (_currentTarget is MeshLayerRef meshRef && meshRef.EntityId == id);
+            if (!ours) return;
+            WriteMovedFields(e);
+        }
+        private void WriteMovedFields(EntityMovedEvent e)
+        {
+            // Keep the existing inspector rows. Only refresh pose fields that the
+            // scene already changed. Do not LoadUI / RefreshUI.
+            foreach (var el in _uiOverlay.FindElementsByTag("input"))
+            {
+                if (el is not InputElement input) continue;
+                if (input.IsFocused) continue;
+                if (input.Attributes.GetValueOrDefault("data-hook", "") != "SetComponentProperty")
+                    continue;
+                string prop = input.Attributes.GetValueOrDefault("data-property", "");
+                string text = null;
+                if (prop == "Position" || prop == "WorldPosition" || prop == "RenderPosition")
+                    text = e.Position.ToString();
+                else if (prop == "Rotation" || prop == "WorldRotation")
+                    text = e.Rotation.ToString();
+                else
+                    continue;
+                if (input.Value != text)
+                {
+                    input.Value = text;
+                    input.Attributes["value"] = text;
+                }
+            }
         }
         private void LoadPropertiesUI()
         {

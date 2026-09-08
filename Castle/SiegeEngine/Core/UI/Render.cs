@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
+// Folder: SiegeEngine.Core.UI
 // File: Render.cs
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Renderers;
