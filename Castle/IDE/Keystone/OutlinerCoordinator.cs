@@ -1,8 +1,9 @@
-﻿// Folder: Keystone
+// Folder: Keystone
 // File: OutlinerCoordinator.cs
 using SiegeEngine.Core.Events;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Keystone
 {
@@ -16,6 +17,7 @@ namespace Keystone
 
         private IOutlinerProvider _lastActiveProvider;
         private static EventBus _eventBus;
+        private string _lastNotifiedNodeId;
 
         // Per-ContentType state cache (expanded + selected) - survives panel switches
         private readonly Dictionary<string, HashSet<string>> _expandedCache = new Dictionary<string, HashSet<string>>();
@@ -35,6 +37,7 @@ namespace Keystone
             if (provider == _lastActiveProvider) return;
 
             _lastActiveProvider = provider;
+            _lastNotifiedNodeId = null;
             Console.WriteLine($"[OutlinerCoordinator] Last active provider changed to: {provider?.ContentType ?? "null"}");
 
             var evt = new GenericEvent { Hook = "OutlinerHierarchyUpdate" };
@@ -47,6 +50,9 @@ namespace Keystone
         public void NotifySelectionChanged(string nodeId)
         {
             if (_lastActiveProvider == null) return;
+            if (nodeId == _lastNotifiedNodeId)
+                return;
+            _lastNotifiedNodeId = nodeId;
             var evt = new GenericEvent { Hook = "OutlinerSelectionChanged" };
             evt.Data["nodeId"] = nodeId;
             _eventBus?.Publish(evt);

@@ -63,9 +63,32 @@ namespace SiegeEngine.Core.UI.Elements
                 float mr = float.IsNaN(m.Y) ? 0 : m.Y;
                 forcedWidth = parentWidth - ml - mr;
             }
+            if (IsHiddenInTree())
+            {
+                ComputedWidth = 0;
+                ComputedHeight = 0;
+                ComputedBackgroundWidth = 0;
+                ComputedBackgroundHeight = 0;
+                ComputedContentWidth = 0;
+                ComputedContentHeight = 0;
+                return;
+            }
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
             if (isCheck)
             {
+                // Honor display:none from CSS / ancestors. Forcing 18px after
+                // base zeroed the box is what leaked the Settings checkbox
+                // onto the main menu.
+                if (GetEffectiveDisplay() == "none" || ComputedWidth <= 0f || ComputedHeight <= 0f)
+                {
+                    ComputedWidth = 0;
+                    ComputedHeight = 0;
+                    ComputedBackgroundWidth = 0;
+                    ComputedBackgroundHeight = 0;
+                    ComputedContentWidth = 0;
+                    ComputedContentHeight = 0;
+                    return;
+                }
                 ComputedWidth = 18f;
                 ComputedHeight = 18f;
                 ComputedBackgroundWidth = 18f;
@@ -83,8 +106,24 @@ namespace SiegeEngine.Core.UI.Elements
                 if (float.IsNaN(ComputedHeight)) ComputedHeight = 32f;
             }
         }
+        private bool IsHiddenInTree()
+        {
+            if (GetEffectiveDisplay() == "none")
+                return true;
+            HtmlElement walk = Parent;
+            while (walk != null)
+            {
+                if (walk.GetEffectiveDisplay() == "none")
+                    return true;
+                walk = walk.Parent;
+            }
+            return false;
+        }
+
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
+            if (IsHiddenInTree())
+                return;
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
             if (this.Type == "text" || this.Type == "number")
             {
@@ -105,12 +144,15 @@ namespace SiegeEngine.Core.UI.Elements
             }
             else if (this.Type == "checkbox" || this.Type == "radio")
             {
-                // Always paint the box. CSS often leaves BackgroundColor at zero, so
-                // base.Render skips the fill and you only see a floating glyph.
+                // Paint the box only when layout actually placed it. CSS often
+                // leaves BackgroundColor at zero so base.Render skips the fill,
+                // but a 0-sized / hidden box must stay invisible.
+                if (ComputedWidth <= 1f || ComputedHeight <= 1f)
+                    return;
                 float x = ComputedPosition.X;
                 float y = ComputedPosition.Y;
-                float w = ComputedWidth > 1f ? ComputedWidth : 18f;
-                float h = ComputedHeight > 1f ? ComputedHeight : 18f;
+                float w = ComputedWidth;
+                float h = ComputedHeight;
                 Vector4 fill = Style.BackgroundColor != Vector4.Zero ? Style.BackgroundColor : CheckboxFill;
                 Vector4 border = Style.BorderColor != Vector4.Zero ? Style.BorderColor : CheckboxBorder;
                 float[] boxNdc = HtmlLayoutUtils.GetNdcQuad(x, y, w, h, parentMatrix, viewportWidth, viewportHeight);
