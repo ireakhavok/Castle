@@ -29,12 +29,16 @@ namespace SiegeEngine.Core.Definitions
         {
             if (component == null) throw new ArgumentNullException(nameof(component));
             _components[typeof(T)] = component;
+            if (component is LightComponent)
+                LightComponent.NotifyPackedLightsChanged();
         }
 
         public void AddComponent(IComponent component)
         {
             if (component == null) throw new ArgumentNullException(nameof(component));
             _components[component.GetType()] = component;
+            if (component is LightComponent)
+                LightComponent.NotifyPackedLightsChanged();
         }
 
         public T GetComponent<T>() where T : IComponent
@@ -44,7 +48,10 @@ namespace SiegeEngine.Core.Definitions
 
         public bool RemoveComponent<T>() where T : IComponent
         {
-            return _components.Remove(typeof(T));
+            bool removed = _components.Remove(typeof(T));
+            if (removed && typeof(LightComponent).IsAssignableFrom(typeof(T)))
+                LightComponent.NotifyPackedLightsChanged();
+            return removed;
         }
 
         public EntityData ToData()

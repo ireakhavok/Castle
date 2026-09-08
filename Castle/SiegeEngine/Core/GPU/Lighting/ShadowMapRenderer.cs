@@ -72,6 +72,20 @@ namespace SiegeEngine.Core.GPU.Lighting
         public static Vector4 WrittenCascadeSplits;
         public static Vector4 WrittenCascadeZRange;
 
+        private struct CachedCasterTransform
+        {
+            public Matrix4x4 Matrix;
+            public Vector3 Scale;
+            public Vector3 LocalCentreOfMass;
+            public Quaternion Rotation;
+            public Vector3 WorldCentreOfMass;
+            public float UnitScale;
+            public int Epoch;
+        }
+
+        private static readonly Dictionary<Entity, CachedCasterTransform> _casterTransforms = new Dictionary<Entity, CachedCasterTransform>();
+        private static int _casterEpoch;
+
         public static ShadowMapRenderer Shared(IRenderContext renderContext)
         {
             if (_shared == null || _shared._disposed)
@@ -246,6 +260,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             list.Clear();
             if (entities == null) return list;
             var modelManager = ModelManager.Instance;
+            _casterEpoch++;
+            int seenCached = 0;
 
             foreach (var entity in entities)
             {
@@ -288,11 +304,42 @@ namespace SiegeEngine.Core.GPU.Lighting
                     continue;
 
                 float unitScale = fbxModel != null ? fbxModel.UnitToMeters : 0.01f;
-                Matrix4x4 modelMatrix =
-                    Matrix4x4.CreateScale(unitScale * physics.Scale) *
-                    Matrix4x4.CreateTranslation(-physics.LocalCentreOfMass) *
-                    Matrix4x4.CreateFromQuaternion(physics.Rotation) *
-                    Matrix4x4.CreateTranslation(physics.WorldCentreOfMass);
+                Vector3 scale = physics.Scale;
+                Vector3 localCom = physics.LocalCentreOfMass;
+                Quaternion rotation = physics.Rotation;
+                Vector3 worldCom = physics.WorldCentreOfMass;
+                Matrix4x4 modelMatrix;
+                if (_casterTransforms.TryGetValue(entity, out CachedCasterTransform cached)
+                    && cached.UnitScale == unitScale
+                    && cached.Scale == scale
+                    && cached.LocalCentreOfMass == localCom
+                    && cached.Rotation == rotation
+                    && cached.WorldCentreOfMass == worldCom)
+                {
+                    modelMatrix = cached.Matrix;
+                    cached.Epoch = _casterEpoch;
+                    _casterTransforms[entity] = cached;
+                    seenCached++;
+                }
+                else
+                {
+                    modelMatrix =
+                        Matrix4x4.CreateScale(unitScale * scale) *
+                        Matrix4x4.CreateTranslation(-localCom) *
+                        Matrix4x4.CreateFromQuaternion(rotation) *
+                        Matrix4x4.CreateTranslation(worldCom);
+                    _casterTransforms[entity] = new CachedCasterTransform
+                    {
+                        Matrix = modelMatrix,
+                        Scale = scale,
+                        LocalCentreOfMass = localCom,
+                        Rotation = rotation,
+                        WorldCentreOfMass = worldCom,
+                        UnitScale = unitScale,
+                        Epoch = _casterEpoch
+                    };
+                    seenCached++;
+                }
 
                 list.Add(new ShadowCaster
                 {
@@ -306,6 +353,17 @@ namespace SiegeEngine.Core.GPU.Lighting
                     ModelKey = modelComp.Key,
                     LodMeshes = fbxModel != null ? fbxModel.Meshes : null
                 });
+            }
+            if (_casterTransforms.Count > seenCached)
+            {
+                var stale = new List<Entity>();
+                foreach (var kv in _casterTransforms)
+                {
+                    if (kv.Value.Epoch != _casterEpoch)
+                        stale.Add(kv.Key);
+                }
+                for (int i = 0; i < stale.Count; i++)
+                    _casterTransforms.Remove(stale[i]);
             }
             return list;
         }

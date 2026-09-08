@@ -15,6 +15,13 @@ namespace SiegeEngine.Core.Definitions
     /// </summary>
     public class LightComponent : IComponent, IComponentData
     {
+        public static int PackedRevision { get; private set; }
+
+        public static void NotifyPackedLightsChanged()
+        {
+            PackedRevision++;
+        }
+
         public LightType Type { get; set; }
         public Vector3 Color { get; set; }
         public float Intensity { get; set; }
@@ -137,6 +144,7 @@ namespace SiegeEngine.Core.Definitions
             ShadowMode = parsed;
             ShadowBias = l.ShadowBias;
             ShadowNormalBias = l.ShadowNormalBias;
+            NotifyPackedLightsChanged();
         }
 
         private static LightComponentData ReadFromJson(JsonElement el)

@@ -22,6 +22,11 @@ namespace SiegeEngine.Core.GPU.Renderers
         private List<MeshMaterialOption> _materialOptions;
         private FBXModel _opacityModel;
         private string _opacityModelKey;
+        private ShaderProgram _viewLightingShader;
+        private int _viewLightingSerial;
+        private Matrix4x4 _viewLightingView;
+        private Matrix4x4 _viewLightingProjection;
+        private Vector3 _viewLightingPos;
         private static readonly Dictionary<string, uint> _opacityTextures = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
         public const int OpacityTextureUnit = 15;
         public static string ProjectTexturesDirectory { get; set; }
@@ -188,19 +193,8 @@ namespace SiegeEngine.Core.GPU.Renderers
             shader.Use();
             shader.SetMatrix4("uModel", modelMatrix);
             shader.SetMatrix4("uNormalMatrix", BuildNormalMatrix(modelMatrix));
-            shader.SetMatrix4("uView", view);
-            shader.SetMatrix4("uProjection", projection);
-            shader.SetUniform("uViewPos", viewPos.X, viewPos.Y, viewPos.Z);
-            shader.SetUniform("uAmbientStrength", 0.3f);
-            shader.SetUniform("uSpecularStrength", 0.05f);
-            shader.SetUniform("uShininess", 4.0f);
-            shader.SetUniform("uLightDir", LightingFrame.DefaultSunDirection.X, LightingFrame.DefaultSunDirection.Y, LightingFrame.DefaultSunDirection.Z);
-            shader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
-            shader.SetUniform("uLightIntensity", 0.0f);
-            shader.SetUniform("uHasWorldAligned", 0);
-            LightingFrame.Current?.ApplyTo(shader, _renderContext);
+            BindViewLighting(shader, view, projection, viewPos);
             shader.SetUniform("uReceiveShadows", receiveShadows ? 1 : 0);
-            BindShadowMaps(shader);
 
             if (hasBones)
             {
@@ -345,6 +339,35 @@ namespace SiegeEngine.Core.GPU.Renderers
             if (!Matrix4x4.Invert(linear, out Matrix4x4 inv))
                 return linear;
             return Matrix4x4.Transpose(inv);
+        }
+
+        private void BindViewLighting(ShaderProgram shader, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos)
+        {
+            if (shader == _viewLightingShader
+                && _viewLightingSerial == LightingFrame.UploadSerial
+                && _viewLightingView == view
+                && _viewLightingProjection == projection
+                && _viewLightingPos == viewPos)
+                return;
+
+            shader.SetMatrix4("uView", view);
+            shader.SetMatrix4("uProjection", projection);
+            shader.SetUniform("uViewPos", viewPos.X, viewPos.Y, viewPos.Z);
+            shader.SetUniform("uAmbientStrength", 0.3f);
+            shader.SetUniform("uSpecularStrength", 0.05f);
+            shader.SetUniform("uShininess", 4.0f);
+            shader.SetUniform("uLightDir", LightingFrame.DefaultSunDirection.X, LightingFrame.DefaultSunDirection.Y, LightingFrame.DefaultSunDirection.Z);
+            shader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
+            shader.SetUniform("uLightIntensity", 0.0f);
+            shader.SetUniform("uHasWorldAligned", 0);
+            LightingFrame.Current?.ApplyTo(shader, _renderContext);
+            BindShadowMaps(shader);
+
+            _viewLightingShader = shader;
+            _viewLightingSerial = LightingFrame.UploadSerial;
+            _viewLightingView = view;
+            _viewLightingProjection = projection;
+            _viewLightingPos = viewPos;
         }
 
         private void BindShadowMaps(ShaderProgram shader)

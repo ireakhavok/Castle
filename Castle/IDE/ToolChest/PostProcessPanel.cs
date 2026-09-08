@@ -70,6 +70,7 @@ namespace ToolChest
             if (File.Exists(htmlPath))
                 _uiOverlay.LoadUI(File.ReadAllText(htmlPath));
             Prefill();
+            _lastAppliedSignature = FormSignature();
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
@@ -79,6 +80,8 @@ namespace ToolChest
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
             SyncSliderReadouts();
+            if (FormSignature() != _lastAppliedSignature)
+                Apply();
         }
 
         private void Prefill()
@@ -120,6 +123,8 @@ namespace ToolChest
             SetInput("pp-adapt-seconds", env.AdaptSeconds.ToString("0.00", CultureInfo.InvariantCulture));
             SetReadout("pp-adapt-seconds-val", env.AdaptSeconds.ToString("0.00", CultureInfo.InvariantCulture));
         }
+
+        private string _lastAppliedSignature;
 
         private string _lastAzimuthText;
         private string _lastElevationText;
@@ -172,9 +177,60 @@ namespace ToolChest
             SetReadout(readoutId, text);
         }
 
+        private string FormSignature()
+        {
+            return string.Join("\n",
+                GetInputValue("pp-sun-azimuth") ?? "",
+                GetInputValue("pp-sun-elevation") ?? "",
+                GetInputValue("pp-sun-intensity") ?? "",
+                GetSelectValue("pp-shadow-quality") ?? "",
+                GetChecked("pp-sun-enabled") ? "1" : "0",
+                GetChecked("pp-sun-cast-shadows") ? "1" : "0",
+                GetChecked("pp-shadow-smooth") ? "1" : "0",
+                GetSelectValue("pp-fog-mode") ?? "",
+                GetSelectValue("pp-fog-quality") ?? "",
+                GetInputValue("pp-fog-density") ?? "",
+                GetInputValue("pp-fog-start") ?? "",
+                GetInputValue("pp-exposure") ?? "",
+                GetSelectValue("pp-tonemap") ?? "",
+                GetChecked("pp-bloom-enabled") ? "1" : "0",
+                GetInputValue("pp-bloom-threshold") ?? "",
+                GetInputValue("pp-bloom-intensity") ?? "",
+                GetInputValue("pp-contrast") ?? "",
+                GetInputValue("pp-saturation") ?? "",
+                GetInputValue("pp-temperature") ?? "",
+                GetChecked("pp-auto-exposure") ? "1" : "0",
+                GetInputValue("pp-adapt-seconds") ?? "");
+        }
+
+        private static bool IsLightingCostField(string before, string after)
+        {
+            if (before == after)
+                return false;
+            string[] a = before.Split('\n');
+            string[] b = after.Split('\n');
+            if (a.Length != b.Length)
+                return true;
+            // 0 az, 1 el, 2 intensity, 3 shadowQ, 4 sunOn, 5 sunCast, 6 smooth, 7 fogMode, 8 fogQ
+            int[] cost = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+            for (int i = 0; i < cost.Length; i++)
+            {
+                int idx = cost[i];
+                if (idx < a.Length && a[idx] != b[idx])
+                    return true;
+            }
+            return false;
+        }
+
         private void Apply()
         {
             SyncSliderReadouts();
+            string signature = FormSignature();
+            if (signature == _lastAppliedSignature)
+                return;
+            bool rebuildLighting = string.IsNullOrEmpty(_lastAppliedSignature) || IsLightingCostField(_lastAppliedSignature, signature);
+            _lastAppliedSignature = signature;
+
             float azimuth = ParseFloat(GetInputValue("pp-sun-azimuth"), 187f);
             float elevation = ParseFloat(GetInputValue("pp-sun-elevation"), 31f);
             Vector3 direction = AzElToDirection(azimuth, elevation);
@@ -183,8 +239,17 @@ namespace ToolChest
             float density = ParseFloat(GetInputValue("pp-fog-density"), 0.003f);
             float start = ParseFloat(GetInputValue("pp-fog-start"), 0f);
             string shadowQuality = GetSelectValue("pp-shadow-quality") ?? "Medium";
+            if (!ShadowQualityParser.TryParse(shadowQuality, out ShadowQuality parsedShadow))
+                parsedShadow = ShadowQuality.Medium;
+            shadowQuality = ShadowQualityParser.ToPayloadString(parsedShadow);
             string fogMode = GetSelectValue("pp-fog-mode") ?? "Off";
+            if (!FogModeParser.TryParse(fogMode, out FogMode parsedFogMode))
+                parsedFogMode = FogMode.Off;
+            fogMode = FogModeParser.ToPayloadString(parsedFogMode);
             string fogQuality = GetSelectValue("pp-fog-quality") ?? "Off";
+            if (!FogQualityParser.TryParse(fogQuality, out FogQuality parsedFogQuality))
+                parsedFogQuality = FogQuality.Off;
+            fogQuality = FogQualityParser.ToPayloadString(parsedFogQuality);
             bool sunEnabled = GetChecked("pp-sun-enabled");
             bool sunCast = GetChecked("pp-sun-cast-shadows");
             bool shadowSmooth = GetChecked("pp-shadow-smooth");
@@ -211,7 +276,13 @@ namespace ToolChest
             env.AutoExposure = autoExposure;
             env.AdaptSeconds = adaptSeconds < 0.05f ? 0.05f : adaptSeconds;
             LightingSettings.BindAuthored(env);
-            LightingFrame.Current = null;
+            LightingSettings.SetShadowOverride(parsedShadow);
+            LightingSettings.SetFogOverride(parsedFogMode, parsedFogQuality);
+            if (rebuildLighting)
+                LightingFrame.Current = null;
+
+            if (!rebuildLighting)
+                return;
 
             _eventBus?.Publish(new GenericEvent
             {
