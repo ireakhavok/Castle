@@ -1,11 +1,10 @@
-﻿// Folder: SiegeEngine/Core/Physics
+// Folder: SiegeEngine/Core/Physics
 // File: TriangleMeshShape.cs
 using System;
 using System.Collections.Generic;
 using System.Numerics;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
-using SiegeEngine.Core.GPU.Renderers;
 namespace SiegeEngine.Core.Physics
 {
     /// <summary>
@@ -37,37 +36,19 @@ namespace SiegeEngine.Core.Physics
 
         public TriangleMeshShape(FBXModel model, IList<int> hiddenMeshIndices, IList<MeshMaterialOption> materialOptions)
         {
+            // hiddenMeshIndices / materialOptions ignored — 62f5553 used every FBX triangle.
             if (model == null || model.Meshes == null) return;
             float toMeters = model.UnitToMeters;
-            int gpuIndex = 0;
             foreach (var mesh in model.Meshes)
             {
-                if (mesh.Vertices == null || mesh.Indices == null || mesh.Indices.Count == 0)
-                    continue;
-                int meshIndex = gpuIndex++;
-                if (hiddenMeshIndices != null && hiddenMeshIndices.Contains(meshIndex))
-                    continue;
+                if (mesh.Vertices == null || mesh.Indices == null) continue;
                 int baseIndex = _localVerticesM.Count;
                 foreach (var v in mesh.Vertices)
                     _localVerticesM.Add(v.Position * toMeters);
-                for (int i = 0; i + 2 < mesh.Indices.Count; i += 3)
-                {
-                    int ia = (int)mesh.Indices[i];
-                    int ib = (int)mesh.Indices[i + 1];
-                    int ic = (int)mesh.Indices[i + 2];
-                    if (ia < 0 || ib < 0 || ic < 0) continue;
-                    if (ia >= mesh.Vertices.Count || ib >= mesh.Vertices.Count || ic >= mesh.Vertices.Count)
-                        continue;
-                    int matIdx = (int)mesh.Vertices[ia].MatIdx;
-                    if (matIdx < 0) matIdx = 0;
-                    if (ModelRenderer.MaterialHasOpacity(materialOptions, meshIndex, matIdx))
-                        continue;
-                    _indices.Add(baseIndex + ia);
-                    _indices.Add(baseIndex + ib);
-                    _indices.Add(baseIndex + ic);
-                }
+                foreach (uint idx in mesh.Indices)
+                    _indices.Add(baseIndex + (int)idx);
             }
-            if (_localVerticesM.Count == 0 || _indices.Count == 0)
+            if (_localVerticesM.Count == 0)
             {
                 _localMin = Vector3.Zero;
                 _localMax = Vector3.Zero;
@@ -78,16 +59,13 @@ namespace SiegeEngine.Core.Physics
             _localMin = new Vector3(float.MaxValue);
             _localMax = new Vector3(float.MinValue);
             Vector3 sum = Vector3.Zero;
-            int counted = 0;
-            for (int i = 0; i < _indices.Count; i++)
+            foreach (var p in _localVerticesM)
             {
-                Vector3 p = _localVerticesM[_indices[i]];
                 _localMin = Vector3.Min(_localMin, p);
                 _localMax = Vector3.Max(_localMax, p);
                 sum += p;
-                counted++;
             }
-            LocalCentreOfMass = counted > 0 ? sum / counted : Vector3.Zero;
+            LocalCentreOfMass = sum / _localVerticesM.Count;
             float maxR2 = 0f;
             foreach (var p in _localVerticesM)
             {

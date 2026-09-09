@@ -2,6 +2,7 @@
 // File: EditorScene.cs
 using Keystone;
 using MapRoom;
+using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -116,6 +117,16 @@ namespace CastleBuilder
             var level = ProjectSettings.Current.CurrentLevel;
             if (level != null && !level.Entities.Exists(e => e.Id == entity.Id))
                 level.AddEntity(entity);
+            var modelComp = entity.GetComponent<ModelComponent>();
+            if (modelComp != null && modelComp.Model == null && !string.IsNullOrEmpty(modelComp.Key) && ModelManager.Instance != null)
+            {
+                if (ModelManager.Instance.TryGetModel(modelComp.Key, out var fbxModel) && fbxModel != null)
+                    BindModelAndRebuildCollider(entity, modelComp, fbxModel);
+            }
+            else if (modelComp != null && modelComp.Model != null)
+            {
+                BindModelAndRebuildCollider(entity, modelComp, modelComp.Model);
+            }
             _server?.AddEntity(entity);
         }
         public GameScene GetActiveGameScene() => _activeGameScene;
@@ -461,6 +472,18 @@ namespace CastleBuilder
             SyncCurrentLevelToRuntimeServer();
             _sceneCache.Store(sceneName, _activeGameScene, level);
         }
+        private static void BindModelAndRebuildCollider(Entity entity, ModelComponent modelComp, FBXModel fbxModel)
+        {
+            if (entity == null || modelComp == null || fbxModel == null) return;
+            modelComp.Model = fbxModel;
+            var physics = entity.GetComponent<PhysicsComponent>();
+            if (physics == null) return;
+            physics.Size = fbxModel.GetBoundingSize();
+            physics.LocalBoundsMinCm = fbxModel.LocalBoundsMinCm;
+            physics.LocalBoundsMaxCm = fbxModel.LocalBoundsMaxCm;
+            physics.RebuildShape(fbxModel);
+        }
+
         private void RegisterAllAssetPacks(Level level)
         {
             if (level == null || ModelManager.Instance == null) return;
@@ -468,43 +491,29 @@ namespace CastleBuilder
             foreach (var entity in level.Entities)
             {
                 var modelComp = entity.GetComponent<ModelComponent>();
-                if (modelComp != null && !string.IsNullOrEmpty(modelComp.Key) && loadedPacks.Add(modelComp.Key))
+                if (modelComp == null || string.IsNullOrEmpty(modelComp.Key)) continue;
+                if (loadedPacks.Add(modelComp.Key))
                 {
                     string projectPath = ProjectSettings.Current.ActiveProject;
                     string packJsonPath = Path.Combine(projectPath, "Assets", modelComp.Key, "assetpack.json");
                     if (File.Exists(packJsonPath))
                     {
                         ModelManager.Instance.LoadAnimationPack(packJsonPath);
-                        if (ModelManager.Instance.TryGetModel(modelComp.Key, out var fbxModel))
-                        {
-                            modelComp.Model = fbxModel;
-                            var physics = entity.GetComponent<PhysicsComponent>();
-                            if (physics != null && modelComp.Model != null)
-                            {
-                                physics.Size = modelComp.Model.GetBoundingSize();
-                                physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
-                                physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
-                                physics.RebuildShape(modelComp.Model);
-                            }
-                        }
                     }
                     else
                     {
                         ModelManager.Instance.MaterializeAssetPack(modelComp.Key, Path.Combine(projectPath, "Assets"));
                         ModelManager.Instance.LoadAnimationPack(packJsonPath);
-                        if (ModelManager.Instance.TryGetModel(modelComp.Key, out var fbxModel))
-                        {
-                            modelComp.Model = fbxModel;
-                            var physics = entity.GetComponent<PhysicsComponent>();
-                            if (physics != null && modelComp.Model != null)
-                            {
-                                physics.Size = modelComp.Model.GetBoundingSize();
-                                physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
-                                physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
-                                physics.RebuildShape(modelComp.Model);
-                            }
-                        }
                     }
+                }
+                if (modelComp.Model == null)
+                {
+                    if (ModelManager.Instance.TryGetModel(modelComp.Key, out var fbxModel))
+                        BindModelAndRebuildCollider(entity, modelComp, fbxModel);
+                }
+                else
+                {
+                    BindModelAndRebuildCollider(entity, modelComp, modelComp.Model);
                 }
             }
         }
