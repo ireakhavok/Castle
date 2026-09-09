@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.GPU
+// Folder: SiegeEngine.Core.GPU
 // File: TextRenderer.cs
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
@@ -291,6 +291,7 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void RenderText(string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4? textColor, string fontFamily, Matrix4x4 transformMatrix)
         {
+            UIQuadRenderer.Active?.FlushBatch();
             if (string.IsNullOrEmpty(text)) return;
             text = text.Replace("\n", " ").Replace("\r", " ");
             var key = GetCacheKey(text, fontSize, fontFamily);

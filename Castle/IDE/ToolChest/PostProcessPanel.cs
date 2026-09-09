@@ -79,9 +79,20 @@ namespace ToolChest
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+            // Close() runs inside base.Update (chrome X or Cancel hook). The overlay
+            // is already gone. Do not read empty inputs and commit HTML fallbacks.
+            if (!IsFormLive())
+                return;
             SyncSliderReadouts();
             if (FormSignature() != _lastAppliedSignature)
                 Apply();
+        }
+
+        private bool IsFormLive()
+        {
+            if (!Visible || _uiOverlay == null)
+                return false;
+            return _uiOverlay.FindElementById("pp-sun-azimuth") != null;
         }
 
         private void Prefill()
@@ -224,6 +235,8 @@ namespace ToolChest
 
         private void Apply()
         {
+            if (!IsFormLive())
+                return;
             SyncSliderReadouts();
             string signature = FormSignature();
             if (signature == _lastAppliedSignature)
