@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Managers
+// Folder: SiegeEngine/Core/Managers
 // File: IDEDockingStrategy.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -735,13 +735,22 @@ namespace SiegeEngine.Core.Managers
             // DIAGNOSTIC: exact state at the moment of immediate post-load TearOut
             Vector2 origSize = _originalFloatingSizes.ContainsKey(panel) ? _originalFloatingSizes[panel] : new Vector2(-1, -1);
             Console.WriteLine($"[IDEDockingStrategy.TearOutPanel] type={panel.GetType().Name} DockState={panel.DockState} Size={panel.Size} origSize={origSize} inTree={(_root != null && _root.FindNode(panel) != null)} floatingList={_floatingPanels.Contains(panel)} AllowDragging={panel.AllowDragging}");
+            DockNode slot = _root != null ? _root.FindNode(panel) : null;
+            if (slot != null && slot.Rect.Z > 1f && slot.Rect.W > 1f)
+                panel.Position = new Vector2(slot.Rect.X, slot.Rect.Y);
             RestoreOriginalFloatingSize(panel);
             _root.RemovePanel(panel);
             _floatingPanels.Add(panel);
             panel.DockState = DockState.Floating;
             panel.AllowDragging = true;
+            float grabX = mousePos.X - panel.Position.X;
+            float grabY = mousePos.Y - panel.Position.Y;
+            if (grabX < 8f || grabX > panel.Size.X - 8f || panel.Position.X <= 1f)
+                grabX = Math.Min(panel.Size.X * 0.5f, Math.Max(8f, panel.Size.X - 24f));
+            grabY = Math.Clamp(grabY, 2f, BasePanel.TitleHeight);
+            _dragOffset = new Vector2(grabX, grabY);
+            panel.Position = mousePos - _dragOffset;
             _draggingPanel = panel;
-            _dragOffset = mousePos - panel.Position;
             if (panel is BasePanel bp)
                 bp.StartTitleBarDrag(mousePos);
             _root = CollapseNode(_root);

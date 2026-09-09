@@ -226,19 +226,8 @@ namespace SiegeEngine.Core.UI
                 child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, contentMatrix);
             }
 
-            if (_needsVerticalScrollbar)
-            {
-                float trackX = ComputedBackgroundX + ComputedBackgroundWidth - SCROLLBAR_WIDTH;
-                float trackY = ComputedBackgroundY;
-                float trackH = ComputedBackgroundHeight;
-                float[] trackNdc = HtmlLayoutUtils.GetNdcQuad(trackX, trackY, SCROLLBAR_WIDTH, trackH, localMatrix, viewportWidth, viewportHeight);
-                quadRenderer.DrawNdcQuad(trackNdc, new Vector4(0.2f, 0.2f, 0.2f, 0.9f));
-                float thumbRatio = ComputedContentHeight / _contentFullHeight;
-                float thumbH = Math.Max(20f, trackH * thumbRatio);
-                float thumbY = trackY + (ScrollOffsetY / _contentFullHeight) * (trackH - thumbH);
-                float[] thumbNdc = HtmlLayoutUtils.GetNdcQuad(trackX + 2, thumbY, SCROLLBAR_WIDTH - 4, thumbH, localMatrix, viewportWidth, viewportHeight);
-                quadRenderer.DrawNdcQuad(thumbNdc, new Vector4(0.6f, 0.6f, 0.6f, 1f));
-            }
+            // Wheel/scroll lives on UIOverlay.ScrollOffsetY. Painting a second track
+            // here is the duplicate scrollbar; the overlay already draws the live one.
 
             bool drawSideBorders = !useShaderForBorder;
             if (drawSideBorders)

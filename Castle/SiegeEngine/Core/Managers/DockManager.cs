@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Managers
+// Folder: SiegeEngine/Core/Managers
 // File: DockManager.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -297,11 +297,10 @@ namespace SiegeEngine.Core.Managers
             {
                 bool sizeChanged = Math.Abs(panel.Size.X - w) > 0.01f || Math.Abs(panel.Size.Y - h) > 0.01f;
                 bool positionChanged = Math.Abs(panel.Position.X - x) > 0.01f || Math.Abs(panel.Position.Y - y) > 0.01f;
-
+                panel.Position = new Vector2(x, y);
+                panel.Size = new Vector2(w, h);
                 if (sizeChanged || positionChanged)
                 {
-                    panel.Position = new Vector2(x, y);
-                    panel.Size = new Vector2(w, h);
                     if (DockSplitNode.IsLiveSplitterDrag && panel is BasePanel livePanel)
                         livePanel.ApplyLiveResize(w, h);
                     else
