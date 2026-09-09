@@ -1,4 +1,4 @@
-﻿// Folder: ToolChest
+// Folder: ToolChest
 // File: PhysicsDebugOverlay.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Interfaces;
@@ -160,7 +160,7 @@ namespace ToolChest
                 _triB.Clear();
                 _triC.Clear();
                 mesh.GetWorldTriangles(Vector3.Zero, Quaternion.Identity, _triA, _triB, _triC);
-                int count = Math.Min(_triA.Count, 2048);
+                int count = _triA.Count;
                 for (int t = 0; t < count; t++)
                 {
                     AddLocalLine(verts, indices, _triA[t], _triB[t], color);

@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Definitions
+// Folder: SiegeEngine/Core/Definitions
 // File: PhysicsComponent.cs
 using System;
 using System.Collections.Generic;
@@ -220,7 +220,9 @@ namespace SiegeEngine.Core.Definitions
             }
             else if (model != null && model.Meshes != null && model.Meshes.Count > 0)
             {
-                Shape = new TriangleMeshShape(model, hiddenMeshIndices, materialOptions);
+                // 62f5553 contract: every FBX with meshes is a TriangleMeshShape.
+                // Hidden/opacity filters must not collapse the collider into an OBB.
+                Shape = new TriangleMeshShape(model);
             }
             else
             {

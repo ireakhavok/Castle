@@ -560,7 +560,7 @@ namespace SiegeEngine.Core.Physics
                 aabbAMax.Z < aabbBMin.Z || aabbAMin.Z > aabbBMax.Z)
                 return;
             const float skin = 0.05f;
-            const int MaxTrianglesPerMesh = 16;
+            const int MaxTrianglesPerMesh = 256;
             const float MeshContactThreshold = 0.025f;
             Vector3 queryMinB = aabbAMin - new Vector3(skin);
             Vector3 queryMaxB = aabbAMax + new Vector3(skin);

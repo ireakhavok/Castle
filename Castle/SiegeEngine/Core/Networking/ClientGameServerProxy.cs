@@ -1,6 +1,8 @@
-﻿using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Physics;
 using SiegeEngine.Systems;
 using System;
@@ -44,6 +46,19 @@ namespace SiegeEngine.Core.Networking
                 existing.Type = entity.Type;
                 var existingPhysics = existing.GetComponent<PhysicsComponent>();
                 var newPhysics = entity.GetComponent<PhysicsComponent>();
+                var existingModel = existing.GetComponent<ModelComponent>();
+                var newModel = entity.GetComponent<ModelComponent>();
+                if (existingModel != null && newModel != null)
+                {
+                    existingModel.Key = newModel.Key;
+                    if (newModel.Model != null)
+                        existingModel.Model = newModel.Model;
+                }
+                else if (existingModel == null && newModel != null)
+                {
+                    existing.AddComponent(newModel);
+                    existingModel = newModel;
+                }
                 if (existingPhysics != null && newPhysics != null)
                 {
                     existingPhysics.SetAuthoredPose(newPhysics.Position, Entity.SanitizeRotation(newPhysics.Rotation));
@@ -73,16 +88,13 @@ namespace SiegeEngine.Core.Networking
                     existingPhysics.IsGrounded = newPhysics.IsGrounded;
                     existingPhysics.SlopeLimitDegrees = newPhysics.SlopeLimitDegrees;
                     existingPhysics.StepHeight = newPhysics.StepHeight;
-                    existingPhysics.InvalidateShape();
-                    var model = (existing.GetComponent<ModelComponent>() ?? entity.GetComponent<ModelComponent>())?.Model;
-                    existingPhysics.RebuildShape(model);
-                }
-                var existingModel = existing.GetComponent<ModelComponent>();
-                var newModel = entity.GetComponent<ModelComponent>();
-                if (existingModel != null && newModel != null)
-                {
-                    existingModel.Key = newModel.Key;
-                    existingModel.Model = newModel.Model;
+                    var model = existingModel?.Model ?? newModel?.Model;
+                    bool hasMesh = model != null && model.Meshes != null && model.Meshes.Count > 0;
+                    if (existingPhysics.BodyType == BodyType.Kinematic || hasMesh)
+                    {
+                        existingPhysics.InvalidateShape();
+                        existingPhysics.RebuildShape(model);
+                    }
                 }
                 var existingBlend = existing.GetComponent<BlendedAnimationComponent>();
                 var newBlend = entity.GetComponent<BlendedAnimationComponent>();
@@ -154,6 +166,7 @@ namespace SiegeEngine.Core.Networking
                 physics.Rotation = Entity.SanitizeRotation(physics.Rotation);
                 physics.RenderPosition = physics.Position;
             }
+            EnsureMeshCollider(entity);
             _entities.Add(entity);
             _eventBus.Publish(new EntityAddedEvent(entity), true);
         }
@@ -201,6 +214,7 @@ namespace SiegeEngine.Core.Networking
                 system.Update(deltaTime);
             foreach (var entity in _entities)
             {
+                EnsureMeshCollider(entity);
                 var physics = entity.GetComponent<PhysicsComponent>();
                 if (physics != null) _physicsWorld.RegisterBody(physics);
             }
@@ -275,6 +289,46 @@ namespace SiegeEngine.Core.Networking
                 return new Vector3(0, localHit.Y > 0 ? 1 : -1, 0);
             else
                 return new Vector3(0, 0, localHit.Z > 0 ? 1 : -1);
+        }
+
+        private static void EnsureMeshCollider(Entity entity)
+        {
+            if (entity == null) return;
+            var physics = entity.GetComponent<PhysicsComponent>();
+            if (physics == null) return;
+            if (physics.BodyType == BodyType.Kinematic)
+            {
+                if (!(physics.Shape is CapsuleShape))
+                    physics.RebuildShape(null);
+                return;
+            }
+            var modelComp = entity.GetComponent<ModelComponent>();
+            FBXModel model = modelComp?.Model;
+            if (model == null && modelComp != null && !string.IsNullOrEmpty(modelComp.Key) && ModelManager.Instance != null)
+            {
+                FBXModel resolved;
+                if (!ModelManager.Instance.TryGetModel(modelComp.Key, out resolved) || resolved == null)
+                {
+                    string k = modelComp.Key;
+                    if (k.EndsWith("_pack", StringComparison.OrdinalIgnoreCase))
+                        ModelManager.Instance.TryGetModel(k.Substring(0, k.Length - 5), out resolved);
+                    else
+                        ModelManager.Instance.TryGetModel(k + "_pack", out resolved);
+                }
+                if (resolved != null)
+                {
+                    modelComp.Model = resolved;
+                    model = resolved;
+                }
+            }
+            if (model == null || model.Meshes == null || model.Meshes.Count == 0)
+                return;
+            if (physics.Shape is TriangleMeshShape)
+                return;
+            physics.Size = model.GetBoundingSize();
+            physics.LocalBoundsMinCm = model.LocalBoundsMinCm;
+            physics.LocalBoundsMaxCm = model.LocalBoundsMaxCm;
+            physics.RebuildShape(model);
         }
         public void QueueNetworkEvent(IEvent e)
         {
