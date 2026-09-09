@@ -1,6 +1,7 @@
-﻿// Folder: SiegeEngine/Systems
+// Folder: SiegeEngine/Systems
 // File: PlayerControllerSystem.cs
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using SiegeEngine.Core.Events;
 using SiegeEngine.PlayerSystem;
@@ -16,6 +17,8 @@ namespace SiegeEngine.Systems
         private readonly IntPtr _window;
         private readonly PlayerMovement _playerMovement;
         private bool _godMode;
+        private readonly Dictionary<int, Vector3> _lastPublishedPos = new Dictionary<int, Vector3>();
+        private readonly Dictionary<int, Quaternion> _lastPublishedRot = new Dictionary<int, Quaternion>();
 
         public PlayerControllerSystem(IGameServer server, IControlContext controlContext, IntPtr window, PlayerMovement playerMovement) : base(server)
         {
@@ -62,9 +65,24 @@ namespace SiegeEngine.Systems
                     player.Physics.Position = newPos;
                 }
 
-                // Use client's predicted rotation
-                _server.Publish(new EntityMovedEvent(player.EntityId, player.Physics.Position, player.Physics.Rotation, player.SteamId));
-                Console.WriteLine($"PlayerControllerSystem: Updated entity {player.EntityId}, Position={player.Physics.Position}, Rotation={player.Physics.Rotation}");
+                Vector3 pos = player.Physics.Position;
+                Quaternion rot = player.Physics.Rotation;
+                bool poseChanged = true;
+                if (_lastPublishedPos.TryGetValue(player.EntityId, out Vector3 lastPos) &&
+                    _lastPublishedRot.TryGetValue(player.EntityId, out Quaternion lastRot))
+                {
+                    poseChanged = (pos - lastPos).LengthSquared() > 1e-8f ||
+                                  MathF.Abs(rot.X - lastRot.X) > 1e-6f ||
+                                  MathF.Abs(rot.Y - lastRot.Y) > 1e-6f ||
+                                  MathF.Abs(rot.Z - lastRot.Z) > 1e-6f ||
+                                  MathF.Abs(rot.W - lastRot.W) > 1e-6f;
+                }
+                if (poseChanged)
+                {
+                    _lastPublishedPos[player.EntityId] = pos;
+                    _lastPublishedRot[player.EntityId] = rot;
+                    _server.Publish(new EntityMovedEvent(player.EntityId, pos, rot, player.SteamId));
+                }
             }
         }
     }

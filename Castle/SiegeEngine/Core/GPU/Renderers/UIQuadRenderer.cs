@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Rendering
+// Folder: SiegeEngine/Core/Rendering
 // File: UIQuadRenderer.cs
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
@@ -11,9 +11,15 @@ namespace SiegeEngine.Core.GPU.Renderers
 {
     public unsafe class UIQuadRenderer : IDisposable
     {
+        public static UIQuadRenderer Active;
+        private const int MaxBatchQuads = 256;
         private readonly IRenderContext _renderContext;
         private uint _vao, _vbo, _ebo;
         private ShaderProgram _shader;
+        private readonly float[] _batchVerts = new float[MaxBatchQuads * 16];
+        private int _batchCount;
+        private Vector4 _batchColor;
+        private bool _batchOpen;
 
         public UIQuadRenderer(IRenderContext renderContext)
         {
@@ -31,7 +37,18 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.GenBuffers(1, out _ebo);
             _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
 
-            uint[] indices = new uint[] { 0, 1, 2, 0, 2, 3 };
+            uint[] indices = new uint[MaxBatchQuads * 6];
+            for (int i = 0; i < MaxBatchQuads; i++)
+            {
+                uint v = (uint)(i * 4);
+                int o = i * 6;
+                indices[o] = v;
+                indices[o + 1] = v + 1;
+                indices[o + 2] = v + 2;
+                indices[o + 3] = v;
+                indices[o + 4] = v + 2;
+                indices[o + 5] = v + 3;
+            }
             fixed (uint* idxPtr = indices)
             {
                 _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(indices.Length * sizeof(uint)), idxPtr, _renderContext.Enums.StaticDraw);
@@ -41,6 +58,7 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void EnsureUIState()
         {
+            Active = this;
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
@@ -48,11 +66,14 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void RestoreAfterUI()
         {
+            FlushBatch();
+            if (Active == this) Active = null;
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
 
         public void FinishDraw()
         {
+            FlushBatch();
             _renderContext.BindVertexArray(0);
             _renderContext.DisableVertexAttribArray(0);
             _renderContext.DisableVertexAttribArray(1);
@@ -66,8 +87,61 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.EnableVertexAttribArray(0);
         }
 
+        public void FlushBatch()
+        {
+            if (_batchCount <= 0)
+            {
+                _batchOpen = false;
+                return;
+            }
+            EnsureUIState();
+            ResetVertexState();
+            _shader.Use();
+            _shader.SetMatrix4("uTransform", Matrix4x4.Identity);
+            _shader.SetUniform("uColor", _batchColor.X, _batchColor.Y, _batchColor.Z, _batchColor.W);
+            _shader.SetUniform("uUseTexture", 0.0f);
+            _shader.SetUniform("uUseRounded", 0.0f);
+            _shader.SetUniform("uBorderWidth", 0f);
+            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
+            int floats = _batchCount * 16;
+            fixed (float* ptr = _batchVerts)
+            {
+                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(floats * sizeof(float)), ptr, _renderContext.Enums.DynamicDraw);
+            }
+            _renderContext.EnableVertexAttribArray(0);
+            _renderContext.VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)0);
+            _renderContext.EnableVertexAttribArray(1);
+            _renderContext.VertexAttribPointer(1, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+            _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
+            _renderContext.DrawElements(_renderContext.Enums.Triangles, (uint)(_batchCount * 6), _renderContext.Enums.UnsignedInt, (void*)0);
+            _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, 0);
+            _renderContext.BindVertexArray(0);
+            _batchCount = 0;
+            _batchOpen = false;
+        }
+
+        private void EnqueueSolid(float[] ndc, Vector4 color)
+        {
+            if (ndc == null || ndc.Length < 8) return;
+            if (_batchOpen && (color.X != _batchColor.X || color.Y != _batchColor.Y || color.Z != _batchColor.Z || color.W != _batchColor.W || _batchCount >= MaxBatchQuads))
+                FlushBatch();
+            if (!_batchOpen)
+            {
+                _batchColor = color;
+                _batchOpen = true;
+                _batchCount = 0;
+            }
+            int o = _batchCount * 16;
+            _batchVerts[o] = ndc[0]; _batchVerts[o + 1] = ndc[1]; _batchVerts[o + 2] = 0f; _batchVerts[o + 3] = 0f;
+            _batchVerts[o + 4] = ndc[2]; _batchVerts[o + 5] = ndc[3]; _batchVerts[o + 6] = 1f; _batchVerts[o + 7] = 0f;
+            _batchVerts[o + 8] = ndc[4]; _batchVerts[o + 9] = ndc[5]; _batchVerts[o + 10] = 1f; _batchVerts[o + 11] = 1f;
+            _batchVerts[o + 12] = ndc[6]; _batchVerts[o + 13] = ndc[7]; _batchVerts[o + 14] = 0f; _batchVerts[o + 15] = 1f;
+            _batchCount++;
+        }
+
         public void DrawQuad(float posX, float posY, float sizeX, float sizeY, Vector4 color, float viewportWidth, float viewportHeight)
         {
+            FlushBatch();
             EnsureUIState();
             ResetVertexState();
 
@@ -107,6 +181,13 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void DrawNdcQuad(float[] ndc, Vector4 color, Vector4 borderRadius, Vector2 rectSize, float borderWidth = 0f, Vector4 borderColor = new Vector4())
         {
+            if (ndc == null || ndc.Length < 8) return;
+            if (borderRadius == Vector4.Zero && borderWidth <= 0f)
+            {
+                EnqueueSolid(ndc, color);
+                return;
+            }
+            FlushBatch();
             EnsureUIState();
             ResetVertexState();
 
@@ -175,6 +256,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 2.0f * rx1 / viewportWidth - 1.0f, 1.0f - 2.0f * ry1 / viewportHeight
             };
 
+            FlushBatch();
             EnsureUIState();
             ResetVertexState();
 

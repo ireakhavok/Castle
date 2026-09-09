@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
+// Folder: SiegeEngine.Core.UI
 // File: layout.cs
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.UI.Elements;
@@ -174,6 +174,55 @@ namespace SiegeEngine.Core.UI
                     LayoutBlockChildren(viewportWidth, viewportHeight, textRenderer, fs);
                 }
             }
+            // Shrink-to-fit: auto/absolute flex+block boxes must grow to the used
+            // child extent. Stretch-to-parent blocks keep the filled width.
+            bool widthWasSpecified = !float.IsNaN(HtmlLayoutUtils.ParseSize(effectiveStyle.WidthStr, refWidth, viewportWidth, viewportHeight));
+            bool heightWasSpecified = !float.IsNaN(HtmlLayoutUtils.ParseSize(effectiveStyle.HeightStr, refHeight, viewportWidth, viewportHeight));
+            bool stretchedToParentWidth = isBlockOrFlexOrGridOrTable && isStaticOrRelative && !widthWasSpecified && Parent != null;
+            if (!stretchedToParentWidth && !widthWasSpecified && float.IsNaN(forcedWidth) && Children.Count > 0)
+            {
+                float usedContentW = 0f;
+                foreach (var child in Children)
+                {
+                    if (child.GetEffectiveDisplay() == "none") continue;
+                    if (child.Style.Position == "absolute" || child.Style.Position == "fixed") continue;
+                    float childRight = child.ComputedPosition.X + child.ComputedWidth - ComputedContentX;
+                    Vector4 cm = HtmlLayoutUtils.ParseMargins(child.Style, 0, viewportWidth, viewportHeight);
+                    float mr = float.IsNaN(cm.Y) ? 0f : cm.Y;
+                    usedContentW = Math.Max(usedContentW, childRight + mr);
+                }
+                float neededBoxW = usedContentW + pad.W + pad.Y + borderW.W + borderW.Y;
+                if (!float.IsNaN(minW)) neededBoxW = Math.Max(neededBoxW, minW);
+                if (neededBoxW > ComputedWidth + 0.5f)
+                {
+                    ComputedWidth = neededBoxW;
+                    ComputedBackgroundWidth = ComputedWidth - borderW.W - borderW.Y;
+                    ComputedContentWidth = ComputedBackgroundWidth - pad.W - pad.Y;
+                    if (ComputedContentWidth < 0) ComputedContentWidth = 0;
+                }
+            }
+            if (!heightWasSpecified && !hasVerticalOverflow && float.IsNaN(forcedHeight) && Children.Count > 0 && Parent != null)
+            {
+                float usedContentH = 0f;
+                foreach (var child in Children)
+                {
+                    if (child.GetEffectiveDisplay() == "none") continue;
+                    if (child.Style.Position == "absolute" || child.Style.Position == "fixed") continue;
+                    float childBottom = child.ComputedPosition.Y + child.GetFullContentExtentForParent() - ComputedContentY;
+                    Vector4 cm = HtmlLayoutUtils.ParseMargins(child.Style, 0, viewportWidth, viewportHeight);
+                    float mb = float.IsNaN(cm.Z) ? 0f : cm.Z;
+                    usedContentH = Math.Max(usedContentH, childBottom + mb);
+                }
+                float neededBoxH = usedContentH + pad.X + pad.Z + borderW.X + borderW.Z;
+                if (!float.IsNaN(minH)) neededBoxH = Math.Max(neededBoxH, minH);
+                if (neededBoxH > ComputedHeight + 0.5f)
+                {
+                    ComputedHeight = neededBoxH;
+                    ComputedBackgroundHeight = ComputedHeight - borderW.X - borderW.Z;
+                    ComputedContentHeight = ComputedBackgroundHeight - pad.X - pad.Z;
+                    if (ComputedContentHeight < 0) ComputedContentHeight = 0;
+                }
+            }
             if (hasVerticalOverflow)
             {
                 _contentFullHeight = 0f;
@@ -230,13 +279,16 @@ namespace SiegeEngine.Core.UI
             {
                 HtmlElement child = normalChildren[i];
                 float grow = child.Style.FlexGrow;
-                if (grow == 0 && !string.IsNullOrEmpty(child.Style.Flex))
+                float shrink = child.Style.FlexShrink;
+                if (!string.IsNullOrEmpty(child.Style.Flex))
                 {
-                    var flexParts = child.Style.Flex.Split(' ');
-                    if (flexParts.Length > 0) float.TryParse(flexParts[0], out grow);
+                    var flexParts = child.Style.Flex.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (grow == 0 && flexParts.Length > 0) float.TryParse(flexParts[0], out grow);
+                    if (flexParts.Length > 1) float.TryParse(flexParts[1], out shrink);
                 }
+                if (float.IsNaN(shrink) || shrink < 0) shrink = 0;
                 childGrow.Add(grow);
-                childShrink.Add(1f);
+                childShrink.Add(shrink);
                 totalGrow += grow;
                 string main_str_raw = isRow ? child.Style.WidthStr : child.Style.HeightStr;
                 float mainStr = HtmlLayoutUtils.ParseSize(main_str_raw, availableMain, viewportWidth, viewportHeight);
@@ -267,12 +319,24 @@ namespace SiegeEngine.Core.UI
                     }
                     baseMain = specified;
                 }
+                if (float.IsNaN(mainStr) && grow <= 0)
+                {
+                    float childMin = HtmlLayoutUtils.ParseSize(isRow ? child.Style.MinWidthStr : child.Style.MinHeightStr, availableMain, viewportWidth, viewportHeight);
+                    if (!float.IsNaN(childMin)) baseMain = Math.Max(baseMain, childMin);
+                }
                 childBaseMain.Add(baseMain);
                 totalBaseMain += baseMain;
-                totalShrink += 1f * baseMain;
+                totalShrink += shrink * baseMain;
             }
             float totalGap = gap * (normalChildren.Count - 1);
             float free = availableMain - totalBaseMain - totalGap;
+            // Auto-sized absolute/fixed flex containers are shrink-to-fit.
+            // Do not compress children into an underestimated intrinsic width;
+            // grow-to-children below expands the parent around the used size.
+            bool autoMain = isRow ? string.IsNullOrEmpty(Style.WidthStr) : string.IsNullOrEmpty(Style.HeightStr);
+            bool shrinkToFitMain = autoMain && (Style.Position == "absolute" || Style.Position == "fixed");
+            if (shrinkToFitMain && free < 0)
+                free = 0;
             if (free > 0)
             {
                 if (totalGrow > 0)
@@ -454,8 +518,8 @@ namespace SiegeEngine.Core.UI
                 float child_pos_y = ComputedContentY + (isRow ? child_pos_cross : item_start);
                 float child_w = isRow ? child_main : child_cross;
                 float child_h = isRow ? child_cross : child_main;
-                float forced_width = float.NaN;
-                float forced_height = float.NaN;
+                float forced_width = isRow ? child_w : float.NaN;
+                float forced_height = isRow ? float.NaN : child_h;
                 if (alignItems == "stretch" && float.IsNaN(child_cross_str))
                 {
                     float forced_cross = availableCross - c_m_cross_start - c_m_cross_end;
@@ -995,6 +1059,14 @@ namespace SiegeEngine.Core.UI
                         m_cross_end = float.IsNaN(m_cross_end) ? 0 : m_cross_end;
                         float child_main = isRow ? childSize.X : childSize.Y;
                         float child_cross = isRow ? childSize.Y : childSize.X;
+                        float childMinMain = HtmlLayoutUtils.ParseSize(isRow ? child.Style.MinWidthStr : child.Style.MinHeightStr, 0, viewportWidth, viewportHeight);
+                        if (!float.IsNaN(childMinMain)) child_main = Math.Max(child_main, childMinMain);
+                        string childMainStr = isRow ? child.Style.WidthStr : child.Style.HeightStr;
+                        if (!string.IsNullOrEmpty(childMainStr) && !childMainStr.Trim().EndsWith("%"))
+                        {
+                            float specMain = HtmlLayoutUtils.ParseSize(childMainStr, 0, viewportWidth, viewportHeight);
+                            if (!float.IsNaN(specMain)) child_main = Math.Max(child_main, specMain);
+                        }
                         sum_main += child_main + m_start + m_end;
                         max_cross = Math.Max(max_cross, child_cross + m_cross_start + m_cross_end);
                     }
@@ -1270,6 +1342,10 @@ namespace SiegeEngine.Core.UI
             }
             if (float.IsNaN(iw)) iw = 0;
             if (float.IsNaN(ih)) ih = 0;
+            float selfMinW = HtmlLayoutUtils.ParseSize(Style.MinWidthStr, 0, viewportWidth, viewportHeight);
+            float selfMinH = HtmlLayoutUtils.ParseSize(Style.MinHeightStr, 0, viewportWidth, viewportHeight);
+            if (!float.IsNaN(selfMinW)) iw = Math.Max(iw, selfMinW);
+            if (!float.IsNaN(selfMinH)) ih = Math.Max(ih, selfMinH);
             _cachedIntrinsicSize = new Vector2(iw, ih);
             _cachedViewportWidth = viewportWidth;
             _cachedViewportHeight = viewportHeight;

@@ -34,6 +34,8 @@ namespace MapRoom
         private const float BrushUpdateInterval = 0.0f;
         private const float BrushMoveThreshold = 0.3f;
         private TerrainPaintData _paintData;
+        private bool _disposed;
+        private Action<GenericEvent> _skyboxHook;
         private string _activeMaterialPath = null;
         private uint _ghostMaterialTextureId = 0;
         private ShaderProgram _spriteShader;
@@ -53,7 +55,12 @@ namespace MapRoom
                 _eventBus.Subscribe<SelectBrushEvent>(OnSelectBrushEvent);
             }
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
-            _eventBus.Subscribe<GenericEvent>(e => { if (e.Hook == "SkyboxSet" || e.Hook == "OpenAddSkybox" || e.Hook == "SkyboxRefresh") OnSkyboxDataHook(e.Hook, e); });
+            _skyboxHook = e =>
+            {
+                if (e.Hook == "SkyboxSet" || e.Hook == "OpenAddSkybox" || e.Hook == "SkyboxRefresh")
+                    OnSkyboxDataHook(e.Hook, e);
+            };
+            _eventBus.Subscribe<GenericEvent>(_skyboxHook);
         }
         public override void Initialize(int width, int height)
         {
@@ -83,6 +90,12 @@ namespace MapRoom
         }
         public override void Dispose()
         {
+            _disposed = true;
+            _eventBus?.Unsubscribe<TerrainModifiedEvent>(OnTerrainModified);
+            if (_enableBrush)
+                _eventBus?.Unsubscribe<SelectBrushEvent>(OnSelectBrushEvent);
+            if (_skyboxHook != null)
+                _eventBus?.Unsubscribe<GenericEvent>(_skyboxHook);
             TextureLoader.DeleteTexture(_renderContext, ref _ghostMaterialTextureId);
             _colorBitmapCache?.Dispose();
             _ghostBuffer?.Dispose();
@@ -955,12 +968,14 @@ namespace MapRoom
         }
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
+            if (_disposed || _heightmap == null || _renderContext == null) return;
             if (_processedModifications.Contains(e.Id)) return;
             ApplyModification(e);
             _processedModifications.Add(e.Id);
         }
         private void ApplyModification(TerrainModifiedEvent e)
         {
+            if (_disposed || _heightmap == null) return;
             var brush = new ToolChest.Brush
             {
                 Mode = (BrushMode)Enum.Parse(typeof(BrushMode), e.Operation, true),

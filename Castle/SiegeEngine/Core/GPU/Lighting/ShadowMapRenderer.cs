@@ -24,6 +24,7 @@ namespace SiegeEngine.Core.GPU.Lighting
         public List<int> HiddenMeshIndices;
         public List<MeshMaterialOption> MaterialOptions;
         public string ModelKey;
+        public IList<MeshData> LodMeshes;
     }
 
     /// <summary>
@@ -60,6 +61,8 @@ namespace SiegeEngine.Core.GPU.Lighting
         private bool _savedScissor;
 
         private readonly float[] _cascadeRadii = new float[LightingFrame.MaxCascades];
+        private Vector3 _stickyFocus;
+        private bool _hasStickyFocus;
 
         private static ShadowMapRenderer _shared;
         public static uint WrittenSunAtlas { get; private set; }
@@ -68,6 +71,20 @@ namespace SiegeEngine.Core.GPU.Lighting
         public static readonly Matrix4x4[] WrittenCascadeVP = new Matrix4x4[LightingFrame.MaxCascades];
         public static Vector4 WrittenCascadeSplits;
         public static Vector4 WrittenCascadeZRange;
+
+        private struct CachedCasterTransform
+        {
+            public Matrix4x4 Matrix;
+            public Vector3 Scale;
+            public Vector3 LocalCentreOfMass;
+            public Quaternion Rotation;
+            public Vector3 WorldCentreOfMass;
+            public float UnitScale;
+            public int Epoch;
+        }
+
+        private static readonly Dictionary<Entity, CachedCasterTransform> _casterTransforms = new Dictionary<Entity, CachedCasterTransform>();
+        private static int _casterEpoch;
 
         public static ShadowMapRenderer Shared(IRenderContext renderContext)
         {
@@ -124,8 +141,9 @@ namespace SiegeEngine.Core.GPU.Lighting
                 bool drawSun = casters != null && casters.Count > 0;
                 if (!drawSun)
                 {
-                    // Another view already filled the shared atlas. Do not
-                    // clear it and do not publish this instance's empty tex.
+                    // First view this frame already filled the shared atlas,
+                    // or this view has nothing to write. Second views sample
+                    // WrittenSunAtlas instead of redrawing 4 tiles.
                     if (WrittenSunAtlas != 0)
                     {
                         frame.ShadowAtlas = WrittenSunAtlas;
@@ -146,7 +164,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 {
                     frame.CascadeCount = cascadeCount;
                     float far = MathF.Max(frame.ShadowDistance, 2048f);
-                    ComputeCascades(frame, cameraPos, far, cascadeCount, atlasSize, casters);
+                    ComputeCascades(frame, view, cameraPos, far, cascadeCount, atlasSize, casters);
                     _lastCascadeCount = frame.CascadeCount;
                     for (int i = 0; i < LightingFrame.MaxCascades; i++)
                         _lastCascadeVP[i] = frame.CascadeVP[i];
@@ -172,7 +190,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                         int x = (i % 2) * tile;
                         int y = (i / 2) * tile;
                         _rc.Viewport(x, y, (uint)tile, (uint)tile);
-                        DrawCasters(frame.CascadeVP[i], casters, linearDepth: false, lightPos: default, farPlane: 1f);
+                        DrawCasters(frame.CascadeVP[i], casters, linearDepth: false, lightPos: default, farPlane: 1f, frame.ShadowQuality, i);
                     }
 
                     WrittenSunAtlas = _atlasDepth;
@@ -204,7 +222,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 BindDepthOnly();
                 _rc.Viewport(0, 0, (uint)size, (uint)size);
                 _rc.Clear(_e.DepthBufferBit);
-                DrawCasters(frame.SpotVP, casters, linearDepth: false, lightPos: default, farPlane: 1f);
+                DrawCasters(frame.SpotVP, casters, linearDepth: false, lightPos: default, farPlane: 1f, frame.ShadowQuality, cascadeIndex: 0);
             }
 
             if (frame.PointCount > 0 && frame.Points[0].CastShadows && frame.Points[0].Technique == ShadowTechnique.ShadowMap)
@@ -220,7 +238,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 };
                 EnsurePoint(size);
                 frame.PointShadowCube = _pointDepth;
-                RenderPointFaces(frame.Points[0], casters, size);
+                RenderPointFaces(frame.Points[0], casters, frame.ShadowQuality, size);
             }
 
             _rc.CullFace(_e.Back);
@@ -242,6 +260,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             list.Clear();
             if (entities == null) return list;
             var modelManager = ModelManager.Instance;
+            _casterEpoch++;
+            int seenCached = 0;
 
             foreach (var entity in entities)
             {
@@ -284,11 +304,38 @@ namespace SiegeEngine.Core.GPU.Lighting
                     continue;
 
                 float unitScale = fbxModel != null ? fbxModel.UnitToMeters : 0.01f;
-                Matrix4x4 modelMatrix =
-                    Matrix4x4.CreateScale(unitScale * physics.Scale) *
-                    Matrix4x4.CreateTranslation(-physics.LocalCentreOfMass) *
-                    Matrix4x4.CreateFromQuaternion(physics.Rotation) *
-                    Matrix4x4.CreateTranslation(physics.WorldCentreOfMass);
+                Vector3 scale = physics.Scale;
+                Vector3 localCom = physics.LocalCentreOfMass;
+                Quaternion rotation = physics.Rotation;
+                Vector3 worldCom = physics.RenderWorldCentreOfMass;
+                Matrix4x4 modelMatrix;
+                if (_casterTransforms.TryGetValue(entity, out CachedCasterTransform cached)
+                    && cached.UnitScale == unitScale
+                    && cached.Scale == scale
+                    && cached.LocalCentreOfMass == localCom
+                    && cached.Rotation == rotation
+                    && cached.WorldCentreOfMass == worldCom)
+                {
+                    modelMatrix = cached.Matrix;
+                    cached.Epoch = _casterEpoch;
+                    _casterTransforms[entity] = cached;
+                    seenCached++;
+                }
+                else
+                {
+                    modelMatrix = physics.BuildRenderModelMatrix(unitScale);
+                    _casterTransforms[entity] = new CachedCasterTransform
+                    {
+                        Matrix = modelMatrix,
+                        Scale = scale,
+                        LocalCentreOfMass = localCom,
+                        Rotation = rotation,
+                        WorldCentreOfMass = worldCom,
+                        UnitScale = unitScale,
+                        Epoch = _casterEpoch
+                    };
+                    seenCached++;
+                }
 
                 list.Add(new ShadowCaster
                 {
@@ -299,8 +346,20 @@ namespace SiegeEngine.Core.GPU.Lighting
                     CastShadows = true,
                     HiddenMeshIndices = modelComp.HiddenMeshIndices,
                     MaterialOptions = modelComp.MaterialOptions,
-                    ModelKey = modelComp.Key
+                    ModelKey = modelComp.Key,
+                    LodMeshes = fbxModel != null ? fbxModel.Meshes : null
                 });
+            }
+            if (_casterTransforms.Count > seenCached)
+            {
+                var stale = new List<Entity>();
+                foreach (var kv in _casterTransforms)
+                {
+                    if (kv.Value.Epoch != _casterEpoch)
+                        stale.Add(kv.Key);
+                }
+                for (int i = 0; i < stale.Count; i++)
+                    _casterTransforms.Remove(stale[i]);
             }
             return list;
         }
@@ -347,7 +406,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             DeleteTex(ref _pointDepth);
         }
 
-        private void DrawCasters(Matrix4x4 lightVp, IReadOnlyList<ShadowCaster> casters, bool linearDepth, Vector3 lightPos, float farPlane)
+        private void DrawCasters(Matrix4x4 lightVp, IReadOnlyList<ShadowCaster> casters, bool linearDepth, Vector3 lightPos, float farPlane, ShadowQuality quality, int cascadeIndex)
         {
             if (casters == null) return;
             _depthShader.Use();
@@ -377,13 +436,11 @@ namespace SiegeEngine.Core.GPU.Lighting
                 _depthShader.SetUniform("uHasBones", caster.HasBones ? 1 : 0);
                 if (caster.HasBones && caster.BoneMatrices != null)
                 {
+                    // Depth shader only reads uBoneTransforms. The second
+                    // upload was a no-op copy of the same 128 matrices.
                     _depthShader.SetMatrix4Array("uBoneTransforms", caster.BoneMatrices);
-                    _depthShader.SetMatrix4Array("uBoneMatrices", caster.BoneMatrices);
                 }
-                IList<MeshData> lodMeshes = null;
-                if (!string.IsNullOrEmpty(caster.ModelKey) && ModelManager.Instance != null
-                    && ModelManager.Instance.TryGetModel(caster.ModelKey, out FBXModel lodModel))
-                    lodMeshes = lodModel.Meshes;
+                IList<MeshData> lodMeshes = caster.LodMeshes;
                 int gpuIndex = 0;
                 foreach (var mmr in caster.ModelData.MeshRenders)
                 {
@@ -400,7 +457,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             _rc.BindVertexArray(0);
         }
 
-        private void RenderPointFaces(GpuPointLight light, IReadOnlyList<ShadowCaster> casters, int size)
+        private void RenderPointFaces(GpuPointLight light, IReadOnlyList<ShadowCaster> casters, ShadowQuality quality, int size)
         {
             float near = 0.05f;
             float far = MathF.Max(light.Range, 1f);
@@ -429,7 +486,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 _rc.Viewport(0, 0, (uint)size, (uint)size);
                 _rc.Clear(_e.DepthBufferBit);
                 Matrix4x4 view = Matrix4x4.CreateLookAt(light.Position, targets[face], ups[face]);
-                DrawCasters(view * proj, casters, linearDepth: true, lightPos: light.Position, farPlane: far);
+                DrawCasters(view * proj, casters, linearDepth: true, lightPos: light.Position, farPlane: far, quality, cascadeIndex: 0);
             }
         }
 
@@ -450,7 +507,7 @@ namespace SiegeEngine.Core.GPU.Lighting
         /// sharp umbras; the last tile is the scene span. A fragment outside
         /// every tile is lit by the sun — never clamped into a shadow test.
         /// </summary>
-        private void ComputeCascades(LightingFrame frame, Vector3 cameraPos, float far, int cascadeCount, int atlasSize, IReadOnlyList<ShadowCaster> casters)
+        private void ComputeCascades(LightingFrame frame, Matrix4x4 view, Vector3 cameraPos, float far, int cascadeCount, int atlasSize, IReadOnlyList<ShadowCaster> casters)
         {
             Vector3 sceneMin = Vector3.Zero;
             Vector3 sceneMax = Vector3.Zero;
@@ -459,6 +516,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             {
                 for (int c = 0; c < casters.Count; c++)
                 {
+                    if (casters[c].TerrainMesh != null)
+                        continue;
                     Vector3 world = casters[c].ModelMatrix.Translation;
                     if (!haveCaster)
                     {
@@ -474,10 +533,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 }
             }
 
-            // C0/C1 stay camera-centered for nearby contact. C2 and C3 sit on
-            // the caster AABB so pulling the editor camera 200m out does not
-            // drop the scene onto a 2km tile (or off every tile).
-            Vector3 cameraCenter = new Vector3(cameraPos.X, cameraPos.Y, cameraPos.Z);
+            Vector3 cameraCenter = cameraPos;
             Vector3 sceneCenter = cameraCenter;
             float sceneRadius = 0f;
             if (haveCaster)
@@ -498,6 +554,16 @@ namespace SiegeEngine.Core.GPU.Lighting
                 _cascadeRadii[r] = radii[r];
             frame.CascadeSplits = new Vector4(radii[0], radii[1], radii[2], radii[3]);
 
+            // C0/C1 stay on the camera when you are inside the tight tile
+            // (walk / close orbit is bit-identical to the reverted path).
+            // Only when the eye leaves C0 do we pin those tiles on the
+            // subject along the look ray so a far orbit cannot dump a
+            // character onto the scene-wide cascade.
+            Vector3 subject = PickShadowSubject(view, cameraCenter, casters);
+            Vector3 nearFocus = cameraCenter;
+            if ((subject - cameraCenter).LengthSquared() > radii[0] * radii[0])
+                nearFocus = subject;
+
             Vector3 lightDir = frame.Sun.Direction.LengthSquared() > 1e-8f
                 ? Vector3.Normalize(frame.Sun.Direction)
                 : LightingFrame.DefaultSunDirection;
@@ -509,7 +575,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             {
                 float radius = radii[i];
                 float texel = MathF.Max((radius * 2f) / tile, 0.05f);
-                Vector3 focusBase = (i >= 2 && haveCaster) ? sceneCenter : cameraCenter;
+                Vector3 focusBase = (i >= 2 && haveCaster) ? sceneCenter : nearFocus;
                 Vector3 focus = SnapToTexel(focusBase, texel);
 
                 // Z span follows this tile so inner cascades keep centimetre
@@ -540,6 +606,86 @@ namespace SiegeEngine.Core.GPU.Lighting
                 frame.CascadeVP[i] = Matrix4x4.Identity;
         }
 
+        private Vector3 PickShadowSubject(Matrix4x4 view, Vector3 cameraPos, IReadOnlyList<ShadowCaster> casters)
+        {
+            if (casters == null || casters.Count == 0)
+            {
+                _hasStickyFocus = false;
+                return cameraPos;
+            }
+
+            Vector3 forward = ExtractViewForward(view);
+            const float maxPerp = 12f;
+            const float maxAlong = 400f;
+
+            Vector3 bestSkinned = default;
+            float bestSkinnedScore = float.MaxValue;
+            bool haveSkinned = false;
+            Vector3 bestModel = default;
+            float bestModelScore = float.MaxValue;
+            bool haveModel = false;
+
+            for (int i = 0; i < casters.Count; i++)
+            {
+                if (casters[i].TerrainMesh != null)
+                    continue;
+                Vector3 pos = casters[i].ModelMatrix.Translation;
+                Vector3 to = pos - cameraPos;
+                float along = Vector3.Dot(to, forward);
+                if (along < 0.5f || along > maxAlong)
+                    continue;
+                float perp = (to - forward * along).Length();
+                if (perp > maxPerp)
+                    continue;
+                float score = perp + along * 0.02f;
+                if (casters[i].HasBones)
+                {
+                    if (score < bestSkinnedScore)
+                    {
+                        bestSkinnedScore = score;
+                        bestSkinned = pos;
+                        haveSkinned = true;
+                    }
+                }
+                else if (score < bestModelScore)
+                {
+                    bestModelScore = score;
+                    bestModel = pos;
+                    haveModel = true;
+                }
+            }
+
+            Vector3 picked = cameraPos;
+            if (haveSkinned)
+                picked = bestSkinned;
+            else if (haveModel)
+                picked = bestModel;
+            else if (_hasStickyFocus)
+            {
+                // Only reuse last subject when this frame found nobody.
+                // Never freeze a live pick at last frame's position — that
+                // lagged C0 behind a running player and flickered the umbra.
+                Vector3 toSticky = _stickyFocus - cameraPos;
+                float along = Vector3.Dot(toSticky, forward);
+                float perp = (toSticky - forward * MathF.Max(along, 0f)).Length();
+                if (along > 0.5f && along < maxAlong && perp < maxPerp * 1.5f)
+                    picked = _stickyFocus;
+            }
+
+            _stickyFocus = picked;
+            _hasStickyFocus = haveSkinned || haveModel || _hasStickyFocus;
+            return picked;
+        }
+
+        private static Vector3 ExtractViewForward(Matrix4x4 view)
+        {
+            // Look-at view stores -forward in the third row.
+            Vector3 forward = new Vector3(-view.M13, -view.M23, -view.M33);
+            float len = forward.Length();
+            if (len < 1e-6f)
+                return -Vector3.UnitY;
+            return forward / len;
+        }
         private static Vector3 SnapToTexel(Vector3 p, float texel)
         {
             if (texel < 1e-4f) return p;
@@ -597,12 +743,15 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         public static int AtlasSize(ShadowQuality quality)
         {
+            // Three atlas tiers. Ultra / Cinematic stay at 16384 — same
+            // pixels as before. The extra layer is High (and Medium) at
+            // 8192, and Low at 4096.
             return quality switch
             {
                 ShadowQuality.Off => 0,
-                ShadowQuality.Low => 8192,
+                ShadowQuality.Low => 4096,
                 ShadowQuality.Medium => 8192,
-                ShadowQuality.High => 16384,
+                ShadowQuality.High => 8192,
                 ShadowQuality.Ultra => 16384,
                 ShadowQuality.Cinematic => 16384,
                 _ => 8192
@@ -639,7 +788,7 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private static void CascadeRadii(ShadowQuality quality, float worldRadius, float[] radii)
         {
-            // Camera-centered. C0 is large enough for a player + nearby models
+            // Subject-centered when the camera leaves C0. C0 is large enough for a player + nearby models
             // (never a 5m floor). Pixel size = 2*r0 / (atlas/2).
             float r0;
             switch (quality)

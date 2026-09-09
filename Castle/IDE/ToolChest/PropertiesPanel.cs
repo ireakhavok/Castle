@@ -136,6 +136,8 @@ namespace ToolChest
         private bool _allowEmptyOpacityClear;
         private bool _ignoreMaterialInput;
         private bool _rebuildingUI;
+        private string _templateHtml;
+        private int _builtStamp = int.MinValue;
         public PropertiesPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -149,6 +151,7 @@ namespace ToolChest
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
+            _eventBus.Subscribe<EntityMovedEvent>(OnEntityMoved);
         }
         protected override UIOverlay CreateUIOverlay()
         {
@@ -174,14 +177,12 @@ namespace ToolChest
                 var provider = OutlinerCoordinator.Instance.GetLastActiveProvider();
                 if (provider != null)
                 {
-                    _currentTarget = provider.GetObjectForNode(nodeId);
-                    // Selection changed – reset toggle so next click always plays
+                    object next = provider.GetObjectForNode(nodeId);
+                    if (ReferenceEquals(next, _currentTarget) && _builtStamp != int.MinValue)
+                        return;
+                    _currentTarget = next;
                     _previewIsPlaying = false;
                     _previewEntityId = -1;
-                    Console.WriteLine($"[PropertiesPanel] Selection changed - nodeId: {nodeId} | Target type: {_currentTarget?.GetType().FullName ?? "null"}");
-                    int selId = -1;
-                    if (_currentTarget is Entity selEnt) selId = selEnt.Id;
-                    else if (_currentTarget is MeshLayerRef selRef) selId = selRef.EntityId;
                     BindProjectTexturesDirectory();
                     RebuildPropertiesUI();
                 }
@@ -198,29 +199,82 @@ namespace ToolChest
         }
         private void OnEntitySelected(EntitySelectedEvent e)
         {
-            if (e.SelectedEntityIds.Count > 0)
-            {
-                Console.WriteLine($"[PropertiesPanel] EntitySelectedEvent received - {e.SelectedEntityIds.Count} entities");
-            }
+            if (e.SelectedEntityIds == null || e.SelectedEntityIds.Count == 0)
+                return;
+            int id = e.SelectedEntityIds[0];
+            if (_currentTarget is Entity cur && cur.Id == id && _builtStamp != int.MinValue)
+                return;
+            if (_currentTarget is MeshLayerRef meshRef && meshRef.EntityId == id && _builtStamp != int.MinValue)
+                return;
             FlushSceneSettingsFromUI();
             RebuildPropertiesUI();
+        }
+        private void OnEntityMoved(EntityMovedEvent e)
+        {
+            if (e == null || _uiOverlay == null || _rebuildingUI) return;
+            int id = e.EntityId;
+            bool ours = (_currentTarget is Entity ent && ent.Id == id)
+                || (_currentTarget is MeshLayerRef meshRef && meshRef.EntityId == id);
+            if (!ours) return;
+            WriteMovedFields(e);
+        }
+        private void WriteMovedFields(EntityMovedEvent e)
+        {
+            // Keep the existing inspector rows. Only refresh pose fields that the
+            // scene already changed. Do not LoadUI / RefreshUI.
+            foreach (var el in _uiOverlay.FindElementsByTag("input"))
+            {
+                if (el is not InputElement input) continue;
+                if (input.IsFocused) continue;
+                if (input.Attributes.GetValueOrDefault("data-hook", "") != "SetComponentProperty")
+                    continue;
+                string prop = input.Attributes.GetValueOrDefault("data-property", "");
+                string text = null;
+                if (prop == "Position" || prop == "WorldPosition" || prop == "RenderPosition")
+                    text = e.Position.ToString();
+                else if (prop == "Rotation" || prop == "WorldRotation")
+                    text = e.Rotation.ToString();
+                else
+                    continue;
+                if (input.Value != text)
+                {
+                    input.Value = text;
+                    input.Attributes["value"] = text;
+                }
+            }
         }
         private void LoadPropertiesUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
             if (!File.Exists(htmlPath)) return;
-            string html = File.ReadAllText(htmlPath);
-            _uiOverlay.LoadUI(html);
+            _templateHtml = File.ReadAllText(htmlPath);
+            _uiOverlay.LoadUI(_templateHtml);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
+            _builtStamp = StampOf(_currentTarget);
         }
-        private void RebuildPropertiesUI()
+        private static int StampOf(object target)
         {
+            if (target == null) return -1;
+            if (target is Entity entity) return entity.Id * 8 + 1;
+            if (target is MeshLayerRef meshRef) return meshRef.EntityId * 8 + 2 + meshRef.MeshIndex;
+            if (target is Level) return -3;
+            return target.GetHashCode();
+        }
+        private void RebuildPropertiesUI(bool force = false)
+        {
+            int stamp = StampOf(_currentTarget);
+            if (!force && stamp == _builtStamp && _uiOverlay != null)
+                return;
             FlushSceneSettingsFromUI();
-            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
-            if (!File.Exists(htmlPath)) return;
-            string template = File.ReadAllText(htmlPath);
+            if (_templateHtml == null)
+            {
+                string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
+                if (!File.Exists(htmlPath)) return;
+                _templateHtml = File.ReadAllText(htmlPath);
+            }
+            string template = _templateHtml;
             string contentHtml = _currentTarget != null
                 ? BuildPropertiesHtml(_currentTarget)
                 : "<div class=\"property-row\"><i>No object selected</i></div>";
@@ -233,6 +287,7 @@ namespace ToolChest
                 _uiOverlay.PanelWidth = Size.X;
                 _uiOverlay.PanelHeight = Size.Y;
                 _uiOverlay.RefreshUI();
+                _builtStamp = stamp;
             }
             finally
             {
@@ -1302,7 +1357,6 @@ namespace ToolChest
                 input.CommittedValue = stored;
                 input.Attributes["value"] = stored;
             }
-            _uiOverlay.RefreshUI();
         }
 
         private void OpenOpacityFileBrowser()
@@ -1335,7 +1389,7 @@ namespace ToolChest
             FlushSceneSettingsFromUI();
             if (hook.StartsWith("SetTextureMapping"))
             {
-                RebuildPropertiesUI();
+                RebuildPropertiesUI(force: true);
                 return;
             }
             if (hook == "SetComponentProperty")
@@ -1407,7 +1461,7 @@ namespace ToolChest
             if (hook == "SetComponentProperty")
             {
                 ApplyComponentPropertyChange(select);
-                RebuildPropertiesUI();
+                RebuildPropertiesUI(force: true);
             }
         }
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)

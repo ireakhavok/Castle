@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI.Elements
+// Folder: SiegeEngine.Core.UI.Elements
 // File: SelectElement.cs
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Renderers;
@@ -90,6 +90,16 @@ namespace SiegeEngine.Core.UI.Elements
             }
             if (IsOpen)
             {
+                float optionW = ComputedBackgroundWidth;
+                if (optionW < 1f) optionW = ComputedWidth;
+                foreach (var opt in options)
+                {
+                    string optText = string.Join("", opt.Children.OfType<TextElement>().Select(t => t.Content));
+                    Vector2 optSize = textRenderer.GetTextSize(optText ?? "", fs, Style.FontFamily ?? "Arial");
+                    optionW = Math.Max(optionW, optSize.X + 16f);
+                }
+                float minW = HtmlLayoutUtils.ParseSize(Style.MinWidthStr, parentWidth, viewportWidth, viewportHeight);
+                if (!float.IsNaN(minW)) optionW = Math.Max(optionW, minW);
                 float dropdownH = options.Count * lineH;
                 float spaceBelow = viewportHeight - (ComputedPosition.Y + ComputedHeight);
                 bool openUp = spaceBelow < dropdownH && ComputedPosition.Y > dropdownH;
@@ -105,9 +115,14 @@ namespace SiegeEngine.Core.UI.Elements
                 foreach (var opt in options)
                 {
                     opt.Style.Display = "block";
+                    opt.Style.WhiteSpace = "nowrap";
+                    foreach (var te in opt.Children.OfType<TextElement>())
+                        te.Style.WhiteSpace = "nowrap";
                     opt.IsTarget = opt == selectedOpt;
-                    opt.ComputeLayout(ComputedBackgroundX, currentY, ComputedBackgroundWidth, lineH, viewportWidth, viewportHeight, textRenderer, fs);
-                    currentY += lineH;
+                    opt.ComputeLayout(ComputedBackgroundX, currentY, optionW, lineH, viewportWidth, viewportHeight, textRenderer, fs, optionW, lineH);
+                    float rowH = Math.Max(lineH, opt.ComputedHeight);
+                    opt.ComputedHeight = rowH;
+                    currentY += rowH;
                 }
             }
         }
@@ -201,9 +216,19 @@ namespace SiegeEngine.Core.UI.Elements
             float dropdownY = first.ComputedPosition.Y;
             var last = options.Last();
             float dropdownH = last.ComputedPosition.Y + last.ComputedHeight - dropdownY;
+            float popupX = ComputedBackgroundX;
+            float popupW = ComputedBackgroundWidth;
+            foreach (var opt in options)
+            {
+                popupX = Math.Min(popupX, opt.ComputedPosition.X);
+                popupW = Math.Max(popupW, opt.ComputedWidth);
+            }
+            float minW = HtmlLayoutUtils.ParseSize(Style.MinWidthStr, 0, viewportWidth, viewportHeight);
+            if (!float.IsNaN(minW)) popupW = Math.Max(popupW, minW);
+            if (popupW < 1f) popupW = Math.Max(ComputedWidth, 200f);
             if (effectiveStyle.BackgroundColor != Vector4.Zero)
             {
-                float[] dropdownNdc = HtmlLayoutUtils.GetNdcQuad(ComputedBackgroundX, dropdownY, ComputedBackgroundWidth, dropdownH, local, viewportWidth, viewportHeight);
+                float[] dropdownNdc = HtmlLayoutUtils.GetNdcQuad(popupX, dropdownY, popupW, dropdownH, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(dropdownNdc, effectiveStyle.BackgroundColor);
             }
             Vector4 borderTopC = effectiveStyle.BorderTopColor != Vector4.Zero ? effectiveStyle.BorderTopColor : effectiveStyle.BorderColor;
@@ -217,22 +242,22 @@ namespace SiegeEngine.Core.UI.Elements
             Vector4 borderW = BorderWidth;
             if (borderTopS != "none" && borderTopC != Vector4.Zero && borderW.X > 0)
             {
-                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, dropdownY, ComputedWidth, borderW.X, local, viewportWidth, viewportHeight);
+                float[] ndc = HtmlLayoutUtils.GetNdcQuad(popupX, dropdownY, popupW, borderW.X, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(ndc, borderTopC);
             }
             if (borderBottomS != "none" && borderBottomC != Vector4.Zero && borderW.Z > 0)
             {
-                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, dropdownY + dropdownH - borderW.Z, ComputedWidth, borderW.Z, local, viewportWidth, viewportHeight);
+                float[] ndc = HtmlLayoutUtils.GetNdcQuad(popupX, dropdownY + dropdownH - borderW.Z, popupW, borderW.Z, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(ndc, borderBottomC);
             }
             if (borderLeftS != "none" && borderLeftC != Vector4.Zero && borderW.W > 0)
             {
-                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, dropdownY, borderW.W, dropdownH, local, viewportWidth, viewportHeight);
+                float[] ndc = HtmlLayoutUtils.GetNdcQuad(popupX, dropdownY, borderW.W, dropdownH, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(ndc, borderLeftC);
             }
             if (borderRightS != "none" && borderRightC != Vector4.Zero && borderW.Y > 0)
             {
-                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X + ComputedWidth - borderW.Y, dropdownY, borderW.Y, dropdownH, local, viewportWidth, viewportHeight);
+                float[] ndc = HtmlLayoutUtils.GetNdcQuad(popupX + popupW - borderW.Y, dropdownY, borderW.Y, dropdownH, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(ndc, borderRightC);
             }
             foreach (var opt in options)
@@ -260,6 +285,10 @@ namespace SiegeEngine.Core.UI.Elements
             Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
             float iw = maxW + pad.W + pad.Y + borderW.W + borderW.Y;
             float ih = textH + pad.X + pad.Z + borderW.X + borderW.Z;
+            float minW = HtmlLayoutUtils.ParseSize(Style.MinWidthStr, 0, viewportWidth, viewportHeight);
+            float minH = HtmlLayoutUtils.ParseSize(Style.MinHeightStr, 0, viewportWidth, viewportHeight);
+            if (!float.IsNaN(minW)) iw = Math.Max(iw, minW);
+            if (!float.IsNaN(minH)) ih = Math.Max(ih, minH);
             return new Vector2(iw, ih);
         }
         public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)

@@ -108,16 +108,135 @@ namespace SiegeEngine.Core.GPU.Lighting
         public float ShadowDistance = 2048f;
         public bool ShadowSmooth;
 
+        public static int UploadSerial { get; private set; }
+
+        private struct TrackedLight
+        {
+            public Entity Entity;
+            public LightType Type;
+            public bool Enabled;
+            public Vector3 Color;
+            public float Intensity;
+            public Vector3 Direction;
+            public float Range;
+            public float InnerConeDegrees;
+            public float OuterConeDegrees;
+            public float AttenuationLinear;
+            public float AttenuationQuadratic;
+            public bool CastShadows;
+            public ShadowMode ShadowMode;
+            public float ShadowBias;
+            public float ShadowNormalBias;
+            public Vector3 PhysicsPosition;
+        }
+
+        private struct PackedSettingsKey
+        {
+            public ShadowQuality Quality;
+            public bool Smooth;
+            public float ShadowDistance;
+            public FogMode FogMode;
+            public FogQuality FogQuality;
+            public Vector3 FogColor;
+            public float FogDensity;
+            public float FogStart;
+            public float FogHeight;
+            public float FogFalloff;
+            public float Volumetric;
+            public Vector3 Ambient;
+            public bool SunEnabled;
+            public Vector3 SunDir;
+            public Vector3 SunColor;
+            public float SunIntensity;
+            public bool SunCast;
+            public bool AllowFallback;
+            public Vector3 FallbackDir;
+            public int PackedRevision;
+            public int EntityCount;
+        }
+
+        private static bool _packedValid;
+        private static PackedSettingsKey _packedSettings;
+        private static GpuDirectionalLight _packedSun;
+        private static readonly GpuPointLight[] _packedPoints = new GpuPointLight[MaxPointLights];
+        private static readonly GpuSpotLight[] _packedSpots = new GpuSpotLight[MaxSpotLights];
+        private static int _packedPointCount;
+        private static int _packedSpotCount;
+        private static readonly List<TrackedLight> _trackedLights = new List<TrackedLight>();
+
         public static LightingFrame Build(IReadOnlyList<Entity> entities, EnvironmentSettings environment, Vector3 fallbackSunDirection, bool allowFallbackSun = true, LightingFrame dest = null)
         {
             var frame = dest ?? new LightingFrame();
-            frame.PointCount = 0;
-            frame.SpotCount = 0;
+            UploadSerial++;
             frame.ShadowsReady = false;
             frame.ShadowAtlas = 0;
             frame.PointShadowCube = 0;
             frame.SpotShadowMap = 0;
             frame.CascadeCount = 0;
+            ApplyResolvedSettings(frame, environment);
+
+            PackedSettingsKey settings = CaptureSettings(environment, fallbackSunDirection, allowFallbackSun, entities);
+            bool membershipSame = _packedValid
+                && settings.PackedRevision == _packedSettings.PackedRevision
+                && settings.EntityCount == _packedSettings.EntityCount
+                && TrackedEntitiesAlive();
+            if (membershipSame && SettingsMatch(_packedSettings, settings) && TrackedLightsUnchanged())
+            {
+                RestorePackedLights(frame);
+                return frame;
+            }
+            if (membershipSame)
+            {
+                bool trackedSun = PackFromTracked(frame);
+                ApplyEnvironmentSun(frame, environment, fallbackSunDirection, allowFallbackSun, trackedSun);
+                StorePackedLights(frame, settings);
+                return frame;
+            }
+
+            frame.PointCount = 0;
+            frame.SpotCount = 0;
+            _trackedLights.Clear();
+
+            bool hasSun = false;
+            if (entities != null)
+            {
+                foreach (var entity in entities)
+                {
+                    var light = entity.GetComponent<LightComponent>();
+                    if (light == null)
+                        continue;
+
+                    var physics = entity.GetComponent<PhysicsComponent>();
+                    if (physics != null && light.Type != LightType.Directional)
+                        light.Position = physics.Position;
+
+                    RememberTrackedLight(entity, light, physics);
+                    if (!light.Enabled)
+                        continue;
+
+                    if (light.Type == LightType.Directional && !hasSun)
+                    {
+                        frame.Sun = PackDirectional(light);
+                        hasSun = true;
+                    }
+                    else if (light.Type == LightType.Point && frame.PointCount < MaxPointLights)
+                    {
+                        frame.Points[frame.PointCount++] = PackPoint(light);
+                    }
+                    else if (light.Type == LightType.Spot && frame.SpotCount < MaxSpotLights)
+                    {
+                        frame.Spots[frame.SpotCount++] = PackSpot(light);
+                    }
+                }
+            }
+
+            ApplyEnvironmentSun(frame, environment, fallbackSunDirection, allowFallbackSun, hasSun);
+            StorePackedLights(frame, settings);
+            return frame;
+        }
+
+        private static void ApplyResolvedSettings(LightingFrame frame, EnvironmentSettings environment)
+        {
             frame.ShadowQuality = LightingSettings.ResolveShadowQuality();
             frame.ShadowSmooth = LightingSettings.ResolveShadowSmooth();
             frame.ShadowDistance = LightingSettings.ResolveShadowDistance();
@@ -145,40 +264,144 @@ namespace SiegeEngine.Core.GPU.Lighting
             };
             if (frame.Fog.Quality == FogQuality.Off)
                 frame.Fog.Mode = FogMode.Off;
+        }
 
-            bool hasSun = false;
-            if (entities != null)
+        private static PackedSettingsKey CaptureSettings(EnvironmentSettings environment, Vector3 fallbackSunDirection, bool allowFallbackSun, IReadOnlyList<Entity> entities)
+        {
+            return new PackedSettingsKey
             {
-                foreach (var entity in entities)
+                Quality = LightingSettings.ResolveShadowQuality(),
+                Smooth = LightingSettings.ResolveShadowSmooth(),
+                ShadowDistance = LightingSettings.ResolveShadowDistance(),
+                FogMode = LightingSettings.ResolveFogMode(),
+                FogQuality = LightingSettings.ResolveFogQuality(),
+                FogColor = LightingSettings.ResolveFogColor(),
+                FogDensity = LightingSettings.ResolveFogDensity(),
+                FogStart = LightingSettings.ResolveFogStart(),
+                FogHeight = LightingSettings.ResolveFogHeight(),
+                FogFalloff = LightingSettings.ResolveFogHeightFalloff(),
+                Volumetric = LightingSettings.ResolveVolumetricIntensity(),
+                Ambient = environment?.AmbientColor ?? new Vector3(0.45f, 0.45f, 0.48f),
+                SunEnabled = environment != null && environment.SunEnabled,
+                SunDir = environment != null ? environment.SunDirection : default,
+                SunColor = environment != null ? environment.SunColor : default,
+                SunIntensity = environment != null ? environment.SunIntensity : 0f,
+                SunCast = environment == null || environment.SunCastShadows,
+                AllowFallback = allowFallbackSun,
+                FallbackDir = fallbackSunDirection,
+                PackedRevision = LightComponent.PackedRevision,
+                EntityCount = entities != null ? entities.Count : 0
+            };
+        }
+
+        private static bool SettingsMatch(PackedSettingsKey a, PackedSettingsKey b)
+        {
+            return a.Quality == b.Quality
+                && a.Smooth == b.Smooth
+                && a.ShadowDistance == b.ShadowDistance
+                && a.FogMode == b.FogMode
+                && a.FogQuality == b.FogQuality
+                && a.FogColor == b.FogColor
+                && a.FogDensity == b.FogDensity
+                && a.FogStart == b.FogStart
+                && a.FogHeight == b.FogHeight
+                && a.FogFalloff == b.FogFalloff
+                && a.Volumetric == b.Volumetric
+                && a.Ambient == b.Ambient
+                && a.SunEnabled == b.SunEnabled
+                && a.SunDir == b.SunDir
+                && a.SunColor == b.SunColor
+                && a.SunIntensity == b.SunIntensity
+                && a.SunCast == b.SunCast
+                && a.AllowFallback == b.AllowFallback
+                && a.FallbackDir == b.FallbackDir
+                && a.PackedRevision == b.PackedRevision
+                && a.EntityCount == b.EntityCount;
+        }
+
+        private static bool TrackedEntitiesAlive()
+        {
+            for (int i = 0; i < _trackedLights.Count; i++)
+            {
+                Entity entity = _trackedLights[i].Entity;
+                if (entity == null || entity.GetComponent<LightComponent>() == null)
+                    return false;
+            }
+            return true;
+        }
+
+        private static bool TrackedLightsUnchanged()
+        {
+            for (int i = 0; i < _trackedLights.Count; i++)
+            {
+                TrackedLight t = _trackedLights[i];
+                if (t.Entity == null)
+                    return false;
+                LightComponent light = t.Entity.GetComponent<LightComponent>();
+                if (light == null)
+                    return false;
+                if (light.Type != t.Type
+                    || light.Enabled != t.Enabled
+                    || light.Color != t.Color
+                    || light.Intensity != t.Intensity
+                    || light.Direction != t.Direction
+                    || light.Range != t.Range
+                    || light.InnerConeDegrees != t.InnerConeDegrees
+                    || light.OuterConeDegrees != t.OuterConeDegrees
+                    || light.AttenuationLinear != t.AttenuationLinear
+                    || light.AttenuationQuadratic != t.AttenuationQuadratic
+                    || light.CastShadows != t.CastShadows
+                    || light.ShadowMode != t.ShadowMode
+                    || light.ShadowBias != t.ShadowBias
+                    || light.ShadowNormalBias != t.ShadowNormalBias)
+                    return false;
+                if (light.Type != LightType.Directional)
                 {
-                    var light = entity.GetComponent<LightComponent>();
-                    if (light == null || !light.Enabled)
-                        continue;
-
-                    var physics = entity.GetComponent<PhysicsComponent>();
-                    if (physics != null && light.Type != LightType.Directional)
-                        light.Position = physics.Position;
-
-                    if (light.Type == LightType.Directional && !hasSun)
-                    {
-                        frame.Sun = PackDirectional(light);
-                        hasSun = true;
-                    }
-                    else if (light.Type == LightType.Point && frame.PointCount < MaxPointLights)
-                    {
-                        frame.Points[frame.PointCount++] = PackPoint(light);
-                    }
-                    else if (light.Type == LightType.Spot && frame.SpotCount < MaxSpotLights)
-                    {
-                        frame.Spots[frame.SpotCount++] = PackSpot(light);
-                    }
+                    PhysicsComponent physics = t.Entity.GetComponent<PhysicsComponent>();
+                    Vector3 pos = physics != null ? physics.Position : t.PhysicsPosition;
+                    if (pos != t.PhysicsPosition)
+                        return false;
                 }
             }
+            return true;
+        }
 
-            // Editor has no implicit sun (AllowRuntimeDefaultSun = false).
-            // Apply persists SunEnabled. Casting shadows without the
-            // Enable-sun checkbox used to leave this branch dead and the
-            // atlas was never drawn.
+        private static bool PackFromTracked(LightingFrame frame)
+        {
+            frame.PointCount = 0;
+            frame.SpotCount = 0;
+            bool hasSun = false;
+            for (int i = 0; i < _trackedLights.Count; i++)
+            {
+                TrackedLight t = _trackedLights[i];
+                LightComponent light = t.Entity != null ? t.Entity.GetComponent<LightComponent>() : null;
+                if (light == null)
+                    continue;
+                PhysicsComponent physics = t.Entity.GetComponent<PhysicsComponent>();
+                if (physics != null && light.Type != LightType.Directional)
+                    light.Position = physics.Position;
+                RememberTrackedLightAt(i, t.Entity, light, physics);
+                if (!light.Enabled)
+                    continue;
+                if (light.Type == LightType.Directional && !hasSun)
+                {
+                    frame.Sun = PackDirectional(light);
+                    hasSun = true;
+                }
+                else if (light.Type == LightType.Point && frame.PointCount < MaxPointLights)
+                {
+                    frame.Points[frame.PointCount++] = PackPoint(light);
+                }
+                else if (light.Type == LightType.Spot && frame.SpotCount < MaxSpotLights)
+                {
+                    frame.Spots[frame.SpotCount++] = PackSpot(light);
+                }
+            }
+            return hasSun;
+        }
+
+        private static void ApplyEnvironmentSun(LightingFrame frame, EnvironmentSettings environment, Vector3 fallbackSunDirection, bool allowFallbackSun, bool hasSun)
+        {
             bool wantEnvSun = environment != null && environment.SunEnabled;
             if (!hasSun && wantEnvSun)
             {
@@ -200,13 +423,9 @@ namespace SiegeEngine.Core.GPU.Lighting
                     ShadowNormalBias = 0.02f,
                     Technique = cast ? ShadowTechnique.ShadowMap : ShadowTechnique.None
                 };
-                hasSun = true;
+                return;
             }
 
-            // Play Game still gets a directional sun even when point lights
-            // exist. Point lights must not suppress the cascade atlas.
-            // If the authored environment explicitly turned the sun off,
-            // do not inject a default sun (editor Post Process toggle).
             bool allowFallback = allowFallbackSun && (environment == null || environment.SunEnabled);
             if (!hasSun && allowFallback)
             {
@@ -237,8 +456,62 @@ namespace SiegeEngine.Core.GPU.Lighting
                     Technique = ShadowTechnique.None
                 };
             }
+        }
 
-            return frame;
+        private static void RememberTrackedLightAt(int index, Entity entity, LightComponent light, PhysicsComponent physics)
+        {
+            var tracked = new TrackedLight
+            {
+                Entity = entity,
+                Type = light.Type,
+                Enabled = light.Enabled,
+                Color = light.Color,
+                Intensity = light.Intensity,
+                Direction = light.Direction,
+                Range = light.Range,
+                InnerConeDegrees = light.InnerConeDegrees,
+                OuterConeDegrees = light.OuterConeDegrees,
+                AttenuationLinear = light.AttenuationLinear,
+                AttenuationQuadratic = light.AttenuationQuadratic,
+                CastShadows = light.CastShadows,
+                ShadowMode = light.ShadowMode,
+                ShadowBias = light.ShadowBias,
+                ShadowNormalBias = light.ShadowNormalBias,
+                PhysicsPosition = physics != null ? physics.Position : light.Position
+            };
+            if (index >= 0 && index < _trackedLights.Count)
+                _trackedLights[index] = tracked;
+            else
+                _trackedLights.Add(tracked);
+        }
+
+        private static void RememberTrackedLight(Entity entity, LightComponent light, PhysicsComponent physics)
+        {
+            RememberTrackedLightAt(-1, entity, light, physics);
+        }
+
+        private static void StorePackedLights(LightingFrame frame, PackedSettingsKey settings)
+        {
+            _packedSun = frame.Sun;
+            _packedPointCount = frame.PointCount;
+            _packedSpotCount = frame.SpotCount;
+            for (int i = 0; i < MaxPointLights; i++)
+                _packedPoints[i] = i < frame.PointCount ? frame.Points[i] : default;
+            for (int i = 0; i < MaxSpotLights; i++)
+                _packedSpots[i] = i < frame.SpotCount ? frame.Spots[i] : default;
+            _packedSettings = settings;
+            _packedValid = true;
+        }
+
+        private static void RestorePackedLights(LightingFrame frame)
+        {
+            frame.Sun = _packedSun;
+            frame.PointCount = _packedPointCount;
+            frame.SpotCount = _packedSpotCount;
+            for (int i = 0; i < MaxPointLights; i++)
+                frame.Points[i] = _packedPoints[i];
+            for (int i = 0; i < MaxSpotLights; i++)
+                frame.Spots[i] = _packedSpots[i];
         }
 
         public void ApplyTo(ShaderProgram shader, IRenderContext renderContext)
@@ -369,6 +642,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 travel = new Vector3(0f, 0f, -1f);
             travel = Vector3.Normalize(travel);
 
+            UploadSerial++;
             var frame = new LightingFrame
             {
                 AmbientColor = new Vector3(0.48f, 0.49f, 0.52f),

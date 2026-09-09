@@ -187,12 +187,20 @@ namespace SiegeEngine.Scenes
                     _terrainIndices.Add(tr); _terrainIndices.Add(br); _terrainIndices.Add(bl);
                 }
             }
+            EnsureTerrainBuffers();
+            if (_terrainBuffer == null)
+            {
+                Console.WriteLine("[TerrainScene] _terrainBuffer was null after EnsureTerrainBuffers; skip mesh upload");
+                return;
+            }
             _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
             UploadWireframeLattice();
         }
         public virtual void RebuildTerrainMesh()
         {
             if (_heightmap == null) return;
+            EnsureTerrainBuffers();
+            if (_terrainBuffer == null) return;
             BuildWireframeMesh(1);
         }
         protected virtual void BuildTexturedMesh()
@@ -279,6 +287,12 @@ namespace SiegeEngine.Scenes
                     _terrainIndices.Add(tr); _terrainIndices.Add(br); _terrainIndices.Add(bl);
                 }
             }
+            EnsureTerrainBuffers();
+            if (_terrainBuffer == null)
+            {
+                Console.WriteLine("[TerrainScene] _terrainBuffer was null after EnsureTerrainBuffers; skip textured upload");
+                return;
+            }
             _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
             UploadWireframeLattice();
         }
@@ -325,7 +339,14 @@ namespace SiegeEngine.Scenes
         }
         protected void UpdateAffectedVertices(Vector3 worldPos, float radius)
         {
-            if (_terrainVertices.Count == 0 || _heightmap == null || _currentMeshStep < 1 || _meshVertsX == 0)
+            if (_heightmap == null) return;
+            EnsureTerrainBuffers();
+            if (_terrainBuffer == null)
+            {
+                Console.WriteLine("[TerrainScene] _terrainBuffer was null here for some reason.");
+                return;
+            }
+            if (_terrainVertices.Count == 0 || _currentMeshStep < 1 || _meshVertsX == 0)
             {
                 RebuildTerrainMesh();
                 return;

@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Events
+// Folder: SiegeEngine/Core/Events
 // File: EventBus.cs
 using System;
 using System.Collections.Generic;
@@ -79,13 +79,11 @@ namespace SiegeEngine.Core.Events
                 {
                     ((Action<T>)handler)(eventData);
                 }
-                Console.WriteLine($"EventBus: Published {type.Name}");
             }
             if (networkSync && _steamEngine != null && !isProtected)
             {
                 byte[] data = eventData is IEvent ievent ? ievent.Serialize() : Encoding.UTF8.GetBytes(JsonSerializer.Serialize(eventData));
                 _steamEngine.SendP2PMessage(data);
-                Console.WriteLine($"EventBus: Sent networked event {type.Name}");
             }
         }
         public void ProcessNetworkMessage(byte[] data)

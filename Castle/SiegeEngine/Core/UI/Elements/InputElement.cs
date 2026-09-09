@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI.Elements
+// Folder: SiegeEngine.Core.UI.Elements
 // File: InputElement.cs
 using SiegeEngine.Core.Definitions; // Needed for Key enum
 using System;
@@ -17,6 +17,9 @@ namespace SiegeEngine.Core.UI.Elements
         private bool _cursorVisible = true;
         private float _cursorTimer = 0f;
         private const float CursorBlinkRate = 0.5f;
+        private static readonly Vector4 CheckboxFill = new Vector4(0.22f, 0.22f, 0.24f, 1f);
+        private static readonly Vector4 CheckboxBorder = new Vector4(0.55f, 0.55f, 0.58f, 1f);
+        private static readonly Vector4 CheckboxCheck = new Vector4(0.486f, 1.0f, 0.796f, 1f);
         public InputElement()
         {
             Tag = "input";
@@ -27,17 +30,71 @@ namespace SiegeEngine.Core.UI.Elements
             {
                 Style.Display = "none";
             }
-            // FIXED: Input elements (text boxes) now take full available width when no explicit width is set
-            if (float.IsNaN(forcedWidth) && string.IsNullOrEmpty(Style.WidthStr) && (this.Type == "text" || this.Type == "number"))
+            bool isCheck = this.Type == "checkbox" || this.Type == "radio";
+            if (isCheck)
             {
-                forcedWidth = parentWidth - HtmlLayoutUtils.ParseMargins(Style, parentWidth, viewportWidth, viewportHeight).W - HtmlLayoutUtils.ParseMargins(Style, parentWidth, viewportWidth, viewportHeight).Y;
+                // Checkboxes stay a compact square. flex:1 on the generic `input`
+                // rule must not stretch them across the right column.
+                Style.Flex = "0 0 18px";
+                Style.FlexGrow = 0f;
+                Style.FlexShrink = 0f;
+                Style.WidthStr = "18px";
+                Style.HeightStr = "18px";
+                Style.MinWidthStr = "18px";
+                Style.MaxWidthStr = "18px";
+                if (Style.BackgroundColor == Vector4.Zero)
+                    Style.BackgroundColor = CheckboxFill;
+                if (string.IsNullOrEmpty(Style.BorderWidthStr))
+                    Style.BorderWidthStr = "1px";
+                if (string.IsNullOrEmpty(Style.BorderStyle))
+                    Style.BorderStyle = "solid";
+                if (Style.BorderColor == Vector4.Zero)
+                    Style.BorderColor = CheckboxBorder;
+                forcedWidth = 18f;
+                forcedHeight = 18f;
+            }
+            // Fill the slot we were given. Do not steal the flex row's full width —
+            // that paints the field on top of a flex-shrink:0 label.
+            bool parentIsFlex = Parent != null && Parent.Style.Display == "flex";
+            if (!isCheck && float.IsNaN(forcedWidth) && string.IsNullOrEmpty(Style.WidthStr) && (this.Type == "text" || this.Type == "number") && !parentIsFlex)
+            {
+                Vector4 m = HtmlLayoutUtils.ParseMargins(Style, parentWidth, viewportWidth, viewportHeight);
+                float ml = float.IsNaN(m.W) ? 0 : m.W;
+                float mr = float.IsNaN(m.Y) ? 0 : m.Y;
+                forcedWidth = parentWidth - ml - mr;
+            }
+            if (IsHiddenInTree())
+            {
+                ComputedWidth = 0;
+                ComputedHeight = 0;
+                ComputedBackgroundWidth = 0;
+                ComputedBackgroundHeight = 0;
+                ComputedContentWidth = 0;
+                ComputedContentHeight = 0;
+                return;
             }
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
-            if (this.Type == "checkbox" || this.Type == "radio")
+            if (isCheck)
             {
-                float fs = Style.FontSize;
-                if (float.IsNaN(ComputedWidth)) ComputedWidth = fs * 1.5f;
-                if (float.IsNaN(ComputedHeight)) ComputedHeight = fs;
+                // Honor display:none from CSS / ancestors. Forcing 18px after
+                // base zeroed the box is what leaked the Settings checkbox
+                // onto the main menu.
+                if (GetEffectiveDisplay() == "none" || ComputedWidth <= 0f || ComputedHeight <= 0f)
+                {
+                    ComputedWidth = 0;
+                    ComputedHeight = 0;
+                    ComputedBackgroundWidth = 0;
+                    ComputedBackgroundHeight = 0;
+                    ComputedContentWidth = 0;
+                    ComputedContentHeight = 0;
+                    return;
+                }
+                ComputedWidth = 18f;
+                ComputedHeight = 18f;
+                ComputedBackgroundWidth = 18f;
+                ComputedBackgroundHeight = 18f;
+                ComputedContentWidth = 18f;
+                ComputedContentHeight = 18f;
             }
             else if (this.Type == "text" || this.Type == "number")
             {
@@ -49,8 +106,24 @@ namespace SiegeEngine.Core.UI.Elements
                 if (float.IsNaN(ComputedHeight)) ComputedHeight = 32f;
             }
         }
+        private bool IsHiddenInTree()
+        {
+            if (GetEffectiveDisplay() == "none")
+                return true;
+            HtmlElement walk = Parent;
+            while (walk != null)
+            {
+                if (walk.GetEffectiveDisplay() == "none")
+                    return true;
+                walk = walk.Parent;
+            }
+            return false;
+        }
+
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
+            if (IsHiddenInTree())
+                return;
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
             if (this.Type == "text" || this.Type == "number")
             {
@@ -69,25 +142,34 @@ namespace SiegeEngine.Core.UI.Elements
                     quadRenderer.DrawNdcQuad(cursorNdc, Style.TextColor != Vector4.Zero ? Style.TextColor : new Vector4(0f, 0f, 0f, 1f));
                 }
             }
-            else
+            else if (this.Type == "checkbox" || this.Type == "radio")
             {
-                string symbol = "";
-                if (this.Type == "checkbox")
+                // Paint the box only when layout actually placed it. CSS often
+                // leaves BackgroundColor at zero so base.Render skips the fill,
+                // but a 0-sized / hidden box must stay invisible.
+                if (ComputedWidth <= 1f || ComputedHeight <= 1f)
+                    return;
+                float x = ComputedPosition.X;
+                float y = ComputedPosition.Y;
+                float w = ComputedWidth;
+                float h = ComputedHeight;
+                Vector4 fill = Style.BackgroundColor != Vector4.Zero ? Style.BackgroundColor : CheckboxFill;
+                Vector4 border = Style.BorderColor != Vector4.Zero ? Style.BorderColor : CheckboxBorder;
+                float[] boxNdc = HtmlLayoutUtils.GetNdcQuad(x, y, w, h, parentMatrix, viewportWidth, viewportHeight);
+                quadRenderer.DrawNdcQuad(boxNdc, fill);
+                float bw = 1f;
+                quadRenderer.DrawNdcQuad(HtmlLayoutUtils.GetNdcQuad(x, y, w, bw, parentMatrix, viewportWidth, viewportHeight), border);
+                quadRenderer.DrawNdcQuad(HtmlLayoutUtils.GetNdcQuad(x, y + h - bw, w, bw, parentMatrix, viewportWidth, viewportHeight), border);
+                quadRenderer.DrawNdcQuad(HtmlLayoutUtils.GetNdcQuad(x, y, bw, h, parentMatrix, viewportWidth, viewportHeight), border);
+                quadRenderer.DrawNdcQuad(HtmlLayoutUtils.GetNdcQuad(x + w - bw, y, bw, h, parentMatrix, viewportWidth, viewportHeight), border);
+                if (Checked)
                 {
-                    symbol = Checked ? "✔" : "";
-                }
-                else if (this.Type == "radio")
-                {
-                    symbol = Checked ? "●" : "○";
-                }
-                if (!string.IsNullOrEmpty(symbol))
-                {
-                    float fs = Style.FontSize;
-                    float symbolWidth = textRenderer.GetTextSize(symbol, fs).X;
-                    float symbolHeight = textRenderer.GetTextSize(symbol, fs).Y;
-                    float textX = ComputedContentX + (ComputedContentWidth - symbolWidth) / 2;
-                    float textY = ComputedContentY + (ComputedContentHeight - symbolHeight) / 2;
-                    Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : new Vector4(0f, 0f, 0f, 1f);
+                    string symbol = this.Type == "radio" ? "●" : "✔";
+                    float fs = Style.FontSize > 8f ? Style.FontSize : 13f;
+                    Vector2 sz = textRenderer.GetTextSize(symbol, fs, Style.FontFamily ?? "Arial");
+                    float textX = x + (w - sz.X) / 2f;
+                    float textY = y + (h - sz.Y) / 2f;
+                    Vector4 color = CheckboxCheck;
                     textRenderer.RenderText(symbol, textX, textY, viewportWidth, viewportHeight, fs, color, Style.FontFamily ?? "Arial", parentMatrix);
                 }
             }
@@ -96,11 +178,7 @@ namespace SiegeEngine.Core.UI.Elements
         {
             if (this.Type == "checkbox" || this.Type == "radio")
             {
-                Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
-                Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
-                float iw = fs + pad.W + pad.Y + borderW.W + borderW.Y;
-                float ih = fs + pad.X + pad.Z + borderW.X + borderW.Z;
-                return new Vector2(iw, ih);
+                return new Vector2(18f, 18f);
             }
             if (this.Type == "text" || this.Type == "number")
             {

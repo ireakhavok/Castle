@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.UI
+// Folder: SiegeEngine.UI
 // File: TextElement.cs
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Renderers;
@@ -16,9 +16,15 @@ namespace SiegeEngine.Core.UI.Elements
             get => _content;
             set
             {
-                if (_content != value)
+                string next = value ?? "";
+                if (_content != next)
                 {
-                    _content = value;
+                    _content = next;
+                    // Paint on the next frame without waiting for a full relayout.
+                    // PostProcess slider readouts call this every Update().
+                    _lines = new List<string> { _content };
+                    if (_lineHeight <= 0f)
+                        _lineHeight = (Style.FontSize > 0f ? Style.FontSize : 13f) * 1.2f;
                     MarkTextDirty();
                 }
             }
@@ -31,7 +37,8 @@ namespace SiegeEngine.Core.UI.Elements
         {
             Tag = "text";
             Style.Display = "inline";
-            Style.WhiteSpace = "normal";
+            // White-space inherits from the parent (nowrap on a menu item / option
+            // must reach this text node or glyphs wrap and overlap the next row).
         }
 
         public void MarkTextDirty()
@@ -46,16 +53,37 @@ namespace SiegeEngine.Core.UI.Elements
             float fs = Style.FontSize;
             _lineHeight = fs * 1.2f;
 
-            if (Style.WhiteSpace == "normal" && !float.IsNaN(ComputedContentWidth) && ComputedContentWidth > 0)
+            string whiteSpace = ResolveWhiteSpace();
+            bool nowrap = whiteSpace == "nowrap" || whiteSpace == "pre" || whiteSpace == "pre-line";
+            if (!nowrap && (string.IsNullOrEmpty(whiteSpace) || whiteSpace == "normal")
+                && !float.IsNaN(ComputedContentWidth) && ComputedContentWidth > 0)
             {
                 _lines = GetWrappedLines(ComputedContentWidth, fs, textRenderer, Style.FontFamily ?? "Arial");
             }
             else
             {
-                _lines = new List<string> { Content };
+                _lines = new List<string> { Content ?? "" };
             }
 
-            ComputedContentHeight = _lines.Count * _lineHeight;
+            ComputedContentHeight = Math.Max(_lineHeight, _lines.Count * _lineHeight);
+            if (_lines.Count > 1)
+            {
+                ComputedHeight = Math.Max(ComputedHeight, ComputedContentHeight);
+            }
+        }
+
+        private string ResolveWhiteSpace()
+        {
+            if (!string.IsNullOrEmpty(Style.WhiteSpace))
+                return Style.WhiteSpace;
+            HtmlElement walk = Parent;
+            while (walk != null)
+            {
+                if (!string.IsNullOrEmpty(walk.Style.WhiteSpace))
+                    return walk.Style.WhiteSpace;
+                walk = walk.Parent;
+            }
+            return "normal";
         }
 
         private List<string> GetWrappedLines(float maxWidth, float fs, TextRenderer textRenderer, string fontFamily)
@@ -89,8 +117,11 @@ namespace SiegeEngine.Core.UI.Elements
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
 
             float fs = Style.FontSize;
+            if (_lineHeight <= 0f) _lineHeight = fs * 1.2f;
+            if (_lines == null || _lines.Count == 0)
+                _lines = new List<string> { Content ?? "" };
             float y = ComputedContentY;
-            Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : new Vector4(0f, 0f, 0f, 1f);
+            Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : new Vector4(0.8f, 0.8f, 0.8f, 1f);
             string textAlign = string.IsNullOrEmpty(Style.TextAlign) ? "left" : Style.TextAlign;
 
             foreach (string line in _lines)

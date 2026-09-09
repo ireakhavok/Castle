@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
+// Folder: SiegeEngine.Core.UI
 // File: CssStyle.cs
 using System;
 using System.Numerics;
@@ -32,6 +32,7 @@ namespace SiegeEngine.Core.UI
         public string JustifyContent { get; set; }
         public string Flex { get; set; }
         public float FlexGrow { get; set; }
+        public float FlexShrink { get; set; } = 1f;
         public string PaddingStr { get; set; }
         public string PaddingTopStr { get; set; }
         public string PaddingRightStr { get; set; }
@@ -153,6 +154,9 @@ namespace SiegeEngine.Core.UI
                     break;
                 case "flex-grow":
                     if (float.TryParse(val, out float fg)) FlexGrow = fg;
+                    break;
+                case "flex-shrink":
+                    if (float.TryParse(val, out float fsh)) FlexShrink = fsh;
                     break;
                 case "padding":
                     PaddingStr = val;

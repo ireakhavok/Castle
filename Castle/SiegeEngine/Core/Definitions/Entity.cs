@@ -29,12 +29,16 @@ namespace SiegeEngine.Core.Definitions
         {
             if (component == null) throw new ArgumentNullException(nameof(component));
             _components[typeof(T)] = component;
+            if (component is LightComponent)
+                LightComponent.NotifyPackedLightsChanged();
         }
 
         public void AddComponent(IComponent component)
         {
             if (component == null) throw new ArgumentNullException(nameof(component));
             _components[component.GetType()] = component;
+            if (component is LightComponent)
+                LightComponent.NotifyPackedLightsChanged();
         }
 
         public T GetComponent<T>() where T : IComponent
@@ -44,7 +48,10 @@ namespace SiegeEngine.Core.Definitions
 
         public bool RemoveComponent<T>() where T : IComponent
         {
-            return _components.Remove(typeof(T));
+            bool removed = _components.Remove(typeof(T));
+            if (removed && typeof(LightComponent).IsAssignableFrom(typeof(T)))
+                LightComponent.NotifyPackedLightsChanged();
+            return removed;
         }
 
         public EntityData ToData()
@@ -138,8 +145,7 @@ namespace SiegeEngine.Core.Definitions
             };
 
             var physics = new PhysicsComponent();
-            physics.Position = data.Position;
-            physics.Rotation = SanitizeRotation(data.Rotation);
+            physics.SetAuthoredPose(data.Position, SanitizeRotation(data.Rotation));
             physics.Scale = data.Scale != default ? data.Scale : Vector3.One;
 
             entity.AddComponent(physics);
@@ -223,6 +229,7 @@ namespace SiegeEngine.Core.Definitions
                 }
             }
 
+            physics.SetAuthoredPose(physics.Position, SanitizeRotation(physics.Rotation));
             Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} HiddenMeshes={(data.HiddenMeshIndices == null ? 0 : data.HiddenMeshIndices.Count)} MaterialOptions={(data.MaterialOptions == null ? 0 : data.MaterialOptions.Count)} Components={entity.Components.Count}");
             return entity;
         }

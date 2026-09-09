@@ -125,6 +125,12 @@ namespace SiegeEngine.Scenes
         {
             base.Initialize(width, height);
             _terrainRenderer?.Initialize();
+            EnsureTerrainBuffers();
+        }
+
+        protected void EnsureTerrainBuffers()
+        {
+            if (_renderContext == null) return;
             if (_terrainBuffer == null)
                 _terrainBuffer = new VertexBuffer(_renderContext);
             if (_wireframeBuffer == null)

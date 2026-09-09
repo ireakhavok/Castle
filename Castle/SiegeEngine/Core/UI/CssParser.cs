@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -82,6 +82,7 @@ option {
     display: block;
     padding: 2px 5px;
     background-color: inherit;
+    white-space: nowrap;
 }
 option[selected] {
     background-color: rgba(0, 128, 128, 0.8);
@@ -539,6 +540,10 @@ nav ul ul {
             if (props.TryGetValue("flex-grow", out string fg))
             {
                 if (float.TryParse(fg, out float g)) style.FlexGrow = g;
+            }
+            if (props.TryGetValue("flex-shrink", out string fsh))
+            {
+                if (float.TryParse(fsh, out float sh)) style.FlexShrink = sh;
             }
             if (props.TryGetValue("padding", out string pad))
             {
