@@ -93,11 +93,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 // (not the FBX origin). This is the fix for the "spinning around a point
                 // outside the model" bug.
                 float unitScale = fbxModel != null ? fbxModel.UnitToMeters : 0.01f;
-                Matrix4x4 modelMatrix =
-                    Matrix4x4.CreateScale(unitScale * physics.Scale) *
-                    Matrix4x4.CreateTranslation(-physics.LocalCentreOfMass) *
-                    Matrix4x4.CreateFromQuaternion(physics.Rotation) *
-                    Matrix4x4.CreateTranslation(physics.RenderWorldCentreOfMass);
+                Matrix4x4 modelMatrix = physics.BuildRenderModelMatrix(unitScale);
 
                 Matrix4x4[] boneMatrices = modelComp.BoneMatrices;
                 Matrix3x3[] normalMatrices = modelComp.NormalBoneTransforms;
@@ -149,11 +145,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             }
 
             float unitScale = fbxModel != null ? fbxModel.UnitToMeters : 0.01f;
-            Matrix4x4 modelMatrix =
-                Matrix4x4.CreateScale(unitScale * physics.Scale) *
-                Matrix4x4.CreateTranslation(-physics.LocalCentreOfMass) *
-                Matrix4x4.CreateFromQuaternion(physics.Rotation) *
-                Matrix4x4.CreateTranslation(physics.RenderWorldCentreOfMass);
+            Matrix4x4 modelMatrix = physics.BuildRenderModelMatrix(unitScale);
 
             _renderContext.Enable(_renderContext.Enums.CullFace);
             _renderContext.CullFace(_renderContext.Enums.Back);

@@ -106,6 +106,17 @@ namespace SiegeEngine.Systems
                 ReconcileLocal(d);
                 return;
             }
+            if (authoritative)
+            {
+                EntityDeltaTracker.Apply(entity, d);
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (physics != null)
+                    physics.RenderPosition = physics.Position;
+                _snapFrom.Remove(d.Id);
+                _snapTo.Remove(d.Id);
+                _interpT.Remove(d.Id);
+                return;
+            }
             PushRemoteSnapshot(entity, d);
             EntityDeltaTracker.Apply(entity, d);
         }

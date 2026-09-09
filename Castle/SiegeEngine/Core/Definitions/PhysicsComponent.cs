@@ -334,6 +334,13 @@ namespace SiegeEngine.Core.Definitions
                 return RenderPosition + Vector3.Transform(LocalCentreOfMass, Rotation);
             }
         }
+        public Matrix4x4 BuildRenderModelMatrix(float unitScale)
+        {
+            return Matrix4x4.CreateScale(unitScale * Scale) *
+                   Matrix4x4.CreateTranslation(-LocalCentreOfMass) *
+                   Matrix4x4.CreateFromQuaternion(Rotation) *
+                   Matrix4x4.CreateTranslation(RenderWorldCentreOfMass);
+        }
         public Vector3 ApplyInvInertiaWorld(Vector3 worldTorque)
         {
             if (InvInertiaLocal == Vector3.Zero)

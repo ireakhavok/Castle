@@ -46,8 +46,7 @@ namespace SiegeEngine.Core.Networking
                 var newPhysics = entity.GetComponent<PhysicsComponent>();
                 if (existingPhysics != null && newPhysics != null)
                 {
-                    existingPhysics.Position = newPhysics.Position;
-                    existingPhysics.Rotation = Entity.SanitizeRotation(newPhysics.Rotation);
+                    existingPhysics.SetAuthoredPose(newPhysics.Position, Entity.SanitizeRotation(newPhysics.Rotation));
                     existingPhysics.Scale = newPhysics.Scale;
                     existingPhysics.Size = newPhysics.Size;
                     existingPhysics.LocalBoundsMinCm = newPhysics.LocalBoundsMinCm;
@@ -150,7 +149,11 @@ namespace SiegeEngine.Core.Networking
                 _nextEntityId = Math.Max(_nextEntityId, entity.Id + 1);
             }
             var physics = entity.GetComponent<PhysicsComponent>();
-            if (physics != null) physics.Rotation = Entity.SanitizeRotation(physics.Rotation);
+            if (physics != null)
+            {
+                physics.Rotation = Entity.SanitizeRotation(physics.Rotation);
+                physics.RenderPosition = physics.Position;
+            }
             _entities.Add(entity);
             _eventBus.Publish(new EntityAddedEvent(entity), true);
         }
@@ -194,14 +197,14 @@ namespace SiegeEngine.Core.Networking
         }
         public void Update(float deltaTime)
         {
+            foreach (var system in _systems)
+                system.Update(deltaTime);
             foreach (var entity in _entities)
             {
                 var physics = entity.GetComponent<PhysicsComponent>();
                 if (physics != null) _physicsWorld.RegisterBody(physics);
             }
             _physicsWorld.Step(deltaTime);
-            foreach (var system in _systems)
-                system.Update(deltaTime);
         }
         public bool ValidateAndUpdateMovement(int entityId, Vector3 requestedPosition, Quaternion requestedRotation, ulong steamId)
         {

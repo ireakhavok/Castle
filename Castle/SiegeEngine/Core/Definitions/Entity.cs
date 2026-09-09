@@ -145,8 +145,7 @@ namespace SiegeEngine.Core.Definitions
             };
 
             var physics = new PhysicsComponent();
-            physics.Position = data.Position;
-            physics.Rotation = SanitizeRotation(data.Rotation);
+            physics.SetAuthoredPose(data.Position, SanitizeRotation(data.Rotation));
             physics.Scale = data.Scale != default ? data.Scale : Vector3.One;
 
             entity.AddComponent(physics);
@@ -230,6 +229,7 @@ namespace SiegeEngine.Core.Definitions
                 }
             }
 
+            physics.SetAuthoredPose(physics.Position, SanitizeRotation(physics.Rotation));
             Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} HiddenMeshes={(data.HiddenMeshIndices == null ? 0 : data.HiddenMeshIndices.Count)} MaterialOptions={(data.MaterialOptions == null ? 0 : data.MaterialOptions.Count)} Components={entity.Components.Count}");
             return entity;
         }

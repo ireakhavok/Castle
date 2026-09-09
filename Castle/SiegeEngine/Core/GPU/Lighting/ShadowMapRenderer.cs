@@ -307,7 +307,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 Vector3 scale = physics.Scale;
                 Vector3 localCom = physics.LocalCentreOfMass;
                 Quaternion rotation = physics.Rotation;
-                Vector3 worldCom = physics.WorldCentreOfMass;
+                Vector3 worldCom = physics.RenderWorldCentreOfMass;
                 Matrix4x4 modelMatrix;
                 if (_casterTransforms.TryGetValue(entity, out CachedCasterTransform cached)
                     && cached.UnitScale == unitScale
@@ -323,11 +323,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 }
                 else
                 {
-                    modelMatrix =
-                        Matrix4x4.CreateScale(unitScale * scale) *
-                        Matrix4x4.CreateTranslation(-localCom) *
-                        Matrix4x4.CreateFromQuaternion(rotation) *
-                        Matrix4x4.CreateTranslation(worldCom);
+                    modelMatrix = physics.BuildRenderModelMatrix(unitScale);
                     _casterTransforms[entity] = new CachedCasterTransform
                     {
                         Matrix = modelMatrix,
