@@ -553,86 +553,101 @@ namespace SiegeEngine.Core.Physics
             TriangleMeshShape meshB, PhysicsComponent bodyB,
             ContactManifold manifold)
         {
-            meshA.GetAabb(bodyA.Position, bodyA.Rotation, out Vector3 aabbAMin, out Vector3 aabbAMax);
-            meshB.GetAabb(bodyB.Position, bodyB.Rotation, out Vector3 aabbBMin, out Vector3 aabbBMax);
-            if (aabbAMax.X < aabbBMin.X || aabbAMin.X > aabbBMax.X ||
-                aabbAMax.Y < aabbBMin.Y || aabbAMin.Y > aabbBMax.Y ||
-                aabbAMax.Z < aabbBMin.Z || aabbAMin.Z > aabbBMax.Z)
+            Vector3 comA = bodyA.WorldCentreOfMass;
+            Vector3 comB = bodyB.WorldCentreOfMass;
+            float rA = meshA.BoundingRadius;
+            float rB = meshB.BoundingRadius;
+            Vector3 delta = comA - comB;
+            float sepSq = delta.LengthSquared();
+            float maxSep = rA + rB + 0.08f;
+            if (sepSq > maxSep * maxSep)
                 return;
-            const float skin = 0.05f;
-            const int MaxTrianglesPerMesh = 256;
             const float MeshContactThreshold = 0.025f;
-            Vector3 queryMinB = aabbAMin - new Vector3(skin);
-            Vector3 queryMaxB = aabbAMax + new Vector3(skin);
+            const int ClosestCount = 4;
             _triA.Clear();
             _triB.Clear();
             _triC.Clear();
-            meshB.QueryWorldTriangles(bodyB.Position, bodyB.Rotation, queryMinB, queryMaxB, _triA, _triB, _triC);
-            int rawB = _triA.Count;
-            if (rawB == 0) return;
-            Vector3 comA = bodyA.WorldCentreOfMass;
-            var scoredB = new List<(int idx, float distSq)>(rawB);
-            for (int t = 0; t < rawB; t++)
+            meshB.QueryClosestWorldTriangles(bodyB.Position, bodyB.Rotation, comA, _triA, _triB, _triC, ClosestCount);
+            int countB = _triA.Count;
+            if (countB == 0) return;
+            Vector3 surfaceB = _triA[0];
+            float bestSurface = float.MaxValue;
+            for (int t = 0; t < countB; t++)
             {
-                Vector3 c = (_triA[t] + _triB[t] + _triC[t]) * (1f / 3f);
-                scoredB.Add((t, (c - comA).LengthSquared()));
+                Vector3 c = ClosestPointOnTriangle(comA, _triA[t], _triB[t], _triC[t]);
+                float d2 = (c - comA).LengthSquared();
+                if (d2 < bestSurface)
+                {
+                    bestSurface = d2;
+                    surfaceB = c;
+                }
             }
-            scoredB.Sort((x, y) => x.distSq.CompareTo(y.distSq));
-            int countB = Math.Min(MaxTrianglesPerMesh, scoredB.Count);
-            Vector3 queryMinA = aabbBMin - new Vector3(skin);
-            Vector3 queryMaxA = aabbBMax + new Vector3(skin);
-            var triA_A = new List<Vector3>(64);
-            var triB_A = new List<Vector3>(64);
-            var triC_A = new List<Vector3>(64);
-            meshA.QueryWorldTriangles(bodyA.Position, bodyA.Rotation, queryMinA, queryMaxA, triA_A, triB_A, triC_A);
-            int rawA = triA_A.Count;
-            if (rawA == 0) return;
-            Vector3 comB = bodyB.WorldCentreOfMass;
-            var scoredA = new List<(int idx, float distSq)>(rawA);
-            for (int t = 0; t < rawA; t++)
-            {
-                Vector3 c = (triA_A[t] + triB_A[t] + triC_A[t]) * (1f / 3f);
-                scoredA.Add((t, (c - comB).LengthSquared()));
-            }
-            scoredA.Sort((x, y) => x.distSq.CompareTo(y.distSq));
-            int countA = Math.Min(MaxTrianglesPerMesh, scoredA.Count);
+            var triA_A = new List<Vector3>(ClosestCount);
+            var triB_A = new List<Vector3>(ClosestCount);
+            var triC_A = new List<Vector3>(ClosestCount);
+            meshA.QueryClosestWorldTriangles(bodyA.Position, bodyA.Rotation, surfaceB, triA_A, triB_A, triC_A, ClosestCount);
+            int countA = triA_A.Count;
+            if (countA == 0) return;
+            float maxDist = rA + MeshContactThreshold;
+            float maxPen = rA + MeshContactThreshold;
             var candidates = new List<ContactPoint>(32);
             for (int ia = 0; ia < countA; ia++)
             {
-                int ta = scoredA[ia].idx;
-                Vector3 a0 = triA_A[ta], a1 = triB_A[ta], a2 = triC_A[ta];
+                Vector3 a0 = triA_A[ia], a1 = triB_A[ia], a2 = triC_A[ia];
                 for (int ib = 0; ib < countB; ib++)
                 {
-                    int tb = scoredB[ib].idx;
-                    Vector3 b0 = _triA[tb], b1 = _triB[tb], b2 = _triC[tb];
+                    Vector3 b0 = _triA[ib], b1 = _triB[ib], b2 = _triC[ib];
                     ClosestPointsBetweenTriangles(a0, a1, a2, b0, b1, b2,
                         out Vector3 closestA, out Vector3 closestB, out float dist);
-                    Vector3 e1 = b1 - b0;
-                    Vector3 e2 = b2 - b0;
-                    Vector3 normalB = Vector3.Cross(e1, e2);
-                    float nLen = normalB.Length();
-                    if (nLen < 1e-8f) continue;
-                    normalB /= nLen;
-                    if (Vector3.Dot(normalB, comA - closestB) < 0f)
-                        normalB = -normalB;
-                    float signed = Vector3.Dot(closestA - closestB, normalB);
-                    if (signed < MeshContactThreshold)
-                    {
-                        float pen = MeshContactThreshold - signed;
-                        candidates.Add(new ContactPoint
-                        {
-                            Position = closestB,
-                            Normal = normalB,
-                            Penetration = pen
-                        });
-                    }
+                    if (dist > maxDist)
+                        continue;
+                    Vector3 nB = Vector3.Cross(b1 - b0, b2 - b0);
+                    float nBLen = nB.Length();
+                    if (nBLen <= 1e-8f) continue;
+                    nB /= nBLen;
+                    if (Vector3.Dot(nB, comA - closestB) < 0f)
+                        nB = -nB;
+                    float signedB = Vector3.Dot(closestA - closestB, nB);
+                    if (signedB >= MeshContactThreshold)
+                        continue;
+                    float pen = MeshContactThreshold - signedB;
+                    if (pen > maxPen)
+                        pen = maxPen;
+                    MergeMeshContact(candidates, closestB, nB, pen);
                 }
             }
             if (candidates.Count == 0) return;
             candidates.Sort((x, y) => y.Penetration.CompareTo(x.Penetration));
-            int keep = Math.Min(4, candidates.Count);
+            bool staticB = bodyB == null || bodyB.BodyType == BodyType.Static || bodyB.InvMass <= 0f;
+            int keep = staticB ? Math.Min(1, candidates.Count) : Math.Min(4, candidates.Count);
             for (int i = 0; i < keep; i++)
                 manifold.Add(candidates[i]);
+        }
+        private static void MergeMeshContact(List<ContactPoint> candidates, Vector3 position, Vector3 normal, float pen)
+        {
+            const float mergeDistSq = 0.0001f;
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                if ((candidates[i].Position - position).LengthSquared() < mergeDistSq)
+                {
+                    if (pen > candidates[i].Penetration)
+                    {
+                        candidates[i] = new ContactPoint
+                        {
+                            Position = position,
+                            Normal = normal,
+                            Penetration = pen
+                        };
+                    }
+                    return;
+                }
+            }
+            candidates.Add(new ContactPoint
+            {
+                Position = position,
+                Normal = normal,
+                Penetration = pen
+            });
         }
         private static void ClosestPointsBetweenTriangles(
             Vector3 a0, Vector3 a1, Vector3 a2,
