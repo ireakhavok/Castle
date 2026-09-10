@@ -79,6 +79,11 @@ namespace CastleBuilder
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
             if (!_seeded || !IsFormLive()) return;
             SyncLookReadouts();
+            if (AnyTextFieldFocused())
+            {
+                CommitFrameCapIfComplete();
+                return;
+            }
             string signature = FormSignature();
             if (signature != _lastSignature)
                 ApplyFromForm();
@@ -127,21 +132,14 @@ namespace CastleBuilder
             if (!IsFormLive()) return;
             var draft = RuntimeSettings.Current;
             draft.UseFixedTimestep = GetChecked("runtime-fixed-step");
-            if (!AnyTextFieldFocused())
-            {
+            if (!IsFocused("runtime-step-rate"))
                 draft.StepRateHz = ParseFloat(GetInputValue("runtime-step-rate"), draft.StepRateHz);
+            if (!IsFocused("runtime-gravity-z"))
                 draft.GravityZ = ParseFloat(GetInputValue("runtime-gravity-z"), draft.GravityZ);
+            if (!IsFocused("runtime-frame-cap"))
+            {
                 float cap = ParseFloat(GetInputValue("runtime-frame-cap"), draft.FrameCapHz);
                 if (cap >= 0f) draft.FrameCapHz = cap;
-            }
-            else
-            {
-                var capEl = _uiOverlay.FindElementById("runtime-frame-cap") as InputElement;
-                if (capEl != null && !capEl.IsFocused)
-                {
-                    float cap = ParseFloat(capEl.Value, draft.FrameCapHz);
-                    if (cap >= 0f) draft.FrameCapHz = cap;
-                }
             }
             draft.MouseSensitivityX = RuntimeSettings.SliderToLook(ParseFloat(GetInputValue("runtime-look-x"), RuntimeSettings.LookToSlider(draft.MouseSensitivityX)));
             draft.MouseSensitivityY = RuntimeSettings.SliderToLook(ParseFloat(GetInputValue("runtime-look-y"), RuntimeSettings.LookToSlider(draft.MouseSensitivityY)));
@@ -149,6 +147,19 @@ namespace CastleBuilder
             if (!string.IsNullOrEmpty(mode))
                 draft.Mode = mode;
             _lastSignature = FormSignature();
+        }
+
+        private void CommitFrameCapIfComplete()
+        {
+            string text = GetInputValue("runtime-frame-cap");
+            if (string.IsNullOrWhiteSpace(text)) return;
+            text = text.Trim();
+            if (!float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out float v))
+                return;
+            if (v < 0f) return;
+            if (text != "0" && text.Length < 2)
+                return;
+            RuntimeSettings.Current.FrameCapHz = v;
         }
 
         private bool AnyTextFieldFocused()
