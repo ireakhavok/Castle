@@ -162,64 +162,107 @@ namespace SiegeEngine.Core.Physics
             in Vector3 worldPoint, List<Vector3> outA, List<Vector3> outB, List<Vector3> outC, int count)
         {
             if (count <= 0 || _indices.Count < 3) return;
+            if (_nodes == null || _nodes.Length == 0) return;
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
             Matrix4x4.Invert(rot, out Matrix4x4 invRot);
             Vector3 localPoint = Vector3.Transform(worldPoint - position, invRot);
-            int triCount = _indices.Count / 3;
             var bestDist = new float[count];
             var bestTri = new int[count];
+            for (int i = 0; i < count; i++)
+            {
+                bestDist[i] = float.MaxValue;
+                bestTri[i] = -1;
+            }
             int found = 0;
             float worst = float.MaxValue;
-            int worstIdx = 0;
-            for (int t = 0; t < triCount; t++)
-            {
-                Vector3 a = _localVerticesM[_indices[t * 3]];
-                Vector3 b = _localVerticesM[_indices[t * 3 + 1]];
-                Vector3 c = _localVerticesM[_indices[t * 3 + 2]];
-                Vector3 closest = ClosestPointOnTriangle(localPoint, a, b, c);
-                float d2 = (closest - localPoint).LengthSquared();
-                if (found < count)
-                {
-                    bestDist[found] = d2;
-                    bestTri[found] = t;
-                    found++;
-                    if (found == count)
-                    {
-                        worst = bestDist[0];
-                        worstIdx = 0;
-                        for (int i = 1; i < count; i++)
-                        {
-                            if (bestDist[i] > worst)
-                            {
-                                worst = bestDist[i];
-                                worstIdx = i;
-                            }
-                        }
-                    }
-                }
-                else if (d2 < worst)
-                {
-                    bestDist[worstIdx] = d2;
-                    bestTri[worstIdx] = t;
-                    worst = bestDist[0];
-                    worstIdx = 0;
-                    for (int i = 1; i < count; i++)
-                    {
-                        if (bestDist[i] > worst)
-                        {
-                            worst = bestDist[i];
-                            worstIdx = i;
-                        }
-                    }
-                }
-            }
+            QueryClosestNode(0, localPoint, bestDist, bestTri, count, ref found, ref worst);
             for (int i = 0; i < found; i++)
             {
                 int t = bestTri[i];
+                if (t < 0) continue;
                 outA.Add(Vector3.Transform(_localVerticesM[_indices[t * 3]], rot) + position);
                 outB.Add(Vector3.Transform(_localVerticesM[_indices[t * 3 + 1]], rot) + position);
                 outC.Add(Vector3.Transform(_localVerticesM[_indices[t * 3 + 2]], rot) + position);
             }
+        }
+        private void QueryClosestNode(int nodeIdx, Vector3 localPoint,
+            float[] bestDist, int[] bestTri, int count, ref int found, ref float worst)
+        {
+            ref Node n = ref _nodes[nodeIdx];
+            if (found >= count && DistanceSqPointAabb(localPoint, n.Min, n.Max) >= worst)
+                return;
+            if (n.Left < 0)
+            {
+                for (int i = 0; i < n.TriCount; i++)
+                {
+                    int t = _triOrder[n.TriStart + i];
+                    Vector3 a = _localVerticesM[_indices[t * 3]];
+                    Vector3 b = _localVerticesM[_indices[t * 3 + 1]];
+                    Vector3 c = _localVerticesM[_indices[t * 3 + 2]];
+                    Vector3 closest = ClosestPointOnTriangle(localPoint, a, b, c);
+                    float d2 = (closest - localPoint).LengthSquared();
+                    if (found < count)
+                    {
+                        bestDist[found] = d2;
+                        bestTri[found] = t;
+                        found++;
+                        if (found == count)
+                        {
+                            worst = bestDist[0];
+                            int worstIdx = 0;
+                            for (int k = 1; k < count; k++)
+                            {
+                                if (bestDist[k] > worst)
+                                {
+                                    worst = bestDist[k];
+                                    worstIdx = k;
+                                }
+                            }
+                        }
+                    }
+                    else if (d2 < worst)
+                    {
+                        int worstIdx = 0;
+                        worst = bestDist[0];
+                        for (int k = 1; k < count; k++)
+                        {
+                            if (bestDist[k] > worst)
+                            {
+                                worst = bestDist[k];
+                                worstIdx = k;
+                            }
+                        }
+                        bestDist[worstIdx] = d2;
+                        bestTri[worstIdx] = t;
+                        worst = bestDist[0];
+                        for (int k = 1; k < count; k++)
+                        {
+                            if (bestDist[k] > worst)
+                                worst = bestDist[k];
+                        }
+                    }
+                }
+                return;
+            }
+            float dL = DistanceSqPointAabb(localPoint, _nodes[n.Left].Min, _nodes[n.Left].Max);
+            float dR = DistanceSqPointAabb(localPoint, _nodes[n.Right].Min, _nodes[n.Right].Max);
+            if (dL < dR)
+            {
+                QueryClosestNode(n.Left, localPoint, bestDist, bestTri, count, ref found, ref worst);
+                QueryClosestNode(n.Right, localPoint, bestDist, bestTri, count, ref found, ref worst);
+            }
+            else
+            {
+                QueryClosestNode(n.Right, localPoint, bestDist, bestTri, count, ref found, ref worst);
+                QueryClosestNode(n.Left, localPoint, bestDist, bestTri, count, ref found, ref worst);
+            }
+        }
+        private static float DistanceSqPointAabb(Vector3 p, Vector3 min, Vector3 max)
+        {
+            float dx = p.X < min.X ? min.X - p.X : (p.X > max.X ? p.X - max.X : 0f);
+            float dy = p.Y < min.Y ? min.Y - p.Y : (p.Y > max.Y ? p.Y - max.Y : 0f);
+            float dz = p.Z < min.Z ? min.Z - p.Z : (p.Z > max.Z ? p.Z - max.Z : 0f);
+            return dx * dx + dy * dy + dz * dz;
         }
         private void BuildAabbTree()
         {
