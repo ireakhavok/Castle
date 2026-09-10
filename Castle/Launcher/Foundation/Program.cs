@@ -93,6 +93,8 @@ namespace Foundation
                             sceneDataPayload = Convert.ToBase64String(
                                 System.Text.Encoding.UTF8.GetBytes(sceneJson));
                         }
+                        RuntimeSettings.ApplyFromPayloadRoot(root);
+                        RuntimeSettings.TryLoadFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp", "runtime_settings.json"));
                     }
                     Console.WriteLine($"[Program] Play payload loaded - levelData={(levelDataPayload != null)}, sceneData={(sceneDataPayload != null)}, levelName={loadLevelName}");
                     string payloadDir = Path.GetDirectoryName(playPayloadFile) ?? "";

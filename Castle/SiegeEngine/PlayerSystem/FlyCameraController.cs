@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/PlayerSystem
+// Folder: SiegeEngine/PlayerSystem
 // File: FlyCameraController.cs
 using System;
 using System.Numerics;
@@ -13,12 +13,12 @@ namespace SiegeEngine.Scenes
         private readonly IntPtr _window;
         private float _yaw = 0f;
         private float _pitch = 0f;
-        private readonly float _xSpeed = 2.0f;
-        private readonly float _ySpeed = 2.0f;
         private readonly float _pitchMinLimit = -89f;
         private readonly float _pitchMaxLimit = 89f;
         private Vector2 _lastMousePos = Vector2.Zero;
         private bool _firstMouseMove = true;
+        private bool _wasGameActive;
+        private CursorMode _lastCursorMode = CursorMode.Normal;
         private Vector3 _position = new Vector3(64, 36, 5);
         public Vector3 Position { get => _position; set { _position = value; UpdateCamera(); } }
         public Matrix4x4 ViewMatrix { get; private set; }
@@ -30,43 +30,58 @@ namespace SiegeEngine.Scenes
             _window = window;
             UpdateCamera();
         }
+        public void ResetLookDelta()
+        {
+            _firstMouseMove = true;
+        }
         public void Update(float deltaTime, float scrollDelta, bool isGameActive)
         {
             bool focused = _controlContext.GetWindowAttrib(_window, WindowAttribute.Focused);
             if (!focused)
             {
                 _controlContext.SetInputMode(_window, CursorAttribute.Cursor, CursorMode.Normal);
-                _firstMouseMove = true;
+                ResetLookDelta();
+                _wasGameActive = false;
+                _lastCursorMode = CursorMode.Normal;
+                UpdateCamera();
                 return;
             }
-            _controlContext.SetInputMode(_window, CursorAttribute.Cursor, isGameActive ? CursorMode.Disabled : CursorMode.Normal);
+            CursorMode wantCursor = isGameActive ? CursorMode.Disabled : CursorMode.Normal;
+            if (wantCursor != _lastCursorMode)
+            {
+                ResetLookDelta();
+                _lastCursorMode = wantCursor;
+            }
+            if (isGameActive != _wasGameActive)
+            {
+                ResetLookDelta();
+                _wasGameActive = isGameActive;
+            }
+            _controlContext.SetInputMode(_window, CursorAttribute.Cursor, wantCursor);
             _controlContext.GetCursorPos(_window, out double mouseX, out double mouseY);
             Vector2 mousePos = new Vector2((float)mouseX, (float)mouseY);
-            Vector2 delta = Vector2.Zero;
-            if (isGameActive)
+            if (!isGameActive)
             {
-                if (_firstMouseMove)
-                {
-                    _lastMousePos = mousePos;
-                    _firstMouseMove = false;
-                }
-                else
-                {
-                    delta = mousePos - _lastMousePos;
-                }
-                float sensitivityX = _xSpeed * deltaTime;
-                float sensitivityY = _ySpeed * deltaTime;
-                _yaw += delta.X * sensitivityX;
-                _pitch -= delta.Y * sensitivityY;
-                _pitch = Math.Clamp(_pitch, _pitchMinLimit, _pitchMaxLimit);
-                Vector2 center = _controlContext.GetCurrentViewport().Center;
-                _controlContext.SetCursorPos(_window, center.X, center.Y);
-                _lastMousePos = center;
+                _lastMousePos = mousePos;
+                ResetLookDelta();
+                UpdateCamera();
+                return;
+            }
+            Vector2 center = _controlContext.GetCurrentViewport().Center;
+            Vector2 delta = Vector2.Zero;
+            if (_firstMouseMove)
+            {
+                _firstMouseMove = false;
             }
             else
             {
-                _firstMouseMove = true;
+                delta = mousePos - center;
             }
+            _controlContext.SetCursorPos(_window, center.X, center.Y);
+            _lastMousePos = center;
+            _yaw += delta.X * RuntimeSettings.Current.LookX;
+            _pitch -= delta.Y * RuntimeSettings.Current.LookY;
+            _pitch = Math.Clamp(_pitch, _pitchMinLimit, _pitchMaxLimit);
             float moveSpeed = 200.0f * deltaTime;
             if (_controlContext.GetKey(_window, Key.LeftShift) == InputAction.Press) { moveSpeed *= 10f; }
             float yawRad = _yaw * (float)(Math.PI / 180);

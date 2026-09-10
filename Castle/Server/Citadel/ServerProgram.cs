@@ -2,11 +2,14 @@
 // File: ServerProgram.cs
 using Citadel.Network;
 using Citadel.Server;
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Networking;
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using Trebuchet;
 
@@ -51,6 +54,28 @@ namespace Citadel
             // All server-only code below
             Console.Title = "Citadel Dedicated Server";
             Console.WriteLine("Citadel Server starting...");
+
+            string runtimePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp", "runtime_settings.json");
+            if (args != null)
+            {
+                for (int i = 0; i < args.Length - 1; i++)
+                {
+                    if (args[i] == "--runtime-settings")
+                        runtimePath = args[i + 1];
+                }
+            }
+            if (File.Exists(runtimePath))
+            {
+                try
+                {
+                    var loaded = JsonSerializer.Deserialize<RuntimeSettings>(File.ReadAllText(runtimePath));
+                    RuntimeSettings.ReplaceCurrent(loaded);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Citadel: runtime settings failed: " + ex.Message);
+                }
+            }
 
             bool isServerMode = args != null && (args.Contains("--server") || args.Length == 0);
             bool isLocal = args != null && args.Contains("--local");

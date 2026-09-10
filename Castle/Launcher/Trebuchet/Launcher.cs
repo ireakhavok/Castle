@@ -1,5 +1,6 @@
 // Folder: Launcher
 // File: Launcher.cs
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Lighting;
 using SiegeEngine.Core.GPU.PostProcess;
@@ -18,6 +19,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using System.Threading;
 using System.Runtime.InteropServices;
 namespace Trebuchet
 {
@@ -161,6 +163,7 @@ namespace Trebuchet
                     });
                     _isRunning = true;
                     float lastFrameTime = (float)_controlContext.GetTime();
+                    long lastPresentTimestamp = 0;
                     while (_isRunning)
                     {
                         float currentTime = (float)_controlContext.GetTime();
@@ -169,15 +172,23 @@ namespace Trebuchet
                         _steamEngine.RunCallbacks();
                         _controlContext.PollEvents();
                         if (_controlContext.WindowShouldClose(_window)) _isRunning = false;
-                        _renderContext.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-                        _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-                        _renderContext.Disable(_renderContext.Enums.DepthTest);
                         _sceneManager.Update(deltaTime);
                         if (_panelManager != null) _panelManager?.Update(deltaTime);
-                        _sceneManager.Render();
-                        if (_panelManager != null) _panelManager?.Render();
-                        _renderContext.Enable(_renderContext.Enums.DepthTest);
-                        _controlContext.SwapBuffers(_window);
+                        bool present = RuntimeSettings.Current.ShouldPresent(ref lastPresentTimestamp);
+                        if (present)
+                        {
+                            _renderContext.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+                            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
+                            _renderContext.Disable(_renderContext.Enums.DepthTest);
+                            _sceneManager.Render();
+                            if (_panelManager != null) _panelManager?.Render();
+                            _renderContext.Enable(_renderContext.Enums.DepthTest);
+                            _controlContext.SwapBuffers(_window);
+                        }
+                        else
+                        {
+                            Thread.Yield();
+                        }
                     }
                 }
             }

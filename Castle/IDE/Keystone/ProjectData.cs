@@ -1,8 +1,9 @@
-﻿// Folder: Keystone
+// Folder: Keystone
 // File: ProjectData.cs
 using SiegeEngine.Core.Definitions;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Keystone
 {
@@ -23,6 +24,20 @@ namespace Keystone
         public List<string> CustomAssemblies { get; set; } = new List<string>();
         public bool ScriptsEnabled { get; set; } = true;
         public string ScriptsDir { get; set; } = "Scripts";
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? UseFixedTimestep { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? StepRateHz { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? GravityZ { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? FrameCapHz { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? MouseSensitivityX { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? MouseSensitivityY { get; set; }
+
         public static readonly JsonSerializerOptions ProjectJsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,

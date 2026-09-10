@@ -16,6 +16,7 @@ namespace Citadel.Systems
         public PhysicsSystem(GameServer server) : base(server)
         {
             _world = new PhysicsWorld();
+            RuntimeSettings.Current.ApplyTo(_world);
         }
         public PhysicsWorld World => _world;
         public override void Update(float deltaTime)
