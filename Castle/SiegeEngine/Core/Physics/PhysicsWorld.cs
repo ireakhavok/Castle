@@ -228,16 +228,40 @@ namespace SiegeEngine.Core.Physics
             ApplyRollingResistance(dt);
             ApplyRestingDeadZone();
         }
+        private static bool IsStaticPartner(PhysicsComponent b)
+        {
+            return b == null || b.BodyType == BodyType.Static || b.InvMass <= 0f;
+        }
+        private int PickRestContact(ContactManifold manifold)
+        {
+            int best = 0;
+            float bestDot = float.MinValue;
+            Vector3 againstG = -_gravity;
+            float gLen = againstG.Length();
+            if (gLen > 1e-8f) againstG /= gLen;
+            else againstG = Vector3.UnitZ;
+            for (int i = 0; i < manifold.PointCount; i++)
+            {
+                float d = Vector3.Dot(manifold.Points[i].Normal, againstG);
+                if (d > bestDot)
+                {
+                    bestDot = d;
+                    best = i;
+                }
+            }
+            return best;
+        }
         private void ApplyRollingResistance(float dt)
         {
             for (int m = 0; m < _manifolds.Count; m++)
             {
                 var manifold = _manifolds[m];
-                if (manifold.BodyB != null) continue;
+                if (!IsStaticPartner(manifold.BodyB)) continue;
                 var a = manifold.BodyA;
                 if (a == null || a.BodyType != BodyType.Dynamic || a.InvMass <= 0f) continue;
                 if (manifold.PointCount == 0) continue;
-                var p = manifold.Points[0];
+                int rest = PickRestContact(manifold);
+                var p = manifold.Points[rest];
                 Vector3 n = p.Normal;
                 Vector3 rA = p.Position - a.WorldCentreOfMass;
                 Vector3 vPlane = a.Velocity - n * Vector3.Dot(a.Velocity, n);
@@ -253,7 +277,7 @@ namespace SiegeEngine.Core.Physics
                 a.Velocity += forceImpulse * a.InvMass;
                 a.AngularVelocity += a.ApplyInvInertiaWorld(Vector3.Cross(rA, forceImpulse));
                 p.RollingResistanceImpulse = forceImpulse;
-                manifold.Points[0] = p;
+                manifold.Points[rest] = p;
             }
         }
         private void ResolveVelocity(ContactManifold m)
@@ -383,6 +407,13 @@ namespace SiegeEngine.Core.Physics
                     continue;
                 }
 
+                if (a != null && a.BodyType == BodyType.Dynamic && IsStaticPartner(b)
+                    && manifold.PointCount >= 2)
+                {
+                    ProjectPlaneContacts(manifold, numericSlop);
+                    continue;
+                }
+
                 for (int i = 0; i < manifold.PointCount; i++)
                 {
                     var p = manifold.Points[i];
@@ -395,6 +426,80 @@ namespace SiegeEngine.Core.Physics
                         b.Position -= corr * invMassB;
                 }
             }
+        }
+        private void ProjectPlaneContacts(ContactManifold manifold, float slop)
+        {
+            var a = manifold.BodyA;
+            if (a == null) return;
+            int n = manifold.PointCount;
+            var used = new bool[n];
+            Vector3 delta = Vector3.Zero;
+            for (int i = 0; i < n; i++)
+            {
+                if (used[i]) continue;
+                float d1 = manifold.Points[i].Penetration - slop;
+                Vector3 n1 = manifold.Points[i].Normal;
+                d1 -= Vector3.Dot(delta, n1);
+                if (d1 <= 0f)
+                {
+                    used[i] = true;
+                    continue;
+                }
+                int partner = -1;
+                float partnerC = 0f;
+                for (int j = i + 1; j < n; j++)
+                {
+                    if (used[j]) continue;
+                    Vector3 n2 = manifold.Points[j].Normal;
+                    float c = Vector3.Dot(n1, n2);
+                    if (MathF.Abs(c) < 0.999f)
+                    {
+                        partner = j;
+                        partnerC = c;
+                        break;
+                    }
+                }
+                if (partner < 0)
+                {
+                    delta += n1 * d1;
+                    used[i] = true;
+                    continue;
+                }
+                Vector3 n2p = manifold.Points[partner].Normal;
+                float d2 = manifold.Points[partner].Penetration - slop;
+                d2 -= Vector3.Dot(delta, n2p);
+                if (d2 <= 0f)
+                {
+                    delta += n1 * d1;
+                    used[i] = true;
+                    used[partner] = true;
+                    continue;
+                }
+                float denom = 1f - partnerC * partnerC;
+                if (denom < 1e-6f)
+                {
+                    delta += n1 * MathF.Max(d1, d2);
+                }
+                else
+                {
+                    float aa = (d1 - d2 * partnerC) / denom;
+                    float bb = (d2 - d1 * partnerC) / denom;
+                    if (aa < 0f)
+                    {
+                        aa = 0f;
+                        bb = d2;
+                    }
+                    if (bb < 0f)
+                    {
+                        bb = 0f;
+                        aa = d1;
+                    }
+                    delta += n1 * aa + n2p * bb;
+                }
+                used[i] = true;
+                used[partner] = true;
+            }
+            a.Position += delta;
         }
         private void RepairNormalVelocities()
         {
@@ -450,13 +555,14 @@ namespace SiegeEngine.Core.Physics
             for (int m = 0; m < _manifolds.Count; m++)
             {
                 var manifold = _manifolds[m];
-                if (manifold.BodyB != null) continue;
+                if (!IsStaticPartner(manifold.BodyB)) continue;
                 var a = manifold.BodyA;
                 if (a == null || a.BodyType != BodyType.Dynamic || a.InvMass <= 0f) continue;
+                if (manifold.PointCount == 0) continue;
                 float speed = a.Velocity.Length();
                 float spin = a.AngularVelocity.Length();
                 if (speed > restThreshold || spin > restThreshold * 2.5f) continue;
-                Vector3 n = manifold.Points[0].Normal;
+                Vector3 n = manifold.Points[PickRestContact(manifold)].Normal;
                 Vector3 gParallel = _gravity - n * Vector3.Dot(_gravity, n);
                 float gParLen = gParallel.Length();
                 float nForceApprox = a.Mass * MathF.Abs(Vector3.Dot(_gravity, n)) + a.Mass * 2f;
@@ -589,7 +695,6 @@ namespace SiegeEngine.Core.Physics
             int countA = triA_A.Count;
             if (countA == 0) return;
             float maxDist = rA + MeshContactThreshold;
-            float maxPen = rA + MeshContactThreshold;
             var candidates = new List<ContactPoint>(32);
             for (int ia = 0; ia < countA; ia++)
             {
@@ -610,16 +715,13 @@ namespace SiegeEngine.Core.Physics
                     float signedB = Vector3.Dot(closestA - closestB, nB);
                     if (signedB >= MeshContactThreshold)
                         continue;
-                    float pen = MeshContactThreshold - signedB;
-                    if (pen > maxPen)
-                        pen = maxPen;
+                    float pen = signedB < 0f ? -signedB : 0f;
                     MergeMeshContact(candidates, closestB, nB, pen);
                 }
             }
             if (candidates.Count == 0) return;
             candidates.Sort((x, y) => y.Penetration.CompareTo(x.Penetration));
-            bool staticB = bodyB == null || bodyB.BodyType == BodyType.Static || bodyB.InvMass <= 0f;
-            int keep = staticB ? Math.Min(1, candidates.Count) : Math.Min(4, candidates.Count);
+            int keep = Math.Min(4, candidates.Count);
             for (int i = 0; i < keep; i++)
                 manifold.Add(candidates[i]);
         }

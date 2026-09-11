@@ -39,6 +39,7 @@ namespace SiegeEngine.Core.Definitions
             SleepThreshold = 0.05f;
             SleepTimer = 0f;
             CollisionEnabled = true;
+            CollideHiddenMeshes = false;
             IsGrounded = false;
             SlopeLimitDegrees = 50f;
             StepHeight = 0.35f;
@@ -137,6 +138,7 @@ namespace SiegeEngine.Core.Definitions
         public float SleepThreshold { get; set; } = 0.05f;
         public float SleepTimer { get; set; } = 0f;
         public bool CollisionEnabled { get; set; } = true;
+        public bool CollideHiddenMeshes { get; set; } = false;
         public bool IsGrounded { get; set; } = false;
         public float SlopeLimitDegrees { get; set; } = 50f;
         public float StepHeight { get; set; } = 0.35f;
@@ -220,9 +222,8 @@ namespace SiegeEngine.Core.Definitions
             }
             else if (model != null && model.Meshes != null && model.Meshes.Count > 0)
             {
-                // 62f5553 contract: every FBX with meshes is a TriangleMeshShape.
-                // Hidden/opacity filters must not collapse the collider into an OBB.
-                Shape = new TriangleMeshShape(model);
+                // Hidden meshes stay out of the collider unless CollideHiddenMeshes is set.
+                Shape = new TriangleMeshShape(model, CollideHiddenMeshes ? null : hiddenMeshIndices, materialOptions);
             }
             else
             {
@@ -450,6 +451,7 @@ namespace SiegeEngine.Core.Definitions
                 IslandId = IslandId,
                 SleepThreshold = SleepThreshold,
                 CollisionEnabled = CollisionEnabled,
+                CollideHiddenMeshes = CollideHiddenMeshes,
                 IsGrounded = IsGrounded,
                 SlopeLimitDegrees = SlopeLimitDegrees,
                 StepHeight = StepHeight,
@@ -473,6 +475,7 @@ namespace SiegeEngine.Core.Definitions
                     p.IsSleeping, p.IslandId, p.SleepThreshold, p.CollisionEnabled,
                     p.IsGrounded, p.SlopeLimitDegrees, p.StepHeight,
                     p.LocalCentreOfMass, p.InvMass, p.InvInertiaLocal);
+                CollideHiddenMeshes = p.CollideHiddenMeshes;
                 return;
             }
             if (data is JsonElement je && je.ValueKind == JsonValueKind.Object)
@@ -646,6 +649,7 @@ namespace SiegeEngine.Core.Definitions
             public int IslandId { get; set; }
             public float SleepThreshold { get; set; }
             public bool CollisionEnabled { get; set; }
+            public bool CollideHiddenMeshes { get; set; }
             public bool IsGrounded { get; set; }
             public float SlopeLimitDegrees { get; set; }
             public float StepHeight { get; set; }

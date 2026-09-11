@@ -36,12 +36,14 @@ namespace SiegeEngine.Core.Physics
 
         public TriangleMeshShape(FBXModel model, IList<int> hiddenMeshIndices, IList<MeshMaterialOption> materialOptions)
         {
-            // hiddenMeshIndices / materialOptions ignored — 62f5553 used every FBX triangle.
             if (model == null || model.Meshes == null) return;
             float toMeters = model.UnitToMeters;
-            foreach (var mesh in model.Meshes)
+            for (int mi = 0; mi < model.Meshes.Count; mi++)
             {
-                if (mesh.Vertices == null || mesh.Indices == null) continue;
+                if (hiddenMeshIndices != null && IndexListContains(hiddenMeshIndices, mi))
+                    continue;
+                var mesh = model.Meshes[mi];
+                if (mesh.Vertices == null || mesh.Indices == null || mesh.Indices.Count == 0) continue;
                 int baseIndex = _localVerticesM.Count;
                 foreach (var v in mesh.Vertices)
                     _localVerticesM.Add(v.Position * toMeters);
@@ -256,6 +258,14 @@ namespace SiegeEngine.Core.Physics
                 QueryClosestNode(n.Right, localPoint, bestDist, bestTri, count, ref found, ref worst);
                 QueryClosestNode(n.Left, localPoint, bestDist, bestTri, count, ref found, ref worst);
             }
+        }
+        private static bool IndexListContains(IList<int> list, int value)
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i] == value) return true;
+            }
+            return false;
         }
         private static float DistanceSqPointAabb(Vector3 p, Vector3 min, Vector3 max)
         {
