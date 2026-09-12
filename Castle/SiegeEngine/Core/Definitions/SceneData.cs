@@ -138,7 +138,7 @@ namespace SiegeEngine.Core.Definitions
         public bool ShadowSmooth { get; set; } = false;
 
         [JsonPropertyName("sunEnabled")]
-        public bool SunEnabled { get; set; } = false;
+        public bool SunEnabled { get; set; } = true;
 
         [JsonPropertyName("sunDirection")]
         public Vector3 SunDirection { get; set; } = new Vector3(-0.85f, 0.10f, -0.52f);
