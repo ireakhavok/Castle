@@ -216,9 +216,10 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 }
             }
             GetUniform4(Loc("uColor"), out float r, out float g, out float b, out float a);
-            if (r == 0 && g == 0 && b == 0 && a == 0) { r = g = b = a = 1f; }
             float useTex = GetUniform1(Loc("uUseTexture"));
             if (useTex == 0 && GetUniform1(Loc("uUseTex")) != 0) useTex = GetUniform1(Loc("uUseTex"));
+            // Unset CSS background is Vector4.Zero. Do not promote it to opaque white.
+            if (useTex < 0.5f && a <= 0f) return;
             _draws.Add(new DrawOp(packed, packed.Length, indexCount == 0 ? (uint)(packed.Length / 4) : indexCount, r, g, b, a, useTex, _boundTexture, ViewportX, ViewportY, ViewportWidth, ViewportHeight));
         }
 
@@ -297,6 +298,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 }
             }
             _textures[_boundTexture] = tex;
+            if (tex.Width * tex.Height >= 64)
+                Console.WriteLine($"[DirectX12] TexImage2D id={_boundTexture} {tex.Width}x{tex.Height} format={format} bytes={tex.Rgba?.Length ?? 0} gen={tex.Generation}");
         }
         public void TexParameter(int target, int pname, int param) { }
         public void TexParameterf(int target, int pname, float param) { }

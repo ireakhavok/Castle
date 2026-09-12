@@ -244,11 +244,7 @@ struct VSIn { float2 pos : POSITION; float2 uv : TEXCOORD; };
 struct VSOut { float4 pos : SV_POSITION; float2 uv : TEXCOORD; };
 VSOut vs(VSIn i) {
     VSOut o;
-    float2 p = i.pos;
-    float2 vp = float2(max(Viewport.x, 1), max(Viewport.y, 1));
-    if (max(abs(p.x), abs(p.y)) > 1.5)
-        p = float2(p.x / vp.x * 2 - 1, 1 - p.y / vp.y * 2);
-    o.pos = float4(p.x, p.y, 0, 1);
+    o.pos = float4(i.pos, 0, 1);
     o.uv = i.uv;
     return o;
 }
