@@ -15,6 +15,7 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ToolChest;
+using SiegeEngine.Core.UI;
 namespace CastleBuilder
 {
     public static class MenuCommands
@@ -334,6 +335,29 @@ namespace CastleBuilder
         {
             EditorHistory.Current.Initialize(eventBus);
             EditorHistory.Current.Redo();
+        }
+        public static void SetRendererOpenGL(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            ApplyNamedRenderer("OpenGL");
+        }
+        public static void SetRendererDirectX11(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            ApplyNamedRenderer("DirectX11");
+        }
+        public static void SetRendererDirectX12(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            ApplyNamedRenderer("DirectX12");
+        }
+        public static void SetRendererVulkan(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            ApplyNamedRenderer("Vulkan");
+        }
+        static void ApplyNamedRenderer(string name)
+        {
+            var settings = new UISettingsManager();
+            settings.LoadSettings();
+            if (!settings.RequestRenderer(name, relaunch: true))
+                Console.WriteLine($"[MenuCommands] Renderer already '{settings.CurrentRenderer}'");
         }
         public static void DeleteSelected(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {

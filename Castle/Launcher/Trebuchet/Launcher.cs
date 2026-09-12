@@ -120,11 +120,20 @@ namespace Trebuchet
                     {
                         _settingsManager.UpdateWindowSize(1280, 720);
                     }
-                    if (context == "OpenGL")
+                    _contextManager = ContextManager.Create(context);
+                    Console.WriteLine($"[Launcher] Renderer '{context}' -> {_contextManager.BackendName}");
+                    try
                     {
-                        _contextManager = new OpenGLContextManager();
+                        _contextManager.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight, isClientRuntime ? "SiegeEngine Runtime - Main" : "Citadel Launcher");
                     }
-                    _contextManager.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight, isClientRuntime ? "SiegeEngine Runtime - Main" : "Citadel Launcher");
+                    catch (Exception initEx) when (!string.Equals(_contextManager.BackendName, "OpenGL", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine($"[Launcher] {_contextManager.BackendName} failed ({initEx.Message}); falling back to OpenGL");
+                        try { _contextManager.Terminate(); } catch { }
+                        _contextManager = new OpenGLContextManager();
+                        _contextManager.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight, isClientRuntime ? "SiegeEngine Runtime - Main" : "Citadel Launcher");
+                    }
+
                     _window = _contextManager.Window;
                     _renderContext = _contextManager.RenderContext;
                     _controlContext = _contextManager.ControlContext;

@@ -12,10 +12,16 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         private readonly Glfw _glfw;
         private readonly Stack<Viewport> _viewportStack = new Stack<Viewport>();
         private nint _mainWindow;
+        private Action _presentOverride;
 
         public GlfwControlContext(Glfw glfw)
         {
             _glfw = glfw ?? throw new ArgumentNullException(nameof(glfw));
+        }
+
+        public void SetPresentOverride(Action present)
+        {
+            _presentOverride = present;
         }
 
         public void SetMainWindow(nint window)
@@ -116,6 +122,11 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         public void SwapBuffers(nint window)
         {
+            if (_presentOverride != null)
+            {
+                _presentOverride();
+                return;
+            }
             _glfw.SwapBuffers((WindowHandle*)window);
         }
 

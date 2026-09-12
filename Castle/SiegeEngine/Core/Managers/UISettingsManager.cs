@@ -40,6 +40,38 @@ namespace SiegeEngine.Core.Managers
             get => _currentRenderer ?? "OpenGL";
             set => _currentRenderer = value;
         }
+
+        public bool RequestRenderer(string name, bool relaunch = true)
+        {
+            string next = string.IsNullOrWhiteSpace(name) ? "OpenGL" : name.Trim();
+            if (string.Equals(CurrentRenderer, next, StringComparison.OrdinalIgnoreCase))
+                return false;
+            _currentRenderer = next;
+            EnsureOpenGLListed();
+            SaveSettings();
+            Console.WriteLine($"[UISettingsManager] Renderer -> '{next}' (relaunch={relaunch})");
+            if (relaunch)
+                SiegeEngine.Core.GPU.ContextManagement.RendererSwitch.Relaunch();
+            return true;
+        }
+
+        public static bool IsPresentOnlyBackend(string name) => false;
+
+        public void EnsureOpenGLListed()
+        {
+            _availableRenderers ??= new List<string>();
+            if (!_availableRenderers.Exists(r => string.Equals(r, "OpenGL", StringComparison.OrdinalIgnoreCase)))
+                _availableRenderers.Insert(0, "OpenGL");
+        }
+
+        public void ForceOpenGL(string reason)
+        {
+            // Session-only. Do not persist — next launch still honors CurrentRenderer.
+            Console.WriteLine($"[UISettingsManager] Session fallback to OpenGL ({reason})");
+            _currentRenderer = "OpenGL";
+            EnsureOpenGLListed();
+        }
+
         public List<string> AvailableRenderers
         {
             get => _availableRenderers ?? new List<string> { "OpenGL" };
@@ -57,9 +89,22 @@ namespace SiegeEngine.Core.Managers
         public UISettingsManager()
         {
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            string appFolder = Path.Combine(appData, "GrokAIGame");
+            string appFolder = Path.Combine(appData, "Castle");
             Directory.CreateDirectory(appFolder);
             _settingsPath = Path.Combine(appFolder, "settings.json");
+            string legacyPath = Path.Combine(appData, "GrokAIGame", "settings.json");
+            if (!File.Exists(_settingsPath) && File.Exists(legacyPath))
+            {
+                try
+                {
+                    File.Copy(legacyPath, _settingsPath, false);
+                    Console.WriteLine($"[UISettingsManager] Migrated settings {legacyPath} -> {_settingsPath}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[UISettingsManager] Settings migrate failed: {ex.Message}");
+                }
+            }
             _windowWidth = 1280;
             _windowHeight = 720;
             _isFullscreen = false;
@@ -205,6 +250,7 @@ namespace SiegeEngine.Core.Managers
                     {
                         _availableRenderers = new List<string> { "OpenGL" };
                     }
+                    EnsureOpenGLListed();
                     if (settings.TryGetValue("AntiAliasing", out var aaObj) &&
                         AntiAliasingModeParser.TryParse(aaObj?.ToString(), out AntiAliasingMode aaMode))
                     {
