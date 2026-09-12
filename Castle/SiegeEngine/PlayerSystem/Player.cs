@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/PlayerSystem
+// Folder: SiegeEngine/PlayerSystem
 // File: Player.cs
 using System;
 using System.Numerics;
@@ -26,9 +26,14 @@ namespace SiegeEngine.PlayerSystem
             _physics = new PhysicsComponent();
             _physics.Position = position;
             _physics.Size = new Vector3(10f, 10f, 10f);
-            _physics.BodyType = BodyType.Kinematic;
+            _physics.BodyType = BodyType.Dynamic;
+            _physics.KeepUpright = true;
             SteamId = steamId;
             if (modelLoader != null && modelLoader.TryGetModel("man_mesh", out var model))
+            {
+                Model = model;
+            }
+            else if (ModelManager.Instance != null && ModelManager.Instance.TryGetModel("man_mesh", out model))
             {
                 Model = model;
             }
@@ -37,13 +42,29 @@ namespace SiegeEngine.PlayerSystem
                 Console.WriteLine("Player: Error: Failed to load man_mesh model, using default cube");
                 Model = FBXParserBase.CreateDefaultCubeModel();
             }
+            BindMeshCollider();
         }
         public CameraController Camera => _camera;
         public PhysicsComponent Physics => _physics;
         public void SetModel(FBXModel model)
         {
             if (model != null)
+            {
                 Model = model;
+                BindMeshCollider();
+            }
+        }
+        public void BindMeshCollider()
+        {
+            _physics.BodyType = BodyType.Dynamic;
+            _physics.KeepUpright = true;
+            if (Model != null && Model.Meshes != null && Model.Meshes.Count > 0)
+            {
+                _physics.Size = Model.GetBoundingSize();
+                _physics.LocalBoundsMinCm = Model.LocalBoundsMinCm;
+                _physics.LocalBoundsMaxCm = Model.LocalBoundsMaxCm;
+                _physics.RebuildShape(Model);
+            }
         }
         public void InitializeCamera(IControlContext controlContext, IntPtr window)
         {

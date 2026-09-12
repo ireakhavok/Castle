@@ -158,6 +158,7 @@ namespace SiegeEngine.PlayerSystem
             {
                 player.Physics.Velocity = new Vector3(currentVelXY.X, currentVelXY.Y, currentVel.Z);
             }
+            player.Physics.Wake();
 
             Quaternion newRotation = player.Physics.Rotation;
             if (camera.CurrentPerspective == Perspective.ThirdPerson)

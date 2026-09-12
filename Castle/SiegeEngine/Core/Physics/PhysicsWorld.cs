@@ -51,6 +51,18 @@ namespace SiegeEngine.Core.Physics
         {
             _bodies.Clear();
         }
+        private static float MeshBottomWorldZ(PhysicsComponent body)
+        {
+            float z = body.Position.Z;
+            Vector3 localMin = body.LocalBoundsMinCm;
+            Vector3 localMax = body.LocalBoundsMaxCm;
+            if (localMin.X <= localMax.X && localMin.Y <= localMax.Y && localMin.Z <= localMax.Z
+                && !float.IsInfinity(localMin.X) && !float.IsInfinity(localMax.X))
+            {
+                z += Vector3.Transform(localMin, body.Rotation).Z;
+            }
+            return z;
+        }
         public void SnapToGround(PhysicsComponent body)
         {
             if (body == null) return;
@@ -82,16 +94,6 @@ namespace SiegeEngine.Core.Physics
                 ProjectPositions();
                 if ((body.Position - before).LengthSquared() < 1e-10f)
                     break;
-            }
-            if (_heightProvider != null)
-            {
-                float ground = _heightProvider.GetInterpolatedHeight(body.Position.X, body.Position.Y);
-                if (!float.IsNaN(ground) && !float.IsInfinity(ground) && body.Position.Z < ground)
-                {
-                    Vector3 p = body.Position;
-                    p.Z = ground;
-                    body.Position = p;
-                }
             }
             body.RenderPosition = body.Position;
         }
@@ -131,9 +133,10 @@ namespace SiegeEngine.Core.Physics
                 var body = _bodies[i];
                 if (body == null || body.IsSleeping || body.BodyType == BodyType.Static)
                     continue;
-                bool isCharacterCapsule = body.BodyType == BodyType.Kinematic && body.Shape is CapsuleShape;
+                bool isCharacter = body.KeepUpright
+                    || (body.BodyType == BodyType.Kinematic && body.Shape is CapsuleShape);
                 body.Velocity *= MathF.Max(0f, 1f - body.LinearDamping * dt);
-                if (isCharacterCapsule)
+                if (isCharacter)
                 {
                     body.AngularVelocity = Vector3.Zero;
                     if (body.IsGrounded)
@@ -175,7 +178,7 @@ namespace SiegeEngine.Core.Physics
             for (int i = 0; i < _bodies.Count; i++)
             {
                 var body = _bodies[i];
-                if (body != null && body.BodyType == BodyType.Kinematic)
+                if (body != null && (body.BodyType == BodyType.Kinematic || body.KeepUpright))
                 {
                     body.IsGrounded = false;
                     body.SupportNormal = Vector3.Zero;
@@ -221,7 +224,12 @@ namespace SiegeEngine.Core.Physics
                     else if (body.Shape is ObbShape obb)
                         ObbVsHeightfield(obb, body, _heightfieldShape, manifold);
                     else if (body.Shape is TriangleMeshShape mesh)
-                        TriangleMeshVsHeightfield(mesh, body, _heightfieldShape, manifold);
+                    {
+                        if (body.KeepUpright)
+                            TriangleMeshPlayerVsHeightfield(mesh, body, _heightfieldShape, manifold);
+                        else
+                            TriangleMeshVsHeightfield(mesh, body, _heightfieldShape, manifold);
+                    }
                     if (manifold.PointCount > 0)
                         _manifolds.Add(manifold);
                 }
@@ -587,7 +595,7 @@ namespace SiegeEngine.Core.Physics
             for (int i = 0; i < _bodies.Count; i++)
             {
                 var body = _bodies[i];
-                if (body == null || body.BodyType != BodyType.Dynamic || body.IsSleeping)
+                if (body == null || body.BodyType != BodyType.Dynamic || body.IsSleeping || body.KeepUpright)
                     continue;
                 float ke = 0.5f * body.Mass * body.Velocity.LengthSquared();
                 if (body.InvInertiaLocal != Vector3.Zero)
@@ -662,6 +670,7 @@ namespace SiegeEngine.Core.Physics
             }
             return manifold.PointCount > 0 ? manifold : null;
         }
+
         private void TriangleMeshVsTriangleMesh(
             TriangleMeshShape meshA, PhysicsComponent bodyA,
             TriangleMeshShape meshB, PhysicsComponent bodyB,
@@ -963,6 +972,8 @@ namespace SiegeEngine.Core.Physics
                 if (dist < radius && dist > 1e-6f)
                 {
                     Vector3 n = delta / dist;
+                    if (sphereBody != manifold.BodyA)
+                        n = -n;
                     manifold.Add(new ContactPoint
                     {
                         Position = closest,
@@ -1191,6 +1202,34 @@ namespace SiegeEngine.Core.Physics
                 {
                     body.IsGrounded = true;
                     body.SupportNormal = manifold.Points[0].Normal;
+                }
+            }
+        }
+        private void TriangleMeshPlayerVsHeightfield(TriangleMeshShape mesh, PhysicsComponent body,
+            HeightfieldShape field, ContactManifold manifold)
+        {
+            float minZ = 0f;
+            if (body.LocalBoundsMinCm.X <= body.LocalBoundsMaxCm.X)
+                minZ = body.LocalBoundsMinCm.Z;
+            Vector3 feet = new Vector3(body.Position.X, body.Position.Y, body.Position.Z + minZ);
+            float groundAtFeet = field.SampleHeight(feet.X, feet.Y);
+            float verticalPen = groundAtFeet - feet.Z;
+            if (verticalPen > -ContactSkin)
+            {
+                Vector3 n = field.SampleNormal(feet.X, feet.Y);
+                float nZ = MathF.Max(n.Z, 0.15f);
+                float pen = MathF.Max(0f, verticalPen) / nZ;
+                manifold.Add(new ContactPoint
+                {
+                    Position = new Vector3(feet.X, feet.Y, groundAtFeet),
+                    Normal = n,
+                    Penetration = pen
+                });
+                float slopeDeg = MathF.Acos(Math.Clamp(n.Z, -1f, 1f)) * (180f / MathF.PI);
+                if (slopeDeg <= body.SlopeLimitDegrees)
+                {
+                    body.IsGrounded = true;
+                    body.SupportNormal = n;
                 }
             }
         }

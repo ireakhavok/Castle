@@ -214,8 +214,9 @@ namespace SiegeEngine.Core.Networking
                 system.Update(deltaTime);
             foreach (var entity in _entities)
             {
-                EnsureMeshCollider(entity);
                 var physics = entity.GetComponent<PhysicsComponent>();
+                if (physics != null && physics.Shape == null)
+                    EnsureMeshCollider(entity);
                 if (physics != null) _physicsWorld.RegisterBody(physics);
             }
             _physicsWorld.Step(deltaTime);
@@ -296,12 +297,6 @@ namespace SiegeEngine.Core.Networking
             if (entity == null) return;
             var physics = entity.GetComponent<PhysicsComponent>();
             if (physics == null) return;
-            if (physics.BodyType == BodyType.Kinematic)
-            {
-                if (!(physics.Shape is CapsuleShape))
-                    physics.RebuildShape(null);
-                return;
-            }
             var modelComp = entity.GetComponent<ModelComponent>();
             FBXModel model = modelComp?.Model;
             if (model == null && modelComp != null && !string.IsNullOrEmpty(modelComp.Key) && ModelManager.Instance != null)

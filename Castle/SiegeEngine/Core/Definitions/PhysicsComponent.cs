@@ -41,6 +41,7 @@ namespace SiegeEngine.Core.Definitions
             CollisionEnabled = true;
             CollideHiddenMeshes = false;
             IsGrounded = false;
+            KeepUpright = false;
             SupportNormal = Vector3.UnitZ;
             SlopeLimitDegrees = 50f;
             StepHeight = 0.35f;
@@ -141,9 +142,15 @@ namespace SiegeEngine.Core.Definitions
         public bool CollisionEnabled { get; set; } = true;
         public bool CollideHiddenMeshes { get; set; } = false;
         public bool IsGrounded { get; set; } = false;
+        public bool KeepUpright { get; set; } = false;
         public Vector3 SupportNormal { get; set; } = Vector3.UnitZ;
         public float SlopeLimitDegrees { get; set; } = 50f;
         public float StepHeight { get; set; } = 0.35f;
+        public void Wake()
+        {
+            IsSleeping = false;
+            SleepTimer = 0f;
+        }
         public Vector3 RenderPosition { get; set; }
         public Vector3 LocalCentreOfMass { get; set; } = Vector3.Zero;
         public float InvMass { get; private set; }
@@ -218,11 +225,7 @@ namespace SiegeEngine.Core.Definitions
 
         public void RebuildShape(FBXModel model, IList<int> hiddenMeshIndices, IList<MeshMaterialOption> materialOptions)
         {
-            if (BodyType == BodyType.Kinematic)
-            {
-                Shape = new CapsuleShape(0.4f, 1.8f);
-            }
-            else if (model != null && model.Meshes != null && model.Meshes.Count > 0)
+            if (model != null && model.Meshes != null && model.Meshes.Count > 0)
             {
                 // Hidden meshes stay out of the collider unless CollideHiddenMeshes is set.
                 Shape = new TriangleMeshShape(model, CollideHiddenMeshes ? null : hiddenMeshIndices, materialOptions);
@@ -295,7 +298,11 @@ namespace SiegeEngine.Core.Definitions
             else if (Shape is TriangleMeshShape mesh)
             {
                 LocalCentreOfMass = mesh.LocalCentreOfMass;
-                if (HasValidLocalBounds())
+                if (KeepUpright)
+                {
+                    InvInertiaLocal = Vector3.Zero;
+                }
+                else if (HasValidLocalBounds())
                 {
                     Vector3 size = LocalBoundsMaxCm - LocalBoundsMinCm;
                     InvInertiaLocal = ComputeBoxInvInertia(_mass, size.X, size.Y, size.Z);

@@ -201,8 +201,10 @@ namespace SiegeEngine.Scenes
                 }
                 if (phys != null && e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase))
                 {
-                    phys.BodyType = BodyType.Kinematic;
-                    phys.RebuildShape(null);
+                    phys.BodyType = BodyType.Dynamic;
+                    phys.KeepUpright = true;
+                    var pmc = e.GetComponent<ModelComponent>();
+                    phys.RebuildShape(pmc?.Model ?? _player?.Model);
                 }
                 _server.AddEntity(e);
                 var placedLight = e.GetComponent<LightComponent>();
@@ -282,8 +284,9 @@ namespace SiegeEngine.Scenes
                     {
                         playerEntity = new Entity { Id = _player.EntityId, Type = "Player" };
                         playerEntity.AddComponent(_player);
-                        _player.Physics.BodyType = BodyType.Kinematic;
-                        _player.Physics.RebuildShape(null);
+                        _player.Physics.BodyType = BodyType.Dynamic;
+                        _player.Physics.KeepUpright = true;
+                        _player.BindMeshCollider();
                         playerEntity.AddComponent(_player.Physics);
                         playerEntity.AddComponent(new ModelComponent { Key = avatarKey, Model = _player.Model });
                         _server.AddEntity(playerEntity);
@@ -296,8 +299,9 @@ namespace SiegeEngine.Scenes
                     else
                     {
                         playerEntity.AddComponent(_player);
-                        _player.Physics.BodyType = BodyType.Kinematic;
-                        _player.Physics.RebuildShape(null);
+                        _player.Physics.BodyType = BodyType.Dynamic;
+                        _player.Physics.KeepUpright = true;
+                        _player.BindMeshCollider();
                         playerEntity.AddComponent(_player.Physics);
                         var mc = playerEntity.GetComponent<ModelComponent>();
                         if (mc == null)
@@ -342,8 +346,9 @@ namespace SiegeEngine.Scenes
             // AddComponent overwrites by Type, so this replaces any earlier FromData instance.
             if (_player != null)
             {
-                _player.Physics.BodyType = BodyType.Kinematic;
-                _player.Physics.RebuildShape(null);
+                _player.Physics.BodyType = BodyType.Dynamic;
+                _player.Physics.KeepUpright = true;
+                _player.BindMeshCollider();
                 var playerEntity = _server.GetEntityById(_player.EntityId);
                 if (playerEntity != null)
                 {
@@ -721,8 +726,9 @@ namespace SiegeEngine.Scenes
                     _player.Physics.Position = existingPhys.Position;
                     _player.Physics.RenderPosition = existingPhys.Position;
                     _player.Physics.Rotation = existingPhys.Rotation;
-                    _player.Physics.BodyType = BodyType.Kinematic;
-                    _player.Physics.RebuildShape(null);
+                    _player.Physics.BodyType = BodyType.Dynamic;
+                    _player.Physics.KeepUpright = true;
+                    _player.BindMeshCollider();
                 }
                 return;
             }
