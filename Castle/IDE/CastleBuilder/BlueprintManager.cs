@@ -95,24 +95,18 @@ namespace CastleBuilder
             // Keep the new scene visible in the live EditorScene project data so the scene selector
             // and cache see it immediately. NEVER write project.json here — disk persistence is
             // only via explicit Save / Save As / Export / Play payload materialisation.
-            if (EditorScene.Current != null)
+            var projectData = EditorScene.Current?.GetProjectData();
+            if (projectData != null)
             {
-                var projectData = EditorScene.Current.GetProjectData();
-                if (projectData != null)
-                {
-                    if (projectData.Scenes == null)
-                        projectData.Scenes = new Dictionary<string, SceneData>();
-                    if (!projectData.Scenes.ContainsKey(sceneData.Name))
-                    {
-                        projectData.Scenes[sceneData.Name] = sceneData;
-                        projectData.LastOpenedScene = sceneData.Name;
-                        Console.WriteLine($"[BlueprintManager.OnCreateTerrain] New scene '{sceneData.Name}' registered in-memory only (no disk write)");
-                    }
-                }
+                if (projectData.Scenes == null)
+                    projectData.Scenes = new Dictionary<string, SceneData>();
+                projectData.Scenes[sceneData.Name] = sceneData;
+                projectData.LastOpenedScene = sceneData.Name;
+                Console.WriteLine($"[BlueprintManager.OnCreateTerrain] New scene '{sceneData.Name}' registered in-memory only (no disk write)");
             }
             else
             {
-                Console.WriteLine($"[BlueprintManager.OnCreateTerrain] New scene '{sceneData.Name}' stays in central memory only (Level + cache populated by NewTerrainPanel + EditorScene)");
+                Console.WriteLine($"[BlueprintManager.OnCreateTerrain] EditorScene closed; scene '{sceneData.Name}' kept on CurrentSceneData for LoadProjectData ingest");
             }
             var panelManager = PanelManager.Current;
             if (panelManager != null)

@@ -202,6 +202,13 @@ namespace MapRoom
             if (userData == "LoadTerrainTexture")
             {
                 _terrainScene.SetColorTexture(e.Path);
+                if (_currentSceneData != null)
+                {
+                    if (_currentSceneData.Terrain == null)
+                        _currentSceneData.Terrain = new TerrainData();
+                    _currentSceneData.Terrain.ColorTexturePath = e.Path;
+                    ProjectSettings.Current.SetCurrentTerrain(_currentSceneData, _terrainScene.GetHeightmap(), _currentSceneData.Name);
+                }
             }
             else if (userData == "LoadTerrainFile")
             {

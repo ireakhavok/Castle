@@ -286,16 +286,28 @@ namespace CastleBuilder
             }
             if (_projectData == null) _projectData = new ProjectData();
             if (_projectData.Scenes == null) _projectData.Scenes = new Dictionary<string, SceneData>();
+            IngestLiveSceneCatalog();
             EnsureProjectScriptsActivated(projectPath);
             string levelName = ProjectSettings.Current.CurrentLevel?.Name;
-            if (!string.IsNullOrEmpty(levelName) && _projectData.Scenes != null && _projectData.Scenes.ContainsKey(levelName))
+            string liveName = ProjectSettings.Current.CurrentSceneData?.Name ?? ProjectSettings.Current.CurrentSceneName;
+            if (!string.IsNullOrEmpty(levelName) && _projectData.Scenes.ContainsKey(levelName))
             {
                 _currentGameSceneName = levelName;
             }
+            else if (!string.IsNullOrEmpty(liveName) && _projectData.Scenes.ContainsKey(liveName))
+            {
+                _currentGameSceneName = liveName;
+            }
+            else if (!string.IsNullOrEmpty(_projectData.LastOpenedScene) && _projectData.Scenes.ContainsKey(_projectData.LastOpenedScene))
+            {
+                _currentGameSceneName = _projectData.LastOpenedScene;
+            }
             else
             {
-                _currentGameSceneName = _projectData.LastOpenedScene ?? (_projectData.Scenes.Keys.FirstOrDefault() ?? "Main");
+                _currentGameSceneName = _projectData.Scenes.Keys.FirstOrDefault() ?? "Main";
             }
+            if (string.IsNullOrEmpty(_currentGameSceneName))
+                _currentGameSceneName = "Main";
             _sceneCache.Clear();
             _pendingDisposeScene?.Dispose();
             _pendingDisposeScene = null;
@@ -337,6 +349,8 @@ namespace CastleBuilder
         }
         private void ActivateScene(string sceneName)
         {
+            if (string.IsNullOrEmpty(sceneName))
+                return;
             Level level = ProjectSettings.Current.CurrentLevel;
             if (level == null || level.Name != sceneName)
             {
@@ -344,8 +358,7 @@ namespace CastleBuilder
                 ProjectSettings.Current.SetCurrentLevel(level);
             }
             RegisterAllAssetPacks(level);
-            SceneData sd = null;
-            _projectData?.Scenes?.TryGetValue(sceneName, out sd);
+            SceneData sd = ResolveSceneData(sceneName);
             if (_sceneCache.TryGet(sceneName, out var cachedScene, out var cachedLevel))
             {
                 if (_activeGameScene != null && _activeGameScene != cachedScene)
@@ -362,17 +375,14 @@ namespace CastleBuilder
                 RecordSceneUsage(sceneName);
                 if (_activeGameScene is TerrainCreatorScene cachedTcs)
                 {
-                    cachedTcs.LoadSceneData(sd);
+                    if (sd != null)
+                        cachedTcs.LoadSceneData(sd);
                     ProjectStateManager.Current.BindSceneToLiveState(sceneName, cachedTcs);
-                    ProjectSettings.Current.SetCurrentTerrain(sd, cachedTcs.GetHeightmap(), sceneName);
-                    if (sd?.Terrain?.ColorTexturePath != null)
-                    {
-                        cachedTcs.SetColorTexture(sd.Terrain.ColorTexturePath);
-                    }
-                    else
-                    {
-                        cachedTcs.SetColorTexture(null);
-                    }
+                    float[,] cachedHeight = ProjectSettings.Current.GetUnsavedHeightmap(sceneName)
+                        ?? ProjectSettings.Current.CurrentHeightmap
+                        ?? cachedTcs.GetHeightmap();
+                    ProjectSettings.Current.SetCurrentTerrain(sd, cachedHeight, sceneName);
+                    ApplyTerrainColor(cachedTcs, sd, sceneName);
                     if (sd?.Skybox != null)
                     {
                         cachedTcs.SetSkybox(sd.Skybox);
@@ -391,8 +401,8 @@ namespace CastleBuilder
                 _pendingDisposeHosted = _hostedCustomScene;
                 _hostedCustomScene = null;
             }
-            bool isTerrainScene = _projectData.Scenes.TryGetValue(sceneName, out var sceneData) &&
-                                  (sceneData.SceneType == "TerrainTest" || !string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath) || sceneName.Contains("Terrain", StringComparison.OrdinalIgnoreCase));
+            SceneData sceneData = sd;
+            bool isTerrainScene = IsTerrainScene(sceneName, sceneData);
             if (!isTerrainScene)
             {
                 EnsureProjectScriptsActivated(ProjectSettings.Current.ActiveProject);
@@ -453,17 +463,9 @@ namespace CastleBuilder
                     tcs.LoadTerrain(sd.Terrain.HeightmapPath);
                 else if (heightmapToUse != null)
                 {
-                    tcs.LoadSceneData(new SceneData { Name = sceneName, Terrain = new TerrainData() });
+                    tcs.LoadSceneData(new SceneData { Name = sceneName, Terrain = sd?.Terrain ?? new TerrainData() });
                 }
-                if (!string.IsNullOrEmpty(sd?.Terrain?.ColorTexturePath))
-                {
-                    tcs.SetColorTexture(sd.Terrain.ColorTexturePath);
-                    Console.WriteLine($"[EditorScene] Synced color texture '{sd.Terrain.ColorTexturePath}' to TerrainCreatorScene for scene '{sceneName}'");
-                }
-                else
-                {
-                    tcs.SetColorTexture(null);
-                }
+                ApplyTerrainColor(tcs, sd, sceneName);
                 if (sd?.Skybox != null)
                 {
                     tcs.SetSkybox(sd.Skybox);
@@ -517,6 +519,71 @@ namespace CastleBuilder
                 }
             }
         }
+        void IngestLiveSceneCatalog()
+        {
+            if (_projectData.Scenes == null)
+                _projectData.Scenes = new Dictionary<string, SceneData>();
+            var live = ProjectSettings.Current.CurrentSceneData;
+            if (live != null && !string.IsNullOrEmpty(live.Name) && !_projectData.Scenes.ContainsKey(live.Name))
+            {
+                _projectData.Scenes[live.Name] = live;
+                _projectData.LastOpenedScene = live.Name;
+                Console.WriteLine($"[EditorScene] Ingested live scene '{live.Name}' into project catalog");
+            }
+            foreach (string key in ProjectSettings.Current.GetUnsavedHeightmapKeys())
+            {
+                if (string.IsNullOrEmpty(key) || _projectData.Scenes.ContainsKey(key)) continue;
+                var sd = new SceneData { Name = key, SceneType = "TerrainTest" };
+                if (ProjectSettings.Current.CurrentSceneData?.Name == key)
+                    sd = ProjectSettings.Current.CurrentSceneData;
+                _projectData.Scenes[key] = sd;
+            }
+        }
+
+        SceneData ResolveSceneData(string sceneName)
+        {
+            if (string.IsNullOrEmpty(sceneName)) return null;
+            if (_projectData?.Scenes != null && _projectData.Scenes.TryGetValue(sceneName, out var sd) && sd != null)
+                return sd;
+            var live = ProjectSettings.Current.CurrentSceneData;
+            if (live != null && live.Name == sceneName)
+                return live;
+            return null;
+        }
+
+        static bool IsTerrainScene(string sceneName, SceneData sceneData)
+        {
+            if (sceneData != null &&
+                (sceneData.SceneType == "TerrainTest" || !string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath)))
+                return true;
+            if (!string.IsNullOrEmpty(sceneName) && sceneName.Contains("Terrain", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (ProjectSettings.Current.GetUnsavedHeightmap(sceneName) != null)
+                return true;
+            if (ProjectSettings.Current.CurrentHeightmap != null &&
+                (ProjectSettings.Current.CurrentSceneName == sceneName || ProjectSettings.Current.CurrentSceneData?.Name == sceneName))
+                return true;
+            return false;
+        }
+
+        static void ApplyTerrainColor(TerrainCreatorScene tcs, SceneData sd, string sceneName)
+        {
+            if (tcs == null) return;
+            string path = sd?.Terrain?.ColorTexturePath;
+            if (string.IsNullOrEmpty(path))
+                path = ProjectSettings.Current.CurrentSceneData?.Terrain?.ColorTexturePath;
+            if (!string.IsNullOrEmpty(path))
+            {
+                tcs.SetColorTexture(path);
+                Console.WriteLine($"[EditorScene] Synced color texture '{path}' to TerrainCreatorScene for scene '{sceneName}'");
+                return;
+            }
+            var live = ProjectStateManager.Current.GetLiveState(sceneName);
+            if (live?.ColorBitmap != null)
+                return;
+            tcs.SetColorTexture(null);
+        }
+
         private Level CreateOrLoadLevel(string sceneName)
         {
             if (_projectData.Scenes.TryGetValue(sceneName, out var sceneData))

@@ -128,6 +128,7 @@ namespace MapRoom
 
                 // CRITICAL: Fresh Level for every new scene - guarantees no cross-contamination
                 var newLevel = new Level(_eventBus) { Name = parameters.Name };
+                newLevel.Terrain = sceneData.Terrain;
                 ProjectSettings.Current.SetCurrentLevel(newLevel);
                 Console.WriteLine($"[NewTerrainPanel] Created fresh Level for new scene '{parameters.Name}' (entities: {newLevel.Entities.Count})");
 
