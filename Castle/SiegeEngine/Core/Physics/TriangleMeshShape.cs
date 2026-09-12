@@ -36,12 +36,14 @@ namespace SiegeEngine.Core.Physics
 
         public TriangleMeshShape(FBXModel model, IList<int> hiddenMeshIndices, IList<MeshMaterialOption> materialOptions)
         {
-            // hiddenMeshIndices / materialOptions ignored — 62f5553 used every FBX triangle.
             if (model == null || model.Meshes == null) return;
             float toMeters = model.UnitToMeters;
-            foreach (var mesh in model.Meshes)
+            for (int mi = 0; mi < model.Meshes.Count; mi++)
             {
-                if (mesh.Vertices == null || mesh.Indices == null) continue;
+                if (hiddenMeshIndices != null && IndexListContains(hiddenMeshIndices, mi))
+                    continue;
+                var mesh = model.Meshes[mi];
+                if (mesh.Vertices == null || mesh.Indices == null || mesh.Indices.Count == 0) continue;
                 int baseIndex = _localVerticesM.Count;
                 foreach (var v in mesh.Vertices)
                     _localVerticesM.Add(v.Position * toMeters);
@@ -157,6 +159,120 @@ namespace SiegeEngine.Core.Physics
                 outB.Add(Vector3.Transform(_localVerticesM[_indices[i + 1]], rot) + position);
                 outC.Add(Vector3.Transform(_localVerticesM[_indices[i + 2]], rot) + position);
             }
+        }
+        public void QueryClosestWorldTriangles(in Vector3 position, in Quaternion rotation,
+            in Vector3 worldPoint, List<Vector3> outA, List<Vector3> outB, List<Vector3> outC, int count)
+        {
+            if (count <= 0 || _indices.Count < 3) return;
+            if (_nodes == null || _nodes.Length == 0) return;
+            Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
+            Matrix4x4.Invert(rot, out Matrix4x4 invRot);
+            Vector3 localPoint = Vector3.Transform(worldPoint - position, invRot);
+            var bestDist = new float[count];
+            var bestTri = new int[count];
+            for (int i = 0; i < count; i++)
+            {
+                bestDist[i] = float.MaxValue;
+                bestTri[i] = -1;
+            }
+            int found = 0;
+            float worst = float.MaxValue;
+            QueryClosestNode(0, localPoint, bestDist, bestTri, count, ref found, ref worst);
+            for (int i = 0; i < found; i++)
+            {
+                int t = bestTri[i];
+                if (t < 0) continue;
+                outA.Add(Vector3.Transform(_localVerticesM[_indices[t * 3]], rot) + position);
+                outB.Add(Vector3.Transform(_localVerticesM[_indices[t * 3 + 1]], rot) + position);
+                outC.Add(Vector3.Transform(_localVerticesM[_indices[t * 3 + 2]], rot) + position);
+            }
+        }
+        private void QueryClosestNode(int nodeIdx, Vector3 localPoint,
+            float[] bestDist, int[] bestTri, int count, ref int found, ref float worst)
+        {
+            ref Node n = ref _nodes[nodeIdx];
+            if (found >= count && DistanceSqPointAabb(localPoint, n.Min, n.Max) >= worst)
+                return;
+            if (n.Left < 0)
+            {
+                for (int i = 0; i < n.TriCount; i++)
+                {
+                    int t = _triOrder[n.TriStart + i];
+                    Vector3 a = _localVerticesM[_indices[t * 3]];
+                    Vector3 b = _localVerticesM[_indices[t * 3 + 1]];
+                    Vector3 c = _localVerticesM[_indices[t * 3 + 2]];
+                    Vector3 closest = ClosestPointOnTriangle(localPoint, a, b, c);
+                    float d2 = (closest - localPoint).LengthSquared();
+                    if (found < count)
+                    {
+                        bestDist[found] = d2;
+                        bestTri[found] = t;
+                        found++;
+                        if (found == count)
+                        {
+                            worst = bestDist[0];
+                            int worstIdx = 0;
+                            for (int k = 1; k < count; k++)
+                            {
+                                if (bestDist[k] > worst)
+                                {
+                                    worst = bestDist[k];
+                                    worstIdx = k;
+                                }
+                            }
+                        }
+                    }
+                    else if (d2 < worst)
+                    {
+                        int worstIdx = 0;
+                        worst = bestDist[0];
+                        for (int k = 1; k < count; k++)
+                        {
+                            if (bestDist[k] > worst)
+                            {
+                                worst = bestDist[k];
+                                worstIdx = k;
+                            }
+                        }
+                        bestDist[worstIdx] = d2;
+                        bestTri[worstIdx] = t;
+                        worst = bestDist[0];
+                        for (int k = 1; k < count; k++)
+                        {
+                            if (bestDist[k] > worst)
+                                worst = bestDist[k];
+                        }
+                    }
+                }
+                return;
+            }
+            float dL = DistanceSqPointAabb(localPoint, _nodes[n.Left].Min, _nodes[n.Left].Max);
+            float dR = DistanceSqPointAabb(localPoint, _nodes[n.Right].Min, _nodes[n.Right].Max);
+            if (dL < dR)
+            {
+                QueryClosestNode(n.Left, localPoint, bestDist, bestTri, count, ref found, ref worst);
+                QueryClosestNode(n.Right, localPoint, bestDist, bestTri, count, ref found, ref worst);
+            }
+            else
+            {
+                QueryClosestNode(n.Right, localPoint, bestDist, bestTri, count, ref found, ref worst);
+                QueryClosestNode(n.Left, localPoint, bestDist, bestTri, count, ref found, ref worst);
+            }
+        }
+        private static bool IndexListContains(IList<int> list, int value)
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i] == value) return true;
+            }
+            return false;
+        }
+        private static float DistanceSqPointAabb(Vector3 p, Vector3 min, Vector3 max)
+        {
+            float dx = p.X < min.X ? min.X - p.X : (p.X > max.X ? p.X - max.X : 0f);
+            float dy = p.Y < min.Y ? min.Y - p.Y : (p.Y > max.Y ? p.Y - max.Y : 0f);
+            float dz = p.Z < min.Z ? min.Z - p.Z : (p.Z > max.Z ? p.Z - max.Z : 0f);
+            return dx * dx + dy * dy + dz * dz;
         }
         private void BuildAabbTree()
         {
@@ -293,6 +409,45 @@ namespace SiegeEngine.Core.Physics
             normal = Vector3.Normalize(Vector3.Cross(e1, e2));
             if (Vector3.Dot(normal, dir) > 0f) normal = -normal;
             return true;
+        }
+        private static Vector3 ClosestPointOnTriangle(Vector3 p, Vector3 a, Vector3 b, Vector3 c)
+        {
+            Vector3 ab = b - a;
+            Vector3 ac = c - a;
+            Vector3 ap = p - a;
+            float d1 = Vector3.Dot(ab, ap);
+            float d2 = Vector3.Dot(ac, ap);
+            if (d1 <= 0f && d2 <= 0f) return a;
+            Vector3 bp = p - b;
+            float d3 = Vector3.Dot(ab, bp);
+            float d4 = Vector3.Dot(ac, bp);
+            if (d3 >= 0f && d4 <= d3) return b;
+            float vc = d1 * d4 - d3 * d2;
+            if (vc <= 0f && d1 >= 0f && d3 <= 0f)
+            {
+                float v = d1 / (d1 - d3);
+                return a + ab * v;
+            }
+            Vector3 cp = p - c;
+            float d5 = Vector3.Dot(ab, cp);
+            float d6 = Vector3.Dot(ac, cp);
+            if (d6 >= 0f && d5 <= d6) return c;
+            float vb = d5 * d2 - d1 * d6;
+            if (vb <= 0f && d2 >= 0f && d6 <= 0f)
+            {
+                float w = d2 / (d2 - d6);
+                return a + ac * w;
+            }
+            float va = d3 * d6 - d5 * d4;
+            if (va <= 0f && (d4 - d3) >= 0f && (d5 - d6) >= 0f)
+            {
+                float w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+                return b + (c - b) * w;
+            }
+            float denom = 1f / (va + vb + vc);
+            float v2 = vb * denom;
+            float w2 = vc * denom;
+            return a + ab * v2 + ac * w2;
         }
     }
 }

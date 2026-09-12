@@ -180,6 +180,8 @@ namespace CastleBuilder
             {
                 if (panel is PropertiesPanel props)
                     props.FlushLiveSettings();
+                else if (panel is RuntimePanel runtime)
+                    runtime.FlushDraft();
             }
         }
         private static void DoProjectSave()
@@ -258,6 +260,14 @@ namespace CastleBuilder
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Materialized {uniquePackKeys.Count} asset packs to Assets/ folder");
             }
             SaveAllPanelStates(data);
+            data.UseFixedTimestep = RuntimeSettings.Current.UseFixedTimestep;
+            data.StepRateHz = RuntimeSettings.Current.StepRateHz;
+            data.GravityZ = RuntimeSettings.Current.GravityZ;
+            data.FrameCapHz = RuntimeSettings.Current.FrameCapHz;
+            data.MouseSensitivityX = RuntimeSettings.Current.MouseSensitivityX;
+            data.MouseSensitivityY = RuntimeSettings.Current.MouseSensitivityY;
+            if (!string.IsNullOrEmpty(RuntimeSettings.Current.Mode))
+                data.Mode = RuntimeSettings.Current.Mode;
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
             Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written with Level as single source of truth + terrain + clean entities + materialized asset packs");
             if (!string.IsNullOrEmpty(_previousContext))
@@ -347,7 +357,8 @@ namespace CastleBuilder
             {
                 LevelName = levelName,
                 LevelDataBase64 = levelDataBase64,
-                SceneData = sceneData
+                SceneData = sceneData,
+                Runtime = RuntimeSettings.Current
             };
             string tempDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp");
             Directory.CreateDirectory(tempDir);
@@ -375,6 +386,7 @@ namespace CastleBuilder
             public string LevelName { get; set; }
             public string LevelDataBase64 { get; set; }
             public SceneData SceneData { get; set; }
+            public RuntimeSettings Runtime { get; set; }
         }
         public static void MaterializeSoundsTo(Level level, string projectPath)
         {
@@ -645,6 +657,14 @@ namespace CastleBuilder
                 if (data != null)
                 {
                     ProjectSettings.Current.CameraType = data.CameraType;
+                    RuntimeSettings.Current.UseFixedTimestep = data.UseFixedTimestep ?? false;
+                    RuntimeSettings.Current.StepRateHz = data.StepRateHz ?? 60f;
+                    RuntimeSettings.Current.GravityZ = data.GravityZ ?? -9.81f;
+                    RuntimeSettings.Current.FrameCapHz = data.FrameCapHz ?? 0f;
+                    RuntimeSettings.Current.MouseSensitivityX = data.MouseSensitivityX ?? 0.02f;
+                    RuntimeSettings.Current.MouseSensitivityY = data.MouseSensitivityY ?? 0.02f;
+                    if (!string.IsNullOrEmpty(data.Mode))
+                        RuntimeSettings.Current.Mode = data.Mode;
                     _previousContext = data.LastContext ?? "Scene Editor";
                     Console.WriteLine($"[BlueprintManager.OnLoadProject] Loaded project '{data.Name}' - Last Context: {_previousContext}");
                     ProjectLayoutManager.OnProjectOpened(_previousContext);

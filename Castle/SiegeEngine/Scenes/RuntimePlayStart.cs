@@ -35,6 +35,7 @@ namespace SiegeEngine.Scenes
             sceneData = sceneData ?? new SceneData { Name = level.Name ?? levelName ?? "Main" };
 
             var server = new ClientGameServerProxy(eventBus);
+            RuntimeSettings.Current.ApplyTo(server.PhysicsWorld);
             var ctx = SceneContext.CreateForRuntime(level, sceneData, renderContext, controlContext, window, server, eventBus);
             ctx.PlayProjectPath = projectPath;
             ctx.LoadLevelName = levelName ?? level.Name ?? "Main";

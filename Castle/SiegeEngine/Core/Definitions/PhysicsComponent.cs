@@ -39,7 +39,14 @@ namespace SiegeEngine.Core.Definitions
             SleepThreshold = 0.05f;
             SleepTimer = 0f;
             CollisionEnabled = true;
+            CollideHiddenMeshes = false;
             IsGrounded = false;
+            KeepUpright = false;
+            UseBoneHitboxes = true;
+            RagdollSimulationEnabled = false;
+            ReceiveFriction = true;
+            ReceiveVerticalContact = true;
+            SupportNormal = Vector3.UnitZ;
             SlopeLimitDegrees = 50f;
             StepHeight = 0.35f;
             LocalCentreOfMass = Vector3.Zero;
@@ -137,9 +144,55 @@ namespace SiegeEngine.Core.Definitions
         public float SleepThreshold { get; set; } = 0.05f;
         public float SleepTimer { get; set; } = 0f;
         public bool CollisionEnabled { get; set; } = true;
+        public bool CollideHiddenMeshes { get; set; } = false;
         public bool IsGrounded { get; set; } = false;
+        public bool KeepUpright { get; set; } = false;
+        /// <summary>If false, this body does not receive friction impulses. The other body still does. Default true.</summary>
+        public bool ReceiveFriction { get; set; } = true;
+        /// <summary>If false, mesh-mesh contact impulses and position correction on this body keep Velocity.Z and Position.Z unchanged. Heightfield contacts still apply vertical. Default true.</summary>
+        public bool ReceiveVerticalContact { get; set; } = true;
+        /// <summary>
+        /// If true and the model has a skeleton, RebuildShape uses per-bone capsules/spheres
+        /// as the collider. Default true. Props without bones stay a triangle mesh.
+        /// </summary>
+        public bool UseBoneHitboxes { get; set; } = true;
+        /// <summary>
+        /// When false (default) ragdoll joints are stored but the solver does not apply them.
+        /// Hitboxes still collide. Turn this on later to simulate the wired joints.
+        /// </summary>
+        public bool RagdollSimulationEnabled { get; set; } = false;
+        /// <summary>Live bone globals in model space (pre-skin). Runtime only.</summary>
+        public Matrix4x4[] BonePoseGlobals { get; set; }
+        /// <summary>
+        /// Recover the skeleton pose the renderer is using. BoneMatrices is the
+        /// post-skin palette (BindPose * global). Invert(BindPose) * palette = the
+        /// posed globals — standing/walk, not the mesh-file T/bind LocalRest.
+        /// </summary>
+        public void CaptureVisualPose(ModelComponent modelComp, BlendedAnimationComponent blend = null)
+        {
+            var model = modelComp?.Model;
+            if (model?.Skeleton?.Bones == null || model.Skeleton.Bones.Count == 0)
+                return;
+            int n = model.Skeleton.Bones.Count;
+            // Prefer the palette the renderer is already using (after WriteSkinning).
+            // That is BindPose * currentGlobal — same multiply ModelViewer.SetRestPose does.
+            if (modelComp != null && modelComp.BoneMatrices != null && modelComp.BoneMatrices.Length == n)
+            {
+                if (BonePoseGlobals == null || BonePoseGlobals.Length != n)
+                    BonePoseGlobals = new Matrix4x4[n];
+                Array.Copy(modelComp.BoneMatrices, BonePoseGlobals, n);
+                return;
+            }
+            // No palette: mesh is drawn unskinned. Pose() with null keeps file verts.
+        }
+        public Vector3 SupportNormal { get; set; } = Vector3.UnitZ;
         public float SlopeLimitDegrees { get; set; } = 50f;
         public float StepHeight { get; set; } = 0.35f;
+        public void Wake()
+        {
+            IsSleeping = false;
+            SleepTimer = 0f;
+        }
         public Vector3 RenderPosition { get; set; }
         public Vector3 LocalCentreOfMass { get; set; } = Vector3.Zero;
         public float InvMass { get; private set; }
@@ -210,19 +263,24 @@ namespace SiegeEngine.Core.Definitions
         public void RebuildShape(FBXModel model, ModelComponent modelComp)
         {
             RebuildShape(model, modelComp?.HiddenMeshIndices, modelComp?.MaterialOptions);
+            if (Shape is BoneHitboxShape hit && model != null && model.Skeleton != null)
+            {
+                CaptureVisualPose(modelComp);
+                hit.Pose(Position, Rotation, BonePoseGlobals);
+            }
         }
 
         public void RebuildShape(FBXModel model, IList<int> hiddenMeshIndices, IList<MeshMaterialOption> materialOptions)
         {
-            if (BodyType == BodyType.Kinematic)
+            if (model != null && model.Meshes != null && model.Meshes.Count > 0)
             {
-                Shape = new CapsuleShape(0.4f, 1.8f);
-            }
-            else if (model != null && model.Meshes != null && model.Meshes.Count > 0)
-            {
-                // 62f5553 contract: every FBX with meshes is a TriangleMeshShape.
-                // Hidden/opacity filters must not collapse the collider into an OBB.
-                Shape = new TriangleMeshShape(model);
+                // Any FBX with a skeleton uses per-bone capsules/spheres as the collider.
+                // Props without bones stay a triangle mesh. Toggle with UseBoneHitboxes.
+                bool hasSkeleton = model.Skeleton != null && model.Skeleton.Bones != null && model.Skeleton.Bones.Count > 0;
+                if (UseBoneHitboxes && hasSkeleton)
+                    Shape = new BoneHitboxShape(model);
+                else
+                    Shape = new TriangleMeshShape(model, CollideHiddenMeshes ? null : hiddenMeshIndices, materialOptions);
             }
             else
             {
@@ -289,10 +347,27 @@ namespace SiegeEngine.Core.Definitions
                 float hz = obb.HalfExtents.Z * 2f;
                 InvInertiaLocal = ComputeBoxInvInertia(_mass, hx, hy, hz);
             }
+            else if (Shape is BoneHitboxShape hitboxes)
+            {
+                LocalCentreOfMass = hitboxes.LocalCentreOfMass;
+                if (KeepUpright)
+                    InvInertiaLocal = Vector3.Zero;
+                else if (HasValidLocalBounds())
+                {
+                    Vector3 size = LocalBoundsMaxCm - LocalBoundsMinCm;
+                    InvInertiaLocal = ComputeBoxInvInertia(_mass, size.X, size.Y, size.Z);
+                }
+                else
+                    InvInertiaLocal = ComputeBoxInvInertia(_mass, Size.X, Size.Y, Size.Z);
+            }
             else if (Shape is TriangleMeshShape mesh)
             {
                 LocalCentreOfMass = mesh.LocalCentreOfMass;
-                if (HasValidLocalBounds())
+                if (KeepUpright)
+                {
+                    InvInertiaLocal = Vector3.Zero;
+                }
+                else if (HasValidLocalBounds())
                 {
                     Vector3 size = LocalBoundsMaxCm - LocalBoundsMinCm;
                     InvInertiaLocal = ComputeBoxInvInertia(_mass, size.X, size.Y, size.Z);
@@ -450,6 +525,12 @@ namespace SiegeEngine.Core.Definitions
                 IslandId = IslandId,
                 SleepThreshold = SleepThreshold,
                 CollisionEnabled = CollisionEnabled,
+                CollideHiddenMeshes = CollideHiddenMeshes,
+                KeepUpright = KeepUpright,
+                ReceiveFriction = ReceiveFriction,
+                ReceiveVerticalContact = ReceiveVerticalContact,
+                UseBoneHitboxes = UseBoneHitboxes,
+                RagdollSimulationEnabled = RagdollSimulationEnabled,
                 IsGrounded = IsGrounded,
                 SlopeLimitDegrees = SlopeLimitDegrees,
                 StepHeight = StepHeight,
@@ -473,6 +554,12 @@ namespace SiegeEngine.Core.Definitions
                     p.IsSleeping, p.IslandId, p.SleepThreshold, p.CollisionEnabled,
                     p.IsGrounded, p.SlopeLimitDegrees, p.StepHeight,
                     p.LocalCentreOfMass, p.InvMass, p.InvInertiaLocal);
+                CollideHiddenMeshes = p.CollideHiddenMeshes;
+                KeepUpright = p.KeepUpright;
+                ReceiveFriction = p.ReceiveFriction;
+                ReceiveVerticalContact = p.ReceiveVerticalContact;
+                UseBoneHitboxes = p.UseBoneHitboxes;
+                RagdollSimulationEnabled = p.RagdollSimulationEnabled;
                 return;
             }
             if (data is JsonElement je && je.ValueKind == JsonValueKind.Object)
@@ -513,6 +600,12 @@ namespace SiegeEngine.Core.Definitions
             int islandId = ReadInt(je, "IslandId", IslandId);
             float sleepThreshold = ReadFloat(je, "SleepThreshold", SleepThreshold);
             bool collisionEnabled = ReadBool(je, "CollisionEnabled", CollisionEnabled);
+            CollideHiddenMeshes = ReadBool(je, "CollideHiddenMeshes", CollideHiddenMeshes);
+            KeepUpright = ReadBool(je, "KeepUpright", KeepUpright);
+            UseBoneHitboxes = ReadBool(je, "UseBoneHitboxes", UseBoneHitboxes);
+            RagdollSimulationEnabled = ReadBool(je, "RagdollSimulationEnabled", RagdollSimulationEnabled);
+            ReceiveFriction = ReadBool(je, "ReceiveFriction", ReceiveFriction);
+            ReceiveVerticalContact = ReadBool(je, "ReceiveVerticalContact", ReceiveVerticalContact);
             bool isGrounded = ReadBool(je, "IsGrounded", IsGrounded);
             float slopeLimitDegrees = ReadFloat(je, "SlopeLimitDegrees", SlopeLimitDegrees);
             float stepHeight = ReadFloat(je, "StepHeight", StepHeight);
@@ -646,6 +739,12 @@ namespace SiegeEngine.Core.Definitions
             public int IslandId { get; set; }
             public float SleepThreshold { get; set; }
             public bool CollisionEnabled { get; set; }
+            public bool CollideHiddenMeshes { get; set; }
+            public bool KeepUpright { get; set; }
+            public bool ReceiveFriction { get; set; } = true;
+            public bool ReceiveVerticalContact { get; set; } = true;
+            public bool UseBoneHitboxes { get; set; } = true;
+            public bool RagdollSimulationEnabled { get; set; }
             public bool IsGrounded { get; set; }
             public float SlopeLimitDegrees { get; set; }
             public float StepHeight { get; set; }

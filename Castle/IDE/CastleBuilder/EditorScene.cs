@@ -481,7 +481,7 @@ namespace CastleBuilder
             physics.Size = fbxModel.GetBoundingSize();
             physics.LocalBoundsMinCm = fbxModel.LocalBoundsMinCm;
             physics.LocalBoundsMaxCm = fbxModel.LocalBoundsMaxCm;
-            physics.RebuildShape(fbxModel);
+            physics.RebuildShape(fbxModel, modelComp);
         }
 
         private void RegisterAllAssetPacks(Level level)

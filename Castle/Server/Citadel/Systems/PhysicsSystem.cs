@@ -16,6 +16,7 @@ namespace Citadel.Systems
         public PhysicsSystem(GameServer server) : base(server)
         {
             _world = new PhysicsWorld();
+            RuntimeSettings.Current.ApplyTo(_world);
         }
         public PhysicsWorld World => _world;
         public override void Update(float deltaTime)
@@ -26,6 +27,9 @@ namespace Citadel.Systems
                 var physics = entity.GetComponent<PhysicsComponent>();
                 if (physics != null)
                 {
+                    physics.CaptureVisualPose(
+                        entity.GetComponent<ModelComponent>(),
+                        entity.GetComponent<BlendedAnimationComponent>());
                     _world.RegisterBody(physics);
                     // Existing debug logging (preserved)
                     if (!_lastPositions.TryGetValue(entity.Id, out var lastPos) || Vector3.Distance(lastPos, physics.Position) > 0.01f)

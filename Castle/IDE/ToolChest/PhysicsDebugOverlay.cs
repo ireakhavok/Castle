@@ -21,6 +21,9 @@ namespace ToolChest
         private readonly Dictionary<object, VertexBuffer> _shapeCaches = new Dictionary<object, VertexBuffer>();
         private readonly Dictionary<object, bool> _cacheWasSleeping = new Dictionary<object, bool>();
         private VertexBuffer _dynamicBuffer;
+        private VertexBuffer _hitboxBuffer;
+        private readonly List<Vertex> _hitboxVerts = new List<Vertex>(1024);
+        private readonly List<uint> _hitboxIndices = new List<uint>(2048);
         private LineRenderer _lineRenderer;
         private readonly List<Vertex> _dynVerts = new List<Vertex>(512);
         private readonly List<uint> _dynIndices = new List<uint>(1024);
@@ -89,7 +92,10 @@ namespace ToolChest
                     if (entity == null) continue;
                     if (filterSelected && (selected == null || !selected.Contains(entity.Id))) continue;
                     var physics = entity.GetComponent<PhysicsComponent>();
-                    if (physics == null || physics.Shape == null) continue;
+                    if (physics == null) continue;
+                    var modelComp = entity.GetComponent<ModelComponent>();
+                    EnsureSkinnedHitboxes(physics, modelComp);
+                    if (physics.Shape == null) continue;
                     object cacheKey = GetCacheKey(physics);
                     if (_cacheWasSleeping.TryGetValue(cacheKey, out bool wasSleeping) && wasSleeping != physics.IsSleeping)
                     {
@@ -100,6 +106,21 @@ namespace ToolChest
                         }
                         _cacheWasSleeping.Remove(cacheKey);
                     }
+                    if (physics.Shape is BoneHitboxShape hitboxes)
+                    {
+                        // Same array ModelRenderer uploads as uBoneMatrices.
+                        // Null = unskinned draw = file verts (the mesh you see with no clip).
+                        Matrix4x4[] skin = modelComp?.BoneMatrices;
+                        float unit = modelComp?.Model != null && modelComp.Model.UnitToMeters > 1e-8f
+                            ? modelComp.Model.UnitToMeters
+                            : 0.01f;
+                        hitboxes.Pose(physics.BuildRenderModelMatrix(unit), skin);
+                        DrawBoneHitboxes(hitboxes, physics, view, projection);
+                        continue;
+                    }
+                    // Skinned FBX must not fall through to TriangleMesh (bind/T verts).
+                    if (modelComp?.Model?.Skeleton?.Bones != null && modelComp.Model.Skeleton.Bones.Count > 0)
+                        continue;
                     if (!_shapeCaches.TryGetValue(cacheKey, out VertexBuffer buf))
                     {
                         buf = BuildLocalShapeBuffer(physics);
@@ -276,6 +297,132 @@ namespace ToolChest
                 _dynamicBuffer = new VertexBuffer(_renderContext);
             _dynamicBuffer.UpdateCustom(_dynVerts, _dynIndices);
         }
+
+
+        private static void EnsureSkinnedHitboxes(PhysicsComponent physics, ModelComponent modelComp)
+        {
+            if (physics == null) return;
+            var model = modelComp?.Model;
+            if (model?.Skeleton?.Bones == null || model.Skeleton.Bones.Count == 0) return;
+            if (physics.Shape is BoneHitboxShape)
+                return;
+            physics.RebuildShape(model, modelComp);
+        }
+
+        private static Matrix4x4[] ResolveRestOrLivePose(PhysicsComponent physics, ModelComponent modelComp)
+        {
+            // Skin palette already captured: BoneMatrices after WriteSkinning, or
+            // BindPose * restGlobal (ModelViewer.SetRestPose). Not bone translations.
+            return physics?.BonePoseGlobals;
+        }
+
+        private static void AddBoneHitboxes(List<Vertex> verts, List<uint> indices, BoneHitboxShape boxes, Vector4 color)
+        {
+            for (int i = 0; i < boxes.Primitives.Length; i++)
+            {
+                Vector3 a = boxes.WorldA[i];
+                Vector3 b = boxes.WorldB[i];
+                float r = boxes.Primitives[i].Radius;
+                if (boxes.Primitives[i].Type == BoneHitboxShape.Kind.Sphere || (b - a).LengthSquared() < 1e-8f)
+                    AddWorldSphere(verts, indices, a, r, color);
+                else
+                    AddWorldCapsule(verts, indices, a, b, r, color);
+            }
+        }
+
+        private void DrawBoneHitboxes(BoneHitboxShape boxes, PhysicsComponent physics, Matrix4x4 view, Matrix4x4 projection)
+        {
+            _dynVerts.Clear();
+            _dynIndices.Clear();
+            Vector4 color = BodyColor(physics.BodyType, physics.IsSleeping);
+            for (int i = 0; i < boxes.Primitives.Length; i++)
+            {
+                Vector3 a = boxes.WorldA[i];
+                Vector3 b = boxes.WorldB[i];
+                float r = boxes.Primitives[i].Radius;
+                if (boxes.Primitives[i].Type == BoneHitboxShape.Kind.Sphere || (b - a).LengthSquared() < 1e-8f)
+                    AddWorldSphere(_dynVerts, _dynIndices, a, r, color);
+                else
+                    AddWorldCapsule(_dynVerts, _dynIndices, a, b, r, color);
+            }
+            if (_dynVerts.Count == 0) return;
+            if (_hitboxBuffer == null)
+                _hitboxBuffer = new VertexBuffer(_renderContext);
+            _hitboxBuffer.UpdateCustom(_dynVerts, _dynIndices);
+            _lineRenderer.DrawLines(_hitboxBuffer, view, projection, 1f);
+        }
+
+        private static void AddWorldSphere(List<Vertex> verts, List<uint> indices, Vector3 centre, float radius, Vector4 color)
+        {
+            const int segs = 16;
+            for (int axis = 0; axis < 3; axis++)
+            {
+                uint baseIdx = (uint)verts.Count;
+                for (int i = 0; i < segs; i++)
+                {
+                    float ang = i * MathF.PI * 2f / segs;
+                    float c = MathF.Cos(ang) * radius;
+                    float s = MathF.Sin(ang) * radius;
+                    Vector3 p = axis switch
+                    {
+                        0 => centre + new Vector3(0f, c, s),
+                        1 => centre + new Vector3(c, 0f, s),
+                        _ => centre + new Vector3(c, s, 0f)
+                    };
+                    verts.Add(new Vertex(p.X, p.Y, p.Z, color.X, color.Y, color.Z, color.W));
+                }
+                for (int i = 0; i < segs; i++)
+                {
+                    indices.Add(baseIdx + (uint)i);
+                    indices.Add(baseIdx + (uint)((i + 1) % segs));
+                }
+            }
+        }
+
+        private static void AddWorldCapsule(List<Vertex> verts, List<uint> indices, Vector3 a, Vector3 b, float radius, Vector4 color)
+        {
+            Vector3 axis = b - a;
+            float len = axis.Length();
+            Vector3 n = len > 1e-8f ? axis / len : Vector3.UnitZ;
+            Vector3 tan = Vector3.Normalize(Vector3.Cross(n, MathF.Abs(n.Z) < 0.9f ? Vector3.UnitZ : Vector3.UnitX));
+            Vector3 bit = Vector3.Normalize(Vector3.Cross(n, tan));
+            const int segs = 16;
+            uint baseA = (uint)verts.Count;
+            for (int i = 0; i < segs; i++)
+            {
+                float ang = i * MathF.PI * 2f / segs;
+                Vector3 off = (tan * MathF.Cos(ang) + bit * MathF.Sin(ang)) * radius;
+                Vector3 p = a + off;
+                verts.Add(new Vertex(p.X, p.Y, p.Z, color.X, color.Y, color.Z, color.W));
+            }
+            for (int i = 0; i < segs; i++)
+            {
+                indices.Add(baseA + (uint)i);
+                indices.Add(baseA + (uint)((i + 1) % segs));
+            }
+            uint baseB = (uint)verts.Count;
+            for (int i = 0; i < segs; i++)
+            {
+                float ang = i * MathF.PI * 2f / segs;
+                Vector3 off = (tan * MathF.Cos(ang) + bit * MathF.Sin(ang)) * radius;
+                Vector3 p = b + off;
+                verts.Add(new Vertex(p.X, p.Y, p.Z, color.X, color.Y, color.Z, color.W));
+            }
+            for (int i = 0; i < segs; i++)
+            {
+                indices.Add(baseB + (uint)i);
+                indices.Add(baseB + (uint)((i + 1) % segs));
+            }
+            for (int i = 0; i < 4; i++)
+            {
+                float ang = i * MathF.PI * 0.5f;
+                Vector3 off = (tan * MathF.Cos(ang) + bit * MathF.Sin(ang)) * radius;
+                AddLocalLine(verts, indices, a + off, b + off, color);
+            }
+            AddWorldSphere(verts, indices, a, radius, color);
+            AddWorldSphere(verts, indices, b, radius, color);
+        }
+
         private static Vector4 BodyColor(BodyType t, bool sleeping)
         {
             Vector4 c = t switch

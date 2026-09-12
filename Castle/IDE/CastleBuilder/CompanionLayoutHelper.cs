@@ -100,6 +100,11 @@ namespace CastleBuilder
                 right = new IPanel[] { playHost };
                 bottom = new IPanel[] { console };
             }
+            else if (string.Equals(context, "Runtime", StringComparison.OrdinalIgnoreCase))
+            {
+                OpenDocked(new RuntimePanel(_renderContext, _controlContext, _window, _eventBus));
+                return;
+            }
             else
             {
                 return;
@@ -156,6 +161,8 @@ namespace CastleBuilder
                 return new[] { "SceneEditorPanel", "TreeViewPanel", "PropertiesPanel", "AssetBrowserPanel" };
             if (string.Equals(context, "Workshop", StringComparison.OrdinalIgnoreCase))
                 return new[] { "ScriptEditorPanel", "ConsolePanel", "PlayHostPanel" };
+            if (string.Equals(context, "Runtime", StringComparison.OrdinalIgnoreCase))
+                return new[] { "RuntimePanel" };
             return Array.Empty<string>();
         }
     }

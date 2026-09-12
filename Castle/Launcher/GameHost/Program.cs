@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using SiegeEngine.Core.Definitions;
 using Trebuchet;
 
 namespace GameHost
@@ -50,6 +51,9 @@ namespace GameHost
                     {
                         sceneData = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(sceneElem.GetRawText()));
                     }
+                    RuntimeSettings.ApplyFromPayloadRoot(root);
+                    RuntimeSettings.TryLoadFile(Path.Combine(baseDir, "RuntimeTemp", "runtime_settings.json"));
+                    RuntimeSettings.TryLoadFile(Path.Combine(baseDir, "runtime_settings.json"));
                     Console.WriteLine("[GameHost] Loaded " + payloadPath + " level=" + levelName);
                 }
                 catch (Exception ex)

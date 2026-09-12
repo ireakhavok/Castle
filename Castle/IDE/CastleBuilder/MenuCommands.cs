@@ -45,6 +45,12 @@ namespace CastleBuilder
             eventBus.Publish(new ContextChangedEvent { Context = "Workshop" });
             Console.WriteLine("[MenuCommands] Switched to Workshop context");
         }
+        public static void SwitchToRuntime(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            CompanionLayoutHelper.Bind(renderContext, controlContext, window, eventBus);
+            eventBus.Publish(new ContextChangedEvent { Context = "Runtime" });
+            Console.WriteLine("[MenuCommands] Switched to Runtime context");
+        }
         public static void OpenDefaultPanels(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             CompanionLayoutHelper.Bind(renderContext, controlContext, window, eventBus);
@@ -147,6 +153,32 @@ namespace CastleBuilder
             {
                 Console.WriteLine("[MenuCommands.PlayGame] ABORTED — project scripts failed to compile. Fix Scripts/ and try Play again.");
                 return;
+            }
+            string runtimeDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp");
+            Directory.CreateDirectory(runtimeDir);
+            string runtimeSettingsPath = Path.Combine(runtimeDir, "runtime_settings.json");
+            File.WriteAllText(runtimeSettingsPath, JsonSerializer.Serialize(RuntimeSettings.Current, EntityData.SerializerOptions));
+            string citadelArg = null;
+            string mode = RuntimeSettings.Current.Mode ?? RuntimeSettings.ModeSinglePlayer;
+            if (string.Equals(mode, RuntimeSettings.ModeMultiplayer, StringComparison.OrdinalIgnoreCase))
+                citadelArg = "--local";
+            else if (string.Equals(mode, RuntimeSettings.ModePeerToPeer, StringComparison.OrdinalIgnoreCase))
+                citadelArg = "--p2p-host";
+            else if (string.Equals(mode, RuntimeSettings.ModeHosted, StringComparison.OrdinalIgnoreCase))
+                citadelArg = "--server";
+            if (citadelArg != null)
+            {
+                string citadelExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
+                if (File.Exists(citadelExe))
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = citadelExe,
+                        Arguments = citadelArg + " --runtime-settings \"" + runtimeSettingsPath + "\"",
+                        UseShellExecute = true,
+                        WorkingDirectory = Path.GetDirectoryName(citadelExe)
+                    });
+                }
             }
             string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Foundation.exe");
             if (!File.Exists(exe)) exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");

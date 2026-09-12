@@ -34,6 +34,8 @@ namespace SiegeEngine.PlayerSystem
         protected readonly float _pitchMaxLimit = 89f;
         protected Vector2 _lastMousePos = Vector2.Zero;
         protected bool _firstMouseMove = true;
+        protected bool _wasLookLive;
+        protected float _lastVpX, _lastVpY, _lastVpW, _lastVpH;
         protected bool _isRightShoulder = true;
         protected readonly float _shoulderShiftAmount = 1.0f;
         protected readonly float _playerHeight = 1.9f;
@@ -80,33 +82,34 @@ namespace SiegeEngine.PlayerSystem
                 _firstMouseMove = true;
                 return;
             }
+            bool lookLive = focused && isGameActive;
+            if (lookLive != _wasLookLive)
+                _firstMouseMove = true;
+            _wasLookLive = lookLive;
             _controlContext.SetInputMode(_window, CursorAttribute.Cursor,
                 isGameActive ? CursorMode.Disabled : CursorMode.Normal);
             _controlContext.GetCursorPos(_window, out double mouseX, out double mouseY);
             Vector2 mousePos = new Vector2((float)mouseX, (float)mouseY);
-            if (!isGameActive)
+            Vector2 center = _controlContext.GetCurrentViewport().Center;
+            if (!lookLive)
             {
                 MousePosition = mousePos;
+                _lastMousePos = mousePos;
                 _firstMouseMove = true;
+            }
+            else if (_firstMouseMove)
+            {
+                _controlContext.SetCursorPos(_window, center.X, center.Y);
+                _lastMousePos = center;
+                _firstMouseMove = false;
+                MousePosition = mousePos;
             }
             else
             {
-                Vector2 delta = Vector2.Zero;
-                if (_firstMouseMove)
-                {
-                    _lastMousePos = mousePos;
-                    _firstMouseMove = false;
-                }
-                else
-                {
-                    delta = mousePos - _lastMousePos;
-                    _lastMousePos = mousePos;
-                }
-                float sensitivityX = _xSpeed * deltaTime;
-                float sensitivityY = _ySpeed * deltaTime;
-                _yaw += delta.X * sensitivityX;
-                _pitch -= delta.Y * sensitivityY;
-                _pitch = Math.Clamp(_pitch, _pitchMinLimit, _pitchMaxLimit);
+                Vector2 delta = mousePos - center;
+                _controlContext.SetCursorPos(_window, center.X, center.Y);
+                _lastMousePos = center;
+                RuntimeSettings.ApplyMouseLook(ref _yaw, ref _pitch, delta.X, delta.Y);
                 if (_player != null)
                 {
                     _isPPressed = _controlContext.GetKey(_window, Key.P) == InputAction.Press;
