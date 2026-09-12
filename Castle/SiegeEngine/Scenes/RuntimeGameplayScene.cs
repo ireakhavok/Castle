@@ -726,8 +726,20 @@ namespace SiegeEngine.Scenes
                     _player.Physics.Position = existingPhys.Position;
                     _player.Physics.RenderPosition = existingPhys.Position;
                     _player.Physics.Rotation = existingPhys.Rotation;
-                    _player.Physics.BodyType = BodyType.Dynamic;
-                    _player.Physics.KeepUpright = true;
+                    _player.Physics.BodyType = existingPhys.BodyType;
+                    _player.Physics.Mass = existingPhys.Mass;
+                    _player.Physics.Friction = existingPhys.Friction;
+                    _player.Physics.StaticFriction = existingPhys.StaticFriction;
+                    _player.Physics.KineticFriction = existingPhys.KineticFriction;
+                    _player.Physics.Restitution = existingPhys.Restitution;
+                    _player.Physics.LinearDamping = existingPhys.LinearDamping;
+                    _player.Physics.AngularDamping = existingPhys.AngularDamping;
+                    _player.Physics.RollingResistance = existingPhys.RollingResistance;
+                    _player.Physics.ReceiveFriction = existingPhys.ReceiveFriction;
+                    _player.Physics.ReceiveVerticalContact = existingPhys.ReceiveVerticalContact;
+                    _player.Physics.KeepUpright = existingPhys.KeepUpright;
+                    _player.Physics.CollisionEnabled = existingPhys.CollisionEnabled;
+                    _player.Physics.UseBoneHitboxes = existingPhys.UseBoneHitboxes;
                     _player.BindMeshCollider();
                 }
                 return;

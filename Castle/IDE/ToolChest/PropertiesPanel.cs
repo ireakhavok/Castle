@@ -400,6 +400,14 @@ namespace ToolChest
                 sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-spawns\"><div class=\"property-name\">Preferred Spawn IDs</div><input type=\"text\" id=\"ss-preferredSpawnPointIds\" value=\"{spawnIds}\"></div>");
                 sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-camera\"><div class=\"property-name\">Camera Mode</div><input type=\"text\" id=\"ss-cameraMode\" value=\"{settings.CameraMode ?? ""}\"></div>");
                 sb.Append("</details>");
+                var scenePlayer = FindPlayerEntity(level);
+                var scenePlayerPhys = scenePlayer != null ? scenePlayer.GetComponent<PhysicsComponent>() : null;
+                if (scenePlayerPhys != null)
+                {
+                    sb.Append("<details open><summary>Player Physics</summary>");
+                    AppendPhysicsTunables(sb, scenePlayerPhys, scenePlayer.Id);
+                    sb.Append("</details>");
+                }
                 var env = level.Environment ?? new EnvironmentSettings();
                 level.Environment = env;
                 sb.Append("<details open><summary>Environment / Lighting</summary>");
@@ -420,8 +428,14 @@ namespace ToolChest
                 var physics = ent.GetComponent<PhysicsComponent>();
                 if (physics != null)
                 {
-                    sb.Append("<details open><summary>Physics</summary>");
+                    bool playerEnt = HasPlayerComponent(ent);
+                    sb.Append(playerEnt
+                        ? "<details open><summary>Player Physics</summary>"
+                        : "<details open><summary>Physics</summary>");
+                    AppendPhysicsTunables(sb, physics, ent.Id);
+                    sb.Append("<details><summary>All Physics Fields</summary>");
                     AppendEditableProperties(sb, physics, ent.Id);
+                    sb.Append("</details>");
                     sb.Append("</details>");
                 }
                 var modelComp = ent.GetComponent<ModelComponent>();
@@ -581,6 +595,87 @@ namespace ToolChest
                 }
             }
         }
+        private static readonly string[] PhysicsTunableNames =
+        {
+            "Mass", "BodyType", "Friction", "StaticFriction", "KineticFriction",
+            "Restitution", "LinearDamping", "AngularDamping", "RollingResistance",
+            "ReceiveFriction", "ReceiveVerticalContact", "KeepUpright",
+            "UseBoneHitboxes", "CollisionEnabled"
+        };
+
+        private static bool HasPlayerComponent(Entity entity)
+        {
+            if (entity == null) return false;
+            if (!string.IsNullOrEmpty(entity.Type) &&
+                entity.Type.Equals("Player", StringComparison.OrdinalIgnoreCase))
+                return true;
+            foreach (var kvp in entity.Components)
+            {
+                if (kvp.Key != null && kvp.Key.Name == "Player")
+                    return true;
+                if (kvp.Value != null && kvp.Value.GetType().Name == "Player")
+                    return true;
+            }
+            return false;
+        }
+
+        private static Entity FindPlayerEntity(Level level)
+        {
+            if (level?.Entities == null) return null;
+            Entity fallback = null;
+            foreach (var e in level.Entities)
+            {
+                if (e == null) continue;
+                if (HasPlayerComponent(e))
+                    return e;
+                var phys = e.GetComponent<PhysicsComponent>();
+                if (fallback == null && phys != null && phys.KeepUpright)
+                    fallback = e;
+            }
+            return fallback;
+        }
+
+        private void AppendPhysicsTunables(StringBuilder sb, PhysicsComponent physics, int entityId)
+        {
+            if (physics == null || sb == null) return;
+            var type = physics.GetType();
+            for (int n = 0; n < PhysicsTunableNames.Length; n++)
+            {
+                var prop = type.GetProperty(PhysicsTunableNames[n], BindingFlags.Public | BindingFlags.Instance);
+                if (prop == null || !prop.CanRead || !prop.CanWrite || prop.GetIndexParameters().Length != 0)
+                    continue;
+                object value = prop.GetValue(physics);
+                var propType = prop.PropertyType;
+                if (value == null && propType != typeof(string))
+                    continue;
+                if (!(propType.IsPrimitive || propType == typeof(string) || propType.IsEnum))
+                    continue;
+                string display = value?.ToString() ?? "";
+                sb.Append($"<div class=\"property-row\" data-context=\"prop-{prop.Name}\">");
+                sb.Append($"<div class=\"property-name\">{prop.Name}</div>");
+                if (propType == typeof(bool))
+                {
+                    bool checkedVal = (bool)value;
+                    sb.Append($"<input type=\"checkbox\" {(checkedVal ? "checked" : "")} data-hook=\"SetComponentProperty\" data-entityid=\"{entityId}\" data-component=\"PhysicsComponent\" data-property=\"{prop.Name}\">");
+                }
+                else if (propType.IsEnum)
+                {
+                    sb.Append($"<select data-hook=\"SetComponentProperty\" data-entityid=\"{entityId}\" data-component=\"PhysicsComponent\" data-property=\"{prop.Name}\">");
+                    foreach (var enumVal in Enum.GetValues(propType))
+                    {
+                        string selected = enumVal.Equals(value) ? " selected" : "";
+                        sb.Append($"<option value=\"{enumVal}\"{selected}>{enumVal}</option>");
+                    }
+                    sb.Append("</select>");
+                }
+                else
+                {
+                    sb.Append($"<input type=\"text\" value=\"{display}\" data-hook=\"SetComponentProperty\" data-entityid=\"{entityId}\" data-component=\"PhysicsComponent\" data-property=\"{prop.Name}\">");
+                }
+                sb.Append("</div>");
+            }
+        }
+
         private void AppendEditableProperties(StringBuilder sb, object obj, int entityId)
         {
             if (obj == null) return;

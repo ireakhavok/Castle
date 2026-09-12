@@ -142,6 +142,10 @@ namespace CastleBuilder
         {
             PlayHostPanel.Open(renderContext, controlContext, window, eventBus);
         }
+        public static void OpenRuntime(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            RuntimePanel.Open(renderContext, controlContext, window, eventBus);
+        }
         public static void PlayGame(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             Console.WriteLine("[MenuCommands.PlayGame] Launching CURRENT project Level in NEW isolated window (pure runtime client - pure in-memory payload via temp transfer file, no forced disk write)");
