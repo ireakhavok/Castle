@@ -138,9 +138,14 @@ namespace SiegeEngine.Core.Physics
                     body.AngularVelocity = Vector3.Zero;
                     if (body.IsGrounded)
                     {
-                        float vn = Vector3.Dot(body.Velocity, Vector3.UnitZ);
+                        Vector3 n = body.SupportNormal;
+                        if (n.LengthSquared() < 1e-8f)
+                            n = Vector3.UnitZ;
+                        else
+                            n = Vector3.Normalize(n);
+                        float vn = Vector3.Dot(body.Velocity, n);
                         if (vn < 0f)
-                            body.Velocity -= Vector3.UnitZ * vn;
+                            body.Velocity -= n * vn;
                     }
                     else
                     {
@@ -171,7 +176,10 @@ namespace SiegeEngine.Core.Physics
             {
                 var body = _bodies[i];
                 if (body != null && body.BodyType == BodyType.Kinematic)
+                {
                     body.IsGrounded = false;
+                    body.SupportNormal = Vector3.Zero;
+                }
             }
             _manifolds.Clear();
             for (int i = 0; i < _bodies.Count; i++)
@@ -862,7 +870,11 @@ namespace SiegeEngine.Core.Physics
                 });
                 float slopeDeg = MathF.Acos(Math.Clamp(n.Z, -1f, 1f)) * (180f / MathF.PI);
                 if (slopeDeg <= body.SlopeLimitDegrees)
+                {
                     body.IsGrounded = true;
+                    if (n.Z >= body.SupportNormal.Z)
+                        body.SupportNormal = n;
+                }
             }
         }
         private void SphereVsSphere(SphereShape a, PhysicsComponent bodyA,
@@ -1081,7 +1093,11 @@ namespace SiegeEngine.Core.Physics
                 });
                 float slopeDeg = MathF.Acos(Math.Clamp(n.Z, -1f, 1f)) * (180f / MathF.PI);
                 if (slopeDeg <= body.SlopeLimitDegrees)
+                {
                     body.IsGrounded = true;
+                    if (n.Z >= body.SupportNormal.Z)
+                        body.SupportNormal = n;
+                }
             }
         }
         private void ObbVsHeightfield(ObbShape obb, PhysicsComponent body,
@@ -1121,7 +1137,11 @@ namespace SiegeEngine.Core.Physics
                     });
                     float slopeDeg = MathF.Acos(Math.Clamp(n.Z, -1f, 1f)) * (180f / MathF.PI);
                     if (slopeDeg <= body.SlopeLimitDegrees)
+                    {
                         body.IsGrounded = true;
+                        if (n.Z >= body.SupportNormal.Z)
+                            body.SupportNormal = n;
+                    }
                 }
             }
         }
@@ -1168,7 +1188,10 @@ namespace SiegeEngine.Core.Physics
             {
                 float slopeDeg = MathF.Acos(Math.Clamp(manifold.Points[0].Normal.Z, -1f, 1f)) * (180f / MathF.PI);
                 if (slopeDeg <= body.SlopeLimitDegrees)
+                {
                     body.IsGrounded = true;
+                    body.SupportNormal = manifold.Points[0].Normal;
+                }
             }
         }
         private void ObbVsObb(ObbShape a, PhysicsComponent bodyA,

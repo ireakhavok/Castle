@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/PlayerSystem
+// Folder: SiegeEngine/PlayerSystem
 // File: PlayerMovement.cs
 using System;
 using System.Numerics;
@@ -143,8 +143,21 @@ namespace SiegeEngine.PlayerSystem
                 }
             }
 
-            // Preserve Velocity.Z exactly — Physics owns vertical motion
-            player.Physics.Velocity = new Vector3(currentVelXY.X, currentVelXY.Y, currentVel.Z);
+            if (player.Physics.IsGrounded)
+            {
+                Vector3 n = player.Physics.SupportNormal;
+                float nLen = n.Length();
+                if (nLen < 1e-6f)
+                    n = Vector3.UnitZ;
+                else
+                    n /= nLen;
+                float vz = -(currentVelXY.X * n.X + currentVelXY.Y * n.Y) / MathF.Max(n.Z, 0.15f);
+                player.Physics.Velocity = new Vector3(currentVelXY.X, currentVelXY.Y, vz);
+            }
+            else
+            {
+                player.Physics.Velocity = new Vector3(currentVelXY.X, currentVelXY.Y, currentVel.Z);
+            }
 
             Quaternion newRotation = player.Physics.Rotation;
             if (camera.CurrentPerspective == Perspective.ThirdPerson)

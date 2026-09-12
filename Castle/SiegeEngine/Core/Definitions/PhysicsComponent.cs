@@ -41,6 +41,7 @@ namespace SiegeEngine.Core.Definitions
             CollisionEnabled = true;
             CollideHiddenMeshes = false;
             IsGrounded = false;
+            SupportNormal = Vector3.UnitZ;
             SlopeLimitDegrees = 50f;
             StepHeight = 0.35f;
             LocalCentreOfMass = Vector3.Zero;
@@ -140,6 +141,7 @@ namespace SiegeEngine.Core.Definitions
         public bool CollisionEnabled { get; set; } = true;
         public bool CollideHiddenMeshes { get; set; } = false;
         public bool IsGrounded { get; set; } = false;
+        public Vector3 SupportNormal { get; set; } = Vector3.UnitZ;
         public float SlopeLimitDegrees { get; set; } = 50f;
         public float StepHeight { get; set; } = 0.35f;
         public Vector3 RenderPosition { get; set; }
