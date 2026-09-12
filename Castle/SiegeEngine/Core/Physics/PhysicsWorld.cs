@@ -184,28 +184,54 @@ namespace SiegeEngine.Core.Physics
                     body.SupportNormal = Vector3.Zero;
                 }
             }
+            for (int i = 0; i < _bodies.Count; i++)
+            {
+                var body = _bodies[i];
+                if (body?.Shape is BoneHitboxShape hitboxes)
+                {
+                    Matrix4x4[] pose = body.BonePoseGlobals;
+                    if (pose == null || pose.Length == 0)
+                    {
+                        // Identity skin = raw mesh verts (same as renderer when BoneMatrices is null).
+                        pose = null;
+                    }
+                    hitboxes.Pose(body.Position, body.Rotation, pose);
+                }
+            }
             _manifolds.Clear();
             for (int i = 0; i < _bodies.Count; i++)
             {
                 var a = _bodies[i];
-                if (a == null || !a.CollisionEnabled || a.IsSleeping) continue;
+                if (a == null || !a.CollisionEnabled) continue;
                 if (a.Shape == null) continue;
                 for (int j = i + 1; j < _bodies.Count; j++)
                 {
                     var b = _bodies[j];
                     if (b == null || !b.CollisionEnabled) continue;
-                    if (b.IsSleeping)
-                    {
-                        if (a.BodyType == BodyType.Static) continue;
-                        b.IsSleeping = false;
-                        b.SleepTimer = 0f;
-                    }
                     if (b.Shape == null) continue;
                     if (a.BodyType == BodyType.Static && b.BodyType == BodyType.Static)
                         continue;
+                    if (a.IsSleeping && b.IsSleeping)
+                        continue;
+                    if (a.IsSleeping && b.BodyType == BodyType.Static)
+                        continue;
+                    if (b.IsSleeping && a.BodyType == BodyType.Static)
+                        continue;
                     var manifold = GenerateManifold(a, b);
                     if (manifold != null && manifold.PointCount > 0)
+                    {
+                        if (a.IsSleeping)
+                        {
+                            a.IsSleeping = false;
+                            a.SleepTimer = 0f;
+                        }
+                        if (b.IsSleeping)
+                        {
+                            b.IsSleeping = false;
+                            b.SleepTimer = 0f;
+                        }
                         _manifolds.Add(manifold);
+                    }
                 }
             }
             if (_heightfieldShape != null)
@@ -230,6 +256,8 @@ namespace SiegeEngine.Core.Physics
                         else
                             TriangleMeshVsHeightfield(mesh, body, _heightfieldShape, manifold);
                     }
+                    else if (body.Shape is BoneHitboxShape hitboxes)
+                        BoneHitboxVsHeightfield(hitboxes, body, _heightfieldShape, manifold);
                     if (manifold.PointCount > 0)
                         _manifolds.Add(manifold);
                 }
@@ -346,6 +374,8 @@ namespace SiegeEngine.Core.Physics
                 float e = MathF.Min(a?.Restitution ?? 0f, b?.Restitution ?? 0f);
                 float j = -(1f + e) * velAlongNormal / invMassEff;
                 Vector3 impulse = n * j;
+                float zA = a != null ? a.Velocity.Z : 0f;
+                float zB = b != null ? b.Velocity.Z : 0f;
                 if (a != null && invMassA > 0f)
                 {
                     a.Velocity += impulse * invMassA;
@@ -373,18 +403,22 @@ namespace SiegeEngine.Core.Physics
                     float jt = -Vector3.Dot(relVel, tangent) / invMassEff;
                     jt = Math.Clamp(jt, -jtMax, jtMax);
                     Vector3 frictionImpulse = tangent * jt;
-                    if (a != null && invMassA > 0f)
+                    if (a != null && invMassA > 0f && a.ReceiveFriction)
                     {
                         a.Velocity += frictionImpulse * invMassA;
                         a.AngularVelocity += a.ApplyInvInertiaWorld(Vector3.Cross(rA, frictionImpulse));
                     }
-                    if (b != null && invMassB > 0f)
+                    if (b != null && invMassB > 0f && b.ReceiveFriction)
                     {
                         b.Velocity -= frictionImpulse * invMassB;
                         b.AngularVelocity -= b.ApplyInvInertiaWorld(Vector3.Cross(rB, frictionImpulse));
                     }
                     p.FrictionImpulse = frictionImpulse;
                 }
+                if (b != null && a != null && !a.ReceiveVerticalContact)
+                    a.Velocity = new Vector3(a.Velocity.X, a.Velocity.Y, zA);
+                if (b != null && !b.ReceiveVerticalContact)
+                    b.Velocity = new Vector3(b.Velocity.X, b.Velocity.Y, zB);
                 m.Points[i] = p;
             }
         }
@@ -402,6 +436,8 @@ namespace SiegeEngine.Core.Physics
                 bool kinematicVsStatic = a != null && a.BodyType == BodyType.Kinematic
                                       && (b == null || b.BodyType == BodyType.Static);
                 if (totalInv < 1e-8f && !kinematicVsStatic) continue;
+                float posZA = a != null ? a.Position.Z : 0f;
+                float posZB = b != null ? b.Position.Z : 0f;
 
                 if (kinematicVsStatic)
                 {
@@ -420,31 +456,15 @@ namespace SiegeEngine.Core.Physics
                     }
                     if (best >= 0)
                         a.Position += manifold.Points[best].Normal * bestPen;
+                    RestoreVerticalPosition(a, b, posZA, posZB);
                     continue;
                 }
 
-                if (a != null && a.KeepUpright && b != null && b.Shape is TriangleMeshShape
-                    && a.Shape is TriangleMeshShape)
-                {
-                    // Motorized player vs another FBX: the other body may be
-                    // pinned in a corner and cannot take an invMass split.
-                    // Player takes the full remaining depth so the two closed
-                    // meshes do not occupy the same volume. One pass, existing slop.
-                    if (manifold.PointCount >= 2)
-                        ProjectPlaneContacts(manifold, numericSlop);
-                    else
-                    {
-                        var p0 = manifold.Points[0];
-                        float depth = p0.Penetration - numericSlop;
-                        if (depth > 0f)
-                            a.Position += p0.Normal * depth;
-                    }
-                    continue;
-                }
                 if (a != null && a.BodyType == BodyType.Dynamic && IsStaticPartner(b)
                     && manifold.PointCount >= 2)
                 {
                     ProjectPlaneContacts(manifold, numericSlop);
+                    RestoreVerticalPosition(a, b, posZA, posZB);
                     continue;
                 }
 
@@ -459,7 +479,15 @@ namespace SiegeEngine.Core.Physics
                     if (invMassB > 0f && b != null)
                         b.Position -= corr * invMassB;
                 }
+                RestoreVerticalPosition(a, b, posZA, posZB);
             }
+        }
+        private static void RestoreVerticalPosition(PhysicsComponent a, PhysicsComponent b, float posZA, float posZB)
+        {
+            if (b != null && a != null && !a.ReceiveVerticalContact)
+                a.Position = new Vector3(a.Position.X, a.Position.Y, posZA);
+            if (b != null && !b.ReceiveVerticalContact)
+                b.Position = new Vector3(b.Position.X, b.Position.Y, posZB);
         }
         private void ProjectPlaneContacts(ContactManifold manifold, float slop)
         {
@@ -561,9 +589,13 @@ namespace SiegeEngine.Core.Physics
                     Vector3 relVel = velA - velB;
                     float vn = Vector3.Dot(relVel, n);
                     if (vn >= 0f) continue;
+                    float zA = a != null ? a.Velocity.Z : 0f;
+                    float zB = b != null ? b.Velocity.Z : 0f;
                     if (kinematicVsStatic)
                     {
                         a.Velocity -= n * vn;
+                        if (b != null && a != null && !a.ReceiveVerticalContact)
+                            a.Velocity = new Vector3(a.Velocity.X, a.Velocity.Y, zA);
                         continue;
                     }
                     float shareA = invMassA / totalInv;
@@ -580,6 +612,10 @@ namespace SiegeEngine.Core.Physics
                         if (b.InvInertiaLocal != Vector3.Zero)
                             b.AngularVelocity += b.ApplyInvInertiaWorld(Vector3.Cross(rB, n * vn * shareB));
                     }
+                    if (b != null && a != null && !a.ReceiveVerticalContact)
+                        a.Velocity = new Vector3(a.Velocity.X, a.Velocity.Y, zA);
+                    if (b != null && !b.ReceiveVerticalContact)
+                        b.Velocity = new Vector3(b.Velocity.X, b.Velocity.Y, zB);
                 }
             }
         }
@@ -646,7 +682,18 @@ namespace SiegeEngine.Core.Physics
             var shapeB = b.Shape;
             if (shapeA == null || shapeB == null) return null;
             var manifold = new ContactManifold { BodyA = a, BodyB = b };
-            if (shapeA is CapsuleShape capA)
+            if (shapeA is BoneHitboxShape boxesA)
+            {
+                if (shapeB is TriangleMeshShape meshB)
+                    BoneHitboxVsTriangleMesh(boxesA, a, meshB, b, manifold);
+                else if (shapeB is BoneHitboxShape boxesB)
+                    BoneHitboxVsBoneHitbox(boxesA, a, boxesB, b, manifold);
+                else if (shapeB is SphereShape sphereB)
+                    BoneHitboxVsSphere(boxesA, a, sphereB, b, manifold);
+                else if (shapeB is CapsuleShape capB)
+                    BoneHitboxVsCapsule(boxesA, a, capB, b, manifold);
+            }
+            else if (shapeA is CapsuleShape capA)
             {
                 if (shapeB is ObbShape obbB)
                     CapsuleVsObb(capA, a, obbB, b, manifold);
@@ -656,6 +703,8 @@ namespace SiegeEngine.Core.Physics
                     CapsuleVsCapsule(capA, a, capB, b, manifold);
                 else if (shapeB is SphereShape sphereB)
                     SphereVsCapsule(sphereB, b, capA, a, manifold);
+                else if (shapeB is BoneHitboxShape boxesB)
+                    BoneHitboxVsCapsule(boxesB, b, capA, a, manifold);
             }
             else if (shapeA is SphereShape sphereA)
             {
@@ -665,6 +714,8 @@ namespace SiegeEngine.Core.Physics
                     SphereVsTriangleMesh(sphereA, a, meshB, b, manifold);
                 else if (shapeB is SphereShape sphereB)
                     SphereVsSphere(sphereA, a, sphereB, b, manifold);
+                else if (shapeB is BoneHitboxShape boxesB)
+                    BoneHitboxVsSphere(boxesB, b, sphereA, a, manifold);
             }
             else if (shapeA is ObbShape obbA)
             {
@@ -685,8 +736,242 @@ namespace SiegeEngine.Core.Physics
                     ObbVsMeshAabb(obbB, b, meshA, a, manifold);
                 else if (shapeB is TriangleMeshShape meshB)
                     TriangleMeshVsTriangleMesh(meshA, a, meshB, b, manifold);
+                else if (shapeB is BoneHitboxShape boxesB)
+                    BoneHitboxVsTriangleMesh(boxesB, b, meshA, a, manifold);
             }
             return manifold.PointCount > 0 ? manifold : null;
+        }
+
+
+        private void BoneHitboxVsHeightfield(BoneHitboxShape boxes, PhysicsComponent body,
+            HeightfieldShape field, ContactManifold manifold)
+        {
+            if (body.KeepUpright)
+            {
+                Vector3 feet = boxes.LowestWorldPoint();
+                if (feet.Z == 0f && feet.X == 0f && feet.Y == 0f)
+                    feet = new Vector3(body.Position.X, body.Position.Y, body.Position.Z);
+                float ground = field.SampleHeight(feet.X, feet.Y);
+                float verticalPen = ground - feet.Z;
+                if (verticalPen > -ContactSkin)
+                {
+                    Vector3 n = field.SampleNormal(feet.X, feet.Y);
+                    float nZ = MathF.Max(n.Z, 0.15f);
+                    float pen = MathF.Max(0f, verticalPen) / nZ;
+                    manifold.Add(new ContactPoint
+                    {
+                        Position = new Vector3(feet.X, feet.Y, ground),
+                        Normal = n,
+                        Penetration = pen
+                    });
+                    float slopeDeg = MathF.Acos(Math.Clamp(n.Z, -1f, 1f)) * (180f / MathF.PI);
+                    if (slopeDeg <= body.SlopeLimitDegrees)
+                    {
+                        body.IsGrounded = true;
+                        body.SupportNormal = n;
+                    }
+                }
+                return;
+            }
+            for (int i = 0; i < boxes.Primitives.Length; i++)
+            {
+                Vector3[] pts = { boxes.WorldA[i], boxes.WorldB[i] };
+                float r = boxes.Primitives[i].Radius;
+                for (int p = 0; p < pts.Length; p++)
+                {
+                    Vector3 c = pts[p];
+                    float ground = field.SampleHeight(c.X, c.Y);
+                    float verticalPen = ground - (c.Z - r);
+                    if (verticalPen > -ContactSkin)
+                    {
+                        Vector3 n = field.SampleNormal(c.X, c.Y);
+                        float nZ = MathF.Max(n.Z, 0.15f);
+                        manifold.Add(new ContactPoint
+                        {
+                            Position = new Vector3(c.X, c.Y, ground),
+                            Normal = n,
+                            Penetration = MathF.Max(0f, verticalPen) / nZ
+                        });
+                    }
+                }
+            }
+        }
+
+        private void BoneHitboxVsTriangleMesh(BoneHitboxShape boxes, PhysicsComponent boxBody,
+            TriangleMeshShape mesh, PhysicsComponent meshBody, ContactManifold manifold)
+        {
+            const float skin = 0.02f;
+            for (int i = 0; i < boxes.Primitives.Length; i++)
+            {
+                Vector3 a = boxes.WorldA[i];
+                Vector3 b = boxes.WorldB[i];
+                float radius = boxes.Primitives[i].Radius;
+                Vector3 mid = (a + b) * 0.5f;
+                _triA.Clear(); _triB.Clear(); _triC.Clear();
+                mesh.QueryClosestWorldTriangles(meshBody.Position, meshBody.Rotation, mid, _triA, _triB, _triC, 4);
+                for (int t = 0; t < _triA.Count; t++)
+                {
+                    ClosestPointsSegmentTriangle(a, b, _triA[t], _triB[t], _triC[t],
+                        out Vector3 pa, out Vector3 pb, out float dist);
+                    float pen = radius - dist;
+                    if (pen <= -skin) continue;
+                    Vector3 n = pa - pb;
+                    float nLen = n.Length();
+                    if (nLen < 1e-8f)
+                    {
+                        n = Vector3.Cross(_triB[t] - _triA[t], _triC[t] - _triA[t]);
+                        nLen = n.Length();
+                        if (nLen < 1e-8f) continue;
+                    }
+                    n /= nLen;
+                    if (Vector3.Dot(n, boxBody.WorldCentreOfMass - pb) < 0f)
+                        n = -n;
+                    manifold.Add(new ContactPoint
+                    {
+                        Position = pb,
+                        Normal = n,
+                        Penetration = MathF.Max(0f, pen)
+                    });
+                }
+            }
+        }
+
+        private void BoneHitboxVsBoneHitbox(BoneHitboxShape aBoxes, PhysicsComponent bodyA,
+            BoneHitboxShape bBoxes, PhysicsComponent bodyB, ContactManifold manifold)
+        {
+            for (int i = 0; i < aBoxes.Primitives.Length; i++)
+            {
+                Vector3 a0 = aBoxes.WorldA[i];
+                Vector3 a1 = aBoxes.WorldB[i];
+                float ra = aBoxes.Primitives[i].Radius;
+                for (int j = 0; j < bBoxes.Primitives.Length; j++)
+                {
+                    Vector3 b0 = bBoxes.WorldA[j];
+                    Vector3 b1 = bBoxes.WorldB[j];
+                    float rb = bBoxes.Primitives[j].Radius;
+                    ClosestPointsOnSegments(a0, a1, b0, b1, out Vector3 pa, out Vector3 pb);
+                    Vector3 d = pa - pb;
+                    float dist = d.Length();
+                    float pen = ra + rb - dist;
+                    if (pen <= 0f) continue;
+                    Vector3 n = dist > 1e-8f ? d / dist : Vector3.UnitZ;
+                    manifold.Add(new ContactPoint
+                    {
+                        Position = pb + n * rb,
+                        Normal = n,
+                        Penetration = pen
+                    });
+                }
+            }
+        }
+
+        private void BoneHitboxVsSphere(BoneHitboxShape boxes, PhysicsComponent boxBody,
+            SphereShape sphere, PhysicsComponent sphereBody, ContactManifold manifold)
+        {
+            Vector3 centre = sphereBody.Position + Vector3.Transform(sphere.CenterOffset, sphereBody.Rotation);
+            for (int i = 0; i < boxes.Primitives.Length; i++)
+            {
+                Vector3 closest = ClosestPointOnSegment(centre, boxes.WorldA[i], boxes.WorldB[i]);
+                Vector3 d = centre - closest;
+                float dist = d.Length();
+                float pen = boxes.Primitives[i].Radius + sphere.Radius - dist;
+                if (pen <= 0f) continue;
+                Vector3 n = dist > 1e-8f ? d / dist : Vector3.UnitZ;
+                manifold.Add(new ContactPoint
+                {
+                    Position = closest + n * boxes.Primitives[i].Radius,
+                    Normal = n,
+                    Penetration = pen
+                });
+            }
+        }
+
+        private void BoneHitboxVsCapsule(BoneHitboxShape boxes, PhysicsComponent boxBody,
+            CapsuleShape cap, PhysicsComponent capBody, ContactManifold manifold)
+        {
+            float half = MathF.Max(0f, cap.Height * 0.5f - cap.Radius);
+            Vector3 c0 = capBody.Position + new Vector3(0f, 0f, cap.Radius);
+            Vector3 c1 = capBody.Position + new Vector3(0f, 0f, cap.Height - cap.Radius);
+            if (half <= 0f) { c0 = capBody.Position + new Vector3(0f, 0f, cap.Height * 0.5f); c1 = c0; }
+            for (int i = 0; i < boxes.Primitives.Length; i++)
+            {
+                ClosestPointsOnSegments(boxes.WorldA[i], boxes.WorldB[i], c0, c1, out Vector3 pa, out Vector3 pb);
+                Vector3 d = pa - pb;
+                float dist = d.Length();
+                float pen = boxes.Primitives[i].Radius + cap.Radius - dist;
+                if (pen <= 0f) continue;
+                Vector3 n = dist > 1e-8f ? d / dist : Vector3.UnitZ;
+                manifold.Add(new ContactPoint
+                {
+                    Position = pb + n * cap.Radius,
+                    Normal = n,
+                    Penetration = pen
+                });
+            }
+        }
+
+        private static void ClosestPointsSegmentTriangle(Vector3 p0, Vector3 p1,
+            Vector3 t0, Vector3 t1, Vector3 t2, out Vector3 onSeg, out Vector3 onTri, out float dist)
+        {
+            onSeg = p0;
+            onTri = ClosestPointOnTriangle(p0, t0, t1, t2);
+            dist = (p0 - onTri).Length();
+            Vector3 c1 = ClosestPointOnTriangle(p1, t0, t1, t2);
+            float d1 = (p1 - c1).Length();
+            if (d1 < dist) { dist = d1; onSeg = p1; onTri = c1; }
+            CheckEdgeEdge(p0, p1, t0, t1, ref onSeg, ref onTri, ref dist);
+            CheckEdgeEdge(p0, p1, t1, t2, ref onSeg, ref onTri, ref dist);
+            CheckEdgeEdge(p0, p1, t2, t0, ref onSeg, ref onTri, ref dist);
+        }
+
+        private static void ClosestPointsOnSegments(Vector3 a0, Vector3 a1, Vector3 b0, Vector3 b1,
+            out Vector3 pa, out Vector3 pb)
+        {
+            Vector3 da = a1 - a0;
+            Vector3 db = b1 - b0;
+            Vector3 r = a0 - b0;
+            float aa = Vector3.Dot(da, da);
+            float ee = Vector3.Dot(db, db);
+            float ff = Vector3.Dot(db, r);
+            float s, t;
+            if (aa <= 1e-12f && ee <= 1e-12f)
+            {
+                pa = a0; pb = b0; return;
+            }
+            if (aa <= 1e-12f)
+            {
+                s = 0f;
+                t = Math.Clamp(ff / ee, 0f, 1f);
+            }
+            else
+            {
+                float c = Vector3.Dot(da, r);
+                if (ee <= 1e-12f)
+                {
+                    t = 0f;
+                    s = Math.Clamp(-c / aa, 0f, 1f);
+                }
+                else
+                {
+                    float b = Vector3.Dot(da, db);
+                    float denom = aa * ee - b * b;
+                    s = denom != 0f ? Math.Clamp((b * ff - c * ee) / denom, 0f, 1f) : 0f;
+                    t = (b * s + ff) / ee;
+                    if (t < 0f) { t = 0f; s = Math.Clamp(-c / aa, 0f, 1f); }
+                    else if (t > 1f) { t = 1f; s = Math.Clamp((b - c) / aa, 0f, 1f); }
+                }
+            }
+            pa = a0 + da * s;
+            pb = b0 + db * t;
+        }
+
+        private static Vector3 ClosestPointOnSegment(Vector3 p, Vector3 a, Vector3 b)
+        {
+            Vector3 ab = b - a;
+            float denom = ab.LengthSquared();
+            if (denom < 1e-12f) return a;
+            float t = Math.Clamp(Vector3.Dot(p - a, ab) / denom, 0f, 1f);
+            return a + ab * t;
         }
 
         private void TriangleMeshVsTriangleMesh(

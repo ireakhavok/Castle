@@ -2,6 +2,7 @@
 // File: AnimationSystem.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Physics;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -21,23 +22,24 @@ namespace SiegeEngine.Systems
                 if (modelComp != null && modelComp.Model != null && modelComp.Model.Skeleton != null &&
                     blendComp != null && blendComp.Pack != null)
                 {
-                    UpdateBlendedAnimation(blendComp, modelComp, deltaTime);
+                    UpdateBlendedAnimation(entity, blendComp, modelComp, deltaTime);
                 }
             }
         }
-        private void UpdateBlendedAnimation(BlendedAnimationComponent blendComp, ModelComponent modelComp, float deltaTime)
+        private void UpdateBlendedAnimation(Entity entity, BlendedAnimationComponent blendComp, ModelComponent modelComp, float deltaTime)
         {
-            if (!blendComp.Playing || blendComp.Pack == null) return;
+            if (blendComp.Pack == null) return;
             int boneCount = modelComp.Model.Skeleton.Bones.Count;
-            if (blendComp.IsStatic)
+            if (blendComp.IsStatic || !blendComp.Playing)
             {
-                if (modelComp.BoneMatrices == null || modelComp.BoneMatrices.Length != boneCount
-                    || modelComp.NormalBoneTransforms == null || modelComp.NormalBoneTransforms.Length != boneCount)
-                {
-                    EnsureBoneArrays(modelComp, boneCount);
-                    modelComp.Model.Skeleton.ComputeGlobalTransforms(null, modelComp.BoneMatrices);
-                    WriteSkinning(modelComp);
-                }
+                if (blendComp.RuntimeStack == null)
+                    blendComp.RuntimeStack = blendComp.Pack.CreateBlendStack();
+                var idleLocals = blendComp.RuntimeStack.ComputeBlendedLocals(
+                    blendComp.CurrentBlendParams, 0f, false, modelComp.Model);
+                EnsureBoneArrays(modelComp, boneCount);
+                modelComp.Model.Skeleton.ComputeGlobalTransforms(idleLocals, modelComp.BoneMatrices);
+                WriteSkinning(modelComp);
+                CopyPoseToPhysics(entity, modelComp, boneCount);
                 return;
             }
             blendComp.GlobalTime += deltaTime * blendComp.MasterSpeed;
@@ -51,6 +53,16 @@ namespace SiegeEngine.Systems
             EnsureBoneArrays(modelComp, boneCount);
             modelComp.Model.Skeleton.ComputeGlobalTransforms(blendedLocals, modelComp.BoneMatrices);
             WriteSkinning(modelComp);
+            CopyPoseToPhysics(entity, modelComp, boneCount);
+        }
+        private static void CopyPoseToPhysics(Entity entity, ModelComponent modelComp, int boneCount)
+        {
+            if (entity == null) return;
+            var physics = entity.GetComponent<PhysicsComponent>();
+            if (physics == null || physics.Shape is not BoneHitboxShape) return;
+            if (physics.BonePoseGlobals == null || physics.BonePoseGlobals.Length != boneCount)
+                physics.BonePoseGlobals = new Matrix4x4[boneCount];
+            Array.Copy(modelComp.BoneMatrices, physics.BonePoseGlobals, boneCount);
         }
         private static void EnsureBoneArrays(ModelComponent modelComp, int boneCount)
         {
