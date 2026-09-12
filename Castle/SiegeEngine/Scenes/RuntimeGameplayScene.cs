@@ -31,6 +31,7 @@ namespace SiegeEngine.Scenes
         private bool _firstFrame = true;
         private ModelManager _modelManager;
         private bool _usePlayerCamera = false;
+        private PlayerPresence _playerPresence = PlayerPresence.Avatar;
         private bool _panelHosted = false;
         private bool _inputLive = false;
         private float _frameScroll = 0f;
@@ -111,7 +112,7 @@ namespace SiegeEngine.Scenes
             }
             _player?.InitializeCamera(_controlContext, _window);
             BindCameraGround();
-            if (!_usePlayerCamera)
+            if (!_usePlayerCamera && _playerPresence != PlayerPresence.Spectator)
                 ForceVisibleOverheadCamera();
             BuildTexturedMesh();
             EnsureHeightProvider();
@@ -152,6 +153,9 @@ namespace SiegeEngine.Scenes
             }
             if (ctx?.SceneData != null)
                 LoadSceneData(ctx.SceneData);
+            _playerPresence = ctx?.SceneData?.Settings != null
+                ? ctx.SceneData.Settings.PlayerPresence
+                : PlayerPresence.Avatar;
             ApplyAuthoredEnvironment(level.Environment ?? ctx?.SceneData?.Environment, level.Skybox ?? ctx?.SceneData?.Skybox);
             _skyboxData = _sceneData?.Skybox ?? level.Skybox;
             if (_skyboxData != null && _skyboxData.Enabled)
@@ -199,7 +203,8 @@ namespace SiegeEngine.Scenes
                         phys.RebuildShape(m, mc);
                     }
                 }
-                if (phys != null && e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase))
+                if (phys != null && e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase)
+                    && _playerPresence == PlayerPresence.Avatar)
                 {
                     phys.BodyType = BodyType.Dynamic;
                     phys.KeepUpright = true;
@@ -215,11 +220,21 @@ namespace SiegeEngine.Scenes
             ModelManager.EnsurePacksLoaded(projectPath, level);
             Console.WriteLine($"[RuntimeGameplayScene] Server entities={_server.GetEntities()?.Count ?? 0} InstanceModels={(ModelManager.Instance != null)}");
             var settings = ctx?.SceneData?.Settings;
-            EnsurePlayer(level, settings);
-            settings?.ApplyToPlayer(_player?.Physics);
-            ApplyPreferredSpawn(level, settings);
+            _playerPresence = settings != null ? settings.PlayerPresence : PlayerPresence.Avatar;
+            if (_playerPresence != PlayerPresence.Avatar)
+            {
+                _player = null;
+                SetPlayer(null);
+                _usePlayerCamera = false;
+            }
+            else
+            {
+                EnsurePlayer(level, settings);
+                settings?.ApplyToPlayer(_player?.Physics);
+                ApplyPreferredSpawn(level, settings);
+            }
 
-            if (settings != null)
+            if (settings != null && _playerPresence == PlayerPresence.Avatar)
             {
                 string avatarKey = null;
                 if (!string.IsNullOrWhiteSpace(settings.AvatarPackKey))
@@ -367,8 +382,17 @@ namespace SiegeEngine.Scenes
                 }
                 _player.InitializeCamera(_controlContext, _window);
                 BindCameraGround();
+                ApplyPlayerCollision(settings);
             }
-            if (!_usePlayerCamera)
+            if (_playerPresence == PlayerPresence.Spectator)
+            {
+                Vector3 spawn = ResolvePreferredSpawn(level, settings);
+                if (spawn != Vector3.Zero)
+                    _flyCamera.Position = spawn;
+                _flyCamera.Update(0f, 0f, true);
+                _flyCamera.RefreshViewMatrix();
+            }
+            else if (!_usePlayerCamera)
             {
                 ForceVisibleOverheadCamera();
                 _flyCamera.Update(0f, 0f, true);
@@ -595,7 +619,7 @@ namespace SiegeEngine.Scenes
             if (_firstFrame)
             {
                 _firstFrame = false;
-                if (!_usePlayerCamera)
+                if (!_usePlayerCamera && _playerPresence != PlayerPresence.Spectator)
                     ForceVisibleOverheadCamera();
             }
             UpdateHostedHuds(deltaTime);
@@ -707,8 +731,31 @@ namespace SiegeEngine.Scenes
             return Vector3.Zero;
         }
 
+        static bool AvatarHasSkeleton(FBXModel model)
+        {
+            return model?.Skeleton?.Bones != null && model.Skeleton.Bones.Count > 0;
+        }
+
+        void ApplyPlayerCollision(SceneSettings settings)
+        {
+            if (_player?.Physics == null) return;
+            var model = _player.Model;
+            var collision = settings != null
+                ? settings.ResolvePlayerCollisionType(AvatarHasSkeleton(model))
+                : (AvatarHasSkeleton(model) ? PlayerCollisionType.Hitbox : PlayerCollisionType.Capsule);
+            if (collision == PlayerCollisionType.Capsule)
+            {
+                _player.Physics.BindUprightCapsuleFromBounds(model);
+                return;
+            }
+            _player.Physics.UseBoneHitboxes = true;
+            _player.BindMeshCollider();
+        }
+
         void EnsurePlayer(Level level, SceneSettings settings)
         {
+            if (settings != null && settings.PlayerPresence != PlayerPresence.Avatar)
+                return;
             if (_player != null)
             {
                 SetPlayer(_player);

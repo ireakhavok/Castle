@@ -288,6 +288,23 @@ namespace SiegeEngine.Core.Definitions
             }
             RecomputeMassProperties();
         }
+
+        public void BindUprightCapsuleFromBounds(FBXModel model = null)
+        {
+            UseBoneHitboxes = false;
+            if (model != null && model.Meshes != null && model.Meshes.Count > 0)
+            {
+                Size = model.GetBoundingSize();
+                LocalBoundsMinCm = model.LocalBoundsMinCm;
+                LocalBoundsMaxCm = model.LocalBoundsMaxCm;
+            }
+            Vector3 size = HasValidLocalBounds() ? (LocalBoundsMaxCm - LocalBoundsMinCm) : Size;
+            float radius = MathF.Max(0.01f, MathF.Min(size.X, size.Y) * 0.5f);
+            float height = MathF.Max(radius * 2f, size.Z);
+            Shape = new CapsuleShape(radius, height);
+            RecomputeMassProperties();
+        }
+
         private bool HasValidLocalBounds()
         {
             return LocalBoundsMinCm.X <= LocalBoundsMaxCm.X

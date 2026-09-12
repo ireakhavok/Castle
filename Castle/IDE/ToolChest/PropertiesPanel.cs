@@ -47,6 +47,20 @@ namespace ToolChest
             public override void TriggerChange(HtmlElement elem)
             {
                 base.TriggerChange(elem);
+                HtmlElement changed = elem;
+                if (elem != null && elem.Tag == "option" && elem.Parent is SelectElement)
+                    changed = elem.Parent;
+                if (changed is SelectElement selectChanged)
+                {
+                    string sid = selectChanged.Attributes.GetValueOrDefault("id", "");
+                    if (sid.StartsWith("ss-") || sid.StartsWith("env-"))
+                    {
+                        _parent.FlushLiveSettings();
+                        if (sid == "ss-playerPresence")
+                            _parent.RebuildSceneSettingsAfterPresenceChange();
+                        return;
+                    }
+                }
                 if (elem is InputElement input)
                 {
                     string id = input.Attributes.GetValueOrDefault("id", "");
@@ -312,7 +326,10 @@ namespace ToolChest
             var controllerElem = _uiOverlay.FindElementById("ss-controllerTypeName") as InputElement;
             var spawnsElem = _uiOverlay.FindElementById("ss-preferredSpawnPointIds") as InputElement;
             var cameraElem = _uiOverlay.FindElementById("ss-cameraMode") as InputElement;
-            if (avatarElem == null && animationElem == null && controllerElem == null && spawnsElem == null && cameraElem == null)
+            var presenceElem = _uiOverlay.FindElementById("ss-playerPresence");
+            var collisionElem = _uiOverlay.FindElementById("ss-playerCollisionType");
+            if (avatarElem == null && animationElem == null && controllerElem == null && spawnsElem == null && cameraElem == null
+                && presenceElem == null && collisionElem == null)
                 return;
             var settings = ProjectSettings.Current.GetOrCreateSceneSettings(_activeSceneSettingsName);
             if (settings == null) return;
@@ -336,6 +353,8 @@ namespace ToolChest
             }
             if (cameraElem != null)
                 settings.CameraMode = string.IsNullOrWhiteSpace(cameraElem.Value) ? null : cameraElem.Value.Trim();
+            settings.PlayerPresence = ReadSceneEnum("ss-playerPresence", settings.PlayerPresence);
+            settings.PlayerCollisionType = ReadSceneEnum("ss-playerCollisionType", settings.PlayerCollisionType);
             settings.PlayerMass = ReadSceneFloat("ss-playerMass", settings.PlayerMass);
             settings.PlayerFriction = ReadSceneFloat("ss-playerFriction", settings.PlayerFriction);
             settings.PlayerKineticFriction = ReadSceneFloat("ss-playerKineticFriction", settings.PlayerKineticFriction);
@@ -370,9 +389,29 @@ namespace ToolChest
             return el.Checked;
         }
 
+        private string ReadSceneSelectValue(string id)
+        {
+            var el = _uiOverlay.FindElementById(id);
+            if (el is SelectElement sel)
+                return sel.Value;
+            if (el is InputElement input)
+                return input.Value;
+            return el?.Attributes.GetValueOrDefault("value", null);
+        }
+
+        private T ReadSceneEnum<T>(string id, T fallback) where T : struct, Enum
+        {
+            string raw = ReadSceneSelectValue(id);
+            if (string.IsNullOrWhiteSpace(raw)) return fallback;
+            if (Enum.TryParse(raw.Trim(), true, out T parsed))
+                return parsed;
+            return fallback;
+        }
+
         private static void ApplyPlayerPhysicsToScene(SceneSettings settings)
         {
             if (settings == null) return;
+            if (settings.PlayerPresence != PlayerPresence.Avatar) return;
             var level = ProjectSettings.Current.CurrentLevel;
             if (level?.Entities == null) return;
             for (int i = 0; i < level.Entities.Count; i++)
@@ -455,18 +494,23 @@ namespace ToolChest
                 sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-controller\"><div class=\"property-name\">Controller Type</div><input type=\"text\" id=\"ss-controllerTypeName\" value=\"{settings.ControllerTypeName ?? ""}\"></div>");
                 sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-spawns\"><div class=\"property-name\">Preferred Spawn IDs</div><input type=\"text\" id=\"ss-preferredSpawnPointIds\" value=\"{spawnIds}\"></div>");
                 sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-camera\"><div class=\"property-name\">Camera Mode</div><input type=\"text\" id=\"ss-cameraMode\" value=\"{settings.CameraMode ?? ""}\"></div>");
-                                var inv = System.Globalization.CultureInfo.InvariantCulture;
-                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Mass</div><input type=\"text\" id=\"ss-playerMass\" value=\"{settings.PlayerMass.ToString(inv)}\"></div>");
-                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Friction</div><input type=\"text\" id=\"ss-playerFriction\" value=\"{settings.PlayerFriction.ToString(inv)}\"></div>");
-                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Kinetic Friction</div><input type=\"text\" id=\"ss-playerKineticFriction\" value=\"{settings.PlayerKineticFriction.ToString(inv)}\"></div>");
-                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Static Friction</div><input type=\"text\" id=\"ss-playerStaticFriction\" value=\"{settings.PlayerStaticFriction.ToString(inv)}\"></div>");
-                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Restitution</div><input type=\"text\" id=\"ss-playerRestitution\" value=\"{settings.PlayerRestitution.ToString(inv)}\"></div>");
-                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Linear Damping</div><input type=\"text\" id=\"ss-playerLinearDamping\" value=\"{settings.PlayerLinearDamping.ToString(inv)}\"></div>");
-                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Angular Damping</div><input type=\"text\" id=\"ss-playerAngularDamping\" value=\"{settings.PlayerAngularDamping.ToString(inv)}\"></div>");
-                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Receive Friction</div><input type=\"checkbox\" id=\"ss-playerReceiveFriction\"{(settings.PlayerReceiveFriction ? " checked" : "")}></div>");
-                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Receive Vertical</div><input type=\"checkbox\" id=\"ss-playerReceiveVerticalContact\"{(settings.PlayerReceiveVerticalContact ? " checked" : "")}></div>");
-                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Keep Upright</div><input type=\"checkbox\" id=\"ss-playerKeepUpright\"{(settings.PlayerKeepUpright ? " checked" : "")}></div>");
-sb.Append("</details>");
+                sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-presence\"><div class=\"property-name\">Player Presence</div><select id=\"ss-playerPresence\">{SceneEnumOptions(settings.PlayerPresence)}</select></div>");
+                var inv = System.Globalization.CultureInfo.InvariantCulture;
+                if (settings.PlayerPresence == PlayerPresence.Avatar)
+                {
+                    sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-collision\"><div class=\"property-name\">Player Collision Type</div><select id=\"ss-playerCollisionType\">{SceneEnumOptions(settings.PlayerCollisionType)}</select></div>");
+                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Mass</div><input type=\"text\" id=\"ss-playerMass\" value=\"{settings.PlayerMass.ToString(inv)}\"></div>");
+                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Friction</div><input type=\"text\" id=\"ss-playerFriction\" value=\"{settings.PlayerFriction.ToString(inv)}\"></div>");
+                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Kinetic Friction</div><input type=\"text\" id=\"ss-playerKineticFriction\" value=\"{settings.PlayerKineticFriction.ToString(inv)}\"></div>");
+                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Static Friction</div><input type=\"text\" id=\"ss-playerStaticFriction\" value=\"{settings.PlayerStaticFriction.ToString(inv)}\"></div>");
+                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Restitution</div><input type=\"text\" id=\"ss-playerRestitution\" value=\"{settings.PlayerRestitution.ToString(inv)}\"></div>");
+                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Linear Damping</div><input type=\"text\" id=\"ss-playerLinearDamping\" value=\"{settings.PlayerLinearDamping.ToString(inv)}\"></div>");
+                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Angular Damping</div><input type=\"text\" id=\"ss-playerAngularDamping\" value=\"{settings.PlayerAngularDamping.ToString(inv)}\"></div>");
+                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Receive Friction</div><input type=\"checkbox\" id=\"ss-playerReceiveFriction\"{(settings.PlayerReceiveFriction ? " checked" : "")}></div>");
+                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Receive Vertical</div><input type=\"checkbox\" id=\"ss-playerReceiveVerticalContact\"{(settings.PlayerReceiveVerticalContact ? " checked" : "")}></div>");
+                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Keep Upright</div><input type=\"checkbox\" id=\"ss-playerKeepUpright\"{(settings.PlayerKeepUpright ? " checked" : "")}></div>");
+                }
+                sb.Append("</details>");
                 var env = level.Environment ?? new EnvironmentSettings();
                 level.Environment = env;
                 sb.Append("<details open><summary>Environment / Lighting</summary>");
@@ -1606,12 +1650,37 @@ sb.Append("</details>");
                 return;
             }
         }
+        public void RebuildSceneSettingsAfterPresenceChange()
+        {
+            RebuildPropertiesUI(force: true);
+        }
+
+        private static string SceneEnumOptions<T>(T current) where T : struct, Enum
+        {
+            var sb = new StringBuilder();
+            foreach (T value in Enum.GetValues(typeof(T)))
+            {
+                string name = value.ToString();
+                string selected = EqualityComparer<T>.Default.Equals(value, current) ? " selected" : "";
+                sb.Append($"<option{selected}>{name}</option>");
+            }
+            return sb.ToString();
+        }
+
         public void HandleUIClick(HtmlElement elem)
         {
             if (elem == null) return;
             if (elem.Tag != "option") return;
             var select = elem.Parent as SelectElement;
             if (select == null) return;
+            string id = select.Attributes.GetValueOrDefault("id", "");
+            if (id.StartsWith("ss-") || id.StartsWith("env-"))
+            {
+                FlushSceneSettingsFromUI();
+                if (id == "ss-playerPresence")
+                    RebuildPropertiesUI(force: true);
+                return;
+            }
             string hook = select.Attributes.GetValueOrDefault("data-hook", "");
             if (hook == "SetComponentProperty")
             {

@@ -6,6 +6,19 @@ using SiegeEngine.Core.Physics;
 
 namespace SiegeEngine.Core.Definitions
 {
+    public enum PlayerPresence
+    {
+        None,
+        Avatar,
+        Spectator
+    }
+
+    public enum PlayerCollisionType
+    {
+        Capsule,
+        Hitbox
+    }
+
     public class SceneSettings
     {
         [JsonPropertyName("avatarPackKey")]
@@ -22,6 +35,14 @@ namespace SiegeEngine.Core.Definitions
 
         [JsonPropertyName("cameraMode")]
         public string CameraMode { get; set; }
+
+        [JsonPropertyName("playerPresence")]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public PlayerPresence PlayerPresence { get; set; } = PlayerPresence.Avatar;
+
+        [JsonPropertyName("playerCollisionType")]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public PlayerCollisionType PlayerCollisionType { get; set; } = PlayerCollisionType.Hitbox;
 
         // Defaults match PhysicsComponent so an unedited scene does not change fall/friction.
         [JsonPropertyName("playerMass")]
@@ -53,6 +74,13 @@ namespace SiegeEngine.Core.Definitions
 
         [JsonPropertyName("playerKeepUpright")]
         public bool PlayerKeepUpright { get; set; } = true;
+
+        public PlayerCollisionType ResolvePlayerCollisionType(bool avatarHasSkeleton)
+        {
+            if (PlayerCollisionType == PlayerCollisionType.Hitbox && !avatarHasSkeleton)
+                return PlayerCollisionType.Capsule;
+            return PlayerCollisionType;
+        }
 
         public void ApplyPlayerPhysics(PhysicsComponent physics) => ApplyToPlayer(physics);
 
