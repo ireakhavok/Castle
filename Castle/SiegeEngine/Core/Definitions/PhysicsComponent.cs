@@ -272,7 +272,13 @@ namespace SiegeEngine.Core.Definitions
 
         public void RebuildShape(FBXModel model, IList<int> hiddenMeshIndices, IList<MeshMaterialOption> materialOptions)
         {
-            if (model != null && model.Meshes != null && model.Meshes.Count > 0)
+            // KeepUpright + !UseBoneHitboxes is the af92da6 character capsule path
+            // (CapsuleVsHeightfield, feet at Position). Props stay a triangle mesh.
+            if (KeepUpright && !UseBoneHitboxes)
+            {
+                Shape = new CapsuleShape(0.4f, 1.8f);
+            }
+            else if (model != null && model.Meshes != null && model.Meshes.Count > 0)
             {
                 // Any FBX with a skeleton uses per-bone capsules/spheres as the collider.
                 // Props without bones stay a triangle mesh. Toggle with UseBoneHitboxes.
@@ -292,16 +298,8 @@ namespace SiegeEngine.Core.Definitions
         public void BindUprightCapsuleFromBounds(FBXModel model = null)
         {
             UseBoneHitboxes = false;
-            if (model != null && model.Meshes != null && model.Meshes.Count > 0)
-            {
-                Size = model.GetBoundingSize();
-                LocalBoundsMinCm = model.LocalBoundsMinCm;
-                LocalBoundsMaxCm = model.LocalBoundsMaxCm;
-            }
-            Vector3 size = HasValidLocalBounds() ? (LocalBoundsMaxCm - LocalBoundsMinCm) : Size;
-            float radius = MathF.Max(0.01f, MathF.Min(size.X, size.Y) * 0.5f);
-            float height = MathF.Max(radius * 2f, size.Z);
-            Shape = new CapsuleShape(radius, height);
+            KeepUpright = true;
+            Shape = new CapsuleShape(0.4f, 1.8f);
             RecomputeMassProperties();
         }
 
