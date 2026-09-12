@@ -216,6 +216,7 @@ namespace SiegeEngine.Scenes
             Console.WriteLine($"[RuntimeGameplayScene] Server entities={_server.GetEntities()?.Count ?? 0} InstanceModels={(ModelManager.Instance != null)}");
             var settings = ctx?.SceneData?.Settings;
             EnsurePlayer(level, settings);
+            settings?.ApplyToPlayer(_player?.Physics);
             ApplyPreferredSpawn(level, settings);
 
             if (settings != null)

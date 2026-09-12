@@ -53,6 +53,8 @@ namespace ToolChest
                     if (id.StartsWith("ss-") || id.StartsWith("env-"))
                     {
                         _parent.FlushLiveSettings();
+                        if (id.StartsWith("ss-player"))
+                            _parent.ApplyPlayerPhysicsFromSettings();
                         return;
                     }
                     string hook = input.Attributes.GetValueOrDefault("data-hook", "");
@@ -167,6 +169,13 @@ namespace ToolChest
         public void FlushLiveSettings()
         {
             FlushSceneSettingsFromUI();
+        }
+
+        public void ApplyPlayerPhysicsFromSettings()
+        {
+            if (string.IsNullOrEmpty(_activeSceneSettingsName)) return;
+            var settings = ProjectSettings.Current.GetOrCreateSceneSettings(_activeSceneSettingsName);
+            ApplyPlayerPhysicsToScene(settings);
         }
         private void OnGenericEvent(GenericEvent e)
         {
@@ -327,9 +336,56 @@ namespace ToolChest
             }
             if (cameraElem != null)
                 settings.CameraMode = string.IsNullOrWhiteSpace(cameraElem.Value) ? null : cameraElem.Value.Trim();
+            settings.PlayerMass = ReadSceneFloat("ss-playerMass", settings.PlayerMass);
+            settings.PlayerFriction = ReadSceneFloat("ss-playerFriction", settings.PlayerFriction);
+            settings.PlayerKineticFriction = ReadSceneFloat("ss-playerKineticFriction", settings.PlayerKineticFriction);
+            settings.PlayerStaticFriction = ReadSceneFloat("ss-playerStaticFriction", settings.PlayerStaticFriction);
+            settings.PlayerRestitution = ReadSceneFloat("ss-playerRestitution", settings.PlayerRestitution);
+            settings.PlayerLinearDamping = ReadSceneFloat("ss-playerLinearDamping", settings.PlayerLinearDamping);
+            settings.PlayerAngularDamping = ReadSceneFloat("ss-playerAngularDamping", settings.PlayerAngularDamping);
+            settings.PlayerReceiveFriction = ReadSceneChecked("ss-playerReceiveFriction", settings.PlayerReceiveFriction);
+            settings.PlayerReceiveVerticalContact = ReadSceneChecked("ss-playerReceiveVerticalContact", settings.PlayerReceiveVerticalContact);
+            settings.PlayerKeepUpright = ReadSceneChecked("ss-playerKeepUpright", settings.PlayerKeepUpright);
             ProjectSettings.Current.SetSceneSettings(_activeSceneSettingsName, settings);
+            ApplyPlayerPhysicsToScene(settings);
             FlushEnvironmentFromUI();
             Console.WriteLine($"[PropertiesPanel] Flushed Scene Settings for '{_activeSceneSettingsName}': Avatar={settings.AvatarPackKey}, Animation={settings.AnimationPackKey}, Controller={settings.ControllerTypeName}, Camera={settings.CameraMode}, Spawns=[{string.Join(",", settings.PreferredSpawnPointIds ?? new List<int>())}]");
+        }
+
+
+        private float ReadSceneFloat(string id, float fallback)
+        {
+            var el = _uiOverlay.FindElementById(id) as InputElement;
+            if (el == null || string.IsNullOrWhiteSpace(el.Value)) return fallback;
+            if (float.TryParse(el.Value.Trim(), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out float v))
+                return v;
+            return fallback;
+        }
+
+        private bool ReadSceneChecked(string id, bool fallback)
+        {
+            var el = _uiOverlay.FindElementById(id) as InputElement;
+            if (el == null) return fallback;
+            return el.Checked;
+        }
+
+        private static void ApplyPlayerPhysicsToScene(SceneSettings settings)
+        {
+            if (settings == null) return;
+            var level = ProjectSettings.Current.CurrentLevel;
+            if (level?.Entities == null) return;
+            for (int i = 0; i < level.Entities.Count; i++)
+            {
+                var entity = level.Entities[i];
+                if (entity == null) continue;
+                bool namedPlayer = entity.Type != null
+                    && entity.Type.Equals("Player", StringComparison.OrdinalIgnoreCase);
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (physics == null) continue;
+                if (namedPlayer || physics.KeepUpright)
+                    settings.ApplyToPlayer(physics);
+            }
         }
 
         private void FlushEnvironmentFromUI()
@@ -399,15 +455,18 @@ namespace ToolChest
                 sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-controller\"><div class=\"property-name\">Controller Type</div><input type=\"text\" id=\"ss-controllerTypeName\" value=\"{settings.ControllerTypeName ?? ""}\"></div>");
                 sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-spawns\"><div class=\"property-name\">Preferred Spawn IDs</div><input type=\"text\" id=\"ss-preferredSpawnPointIds\" value=\"{spawnIds}\"></div>");
                 sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-camera\"><div class=\"property-name\">Camera Mode</div><input type=\"text\" id=\"ss-cameraMode\" value=\"{settings.CameraMode ?? ""}\"></div>");
-                sb.Append("</details>");
-                var scenePlayer = FindPlayerEntity(level);
-                var scenePlayerPhys = scenePlayer != null ? scenePlayer.GetComponent<PhysicsComponent>() : null;
-                if (scenePlayerPhys != null)
-                {
-                    sb.Append("<details open><summary>Player Physics</summary>");
-                    AppendPhysicsTunables(sb, scenePlayerPhys, scenePlayer.Id);
-                    sb.Append("</details>");
-                }
+                                var inv = System.Globalization.CultureInfo.InvariantCulture;
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Mass</div><input type=\"text\" id=\"ss-playerMass\" value=\"{settings.PlayerMass.ToString(inv)}\"></div>");
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Friction</div><input type=\"text\" id=\"ss-playerFriction\" value=\"{settings.PlayerFriction.ToString(inv)}\"></div>");
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Kinetic Friction</div><input type=\"text\" id=\"ss-playerKineticFriction\" value=\"{settings.PlayerKineticFriction.ToString(inv)}\"></div>");
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Static Friction</div><input type=\"text\" id=\"ss-playerStaticFriction\" value=\"{settings.PlayerStaticFriction.ToString(inv)}\"></div>");
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Restitution</div><input type=\"text\" id=\"ss-playerRestitution\" value=\"{settings.PlayerRestitution.ToString(inv)}\"></div>");
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Linear Damping</div><input type=\"text\" id=\"ss-playerLinearDamping\" value=\"{settings.PlayerLinearDamping.ToString(inv)}\"></div>");
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Angular Damping</div><input type=\"text\" id=\"ss-playerAngularDamping\" value=\"{settings.PlayerAngularDamping.ToString(inv)}\"></div>");
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Receive Friction</div><input type=\"checkbox\" id=\"ss-playerReceiveFriction\"{(settings.PlayerReceiveFriction ? " checked" : "")}></div>");
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Receive Vertical</div><input type=\"checkbox\" id=\"ss-playerReceiveVerticalContact\"{(settings.PlayerReceiveVerticalContact ? " checked" : "")}></div>");
+                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Player Keep Upright</div><input type=\"checkbox\" id=\"ss-playerKeepUpright\"{(settings.PlayerKeepUpright ? " checked" : "")}></div>");
+sb.Append("</details>");
                 var env = level.Environment ?? new EnvironmentSettings();
                 level.Environment = env;
                 sb.Append("<details open><summary>Environment / Lighting</summary>");
@@ -418,6 +477,7 @@ namespace ToolChest
                 sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Shadow Distance</div><input type=\"text\" id=\"env-shadowDistance\" value=\"{env.ShadowDistance.ToString(System.Globalization.CultureInfo.InvariantCulture)}\"></div>");
                 sb.Append("<div class=\"property-row\"><div class=\"property-name\">Note</div><div>Editor lighting comes from placed Light entities. Play Game uses a 3 o'clock sun if none exist.</div></div>");
                 sb.Append("</details>");
+                return sb.ToString();
             }
             else
             {
