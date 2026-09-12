@@ -800,15 +800,22 @@ namespace SiegeEngine.Core.Physics
         private void BoneHitboxVsTriangleMesh(BoneHitboxShape boxes, PhysicsComponent boxBody,
             TriangleMeshShape mesh, PhysicsComponent meshBody, ContactManifold manifold)
         {
+            // Solver convention: normal points from BodyB toward BodyA.
+            // Aiming n at the hitbox COM regardless of A/B inverts the impulse when
+            // the triangle-mesh body is A, then the per-bone triangle dump projects
+            // that mesh out of the world.
+            bool boxIsA = ReferenceEquals(manifold.BodyA, boxBody);
             const float skin = 0.02f;
+            var candidates = new List<ContactPoint>(16);
+            _triA.Clear(); _triB.Clear(); _triC.Clear();
+            mesh.QueryClosestWorldTriangles(meshBody.Position, meshBody.Rotation,
+                boxBody.WorldCentreOfMass, _triA, _triB, _triC, 4);
+            if (_triA.Count == 0) return;
             for (int i = 0; i < boxes.Primitives.Length; i++)
             {
                 Vector3 a = boxes.WorldA[i];
                 Vector3 b = boxes.WorldB[i];
                 float radius = boxes.Primitives[i].Radius;
-                Vector3 mid = (a + b) * 0.5f;
-                _triA.Clear(); _triB.Clear(); _triC.Clear();
-                mesh.QueryClosestWorldTriangles(meshBody.Position, meshBody.Rotation, mid, _triA, _triB, _triC, 4);
                 for (int t = 0; t < _triA.Count; t++)
                 {
                     ClosestPointsSegmentTriangle(a, b, _triA[t], _triB[t], _triC[t],
@@ -824,16 +831,16 @@ namespace SiegeEngine.Core.Physics
                         if (nLen < 1e-8f) continue;
                     }
                     n /= nLen;
-                    if (Vector3.Dot(n, boxBody.WorldCentreOfMass - pb) < 0f)
+                    if (!boxIsA)
                         n = -n;
-                    manifold.Add(new ContactPoint
-                    {
-                        Position = pb,
-                        Normal = n,
-                        Penetration = MathF.Max(0f, pen)
-                    });
+                    MergeMeshContact(candidates, pb, n, MathF.Max(0f, pen));
                 }
             }
+            if (candidates.Count == 0) return;
+            candidates.Sort((x, y) => y.Penetration.CompareTo(x.Penetration));
+            int keep = Math.Min(4, candidates.Count);
+            for (int i = 0; i < keep; i++)
+                manifold.Add(candidates[i]);
         }
 
         private void BoneHitboxVsBoneHitbox(BoneHitboxShape aBoxes, PhysicsComponent bodyA,
