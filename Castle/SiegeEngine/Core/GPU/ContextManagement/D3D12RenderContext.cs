@@ -18,10 +18,12 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             public readonly float R, G, B, A;
             public readonly float UseTexture;
             public readonly uint Texture;
-            public DrawOp(float[] verts, int vertFloats, uint indexCount, float r, float g, float b, float a, float useTex, uint tex)
+            public readonly int VpX, VpY, VpW, VpH;
+            public DrawOp(float[] verts, int vertFloats, uint indexCount, float r, float g, float b, float a, float useTex, uint tex, int vpX, int vpY, int vpW, int vpH)
             {
                 Verts = verts; VertFloats = vertFloats; IndexCount = indexCount;
                 R = r; G = g; B = b; A = a; UseTexture = useTex; Texture = tex;
+                VpX = vpX; VpY = vpY; VpW = vpW; VpH = vpH;
             }
         }
 
@@ -29,6 +31,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         {
             public int Width, Height;
             public byte[] Rgba;
+            public int Generation;
         }
 
         readonly List<DrawOp> _draws = new List<DrawOp>();
@@ -48,12 +51,16 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         int _stride = 16;
 
         public float ClearR, ClearG, ClearB, ClearA = 1f;
+        public int ViewportX { get; private set; }
+        public int ViewportY { get; private set; }
         public int ViewportWidth { get; private set; }
         public int ViewportHeight { get; private set; }
         public AbstractRenderEnums Enums { get; } = new OpenGLEnums();
 
         public D3D12RenderContext(int width, int height)
         {
+            ViewportX = 0;
+            ViewportY = 0;
             ViewportWidth = width;
             ViewportHeight = height;
         }
@@ -75,8 +82,10 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public void Clear(int mask) { }
         public void Viewport(int x, int y, uint width, uint height)
         {
-            ViewportWidth = (int)width;
-            ViewportHeight = (int)height;
+            ViewportX = x;
+            ViewportY = y;
+            ViewportWidth = Math.Max(1, (int)width);
+            ViewportHeight = Math.Max(1, (int)height);
         }
 
         public int GetError() => 0;
@@ -210,7 +219,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             if (r == 0 && g == 0 && b == 0 && a == 0) { r = g = b = a = 1f; }
             float useTex = GetUniform1(Loc("uUseTexture"));
             if (useTex == 0 && GetUniform1(Loc("uUseTex")) != 0) useTex = GetUniform1(Loc("uUseTex"));
-            _draws.Add(new DrawOp(packed, packed.Length, indexCount == 0 ? (uint)(packed.Length / 4) : indexCount, r, g, b, a, useTex, _boundTexture));
+            _draws.Add(new DrawOp(packed, packed.Length, indexCount == 0 ? (uint)(packed.Length / 4) : indexCount, r, g, b, a, useTex, _boundTexture, ViewportX, ViewportY, ViewportWidth, ViewportHeight));
         }
 
         public bool IsVertexArray(uint array) => array != 0;
@@ -228,30 +237,56 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             {
                 _boundTexture = _nextTexture++;
             }
-            var tex = new CpuTexture { Width = (int)width, Height = (int)height };
+            int gen = 1;
+            if (_textures.TryGetValue(_boundTexture, out var prev) && prev != null)
+                gen = prev.Generation + 1;
+            var tex = new CpuTexture { Width = (int)width, Height = (int)height, Generation = gen };
             int bytes = (int)width * (int)height * 4;
             tex.Rgba = new byte[Math.Max(bytes, 4)];
             if (pixels != null && bytes > 0)
             {
-                // TextureLoader uploads RGB or BGRA/RGBA. Copy what we can; expand RGB to RGBA.
                 try
                 {
-                    int srcStrideGuess = (format == Enums.Rgba || format == Enums.PixelBgra) ? 4 : 3;
-                    int srcBytes = (int)width * (int)height * srcStrideGuess;
+                    bool bgra = format == Enums.PixelBgra;
+                    bool bgr = format == Enums.PixelBgr;
+                    bool rgba = format == Enums.Rgba || format == Enums.PixelRgba;
+                    int srcStride = (bgra || rgba) ? 4 : 3;
+                    int srcBytes = (int)width * (int)height * srcStride;
                     var src = new byte[srcBytes];
                     Marshal.Copy((nint)pixels, src, 0, srcBytes);
-                    if (srcStrideGuess == 4)
+                    if (rgba)
                     {
                         Buffer.BlockCopy(src, 0, tex.Rgba, 0, Math.Min(srcBytes, bytes));
                     }
+                    else if (bgra)
+                    {
+                        int di = 0;
+                        for (int i = 0; i + 3 < src.Length && di + 3 < tex.Rgba.Length; i += 4)
+                        {
+                            tex.Rgba[di++] = src[i + 2];
+                            tex.Rgba[di++] = src[i + 1];
+                            tex.Rgba[di++] = src[i];
+                            tex.Rgba[di++] = src[i + 3];
+                        }
+                    }
                     else
                     {
+                        // PixelBgr / PixelRgb — BackgroundRenderer uploads Format24bppRgb as BGR
                         int di = 0;
                         for (int i = 0; i + 2 < src.Length && di + 3 < tex.Rgba.Length; i += 3)
                         {
-                            tex.Rgba[di++] = src[i];
-                            tex.Rgba[di++] = src[i + 1];
-                            tex.Rgba[di++] = src[i + 2];
+                            if (bgr)
+                            {
+                                tex.Rgba[di++] = src[i + 2];
+                                tex.Rgba[di++] = src[i + 1];
+                                tex.Rgba[di++] = src[i];
+                            }
+                            else
+                            {
+                                tex.Rgba[di++] = src[i];
+                                tex.Rgba[di++] = src[i + 1];
+                                tex.Rgba[di++] = src[i + 2];
+                            }
                             tex.Rgba[di++] = 255;
                         }
                     }

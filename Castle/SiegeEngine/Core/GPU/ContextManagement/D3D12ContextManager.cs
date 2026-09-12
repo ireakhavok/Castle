@@ -63,13 +63,14 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         nint[] _bb12 = new nint[FrameCount];
         nint[] _wrapped11 = new nint[FrameCount];
         nint[] _rtv11 = new nint[FrameCount];
-        nint _vs, _ps, _layout, _vb, _cb, _sampler, _rs, _whiteSrv, _whiteTex;
+        nint _vs, _ps, _layout, _vb, _cb, _sampler, _rs, _blend, _whiteSrv, _whiteTex;
         ulong _fenceValue;
         nint _fenceEvent;
         int _frame;
         int _width, _height;
         bool _uiReady;
         bool _loggedLayout;
+        bool _loggedMissingTex;
         readonly Dictionary<uint, nint> _gpuTex = new Dictionary<uint, nint>();
         readonly Dictionary<uint, nint> _gpuSrv = new Dictionary<uint, nint>();
         readonly Dictionary<uint, int> _gpuTexGen = new Dictionary<uint, int>();
@@ -181,8 +182,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             var draws = _backend.TakeDraws();
             if (draws.Length == 0) return;
 
-            SetViewport();
             SetRasterizer();
+            SetBlend();
             SetTopology();
             SetShaders();
             BindSampler();
@@ -205,9 +206,30 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             foreach (var d in draws)
             {
                 if (d.Verts == null || d.VertFloats < 8) continue;
+                int vpW = d.VpW > 0 ? d.VpW : _width;
+                int vpH = d.VpH > 0 ? d.VpH : _height;
+                SetViewport(d.VpX, d.VpY, vpW, vpH);
+                if (d.UseTexture > 0.5f)
+                {
+                    nint srv = ResolveSrv(d.Texture, d.UseTexture);
+                    if (srv == nint.Zero || srv == _whiteSrv)
+                    {
+                        if (!_loggedMissingTex)
+                        {
+                            _loggedMissingTex = true;
+                            Console.WriteLine($"[DirectX12] textured draw skipped (no CPU tex id={d.Texture})");
+                        }
+                        continue;
+                    }
+                    BindSrv(srv);
+                }
+                else
+                {
+                    BindSrv(_whiteSrv);
+                }
                 int verts = UploadVerts(d.Verts, d.VertFloats);
+                if (verts < 3) continue;
                 UploadConstants(d.R, d.G, d.B, d.A, d.UseTexture);
-                BindSrv(ResolveSrv(d.Texture, d.UseTexture));
                 Draw(verts);
             }
         }
@@ -256,6 +278,7 @@ float4 ps(VSOut i) : SV_TARGET {
             _cb = CreateBuffer11(32, 4 /* CONSTANT_BUFFER */, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
             _sampler = CreateSampler();
             _rs = CreateRasterizer();
+            _blend = CreateBlend();
             MakeWhiteTexture();
             _uiReady = _vs != nint.Zero && _ps != nint.Zero && _layout != nint.Zero && _vb != nint.Zero && _cb != nint.Zero;
         }
@@ -284,14 +307,16 @@ float4 ps(VSOut i) : SV_TARGET {
         nint ResolveSrv(uint texId, float useTex)
         {
             if (useTex <= 0.5f || texId == 0) return _whiteSrv;
-            if (!_backend.TryGetTexture(texId, out var cpu) || cpu == null || cpu.Rgba == null || cpu.Width <= 0) return _whiteSrv;
-            if (_gpuTex.TryGetValue(texId, out nint existing) && existing != nint.Zero)
+            if (!_backend.TryGetTexture(texId, out var cpu) || cpu == null || cpu.Rgba == null || cpu.Width <= 0) return nint.Zero;
+            if (_gpuTex.TryGetValue(texId, out nint existing) && existing != nint.Zero
+                && _gpuTexGen.TryGetValue(texId, out int gen) && gen == cpu.Generation)
                 return _gpuSrv[texId];
             nint tex = CreateTexture2D(cpu.Width, cpu.Height, cpu.Rgba);
             nint srv = CreateSrv(tex);
             _gpuTex[texId] = tex;
             _gpuSrv[texId] = srv;
-            return srv != nint.Zero ? srv : _whiteSrv;
+            _gpuTexGen[texId] = cpu.Generation;
+            return srv;
         }
 
         void MakeWhiteTexture()
@@ -301,10 +326,13 @@ float4 ps(VSOut i) : SV_TARGET {
             _whiteSrv = CreateSrv(_whiteTex);
         }
 
-        void SetViewport()
+        void SetViewport(int glX, int glY, int glW, int glH)
         {
-            // RSSetViewports slot 44: (self, num, D3D11_VIEWPORT*)
-            var vp = new D3D11_VIEWPORT { TopLeftX = 0, TopLeftY = 0, Width = _width, Height = _height, MinDepth = 0, MaxDepth = 1 };
+            // GL Viewport origin is bottom-left. D3D11_VIEWPORT origin is top-left.
+            int w = Math.Max(glW, 1);
+            int h = Math.Max(glH, 1);
+            float top = _height - (glY + h);
+            var vp = new D3D11_VIEWPORT { TopLeftX = glX, TopLeftY = top, Width = w, Height = h, MinDepth = 0, MaxDepth = 1 };
             nint p = Marshal.AllocHGlobal(Marshal.SizeOf<D3D11_VIEWPORT>());
             Marshal.StructureToPtr(vp, p, false);
             var fn = (SetVpFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 44), typeof(SetVpFn));
@@ -714,6 +742,51 @@ float4 ps(VSOut i) : SV_TARGET {
             }
             finally { Marshal.FreeHGlobal(descPtr); Marshal.FreeHGlobal(box); }
         }
+
+        void SetBlend()
+        {
+            if (_blend == nint.Zero) return;
+            float[] factor = { 1, 1, 1, 1 };
+            nint fac = Marshal.AllocHGlobal(16);
+            Marshal.Copy(factor, 0, fac, 4);
+            var fn = (OmSetBlendFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 35), typeof(OmSetBlendFn));
+            fn(_ctx11, _blend, fac, 0xFFFFFFFFu);
+            Marshal.FreeHGlobal(fac);
+        }
+
+        nint CreateBlend()
+        {
+            var desc = new D3D11_BLEND_DESC
+            {
+                AlphaToCoverageEnable = 0,
+                IndependentBlendEnable = 0
+            };
+            desc.RT0.BlendEnable = 1;
+            desc.RT0.SrcBlend = 5;       // D3D11_BLEND_SRC_ALPHA
+            desc.RT0.DestBlend = 6;      // D3D11_BLEND_INV_SRC_ALPHA
+            desc.RT0.BlendOp = 1;        // ADD
+            desc.RT0.SrcBlendAlpha = 2;  // ONE
+            desc.RT0.DestBlendAlpha = 6; // INV_SRC_ALPHA
+            desc.RT0.BlendOpAlpha = 1;
+            desc.RT0.RenderTargetWriteMask = 0x0F;
+            nint descPtr = Marshal.AllocHGlobal(Marshal.SizeOf<D3D11_BLEND_DESC>());
+            Marshal.StructureToPtr(desc, descPtr, false);
+            nint box = Marshal.AllocHGlobal(nint.Size);
+            Marshal.WriteIntPtr(box, nint.Zero);
+            try
+            {
+                var fn = (CreateBlendFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_device11, 20), typeof(CreateBlendFn));
+                int hr = fn(_device11, descPtr, box);
+                if (hr < 0)
+                {
+                    Console.WriteLine($"[DirectX12] CreateBlendState hr=0x{hr:X8}");
+                    return nint.Zero;
+                }
+                Console.WriteLine("[DirectX12] Blend SrcAlpha/InvSrcAlpha");
+                return Marshal.ReadIntPtr(box);
+            }
+            finally { Marshal.FreeHGlobal(descPtr); Marshal.FreeHGlobal(box); }
+        }
         nint CreateSampler()
         {
             var desc = new D3D11_SAMPLER_DESC
@@ -827,6 +900,22 @@ float4 ps(VSOut i) : SV_TARGET {
         [StructLayout(LayoutKind.Sequential)] struct D3D11_SHADER_RESOURCE_VIEW_DESC { public int Format; public int ViewDimension; public uint MostDetailedMip; public uint MipLevels; public uint pad0, pad1; }
         [StructLayout(LayoutKind.Sequential)] struct D3D11_SAMPLER_DESC { public int Filter, AddressU, AddressV, AddressW; public float MipLODBias; public uint MaxAnisotropy; public int ComparisonFunc; public float Border0, Border1, Border2, Border3; public float MinLOD, MaxLOD; }
         [StructLayout(LayoutKind.Sequential)] struct D3D11_VIEWPORT { public float TopLeftX, TopLeftY, Width, Height, MinDepth, MaxDepth; }
+                [StructLayout(LayoutKind.Sequential)]
+        struct D3D11_RENDER_TARGET_BLEND_DESC
+        {
+            public int BlendEnable;
+            public int SrcBlend, DestBlend, BlendOp;
+            public int SrcBlendAlpha, DestBlendAlpha, BlendOpAlpha;
+            public byte RenderTargetWriteMask;
+            public byte Pad0, Pad1, Pad2;
+        }
+        [StructLayout(LayoutKind.Sequential)]
+        struct D3D11_BLEND_DESC
+        {
+            public int AlphaToCoverageEnable;
+            public int IndependentBlendEnable;
+            public D3D11_RENDER_TARGET_BLEND_DESC RT0, RT1, RT2, RT3, RT4, RT5, RT6, RT7;
+        }
         [StructLayout(LayoutKind.Sequential)] struct D3D11_RASTERIZER_DESC { public int FillMode, CullMode, FrontCounterClockwise, DepthBias; public float DepthBiasClamp, SlopeScaledDepthBias; public int DepthClipEnable, ScissorEnable, MultisampleEnable, AntialiasedLineEnable; }
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
         struct D3D11_INPUT_ELEMENT_DESC
@@ -853,6 +942,8 @@ float4 ps(VSOut i) : SV_TARGET {
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int CreateLayoutFn(nint self, nint elems, uint count, nint vs, UIntPtr vsLen, nint pp);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int CreateBufFn(nint self, nint desc, nint initial, nint pp);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int CreateSampFn(nint self, nint desc, nint pp);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int CreateBlendFn(nint self, nint desc, nint pp);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void OmSetBlendFn(nint self, nint blend, nint factor, uint mask);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int CreateRsFn(nint self, nint desc, nint pp);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void RsSetStateFn(nint self, nint rs);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int CreateTexFn(nint self, nint desc, nint initial, nint pp);
