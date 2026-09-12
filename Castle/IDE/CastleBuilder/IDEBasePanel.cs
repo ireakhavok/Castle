@@ -35,29 +35,108 @@ namespace CastleBuilder
                 RefreshMenuForContext(context);
             }
 
+            public void SeedMenus(string context)
+            {
+                RefreshMenuForContext(context ?? "Scene Editor");
+            }
+
             private void RefreshMenuForContext(string context)
             {
                 Console.WriteLine($"[IDE Menu] Top menu updated for context: {context}");
+                PopulateBladeWindows(context);
+                MarkActiveBlade(context);
+            }
 
-                if (context == "Terrain")
+            private static string BladeItem(string hook, string label)
+            {
+                return $"<li class=\"nav-dropdown-item\" data-hook=\"{hook}\">{label}</li>";
+            }
+
+            private static string BladeWindowsHtml(string context)
+            {
+                context = context ?? "Scene Editor";
+                if (string.Equals(context, "Terrain", StringComparison.OrdinalIgnoreCase))
+                    return BladeItem("CastleBuilder.MenuCommands.OpenTerrain", "Terrain Creator")
+                         + BladeItem("CastleBuilder.MenuCommands.OpenHierarchy", "Hierarchy")
+                         + BladeItem("CastleBuilder.MenuCommands.OpenProperties", "Properties");
+                if (string.Equals(context, "Animator", StringComparison.OrdinalIgnoreCase))
+                    return BladeItem("CastleBuilder.MenuCommands.OpenAnimation", "Animation Viewer")
+                         + BladeItem("CastleBuilder.MenuCommands.OpenAnimationBlend", "Animation Blend")
+                         + BladeItem("CastleBuilder.MenuCommands.OpenAnimationTimeline", "Animation Timeline")
+                         + BladeItem("CastleBuilder.MenuCommands.OpenHierarchy", "Hierarchy")
+                         + BladeItem("CastleBuilder.MenuCommands.OpenProperties", "Properties");
+                if (string.Equals(context, "Workshop", StringComparison.OrdinalIgnoreCase))
+                    return BladeItem("CastleBuilder.MenuCommands.OpenScriptsPanel", "Scripts")
+                         + BladeItem("ToolChest.ConsolePanel.Open", "Console")
+                         + BladeItem("CastleBuilder.MenuCommands.OpenPlayHost", "Play Host");
+                if (string.Equals(context, "Runtime", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(context, "Runtime Gameplay", StringComparison.OrdinalIgnoreCase))
+                    return BladeItem("CastleBuilder.MenuCommands.OpenRuntime", "Runtime")
+                         + BladeItem("CastleBuilder.MenuCommands.OpenPlayHost", "Play Host")
+                         + BladeItem("ToolChest.ConsolePanel.Open", "Console");
+                return BladeItem("CastleBuilder.MenuCommands.OpenEditorScene", "Editor Scene")
+                     + BladeItem("CastleBuilder.MenuCommands.OpenHierarchy", "Hierarchy")
+                     + BladeItem("CastleBuilder.MenuCommands.OpenProperties", "Properties")
+                     + BladeItem("CastleBuilder.MenuCommands.OpenAssetBrowser", "Asset Browser");
+            }
+
+            private void PopulateBladeWindows(string context)
+            {
+                var list = FindElementById("blade-windows");
+                if (list == null) return;
+                var parsed = new HtmlParser().Parse("<ul id=\"blade-windows\">" + BladeWindowsHtml(context) + "</ul>");
+                list.Children.Clear();
+                if (parsed == null) return;
+                var source = parsed;
+                if (!string.Equals(parsed.Tag, "ul", StringComparison.OrdinalIgnoreCase) && parsed.Children.Count == 1)
+                    source = parsed.Children[0];
+                foreach (var child in source.Children.ToList())
                 {
-                    Console.WriteLine("  Panels menu now shows: Terrain Creator, Sculpt, Brush Settings, Export Heightmap, Import GeoTIFF");
+                    child.Parent = list;
+                    list.Children.Add(child);
                 }
-                else if (context == "Animator")
+                RefreshUI();
+            }
+
+            private static string ElementClass(HtmlElement el)
+            {
+                if (el?.Attributes != null && el.Attributes.TryGetValue("class", out string cls))
+                    return cls ?? "";
+                return "";
+            }
+
+            private static string ElementLabel(HtmlElement el)
+            {
+                if (el == null) return "";
+                var parts = new System.Collections.Generic.List<string>();
+                void Walk(HtmlElement n)
                 {
-                    Console.WriteLine("  Panels menu now shows: Animation Viewer, Import FBX, Blend Editor, Preview in Scene, Animation List");
+                    if (n is TextElement te && !string.IsNullOrWhiteSpace(te.Content))
+                        parts.Add(te.Content.Trim());
+                    if (n?.Children == null) return;
+                    for (int i = 0; i < n.Children.Count; i++)
+                        Walk(n.Children[i]);
                 }
-                else if (context == "Scene Editor")
+                Walk(el);
+                return string.Join(" ", parts).Trim();
+            }
+
+            private void MarkActiveBlade(string context)
+            {
+                string want = context ?? "Scene Editor";
+                if (string.Equals(want, "Runtime Gameplay", StringComparison.OrdinalIgnoreCase))
+                    want = "Runtime";
+                var blades = FindElementsByTag("div");
+                foreach (var el in blades)
                 {
-                    Console.WriteLine("  Panels menu now shows: Hierarchy, Properties, Asset Browser, Scene List, Load Game Scene, Play Game, Export Game");
-                }
-                else if (context == "Workshop")
-                {
-                    Console.WriteLine("  Panels menu now shows: Script Editor, Console, Play Host");
-                }
-                else if (context == "Runtime Gameplay")
-                {
-                    Console.WriteLine("  [Runtime Gameplay] Editor panels/dropdowns hidden • Runtime UI + Sandbox scene with cached Level/terrain/entities/player/fly cam active");
+                    string cls = ElementClass(el);
+                    if (cls.IndexOf("context-blade", StringComparison.Ordinal) < 0) continue;
+                    bool on = string.Equals(ElementLabel(el), want, StringComparison.OrdinalIgnoreCase);
+                    var tokens = new System.Collections.Generic.List<string>(
+                        cls.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
+                    if (on && !tokens.Contains("active")) tokens.Add("active");
+                    if (!on) tokens.RemoveAll(t => t == "active");
+                    el.Attributes["class"] = string.Join(" ", tokens);
                 }
             }
 
@@ -147,6 +226,8 @@ namespace CastleBuilder
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
+            if (_uiOverlay is IDEUIOverlay ideUi)
+                ideUi.SeedMenus(CompanionLayoutHelper.CurrentContext);
 
             CompanionLayoutHelper.Bind(_renderContext, _controlContext, _window, _eventBus);
             MusicPlayerPanel.Open(_renderContext, _controlContext, _window, _eventBus);
