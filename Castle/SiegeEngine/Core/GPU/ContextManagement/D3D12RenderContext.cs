@@ -176,10 +176,15 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         {
             if (!_buffers.TryGetValue(_boundArray, out var vb) || vb == null || vb.Length < 8) return;
             int stride = _stride <= 0 ? 16 : _stride;
-            if (indexed && _buffers.TryGetValue(_boundElement, out var ib) && ib != null && ib.Length >= 2)
+            if (!indexed && indexCount > 0)
+            {
+                int guess = vb.Length / (int)indexCount;
+                if (guess >= 8 && guess <= 32) stride = guess;
+            }
+            else if (indexed && _buffers.TryGetValue(_boundElement, out var ib) && ib != null && ib.Length >= 2)
             {
                 int idxStride = (indexCount > 0 && ib.Length == (int)indexCount * 2) ? 2 : 4;
-                int nIdx = idxStride == 2 ? ib.Length / 2 : ib.Length / 4;
+                int nIdx = Math.Min(idxStride == 2 ? ib.Length / 2 : ib.Length / 4, indexCount > 0 ? (int)indexCount : int.MaxValue);
                 int maxI = 0;
                 for (int i = 0; i < nIdx; i++)
                 {
@@ -191,6 +196,16 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             }
             float[] packed = PackXyUv(vb, stride);
             if (packed.Length < 8) return;
+            if (!indexed && indexCount > 0)
+            {
+                int keep = Math.Min(packed.Length, (int)indexCount * 4);
+                if (keep < packed.Length)
+                {
+                    var cut = new float[keep];
+                    Array.Copy(packed, cut, keep);
+                    packed = cut;
+                }
+            }
             GetUniform4(Loc("uColor"), out float r, out float g, out float b, out float a);
             if (r == 0 && g == 0 && b == 0 && a == 0) { r = g = b = a = 1f; }
             float useTex = GetUniform1(Loc("uUseTexture"));

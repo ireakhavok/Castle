@@ -27,6 +27,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         const int D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST = 4;
         const int D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT = 0x14;
         const int D3D11_TEXTURE_ADDRESS_CLAMP = 3;
+        const int D3D11_FILL_SOLID = 3;
+        const int D3D11_CULL_NONE = 1;
         const int D3D11_SRV_DIMENSION_TEXTURE2D = 4;
         const uint D3D11_SDK_VERSION = 7;
         const int FrameCount = 2;
@@ -61,7 +63,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         nint[] _bb12 = new nint[FrameCount];
         nint[] _wrapped11 = new nint[FrameCount];
         nint[] _rtv11 = new nint[FrameCount];
-        nint _vs, _ps, _layout, _vb, _cb, _sampler, _whiteSrv, _whiteTex;
+        nint _vs, _ps, _layout, _vb, _cb, _sampler, _rs, _whiteSrv, _whiteTex;
         ulong _fenceValue;
         nint _fenceEvent;
         int _frame;
@@ -180,6 +182,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             if (draws.Length == 0) return;
 
             SetViewport();
+            SetRasterizer();
             SetTopology();
             SetShaders();
             BindSampler();
@@ -223,7 +226,7 @@ VSOut vs(VSIn i) {
     float2 vp = float2(max(Viewport.x, 1), max(Viewport.y, 1));
     if (max(abs(p.x), abs(p.y)) > 1.5)
         p = float2(p.x / vp.x * 2 - 1, 1 - p.y / vp.y * 2);
-    o.pos = float4(p.x, -p.y, 0, 1);
+    o.pos = float4(p.x, p.y, 0, 1);
     o.uv = i.uv;
     return o;
 }
@@ -252,6 +255,7 @@ float4 ps(VSOut i) : SV_TARGET {
             _vb = CreateBuffer11(1024 * 1024, D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
             _cb = CreateBuffer11(32, 4 /* CONSTANT_BUFFER */, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
             _sampler = CreateSampler();
+            _rs = CreateRasterizer();
             MakeWhiteTexture();
             _uiReady = _vs != nint.Zero && _ps != nint.Zero && _layout != nint.Zero && _vb != nint.Zero && _cb != nint.Zero;
         }
@@ -675,6 +679,41 @@ float4 ps(VSOut i) : SV_TARGET {
             finally { Marshal.FreeHGlobal(descPtr); Marshal.FreeHGlobal(box); }
         }
 
+
+        void SetRasterizer()
+        {
+            if (_rs == nint.Zero) return;
+            var fn = (RsSetStateFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 43), typeof(RsSetStateFn));
+            fn(_ctx11, _rs);
+        }
+
+        nint CreateRasterizer()
+        {
+            var desc = new D3D11_RASTERIZER_DESC
+            {
+                FillMode = D3D11_FILL_SOLID,
+                CullMode = D3D11_CULL_NONE,
+                FrontCounterClockwise = 0,
+                DepthClipEnable = 1
+            };
+            nint descPtr = Marshal.AllocHGlobal(Marshal.SizeOf<D3D11_RASTERIZER_DESC>());
+            Marshal.StructureToPtr(desc, descPtr, false);
+            nint box = Marshal.AllocHGlobal(nint.Size);
+            Marshal.WriteIntPtr(box, nint.Zero);
+            try
+            {
+                var fn = (CreateRsFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_device11, 22), typeof(CreateRsFn));
+                int hr = fn(_device11, descPtr, box);
+                if (hr < 0)
+                {
+                    Console.WriteLine($"[DirectX12] CreateRasterizerState hr=0x{hr:X8}");
+                    return nint.Zero;
+                }
+                Console.WriteLine("[DirectX12] Rasterizer Cull=NONE");
+                return Marshal.ReadIntPtr(box);
+            }
+            finally { Marshal.FreeHGlobal(descPtr); Marshal.FreeHGlobal(box); }
+        }
         nint CreateSampler()
         {
             var desc = new D3D11_SAMPLER_DESC
@@ -788,6 +827,7 @@ float4 ps(VSOut i) : SV_TARGET {
         [StructLayout(LayoutKind.Sequential)] struct D3D11_SHADER_RESOURCE_VIEW_DESC { public int Format; public int ViewDimension; public uint MostDetailedMip; public uint MipLevels; public uint pad0, pad1; }
         [StructLayout(LayoutKind.Sequential)] struct D3D11_SAMPLER_DESC { public int Filter, AddressU, AddressV, AddressW; public float MipLODBias; public uint MaxAnisotropy; public int ComparisonFunc; public float Border0, Border1, Border2, Border3; public float MinLOD, MaxLOD; }
         [StructLayout(LayoutKind.Sequential)] struct D3D11_VIEWPORT { public float TopLeftX, TopLeftY, Width, Height, MinDepth, MaxDepth; }
+        [StructLayout(LayoutKind.Sequential)] struct D3D11_RASTERIZER_DESC { public int FillMode, CullMode, FrontCounterClockwise, DepthBias; public float DepthBiasClamp, SlopeScaledDepthBias; public int DepthClipEnable, ScissorEnable, MultisampleEnable, AntialiasedLineEnable; }
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
         struct D3D11_INPUT_ELEMENT_DESC
         {
@@ -813,6 +853,8 @@ float4 ps(VSOut i) : SV_TARGET {
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int CreateLayoutFn(nint self, nint elems, uint count, nint vs, UIntPtr vsLen, nint pp);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int CreateBufFn(nint self, nint desc, nint initial, nint pp);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int CreateSampFn(nint self, nint desc, nint pp);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int CreateRsFn(nint self, nint desc, nint pp);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void RsSetStateFn(nint self, nint rs);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int CreateTexFn(nint self, nint desc, nint initial, nint pp);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int CreateSrvFn(nint self, nint resource, nint desc, nint pp);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void OmSetFn(nint self, uint num, nint ppRTV, nint dsv);
