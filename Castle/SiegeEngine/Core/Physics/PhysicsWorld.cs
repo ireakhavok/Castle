@@ -896,10 +896,17 @@ namespace SiegeEngine.Core.Physics
         private void BoneHitboxVsCapsule(BoneHitboxShape boxes, PhysicsComponent boxBody,
             CapsuleShape cap, PhysicsComponent capBody, ContactManifold manifold)
         {
+            // Solver convention: normal points from BodyB toward BodyA.
+            // After GenerateManifold swaps a Static partner to B, a Capsule player
+            // is A and the static skeleton FBX is B. pa-pb aims A→B and pulls the
+            // player into the mesh. Flip when the hitbox is not A — same as
+            // BoneHitboxVsTriangleMesh. Keep 4 deepest like CapsuleVsTriangleMesh.
+            bool boxIsA = ReferenceEquals(manifold.BodyA, boxBody);
             float half = MathF.Max(0f, cap.Height * 0.5f - cap.Radius);
             Vector3 c0 = capBody.Position + new Vector3(0f, 0f, cap.Radius);
             Vector3 c1 = capBody.Position + new Vector3(0f, 0f, cap.Height - cap.Radius);
             if (half <= 0f) { c0 = capBody.Position + new Vector3(0f, 0f, cap.Height * 0.5f); c1 = c0; }
+            var candidates = new List<ContactPoint>(16);
             for (int i = 0; i < boxes.Primitives.Length; i++)
             {
                 ClosestPointsOnSegments(boxes.WorldA[i], boxes.WorldB[i], c0, c1, out Vector3 pa, out Vector3 pb);
@@ -907,14 +914,20 @@ namespace SiegeEngine.Core.Physics
                 float dist = d.Length();
                 float pen = boxes.Primitives[i].Radius + cap.Radius - dist;
                 if (pen <= 0f) continue;
-                Vector3 n = dist > 1e-8f ? d / dist : Vector3.UnitZ;
-                manifold.Add(new ContactPoint
+                Vector3 nGeom = dist > 1e-8f ? d / dist : Vector3.UnitZ;
+                Vector3 n = boxIsA ? nGeom : -nGeom;
+                candidates.Add(new ContactPoint
                 {
-                    Position = pb + n * cap.Radius,
+                    Position = pb + nGeom * cap.Radius,
                     Normal = n,
                     Penetration = pen
                 });
             }
+            if (candidates.Count == 0) return;
+            candidates.Sort((x, y) => y.Penetration.CompareTo(x.Penetration));
+            int keep = Math.Min(4, candidates.Count);
+            for (int i = 0; i < keep; i++)
+                manifold.Add(candidates[i]);
         }
 
         private static void ClosestPointsSegmentTriangle(Vector3 p0, Vector3 p1,

@@ -743,12 +743,12 @@ namespace SiegeEngine.Scenes
             var collision = settings != null
                 ? settings.ResolvePlayerCollisionType(AvatarHasSkeleton(model))
                 : (AvatarHasSkeleton(model) ? PlayerCollisionType.Hitbox : PlayerCollisionType.Capsule);
+            _player.Physics.UseBoneHitboxes = collision == PlayerCollisionType.Hitbox;
             if (collision == PlayerCollisionType.Capsule)
             {
                 _player.Physics.BindUprightCapsuleFromBounds(model);
                 return;
             }
-            _player.Physics.UseBoneHitboxes = true;
             _player.BindMeshCollider();
         }
 
