@@ -745,7 +745,9 @@ namespace SiegeEngine.Core.Physics
                     float nBLen = nB.Length();
                     if (nBLen <= 1e-8f) continue;
                     nB /= nBLen;
-                    if (Vector3.Dot(nB, comA - closestB) < 0f)
+                    // Outward from B: B's COM is the interior. +n leaves B.
+                    // signedB > 0 → A is outside B. signedB < 0 → A is inside B.
+                    if (Vector3.Dot(nB, closestB - comB) < 0f)
                         nB = -nB;
                     float signedB = Vector3.Dot(closestA - closestB, nB);
                     if (signedB >= MeshContactThreshold)
