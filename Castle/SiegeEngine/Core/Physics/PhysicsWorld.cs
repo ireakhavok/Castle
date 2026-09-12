@@ -423,6 +423,24 @@ namespace SiegeEngine.Core.Physics
                     continue;
                 }
 
+                if (a != null && a.KeepUpright && b != null && b.Shape is TriangleMeshShape
+                    && a.Shape is TriangleMeshShape)
+                {
+                    // Motorized player vs another FBX: the other body may be
+                    // pinned in a corner and cannot take an invMass split.
+                    // Player takes the full remaining depth so the two closed
+                    // meshes do not occupy the same volume. One pass, existing slop.
+                    if (manifold.PointCount >= 2)
+                        ProjectPlaneContacts(manifold, numericSlop);
+                    else
+                    {
+                        var p0 = manifold.Points[0];
+                        float depth = p0.Penetration - numericSlop;
+                        if (depth > 0f)
+                            a.Position += p0.Normal * depth;
+                    }
+                    continue;
+                }
                 if (a != null && a.BodyType == BodyType.Dynamic && IsStaticPartner(b)
                     && manifold.PointCount >= 2)
                 {
