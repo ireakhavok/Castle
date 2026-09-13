@@ -74,11 +74,7 @@ float4 ps(VSOut i) : SV_TARGET
         return float4(0.486, 1.0, 0.796, 1.0);
     float4 albedo = i.vColor.a > 0.001 ? i.vColor : float4(1, 1, 1, 1);
     if (uHasTexture > 0.5)
-    {
-        if (i.vUV.x < 0.0 || i.vUV.x > 1.0 || i.vUV.y < 0.0 || i.vUV.y > 1.0)
-            discard;
         albedo = uTexture.Sample(Samp, i.vUV);
-    }
     float3 dx = ddx(i.vWorldPos);
     float3 dy = ddy(i.vWorldPos);
     float3 normal = normalize(cross(dx, dy));

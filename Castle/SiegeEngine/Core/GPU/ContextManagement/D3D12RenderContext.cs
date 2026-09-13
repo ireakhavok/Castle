@@ -194,10 +194,23 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         }
         public bool TextureHasCpuPixels(uint id)
         {
-            if (!_textures.TryGetValue(id, out var tex) || tex == null || tex.Rgba == null)
+            if (!_textures.TryGetValue(id, out var tex) || tex == null)
                 return false;
-            int n = Math.Min(tex.Rgba.Length, 64);
-            for (int i = 0; i < n; i++)
+            if (tex.IsCubemap && tex.Faces != null)
+            {
+                for (int f = 0; f < tex.Faces.Length; f++)
+                {
+                    var face = tex.Faces[f];
+                    if (face == null) continue;
+                    int n = Math.Min(face.Length, 64);
+                    for (int i = 0; i < n; i++)
+                        if (face[i] != 0) return true;
+                }
+                return false;
+            }
+            if (tex.Rgba == null) return false;
+            int m = Math.Min(tex.Rgba.Length, 64);
+            for (int i = 0; i < m; i++)
                 if (tex.Rgba[i] != 0) return true;
             return false;
         }
@@ -995,12 +1008,12 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         static int ClassifyProgram(string vs, string fs)
         {
             string a = (vs ?? "") + (fs ?? "");
-            if (a.IndexOf("uSkybox", StringComparison.Ordinal) >= 0 || a.IndexOf("TextureCube", StringComparison.Ordinal) >= 0)
+            if (a.IndexOf("uSkybox", StringComparison.Ordinal) >= 0 || a.IndexOf("uOrientation", StringComparison.Ordinal) >= 0)
                 return 1;
             if (a.IndexOf("uAlbedoMap", StringComparison.Ordinal) >= 0 || a.IndexOf("BLENDWEIGHT", StringComparison.Ordinal) >= 0)
                 return 2;
             if (a.IndexOf("uUnlit", StringComparison.Ordinal) >= 0)
-                return 0;
+                return 3;
             return 0;
         }
         public int GetUniformLocation(uint program, string name)

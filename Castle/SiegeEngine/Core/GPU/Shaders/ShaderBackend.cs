@@ -32,8 +32,10 @@ namespace SiegeEngine.Core.GPU.Shaders
         {
             string vs = vertexSource ?? "";
             string fs = fragmentSource ?? "";
-            if (fs.IndexOf("samplerCube", System.StringComparison.Ordinal) >= 0
-                || fs.IndexOf("uSkybox", System.StringComparison.Ordinal) >= 0
+            // Do NOT key off samplerCube — terrain and model GLSL both declare
+            // samplerCube for point-shadows. That remapped every world program
+            // onto the skybox clip.xyww path (streaks, no terrain/meshes).
+            if (fs.IndexOf("uSkybox", System.StringComparison.Ordinal) >= 0
                 || vs.IndexOf("uOrientation", System.StringComparison.Ordinal) >= 0)
                 return (DirectX.SkyboxShader.VertexShaderSource, DirectX.SkyboxShader.FragmentShaderSource);
             if (vs.IndexOf("uAlbedoMap", System.StringComparison.Ordinal) >= 0

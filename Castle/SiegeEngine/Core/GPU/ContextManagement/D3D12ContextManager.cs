@@ -169,6 +169,9 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             BuildWorldPipeline();
             BuildSkyPipeline();
             BuildModelPipeline();
+            if (!_worldReady) Console.Error.WriteLine("[D3D12] Terrain/Scene pipeline is not ready.");
+            if (!_skyReady) Console.Error.WriteLine("[D3D12] Skybox pipeline is not ready.");
+            if (!_mdlReady) Console.Error.WriteLine("[D3D12] Model pipeline is not ready.");
             CreateDepth();
 
             _backend = new D3D12RenderContext(_width, _height);
@@ -313,14 +316,17 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 else
                 {
                     SetWorldShaders();
-                    if (d.UseTexture > 0.5f)
+                    float useTex = d.HasTexture > 0.5f || d.UseTexture > 0.5f ? 1f : 0f;
+                    if (useTex > 0.5f)
                     {
-                        nint srv = ResolveSrv(d.Texture, d.UseTexture);
+                        nint srv = ResolveSrv(d.Texture, 1f);
                         BindSrv(srv != nint.Zero ? srv : _whiteSrv);
                     }
                     else
                         BindSrv(_whiteSrv);
-                    UploadWorldConstants(d.Mvp, d.R, d.G, d.B, d.A, d.UseTexture, false);
+                    UploadTerrainConstants(d.Model, d.View, d.Projection, d.Mvp,
+                        d.LightDir, d.LightColor, d.AmbientColor,
+                        useTex, d.Unlit, d.LightIntensity, d.AmbientStrength);
                     BindWorldLayout(d.UvOff);
                     BindWorldMesh(vb, ib, d.VtxStride, d.IdxStride);
                     SetDepth(d.DepthOn);
@@ -336,37 +342,14 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         void BuildWorldPipeline()
         {
-            const string hlsl = @"
-cbuffer CB : register(b0) {
-    row_major float4x4 Mvp;
-    float4 Color;
-    float UseTexture;
-    float UseSky;
-    float2 Pad;
-};
-Texture2D Tex : register(t0);
-SamplerState Samp : register(s0);
-struct VSIn { float3 pos : POSITION; float4 col : COLOR; float2 uv : TEXCOORD; };
-struct VSOut { float4 pos : SV_POSITION; float4 col : COLOR; float2 uv : TEXCOORD; };
-VSOut vs(VSIn i) {
-    VSOut o;
-    float4 c = mul(float4(i.pos, 1), Mvp);
-    if (UseSky > 0.5) c = float4(c.xy, c.w, c.w);
-    else c.z = c.z * 0.5 + c.w * 0.5;
-    o.pos = c;
-    o.col = i.col;
-    o.uv = i.uv;
-    return o;
-}
-float4 ps(VSOut i) : SV_TARGET {
-    float4 t = UseTexture > 0.5 ? Tex.Sample(Samp, i.uv) : float4(1,1,1,1);
-    float4 vcol = i.col.a > 0.001 ? i.col : float4(1,1,1,1);
-    return t * Color * vcol;
-}";
-            byte[] src = System.Text.Encoding.ASCII.GetBytes(hlsl);
-            if (!Compile(src, "vs", "vs_5_0", out nint vsBlob) ||
-                !Compile(src, "ps", "ps_5_0", out nint psBlob))
+            byte[] vsSrc = System.Text.Encoding.ASCII.GetBytes(TerrainShader.VertexShaderSource);
+            byte[] psSrc = System.Text.Encoding.ASCII.GetBytes(TerrainShader.FragmentShaderSource);
+            if (!Compile(vsSrc, "vs", "vs_5_0", out nint vsBlob) ||
+                !Compile(psSrc, "ps", "ps_5_0", out nint psBlob))
+            {
+                Console.Error.WriteLine("[D3D12] Terrain/Scene pipeline failed to compile.");
                 return;
+            }
             nint vsPtr = BlobPtr(vsBlob); ulong vsLen = BlobLen(vsBlob);
             nint psPtr = BlobPtr(psBlob); ulong psLen = BlobLen(psBlob);
             _wvs = CreateVertexShader(vsPtr, vsLen);
@@ -409,7 +392,10 @@ float4 ps(VSOut i) : SV_TARGET {
             byte[] psSrc = System.Text.Encoding.ASCII.GetBytes(SkyboxShader.FragmentShaderSource);
             if (!Compile(vsSrc, "vs", "vs_5_0", out nint vsBlob) ||
                 !Compile(psSrc, "ps", "ps_5_0", out nint psBlob))
+            {
+                Console.Error.WriteLine("[D3D12] Skybox pipeline failed to compile.");
                 return;
+            }
             nint vsPtr = BlobPtr(vsBlob); ulong vsLen = BlobLen(vsBlob);
             nint psPtr = BlobPtr(psBlob); ulong psLen = BlobLen(psBlob);
             _skyVs = CreateVertexShader(vsPtr, vsLen);
@@ -430,7 +416,10 @@ float4 ps(VSOut i) : SV_TARGET {
             byte[] psSrc = System.Text.Encoding.ASCII.GetBytes(ModelShader.FragmentShaderSource);
             if (!Compile(vsSrc, "vs", "vs_5_0", out nint vsBlob) ||
                 !Compile(psSrc, "ps", "ps_5_0", out nint psBlob))
+            {
+                Console.Error.WriteLine("[D3D12] Model pipeline failed to compile.");
                 return;
+            }
             nint vsPtr = BlobPtr(vsBlob); ulong vsLen = BlobLen(vsBlob);
             nint psPtr = BlobPtr(psBlob); ulong psLen = BlobLen(psBlob);
             _mdlVs = CreateVertexShader(vsPtr, vsLen);
@@ -543,17 +532,26 @@ float4 ps(VSOut i) : SV_TARGET {
         nint ResolveSrv(uint texId, float useTex)
         {
             if (useTex <= 0.5f || texId == 0) return _whiteSrv;
-            if (_worldRt.TryGetValue(texId, out var self) && self.Srv != nint.Zero)
-                return self.Srv;
-            if (!_backend.TextureHasCpuPixels(texId) && _backend.TryGetTexture(texId, out var empty) && empty != null)
+            if (_backend.TryGetTexture(texId, out var cubeProbe) && cubeProbe != null && cubeProbe.IsCubemap)
             {
-                foreach (var kv in _worldRt)
+                // Cubemaps must never fall through to the world-RT alias (that bound a 2D
+                // panel into TextureCube and produced the streaked above/below sky).
+            }
+            else
+            {
+                if (_worldRt.TryGetValue(texId, out var self) && self.Srv != nint.Zero)
+                    return self.Srv;
+                if (!_backend.TextureHasCpuPixels(texId) && _backend.TryGetTexture(texId, out var empty) && empty != null)
                 {
-                    if (kv.Value.Srv != nint.Zero && kv.Value.W == empty.Width && kv.Value.H == empty.Height)
-                        return kv.Value.Srv;
+                    foreach (var kv in _worldRt)
+                    {
+                        if (kv.Value.Srv != nint.Zero && kv.Value.W == empty.Width && kv.Value.H == empty.Height)
+                            return kv.Value.Srv;
+                    }
                 }
             }
-            if (!_backend.TryGetTexture(texId, out var cpu) || cpu == null || cpu.Rgba == null || cpu.Width <= 0) return nint.Zero;
+            if (!_backend.TryGetTexture(texId, out var cpu) || cpu == null || cpu.Width <= 0) return nint.Zero;
+            if (!cpu.IsCubemap && cpu.Rgba == null) return nint.Zero;
             if (_gpuTex.TryGetValue(texId, out nint existing) && existing != nint.Zero
                 && _gpuTexGen.TryGetValue(texId, out int gen) && gen == cpu.Generation)
                 return _gpuSrv[texId];
@@ -637,7 +635,9 @@ float4 ps(VSOut i) : SV_TARGET {
 
         void SetTopology()
         {
-            var fn = (SetTopoFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 16), typeof(SetTopoFn));
+            // ID3D11DeviceContext::IASetPrimitiveTopology is vtable slot 24.
+            // Slot 16 is PSSetConstantBuffers — calling that with a topology enum AVs.
+            var fn = (SetTopoFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 24), typeof(SetTopoFn));
             fn(_ctx11, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
 
@@ -697,6 +697,7 @@ float4 ps(VSOut i) : SV_TARGET {
         {
             var data = new float[52];
             Copy16(view, data, 0);
+            data[12] = 0f; data[13] = 0f; data[14] = 0f; // drop camera translation
             Copy16(proj, data, 16);
             Copy16(orient, data, 32);
             data[48] = verticalOffset;
@@ -705,17 +706,75 @@ float4 ps(VSOut i) : SV_TARGET {
 
         void UploadModelConstants(float[] mvp, float[] model, float[] view, float[] proj, float useTex)
         {
-            var data = new float[84];
-            Copy16(model ?? mvp, data, 0);
+            // DirectX/ModelShader CB: row_major float4x4 Mvp; float4 Color; float UseTexture; float UseSky; float2 Pad;
+            var data = new float[24];
+            if (mvp != null && mvp.Length >= 16)
+                Copy16(mvp, data, 0);
+            else
+            {
+                Copy16(model, data, 0);
+                // If only the split matrices arrived, compose model*view*proj into Mvp.
+                var composed = ComposeMvp(model, view, proj);
+                if (composed != null) Copy16(composed, data, 0);
+            }
+            data[16] = 1f; data[17] = 1f; data[18] = 1f; data[19] = 1f;
+            data[20] = useTex;
+            data[21] = 0f;
+            MapWrite(_mdlCb, data, 96);
+        }
+
+        static float[] ComposeMvp(float[] model, float[] view, float[] proj)
+        {
+            if (model == null || view == null || proj == null) return null;
+            if (model.Length < 16 || view.Length < 16 || proj.Length < 16) return null;
+            var a = Mul4x4(model, view);
+            return Mul4x4(a, proj);
+        }
+
+        static float[] Mul4x4(float[] a, float[] b)
+        {
+            var r = new float[16];
+            for (int row = 0; row < 4; row++)
+            {
+                for (int col = 0; col < 4; col++)
+                {
+                    r[row * 4 + col] =
+                        a[row * 4 + 0] * b[0 * 4 + col] +
+                        a[row * 4 + 1] * b[1 * 4 + col] +
+                        a[row * 4 + 2] * b[2 * 4 + col] +
+                        a[row * 4 + 3] * b[3 * 4 + col];
+                }
+            }
+            return r;
+        }
+
+        void UploadTerrainConstants(float[] model, float[] view, float[] proj, float[] mvp,
+            float[] lightDir, float[] lightColor, float[] ambientColor,
+            float hasTexture, float unlit, float lightIntensity, float ambientStrength)
+        {
+            // DirectX/TerrainShader CB layout.
+            var data = new float[64];
+            if (model != null && model.Length >= 16) Copy16(model, data, 0);
+            else { data[0] = data[5] = data[10] = data[15] = 1f; }
             Copy16(view, data, 16);
             Copy16(proj, data, 32);
-            Copy16(model ?? mvp, data, 48);
-            data[64] = 0.35f; data[65] = 0.55f; data[66] = 0.75f;
-            data[68] = 1f; data[69] = 1f; data[70] = 1f;
-            data[72] = 0.45f; data[73] = 0.45f; data[74] = 0.48f;
-            data[76] = 0.85f;
-            data[77] = 0.30f;
-            MapWrite(_mdlCb, data, 320);
+            if (lightDir != null && lightDir.Length >= 3)
+            { data[48] = lightDir[0]; data[49] = lightDir[1]; data[50] = lightDir[2]; }
+            else { data[48] = 0.35f; data[49] = 0.55f; data[50] = 0.75f; }
+            data[51] = 0f;
+            if (lightColor != null && lightColor.Length >= 3)
+            { data[52] = lightColor[0]; data[53] = lightColor[1]; data[54] = lightColor[2]; }
+            else { data[52] = data[53] = data[54] = 1f; }
+            data[55] = 1f;
+            if (ambientColor != null && ambientColor.Length >= 3)
+            { data[56] = ambientColor[0]; data[57] = ambientColor[1]; data[58] = ambientColor[2]; }
+            else { data[56] = data[57] = 0.45f; data[58] = 0.48f; }
+            data[59] = 1f;
+            data[60] = hasTexture;
+            data[61] = unlit;
+            data[62] = lightIntensity > 0.001f ? lightIntensity : 1f;
+            data[63] = ambientStrength > 0.001f ? ambientStrength : 0.30f;
+            MapWrite(_wcb, data, 256);
         }
 
         static void Copy16(float[] src, float[] dst, int off)
