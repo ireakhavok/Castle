@@ -30,6 +30,36 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             }
         }
 
+        /// <summary>Clip-space xyzw + uv world triangles. VS passes pos through after GL→D3D z.</summary>
+        public readonly struct WorldDrawOp
+        {
+            public readonly float[] Verts; // 6 floats/vert: clip.xyzw, uv
+            public readonly int VertFloats;
+            public readonly float R, G, B, A;
+            public readonly float UseTexture;
+            public readonly uint Texture;
+            public readonly int VpX, VpY, VpW, VpH;
+            public readonly int ScX, ScY, ScW, ScH;
+            public readonly bool ScissorOn;
+            public WorldDrawOp(float[] verts, int vertFloats, float r, float g, float b, float a, float useTex, uint tex, int vpX, int vpY, int vpW, int vpH, int scX, int scY, int scW, int scH, bool scissorOn)
+            {
+                Verts = verts; VertFloats = vertFloats;
+                R = r; G = g; B = b; A = a; UseTexture = useTex; Texture = tex;
+                VpX = vpX; VpY = vpY; VpW = vpW; VpH = vpH;
+                ScX = scX; ScY = scY; ScW = scW; ScH = scH; ScissorOn = scissorOn;
+            }
+        }
+
+        sealed class VaoState
+        {
+            public uint Array;
+            public uint Element;
+            public readonly int[] Size = new int[8];
+            public readonly int[] Stride = new int[8];
+            public readonly int[] Offset = new int[8];
+            public readonly bool[] Enabled = new bool[8];
+        }
+
         public sealed class CpuTexture
         {
             public int Width, Height;
@@ -38,6 +68,9 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         }
 
         readonly List<DrawOp> _draws = new List<DrawOp>();
+        readonly List<WorldDrawOp> _world = new List<WorldDrawOp>();
+        readonly Dictionary<uint, VaoState> _vaos = new Dictionary<uint, VaoState>();
+        readonly uint[] _texUnit = new uint[32];
         readonly Dictionary<uint, byte[]> _buffers = new Dictionary<uint, byte[]>();
         readonly Dictionary<uint, CpuTexture> _textures = new Dictionary<uint, CpuTexture>();
         readonly Dictionary<int, float[]> _uniforms = new Dictionary<int, float[]>();
@@ -50,11 +83,17 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         uint _boundElement;
         uint _boundTexture;
         uint _boundProgram;
+        uint _boundVao;
+        int _activeTexUnit;
         int _nextUniformLoc = 1;
         int _stride = 16;
+        int _posSize = 2;
+        int _posOff;
+        int _uvOff = 8;
         int _scX, _scY, _scW, _scH;
         bool _scissorOn;
         bool _blendOn;
+        bool _depthOn;
         uint _boundFbo;
         uint _nextFbo = 1;
 
@@ -82,6 +121,13 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             return arr;
         }
 
+        public WorldDrawOp[] TakeWorldDraws()
+        {
+            var arr = _world.ToArray();
+            _world.Clear();
+            return arr;
+        }
+
         public bool TryGetTexture(uint id, out CpuTexture tex) => _textures.TryGetValue(id, out tex);
 
         public void ClearColor(float red, float green, float blue, float alpha)
@@ -103,17 +149,25 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         {
             if (cap == Enums.ScissorTest) _scissorOn = true;
             if (cap == Enums.Blend) _blendOn = true;
+            if (cap == Enums.DepthTest) _depthOn = true;
         }
         public void Disable(int cap)
         {
             if (cap == Enums.ScissorTest) _scissorOn = false;
             if (cap == Enums.Blend) _blendOn = false;
+            if (cap == Enums.DepthTest) _depthOn = false;
         }
         public void BlendFunc(int src, int dst) { }
         public void DepthMask(bool mask) { }
         public void DepthFunc(int func) { }
         public void ColorMask(bool r, bool g, bool b, bool a) { }
-        public void ActiveTexture(int unit) { }
+        public void ActiveTexture(int unit)
+        {
+            int u = unit - Enums.Texture0;
+            if (u < 0 || u > 31) u = 0;
+            _activeTexUnit = u;
+            _boundTexture = _texUnit[u];
+        }
         public void BindFramebuffer(int target, uint framebuffer) { _boundFbo = framebuffer; }
         public int CheckFramebufferStatus(int target) => Enums.FramebufferComplete;
         public void DrawBuffer(int mode) { }
@@ -163,15 +217,55 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         }
         public bool IsExtensionPresent(string extension) => false;
 
-        public uint GenVertexArray() => _nextBuffer++;
-        public void GenVertexArrays(uint n, out uint arrays) { arrays = _nextBuffer++; }
+        VaoState EnsureVao(uint id)
+        {
+            if (id == 0) return null;
+            if (!_vaos.TryGetValue(id, out var v) || v == null)
+            {
+                v = new VaoState();
+                _vaos[id] = v;
+            }
+            return v;
+        }
+
+        public uint GenVertexArray()
+        {
+            uint id = _nextBuffer++;
+            _vaos[id] = new VaoState();
+            return id;
+        }
+        public void GenVertexArrays(uint n, out uint arrays)
+        {
+            arrays = _nextBuffer++;
+            _vaos[arrays] = new VaoState();
+        }
         public uint GenBuffer() => _nextBuffer++;
         public void GenBuffers(uint n, out uint buffers) { buffers = _nextBuffer++; }
-        public void BindVertexArray(uint array) { }
+        public void BindVertexArray(uint array)
+        {
+            _boundVao = array;
+            if (array == 0) return;
+            var v = EnsureVao(array);
+            _boundArray = v.Array;
+            _boundElement = v.Element;
+            _stride = v.Stride[0] > 0 ? v.Stride[0] : _stride;
+            _posSize = v.Size[0] > 0 ? v.Size[0] : _posSize;
+            _posOff = v.Offset[0];
+            if (v.Size[2] >= 2)
+                _uvOff = v.Offset[2];
+        }
         public void BindBuffer(int target, uint buffer)
         {
-            if (target == Enums.ElementArrayBuffer) _boundElement = buffer;
-            else _boundArray = buffer;
+            if (target == Enums.ElementArrayBuffer)
+            {
+                _boundElement = buffer;
+                if (_boundVao != 0) EnsureVao(_boundVao).Element = buffer;
+            }
+            else
+            {
+                _boundArray = buffer;
+                if (_boundVao != 0) EnsureVao(_boundVao).Array = buffer;
+            }
         }
 
         public void BufferData(int target, uint size, void* data, int usage)
@@ -193,12 +287,34 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             Marshal.Copy((nint)data, bytes, offset, len);
         }
 
-        public void EnableVertexAttribArray(uint index) { }
-        public void DisableVertexAttribArray(uint index) { }
+        public void EnableVertexAttribArray(uint index)
+        {
+            if (index < 8 && _boundVao != 0) EnsureVao(_boundVao).Enabled[index] = true;
+        }
+        public void DisableVertexAttribArray(uint index)
+        {
+            if (index < 8 && _boundVao != 0) EnsureVao(_boundVao).Enabled[index] = false;
+        }
         public void VertexAttribPointer(uint index, int size, int type, bool normalized, uint stride, void* pointer)
         {
+            int off = (int)(nint)pointer;
+            int str = stride == 0 ? Math.Max(8, size * 4) : (int)stride;
             if (index == 0)
-                _stride = stride == 0 ? Math.Max(8, size * 4) : (int)stride;
+            {
+                _stride = str;
+                _posSize = size;
+                _posOff = off;
+            }
+            if (index == 2 && size >= 2)
+                _uvOff = off;
+            if (_boundVao != 0 && index < 8)
+            {
+                var v = EnsureVao(_boundVao);
+                v.Size[index] = size;
+                v.Stride[index] = str;
+                v.Offset[index] = off;
+                v.Enabled[index] = true;
+            }
         }
         public void VertexAttribIPointer(uint index, int size, int type, uint stride, void* pointer) { }
         public void DeleteVertexArray(uint array) { }
@@ -241,9 +357,11 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         {
             if (!_buffers.TryGetValue(_boundArray, out var vb) || vb == null || vb.Length < 8) return;
             int stride = _stride <= 0 ? 16 : _stride;
-            // World meshes use 3-component positions and strides > 16.
-            // Recording them as UI xy/uv slivers kills panel overlays after SMAA.
-            if (stride > 16) return;
+            if (_posSize >= 3 || stride > 16)
+            {
+                RecordWorld(vb, stride, indexCount, indexed);
+                return;
+            }
             // DrawArrays must not guess stride from allocated-bytes / draw-count.
             // TextRenderer keeps a large preallocated VBO and draws a short glyph run;
             // that guess lands in 8..32 and reads UV as XY — glyphs sliver across the screen.
@@ -290,6 +408,103 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             _draws.Add(new DrawOp(packed, packed.Length, (uint)(packed.Length / 4), r, g, b, a, useTex, _boundTexture, ViewportX, ViewportY, ViewportWidth, ViewportHeight, _scX, _scY, _scW > 0 ? _scW : ViewportWidth, _scH > 0 ? _scH : ViewportHeight, _scissorOn));
         }
 
+
+        void RecordWorld(byte[] vb, int stride, uint indexCount, bool indexed)
+        {
+            if (stride < 12) stride = 12;
+            int posOff = _posOff;
+            int uvOff = _uvOff;
+            if (uvOff < 8) uvOff = stride >= 32 ? 24 : -1;
+            int[] idx = BuildIndices(indexed, indexCount, vb.Length / stride);
+            if (idx == null || idx.Length < 3) return;
+            GetMatrix("uModel", out var model);
+            GetMatrix("uView", out var view);
+            GetMatrix("uProjection", out var proj);
+            System.Numerics.Matrix4x4 mvp = model * view * proj;
+            var dst = new float[idx.Length * 6];
+            int o = 0;
+            for (int i = 0; i < idx.Length; i++)
+            {
+                int s = idx[i] * stride + posOff;
+                if (s + 12 > vb.Length) continue;
+                float x = BitConverter.ToSingle(vb, s);
+                float y = BitConverter.ToSingle(vb, s + 4);
+                float z = BitConverter.ToSingle(vb, s + 8);
+                var clip = System.Numerics.Vector4.Transform(new System.Numerics.Vector4(x, y, z, 1f), mvp);
+                clip.Z = clip.Z * 0.5f + clip.W * 0.5f;
+                float u = 0f, v = 0f;
+                if (uvOff >= 0 && idx[i] * stride + uvOff + 8 <= vb.Length)
+                {
+                    u = BitConverter.ToSingle(vb, idx[i] * stride + uvOff);
+                    v = BitConverter.ToSingle(vb, idx[i] * stride + uvOff + 4);
+                }
+                dst[o++] = clip.X; dst[o++] = clip.Y; dst[o++] = clip.Z; dst[o++] = clip.W;
+                dst[o++] = u; dst[o++] = v;
+            }
+            if (o < 18) return;
+            if (o != dst.Length)
+            {
+                var cut = new float[o];
+                Array.Copy(dst, cut, o);
+                dst = cut;
+            }
+            uint tex = _texUnit[0] != 0 ? _texUnit[0] : _boundTexture;
+            float useTex = tex != 0 ? 1f : 0f;
+            GetUniform4(Loc("uColor"), out float r, out float g, out float b, out float a);
+            if (a <= 0f) { r = g = b = a = 1f; }
+            if (GetUniform1(Loc("uHasTexture")) == 0 && tex == 0) useTex = 0f;
+            _world.Add(new WorldDrawOp(dst, dst.Length, r, g, b, a, useTex, tex,
+                ViewportX, ViewportY, ViewportWidth, ViewportHeight,
+                _scX, _scY, _scW > 0 ? _scW : ViewportWidth, _scH > 0 ? _scH : ViewportHeight, _scissorOn));
+        }
+
+        int[] BuildIndices(bool indexed, uint indexCount, int vertCount)
+        {
+            if (indexed && _buffers.TryGetValue(_boundElement, out var ib) && ib != null && ib.Length >= 2)
+            {
+                int idxStride = (indexCount > 0 && ib.Length == (int)indexCount * 2) ? 2 : 4;
+                int nIdx = Math.Min(idxStride == 2 ? ib.Length / 2 : ib.Length / 4, indexCount > 0 ? (int)indexCount : int.MaxValue);
+                nIdx -= nIdx % 3;
+                if (nIdx < 3) return null;
+                var idx = new int[nIdx];
+                int w = 0;
+                for (int i = 0; i < nIdx; i++)
+                {
+                    int v = idxStride == 2 ? BitConverter.ToUInt16(ib, i * 2) : BitConverter.ToInt32(ib, i * 4);
+                    if (v < 0 || v >= vertCount) continue;
+                    idx[w++] = v;
+                }
+                if (w < 3) return null;
+                if (w != idx.Length)
+                {
+                    var cut = new int[w - (w % 3)];
+                    Array.Copy(idx, cut, cut.Length);
+                    return cut.Length >= 3 ? cut : null;
+                }
+                return idx;
+            }
+            if (!indexed && indexCount >= 3)
+            {
+                int n = (int)indexCount;
+                n -= n % 3;
+                var idx = new int[n];
+                for (int i = 0; i < n; i++) idx[i] = i;
+                return idx;
+            }
+            return null;
+        }
+
+        void GetMatrix(string name, out System.Numerics.Matrix4x4 m)
+        {
+            m = System.Numerics.Matrix4x4.Identity;
+            int loc = Loc(name);
+            if (loc < 0 || !_uniforms.TryGetValue(loc, out var v) || v == null || v.Length < 16) return;
+            m = new System.Numerics.Matrix4x4(
+                v[0], v[1], v[2], v[3],
+                v[4], v[5], v[6], v[7],
+                v[8], v[9], v[10], v[11],
+                v[12], v[13], v[14], v[15]);
+        }
 
         float[] ExpandToTriangles(float[] packed, int packedVerts, bool indexed, uint indexCount)
         {
@@ -346,7 +561,12 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             textures = _nextTexture++;
             _textures[textures] = new CpuTexture();
         }
-        public void BindTexture(int target, uint texture) { _boundTexture = texture; }
+        public void BindTexture(int target, uint texture)
+        {
+            _boundTexture = texture;
+            if (_activeTexUnit >= 0 && _activeTexUnit < _texUnit.Length)
+                _texUnit[_activeTexUnit] = texture;
+        }
         public void TexImage2D(int target, int level, int internalformat, uint width, uint height, int border, int format, int type, void* pixels)
         {
             if (_boundTexture == 0)
