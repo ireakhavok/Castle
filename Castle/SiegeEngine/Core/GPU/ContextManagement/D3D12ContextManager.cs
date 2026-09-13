@@ -206,9 +206,14 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             foreach (var d in draws)
             {
                 if (d.Verts == null || d.VertFloats < 8) continue;
+                if (FullyOffNdc(d.Verts, d.VertFloats)) continue;
                 int vpW = d.VpW > 0 ? d.VpW : _width;
                 int vpH = d.VpH > 0 ? d.VpH : _height;
                 SetViewport(d.VpX, d.VpY, vpW, vpH);
+                if (d.ScissorOn && d.ScW > 0 && d.ScH > 0)
+                    SetScissor(d.ScX, d.ScY, d.ScW, d.ScH);
+                else
+                    SetScissor(0, 0, _width, _height);
                 if (d.UseTexture > 0.5f)
                 {
                     nint srv = ResolveSrv(d.Texture, d.UseTexture);
@@ -227,7 +232,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 {
                     BindSrv(_whiteSrv);
                 }
-                int verts = UploadVerts(d.Verts, d.VertFloats);
+                int verts = UploadVerts(d.Verts, d.VertFloats, d.IndexCount);
                 if (verts < 3) continue;
                 UploadConstants(d.R, d.G, d.B, d.A, d.UseTexture);
                 Draw(verts);
@@ -322,6 +327,22 @@ float4 ps(VSOut i) : SV_TARGET {
             _whiteSrv = CreateSrv(_whiteTex);
         }
 
+
+        static bool FullyOffNdc(float[] v, int floats)
+        {
+            if (v == null) return true;
+            int n = Math.Min(floats, v.Length);
+            bool any = false;
+            for (int i = 0; i + 1 < n; i += 4)
+            {
+                float x = v[i], y = v[i + 1];
+                if (x >= -1.05f && x <= 1.05f && y >= -1.05f && y <= 1.05f)
+                    return false;
+                any = true;
+            }
+            return any;
+        }
+
         void SetViewport(int glX, int glY, int glW, int glH)
         {
             // GL Viewport origin is bottom-left. D3D11_VIEWPORT origin is top-left.
@@ -332,6 +353,28 @@ float4 ps(VSOut i) : SV_TARGET {
             nint p = Marshal.AllocHGlobal(Marshal.SizeOf<D3D11_VIEWPORT>());
             Marshal.StructureToPtr(vp, p, false);
             var fn = (SetVpFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 44), typeof(SetVpFn));
+            fn(_ctx11, 1, p);
+            Marshal.FreeHGlobal(p);
+        }
+
+        void SetScissor(int glX, int glY, int glW, int glH)
+        {
+            int w = Math.Max(glW, 1);
+            int h = Math.Max(glH, 1);
+            int top = _height - (glY + h);
+            int left = glX;
+            int right = glX + w;
+            int bottom = top + h;
+            if (left < 0) left = 0;
+            if (top < 0) top = 0;
+            if (right > _width) right = _width;
+            if (bottom > _height) bottom = _height;
+            if (right <= left) { left = 0; right = _width; }
+            if (bottom <= top) { top = 0; bottom = _height; }
+            var rc = new D3D11_RECT { Left = left, Top = top, Right = right, Bottom = bottom };
+            nint p = Marshal.AllocHGlobal(Marshal.SizeOf<D3D11_RECT>());
+            Marshal.StructureToPtr(rc, p, false);
+            var fn = (SetScissorFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 45), typeof(SetScissorFn));
             fn(_ctx11, 1, p);
             Marshal.FreeHGlobal(p);
         }
@@ -377,40 +420,33 @@ float4 ps(VSOut i) : SV_TARGET {
             Marshal.FreeHGlobal(box);
         }
 
-        int UploadVerts(float[] src, int floats)
+        int UploadVerts(float[] src, int floats, uint indexCount)
         {
             int vertFloats = Math.Min(floats, src.Length);
             vertFloats -= vertFloats % 4;
-            if (vertFloats < 8) return 0;
+            if (vertFloats < 12) return 0;
             int verts = vertFloats / 4;
-            float[] tri;
-            int o;
-            if (verts % 3 == 0)
+            float[] tri = src;
+            int o = vertFloats;
+            // RecordDraw already expanded DrawElements / 4-vert fans to a triangle list.
+            // A leftover 4-vert quad (BackgroundRenderer fan if expansion was skipped) still tessellates here.
+            if (verts == 4)
             {
-                tri = src;
-                o = vertFloats;
-            }
-            else if (verts % 4 == 0)
-            {
-                int quads = verts / 4;
-                tri = new float[quads * 6 * 4];
+                tri = new float[24];
                 o = 0;
-                for (int q = 0; q < quads; q++)
+                void Put(int vi)
                 {
-                    int b = q * 16;
-                    void Put(int vi)
-                    {
-                        int s = b + vi * 4;
-                        tri[o++] = src[s]; tri[o++] = src[s + 1]; tri[o++] = src[s + 2]; tri[o++] = src[s + 3];
-                    }
-                    Put(0); Put(1); Put(2);
-                    Put(0); Put(2); Put(3);
+                    int s = vi * 4;
+                    tri[o++] = src[s]; tri[o++] = src[s + 1]; tri[o++] = src[s + 2]; tri[o++] = src[s + 3];
                 }
+                Put(0); Put(1); Put(2);
+                Put(0); Put(2); Put(3);
             }
-            else
+            else if (verts % 3 != 0)
             {
-                tri = src;
-                o = vertFloats;
+                int keep = verts - (verts % 3);
+                if (keep < 3) return 0;
+                o = keep * 4;
             }
             MapWrite(_vb, tri, o * 4);
             nint vbBox = Marshal.AllocHGlobal(nint.Size);
@@ -718,7 +754,8 @@ float4 ps(VSOut i) : SV_TARGET {
                 FillMode = D3D11_FILL_SOLID,
                 CullMode = D3D11_CULL_NONE,
                 FrontCounterClockwise = 0,
-                DepthClipEnable = 1
+                DepthClipEnable = 1,
+                ScissorEnable = 1
             };
             nint descPtr = Marshal.AllocHGlobal(Marshal.SizeOf<D3D11_RASTERIZER_DESC>());
             Marshal.StructureToPtr(desc, descPtr, false);
@@ -895,6 +932,7 @@ float4 ps(VSOut i) : SV_TARGET {
         [StructLayout(LayoutKind.Sequential)] struct D3D11_SUBRESOURCE_DATA { public nint pSysMem; public uint SysMemPitch, SysMemSlicePitch; }
         [StructLayout(LayoutKind.Sequential)] struct D3D11_SHADER_RESOURCE_VIEW_DESC { public int Format; public int ViewDimension; public uint MostDetailedMip; public uint MipLevels; public uint pad0, pad1; }
         [StructLayout(LayoutKind.Sequential)] struct D3D11_SAMPLER_DESC { public int Filter, AddressU, AddressV, AddressW; public float MipLODBias; public uint MaxAnisotropy; public int ComparisonFunc; public float Border0, Border1, Border2, Border3; public float MinLOD, MaxLOD; }
+        [StructLayout(LayoutKind.Sequential)] struct D3D11_RECT { public int Left, Top, Right, Bottom; }
         [StructLayout(LayoutKind.Sequential)] struct D3D11_VIEWPORT { public float TopLeftX, TopLeftY, Width, Height, MinDepth, MaxDepth; }
                 [StructLayout(LayoutKind.Sequential)]
         struct D3D11_RENDER_TARGET_BLEND_DESC
@@ -947,6 +985,7 @@ float4 ps(VSOut i) : SV_TARGET {
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void OmSetFn(nint self, uint num, nint ppRTV, nint dsv);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void ClearRtvFn(nint self, nint rtv, nint color);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void SetVpFn(nint self, uint num, nint vp);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void SetScissorFn(nint self, uint num, nint rects);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void SetTopoFn(nint self, int topo);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void SetVsFn(nint self, nint vs, nint inst, uint num);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void SetPsFn(nint self, nint ps, nint inst, uint num);

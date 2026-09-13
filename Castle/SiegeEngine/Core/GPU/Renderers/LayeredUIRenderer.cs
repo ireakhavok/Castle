@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Rendering
+// Folder: SiegeEngine/Core/Rendering
 // File: LayeredUIRenderer.cs
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.UI;
@@ -62,6 +62,12 @@ namespace SiegeEngine.Core.GPU.Renderers
                 overlay.Draw(panel.QuadRenderer, panel.Size.X, panel.Size.Y);
             }
 
+            // Flush panel-space NDC while the panel viewport/scissor are still bound.
+            // Otherwise EnqueueSolid rows (file lists, tall HTML) are flushed in RestoreAfterUI
+            // after the viewport has been restored to the window — content larger than the
+            // monitor then gets strewn across the visible frame.
+            _quadRenderer.FlushBatch();
+
             _renderContext.Scissor(fullX, fullY, fullW, fullH);
             _renderContext.Viewport(fullX, fullY, fullW, fullH);
 
@@ -70,6 +76,8 @@ namespace SiegeEngine.Core.GPU.Renderers
             {
                 _chromeRenderer.RenderPanelChrome(panel, panel.Size.X, panel.Size.Y);
             }
+
+            _quadRenderer.FlushBatch();
 
             _renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
             _renderContext.Viewport(0, 0, (uint)winW, (uint)winH);

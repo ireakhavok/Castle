@@ -19,11 +19,14 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             public readonly float UseTexture;
             public readonly uint Texture;
             public readonly int VpX, VpY, VpW, VpH;
-            public DrawOp(float[] verts, int vertFloats, uint indexCount, float r, float g, float b, float a, float useTex, uint tex, int vpX, int vpY, int vpW, int vpH)
+            public readonly int ScX, ScY, ScW, ScH;
+            public readonly bool ScissorOn;
+            public DrawOp(float[] verts, int vertFloats, uint indexCount, float r, float g, float b, float a, float useTex, uint tex, int vpX, int vpY, int vpW, int vpH, int scX, int scY, int scW, int scH, bool scissorOn)
             {
                 Verts = verts; VertFloats = vertFloats; IndexCount = indexCount;
                 R = r; G = g; B = b; A = a; UseTexture = useTex; Texture = tex;
                 VpX = vpX; VpY = vpY; VpW = vpW; VpH = vpH;
+                ScX = scX; ScY = scY; ScW = scW; ScH = scH; ScissorOn = scissorOn;
             }
         }
 
@@ -49,6 +52,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         uint _boundProgram;
         int _nextUniformLoc = 1;
         int _stride = 16;
+        int _scX, _scY, _scW, _scH;
+        bool _scissorOn;
 
         public float ClearR, ClearG, ClearB, ClearA = 1f;
         public int ViewportX { get; private set; }
@@ -63,6 +68,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             ViewportY = 0;
             ViewportWidth = width;
             ViewportHeight = height;
+            _scX = 0; _scY = 0; _scW = width; _scH = height;
+            _scissorOn = false;
         }
 
         public DrawOp[] TakeDraws()
@@ -89,8 +96,14 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         }
 
         public int GetError() => 0;
-        public void Enable(int cap) { }
-        public void Disable(int cap) { }
+        public void Enable(int cap)
+        {
+            if (cap == Enums.ScissorTest) _scissorOn = true;
+        }
+        public void Disable(int cap)
+        {
+            if (cap == Enums.ScissorTest) _scissorOn = false;
+        }
         public void BlendFunc(int src, int dst) { }
         public void DepthMask(bool mask) { }
         public void DepthFunc(int func) { }
@@ -100,7 +113,13 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public int CheckFramebufferStatus(int target) => Enums.FramebufferComplete;
         public void DrawBuffer(int mode) { }
         public void ReadBuffer(int mode) { }
-        public void Scissor(int x, int y, uint width, uint height) { }
+        public void Scissor(int x, int y, uint width, uint height)
+        {
+            _scX = x;
+            _scY = y;
+            _scW = Math.Max(1, (int)width);
+            _scH = Math.Max(1, (int)height);
+        }
         public void CullFace(int mode) { }
         public void FrontFace(int mode) { }
         public void LineWidth(float width) { }
@@ -205,22 +224,84 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             }
             float[] packed = PackXyUv(vb, stride);
             if (packed.Length < 8) return;
-            if (!indexed && indexCount > 0)
+            int packedVerts = packed.Length / 4;
+            if (!indexed && indexCount > 0 && packedVerts > (int)indexCount)
             {
-                int keep = Math.Min(packed.Length, (int)indexCount * 4);
-                if (keep < packed.Length)
-                {
-                    var cut = new float[keep];
-                    Array.Copy(packed, cut, keep);
-                    packed = cut;
-                }
+                int keep = (int)indexCount * 4;
+                var cut = new float[keep];
+                Array.Copy(packed, cut, keep);
+                packed = cut;
+                packedVerts = (int)indexCount;
             }
+            packed = ExpandToTriangles(packed, packedVerts, indexed, indexCount);
+            if (packed.Length < 12) return;
             GetUniform4(Loc("uColor"), out float r, out float g, out float b, out float a);
             float useTex = GetUniform1(Loc("uUseTexture"));
             if (useTex == 0 && GetUniform1(Loc("uUseTex")) != 0) useTex = GetUniform1(Loc("uUseTex"));
-            // Unset CSS background is Vector4.Zero. Do not promote it to opaque white.
-            if (useTex < 0.5f && a <= 0f) return;
-            _draws.Add(new DrawOp(packed, packed.Length, indexCount == 0 ? (uint)(packed.Length / 4) : indexCount, r, g, b, a, useTex, _boundTexture, ViewportX, ViewportY, ViewportWidth, ViewportHeight));
+            // Unset CSS fill is Vector4.Zero. If this draw is a rounded/border pass,
+            // uColor is the fill (transparent) and the visible edge is uBorderColor.
+            if (useTex < 0.5f && a <= 0f)
+            {
+                float bw = GetUniform1(Loc("uBorderWidth"));
+                GetUniform4(Loc("uBorderColor"), out float br, out float bg, out float bb, out float ba);
+                if (bw > 0f && ba > 0f)
+                {
+                    r = br; g = bg; b = bb; a = ba;
+                }
+                else
+                {
+                    return;
+                }
+            }
+            _draws.Add(new DrawOp(packed, packed.Length, (uint)(packed.Length / 4), r, g, b, a, useTex, _boundTexture, ViewportX, ViewportY, ViewportWidth, ViewportHeight, _scX, _scY, _scW > 0 ? _scW : ViewportWidth, _scH > 0 ? _scH : ViewportHeight, _scissorOn));
+        }
+
+
+        float[] ExpandToTriangles(float[] packed, int packedVerts, bool indexed, uint indexCount)
+        {
+            void CopyVert(float[] src, int vi, float[] dst, ref int o)
+            {
+                int s = vi * 4;
+                if (s + 3 >= src.Length) return;
+                dst[o++] = src[s]; dst[o++] = src[s + 1]; dst[o++] = src[s + 2]; dst[o++] = src[s + 3];
+            }
+            if (indexed && _buffers.TryGetValue(_boundElement, out var ib) && ib != null && ib.Length >= 2 && indexCount >= 3)
+            {
+                int idxStride = (ib.Length == (int)indexCount * 2) ? 2 : 4;
+                int nIdx = Math.Min(idxStride == 2 ? ib.Length / 2 : ib.Length / 4, (int)indexCount);
+                nIdx -= nIdx % 3;
+                if (nIdx < 3) return packed;
+                var dst = new float[nIdx * 4];
+                int o = 0;
+                for (int i = 0; i < nIdx; i++)
+                {
+                    int vi = idxStride == 2 ? BitConverter.ToUInt16(ib, i * 2) : BitConverter.ToInt32(ib, i * 4);
+                    if (vi < 0 || vi >= packedVerts) continue;
+                    CopyVert(packed, vi, dst, ref o);
+                }
+                if (o < 12) return packed;
+                if (o != dst.Length)
+                {
+                    var cut = new float[o];
+                    Array.Copy(dst, cut, o);
+                    return cut;
+                }
+                return dst;
+            }
+            // DrawArrays: 4 verts is a triangle fan / quad. 6+ verts already triangles (text).
+            if (!indexed && packedVerts == 4)
+            {
+                var dst = new float[24];
+                int o = 0;
+                CopyVert(packed, 0, dst, ref o);
+                CopyVert(packed, 1, dst, ref o);
+                CopyVert(packed, 2, dst, ref o);
+                CopyVert(packed, 0, dst, ref o);
+                CopyVert(packed, 2, dst, ref o);
+                CopyVert(packed, 3, dst, ref o);
+                return dst;
+            }
+            return packed;
         }
 
         public bool IsVertexArray(uint array) => array != 0;
