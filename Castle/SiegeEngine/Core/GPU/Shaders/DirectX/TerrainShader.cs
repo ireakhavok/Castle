@@ -72,24 +72,36 @@ float4 ps(VSOut i) : SV_TARGET
 {
     if (uUnlit > 0.5)
         return float4(0.486, 1.0, 0.796, 1.0);
-    float4 albedo = i.vColor.a > 0.001 ? i.vColor : float4(1, 1, 1, 1);
+    float4 albedo = i.vColor;
     if (uHasTexture > 0.5)
+    {
+        if (i.vUV.x < 0.0 || i.vUV.x > 1.0 || i.vUV.y < 0.0 || i.vUV.y > 1.0)
+            discard;
         albedo = uTexture.Sample(Samp, i.vUV);
+    }
     float3 dx = ddx(i.vWorldPos);
     float3 dy = ddy(i.vWorldPos);
     float3 normal = normalize(cross(dx, dy));
     if (dot(normal, normal) < 0.001)
         normal = float3(0, 0, 1);
-    float3 lightDir = normalize(-uLightDir.xyz);
-    float diff = saturate(dot(normal, lightDir));
-    float amb = uAmbientStrength > 0.0 ? uAmbientStrength : 0.30;
+    float3 ldir = uLightDir.xyz;
+    if (dot(ldir, ldir) < 0.0001)
+        ldir = float3(-0.85, 0.10, -0.52);
+    float3 lightDir = normalize(-ldir);
+    // D3D pixel-origin flips ddy vs GL. Two-sided NdotL keeps the heightmap
+    // as bright as the GL one-sided path instead of lighting the underside.
+    float diff = abs(dot(normal, lightDir));
+    float amb = uAmbientStrength;
+    if (amb <= 0.0) amb = 0.30;
     float3 ambientCol = uAmbientColor.xyz;
-    if (dot(ambientCol, ambientCol) < 0.001)
+    if (dot(ambientCol, ambientCol) < 0.0001)
         ambientCol = float3(0.45, 0.45, 0.48);
+    float3 lightCol = uLightColor.xyz;
+    if (dot(lightCol, lightCol) < 0.0001)
+        lightCol = float3(1, 1, 1);
     float intensity = uLightIntensity;
-    float3 lit = amb * albedo.rgb * ambientCol + diff * albedo.rgb * uLightColor.xyz * intensity;
-    if (intensity <= 0.001)
-        lit = albedo.rgb * (amb * ambientCol + float3(0.35, 0.35, 0.35));
+    if (intensity <= 0.0) intensity = 1.0;
+    float3 lit = amb * albedo.rgb * ambientCol + diff * albedo.rgb * lightCol * intensity;
     return float4(lit, albedo.a);
 }";
     }

@@ -32,7 +32,7 @@ VSOut vs(VSIn i)
     float4 viewPos = mul(float4(pos, 1.0), uView);
     float4 clip = mul(viewPos, uProjection);
     o.pos = float4(clip.xy, clip.w, clip.w);
-    o.vTexCoord = mul((float3x3)uOrientation, i.aPosition);
+    o.vTexCoord = mul(i.aPosition, (float3x3)uOrientation);
     return o;
 }";
 

@@ -58,7 +58,9 @@ struct VSOut
 float4 ps(VSOut i) : SV_TARGET
 {
     if (uHasTexture > 0.5)
-        return uTexture.Sample(Samp, i.vUV);
+    {
+return uTexture.Sample(Samp, i.vUV);
+    }
     return i.vColor.a > 0.001 ? i.vColor : float4(1, 1, 1, 1);
 }";
     }

@@ -19,15 +19,27 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             public readonly float R, G, B, A;
             public readonly float UseTexture;
             public readonly uint Texture;
+            public readonly float UseRounded;
+            public readonly float BorderWidth;
+            public readonly float Br, Bg, Bb, Ba;
+            public readonly float Rx, Ry, Rz, Rw;
+            public readonly float RectW, RectH;
             public readonly int VpX, VpY, VpW, VpH;
             public readonly int ScX, ScY, ScW, ScH;
             public readonly bool ScissorOn;
-            public DrawOp(float[] verts, int vertFloats, uint indexCount, float r, float g, float b, float a, float useTex, uint tex, int vpX, int vpY, int vpW, int vpH, int scX, int scY, int scW, int scH, bool scissorOn)
+            public readonly int Mode;
+            public DrawOp(float[] verts, int vertFloats, uint indexCount, float r, float g, float b, float a, float useTex, uint tex,
+                float useRounded, float borderWidth, float br, float bg, float bb, float ba,
+                float rx, float ry, float rz, float rw, float rectW, float rectH,
+                int vpX, int vpY, int vpW, int vpH, int scX, int scY, int scW, int scH, bool scissorOn, int mode)
             {
                 Verts = verts; VertFloats = vertFloats; IndexCount = indexCount;
                 R = r; G = g; B = b; A = a; UseTexture = useTex; Texture = tex;
+                UseRounded = useRounded; BorderWidth = borderWidth;
+                Br = br; Bg = bg; Bb = bb; Ba = ba;
+                Rx = rx; Ry = ry; Rz = rz; Rw = rw; RectW = rectW; RectH = rectH;
                 VpX = vpX; VpY = vpY; VpW = vpW; VpH = vpH;
-                ScX = scX; ScY = scY; ScW = scW; ScH = scH; ScissorOn = scissorOn;
+                ScX = scX; ScY = scY; ScW = scW; ScH = scH; ScissorOn = scissorOn; Mode = mode;
             }
         }
 
@@ -60,16 +72,20 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             public readonly float[] LightDir;
             public readonly float[] LightColor;
             public readonly float[] AmbientColor;
+            public readonly float HasOpacity;
+            public readonly uint OpacityTex;
             public readonly int VpX, VpY, VpW, VpH;
             public readonly int ScX, ScY, ScW, ScH;
             public readonly bool ScissorOn;
+            public readonly int Mode;
             public WorldDrawOp(uint vbo, uint ebo, int vtxStride, int uvOff, int idxStride, uint indexCount, float[] mvp,
                 float r, float g, float b, float a, float useTex, uint tex, uint colorTarget, bool depthOn, bool useSky,
                 uint program, int kind,
                 float[] model, float[] view, float[] projection, float[] orientation,
                 float verticalOffset, float unlit, float hasTexture, float lightIntensity, float ambientStrength,
                 float[] lightDir, float[] lightColor, float[] ambientColor,
-                int vpX, int vpY, int vpW, int vpH, int scX, int scY, int scW, int scH, bool scissorOn)
+                float hasOpacity, uint opacityTex,
+                int vpX, int vpY, int vpW, int vpH, int scX, int scY, int scW, int scH, bool scissorOn, int mode)
             {
                 Vbo = vbo; Ebo = ebo; VtxStride = vtxStride; UvOff = uvOff; IdxStride = idxStride; IndexCount = indexCount; Mvp = mvp;
                 R = r; G = g; B = b; A = a; UseTexture = useTex; Texture = tex;
@@ -78,8 +94,9 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 VerticalOffset = verticalOffset; Unlit = unlit; HasTexture = hasTexture;
                 LightIntensity = lightIntensity; AmbientStrength = ambientStrength;
                 LightDir = lightDir; LightColor = lightColor; AmbientColor = ambientColor;
+                HasOpacity = hasOpacity; OpacityTex = opacityTex;
                 VpX = vpX; VpY = vpY; VpW = vpW; VpH = vpH;
-                ScX = scX; ScY = scY; ScW = scW; ScH = scH; ScissorOn = scissorOn;
+                ScX = scX; ScY = scY; ScW = scW; ScH = scH; ScissorOn = scissorOn; Mode = mode;
             }
         }
 
@@ -111,7 +128,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         readonly Dictionary<uint, uint> _fboColor = new Dictionary<uint, uint>();
         readonly Dictionary<uint, float[]> _fboClear = new Dictionary<uint, float[]>();
         readonly Dictionary<uint, CpuTexture> _textures = new Dictionary<uint, CpuTexture>();
-        readonly Dictionary<int, float[]> _uniforms = new Dictionary<int, float[]>();
+        readonly Dictionary<uint, Dictionary<int, float[]>> _programUniforms = new Dictionary<uint, Dictionary<int, float[]>>();
         readonly Dictionary<string, int> _uniformNames = new Dictionary<string, int>(StringComparer.Ordinal);
         uint _nextBuffer = 1;
         uint _nextTexture = 1;
@@ -436,11 +453,11 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         {
             if (RecordFullscreenBlit(count))
                 return;
-            RecordDraw(count, indexed: false);
+            RecordDraw(count, indexed: false, mode: mode);
         }
         public void DrawElements(int mode, uint count, int type, void* indices)
         {
-            RecordDraw(count, indexed: true);
+            RecordDraw(count, indexed: true, mode: mode);
         }
 
         static float[] PackXyUv(byte[] vb, int stride, int maxVerts)
@@ -476,12 +493,13 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 return false;
             float[] packed = { -1f, -1f, 0f, 1f,  3f, -1f, 2f, 1f,  -1f, 3f, 0f, -1f };
             _draws.Add(new DrawOp(packed, packed.Length, 3, 1f, 1f, 1f, 1f, 1f, tex,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 ViewportX, ViewportY, ViewportWidth, ViewportHeight,
-                _scX, _scY, _scW > 0 ? _scW : ViewportWidth, _scH > 0 ? _scH : ViewportHeight, _scissorOn));
+                _scX, _scY, _scW > 0 ? _scW : ViewportWidth, _scH > 0 ? _scH : ViewportHeight, _scissorOn, 4));
             return true;
         }
 
-        void RecordDraw(uint indexCount, bool indexed)
+        void RecordDraw(uint indexCount, bool indexed, int mode = 4)
         {
             if (_boundVao != 0)
             {
@@ -497,7 +515,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             int stride = _stride <= 0 ? 16 : _stride;
             if (_posSize >= 3 || stride > 16)
             {
-                RecordWorld(vb, stride, indexCount, indexed);
+                RecordWorld(vb, stride, indexCount, indexed, mode);
                 return;
             }
             if (_boundFbo != 0)
@@ -530,28 +548,31 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             GetUniform4(Loc("uColor"), out float r, out float g, out float b, out float a);
             float useTex = GetUniform1(Loc("uUseTexture"));
             if (useTex == 0 && GetUniform1(Loc("uUseTex")) != 0) useTex = GetUniform1(Loc("uUseTex"));
-            // Unset CSS fill is Vector4.Zero. If this draw is a rounded/border pass,
-            // uColor is the fill (transparent) and the visible edge is uBorderColor.
-            if (useTex < 0.5f && a <= 0f)
+            float useRounded = GetUniform1(Loc("uUseRounded"));
+            float borderWidth = GetUniform1(Loc("uBorderWidth"));
+            GetUniform4(Loc("uBorderColor"), out float br, out float bg, out float bb, out float ba);
+            GetUniform4(Loc("uBorderRadius"), out float rx, out float ry, out float rz, out float rw);
+            GetUniform4(Loc("uRectSize"), out float rectW, out float rectH, out _, out _);
+            // Text/atlas draws never author rounded-rect uniforms. Do not inherit them.
+            if (useTex > 0.5f)
             {
-                float bw = GetUniform1(Loc("uBorderWidth"));
-                GetUniform4(Loc("uBorderColor"), out float br, out float bg, out float bb, out float ba);
-                if (bw > 0f && ba > 0f)
-                {
-                    r = br; g = bg; b = bb; a = ba;
-                }
-                else
-                {
-                    return;
-                }
+                useRounded = 0f;
+                borderWidth = 0f;
             }
-            _draws.Add(new DrawOp(packed, packed.Length, (uint)(packed.Length / 4), r, g, b, a, useTex, _boundTexture, ViewportX, ViewportY, ViewportWidth, ViewportHeight, _scX, _scY, _scW > 0 ? _scW : ViewportWidth, _scH > 0 ? _scH : ViewportHeight, _scissorOn));
+            if (useTex < 0.5f && a <= 0f && !(useRounded > 0.5f || (borderWidth > 0f && ba > 0f)))
+                return;
+            _draws.Add(new DrawOp(packed, packed.Length, (uint)(packed.Length / 4), r, g, b, a, useTex, _boundTexture,
+                useRounded, borderWidth, br, bg, bb, ba, rx, ry, rz, rw, rectW, rectH,
+                ViewportX, ViewportY, ViewportWidth, ViewportHeight, _scX, _scY, _scW > 0 ? _scW : ViewportWidth, _scH > 0 ? _scH : ViewportHeight, _scissorOn, mode));
         }
 
 
-        void RecordWorld(byte[] vb, int stride, uint indexCount, bool indexed)
+        void RecordWorld(byte[] vb, int stride, uint indexCount, bool indexed, int mode = 4)
         {
-            if (_boundArray == 0 || indexCount < 3) return;
+            if (_boundArray == 0) return;
+            bool isLine = mode == Enums.Lines || mode == 1 || mode == 3;
+            if (!isLine && indexCount < 3) return;
+            if (isLine && indexCount < 2) return;
             // Shadow / cube FBOs are square. SMAA world is the panel (not square) — keep those.
             if (_boundFbo != 0 && ViewportWidth == ViewportHeight && ViewportWidth >= 256)
                 return;
@@ -606,14 +627,18 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 vpW = _presentW > 0 ? _presentW : ViewportWidth;
                 vpH = _presentH > 0 ? _presentH : ViewportHeight;
             }
+            float hasOpacity = GetUniform1(Loc("uHasOpacity"));
+            uint opacityTex = _texUnit.Length > 15 ? _texUnit[15] : 0;
+            if (opacityTex == 0 && _texUnit.Length > 1) opacityTex = _texUnit[1];
             _world.Add(new WorldDrawOp(_boundArray, _boundElement, stride, uvOff, idxStride, indexCount, mvp,
                 r, g, b, a, useTex, tex, colorTarget, _depthOn, useSky,
                 _boundProgram, kind,
                 PackMatrix(model), PackMatrix(view), PackMatrix(proj), PackMatrix(orient),
                 vertical, unlit, hasTex, lightIntensity, ambientStrength,
                 new[] { ldx, ldy, ldz }, new[] { lcx, lcy, lcz }, new[] { acx, acy, acz },
+                hasOpacity, opacityTex,
                 vpX, vpY, vpW, vpH,
-                vpX, vpY, vpW, vpH, true));
+                vpX, vpY, vpW, vpH, true, mode));
         }
 
         int[] BuildIndices(bool indexed, uint indexCount, int vertCount)
@@ -663,10 +688,20 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             };
         }
 
+        Dictionary<int, float[]> ActiveUniforms()
+        {
+            if (!_programUniforms.TryGetValue(_boundProgram, out var bag))
+            {
+                bag = new Dictionary<int, float[]>();
+                _programUniforms[_boundProgram] = bag;
+            }
+            return bag;
+        }
+
         void GetUniform3(int loc, out float x, out float y, out float z)
         {
             x = y = z = 0;
-            if (loc < 0 || !_uniforms.TryGetValue(loc, out var v) || v == null) return;
+            if (loc < 0 || !ActiveUniforms().TryGetValue(loc, out var v) || v == null) return;
             if (v.Length > 0) x = v[0];
             if (v.Length > 1) y = v[1];
             if (v.Length > 2) z = v[2];
@@ -676,7 +711,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         {
             m = System.Numerics.Matrix4x4.Identity;
             int loc = Loc(name);
-            if (loc < 0 || !_uniforms.TryGetValue(loc, out var v) || v == null || v.Length < 16) return;
+            if (loc < 0 || !ActiveUniforms().TryGetValue(loc, out var v) || v == null || v.Length < 16) return;
             m = new System.Numerics.Matrix4x4(
                 v[0], v[1], v[2], v[3],
                 v[4], v[5], v[6], v[7],
@@ -994,6 +1029,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             _programKind.Remove(program);
             _programStatus.Remove(program);
             _programLog.Remove(program);
+            _programUniforms.Remove(program);
         }
         public void UseProgram(uint program) { _boundProgram = program; }
 
@@ -1024,16 +1060,16 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             _uniformNames[name] = loc;
             return loc;
         }
-        public void Uniform1(int location, float value) { _uniforms[location] = new[] { value }; }
-        public void Uniform1(int location, int value) { _uniforms[location] = new[] { (float)value }; }
-        public void Uniform2(int location, float x, float y) { _uniforms[location] = new[] { x, y }; }
-        public void Uniform3(int location, float x, float y, float z) { _uniforms[location] = new[] { x, y, z }; }
-        public void Uniform4(int location, float x, float y, float z, float w) { _uniforms[location] = new[] { x, y, z, w }; }
+        public void Uniform1(int location, float value) { ActiveUniforms()[location] = new[] { value }; }
+        public void Uniform1(int location, int value) { ActiveUniforms()[location] = new[] { (float)value }; }
+        public void Uniform2(int location, float x, float y) { ActiveUniforms()[location] = new[] { x, y }; }
+        public void Uniform3(int location, float x, float y, float z) { ActiveUniforms()[location] = new[] { x, y, z }; }
+        public void Uniform4(int location, float x, float y, float z, float w) { ActiveUniforms()[location] = new[] { x, y, z, w }; }
         public void UniformMatrix4(int location, uint count, bool transpose, float* value)
         {
             var m = new float[16];
             if (value != null) Marshal.Copy((nint)value, m, 0, 16);
-            _uniforms[location] = m;
+            ActiveUniforms()[location] = m;
         }
         public void UniformMatrix3(int location, uint count, bool transpose, float* value) { }
         public void GetProgramInterface(uint program, int programInterface, int pname, out int param) { param = 0; }
@@ -1042,13 +1078,13 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         int Loc(string name) => _uniformNames.TryGetValue(name, out int loc) ? loc : -1;
         float GetUniform1(int loc)
         {
-            if (loc < 0 || !_uniforms.TryGetValue(loc, out var v) || v == null || v.Length == 0) return 0;
+            if (loc < 0 || !ActiveUniforms().TryGetValue(loc, out var v) || v == null || v.Length == 0) return 0;
             return v[0];
         }
         void GetUniform4(int loc, out float x, out float y, out float z, out float w)
         {
             x = y = z = 0; w = 1;
-            if (loc < 0 || !_uniforms.TryGetValue(loc, out var v) || v == null) return;
+            if (loc < 0 || !ActiveUniforms().TryGetValue(loc, out var v) || v == null) return;
             if (v.Length > 0) x = v[0];
             if (v.Length > 1) y = v[1];
             if (v.Length > 2) z = v[2];

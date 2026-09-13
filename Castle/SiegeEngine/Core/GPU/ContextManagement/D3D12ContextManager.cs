@@ -83,7 +83,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         bool _worldReady;
         nint _skyVs, _skyPs, _skyLayout, _skyCb;
         nint _mdlVs, _mdlPs, _mdlLayout, _mdlCb;
-        bool _skyReady, _mdlReady;
+        nint _scnVs, _scnPs, _scnLayout, _scnCb;
+        bool _skyReady, _mdlReady, _scnReady;
         const int D3D11_RESOURCE_MISC_TEXTURECUBE = 4;
         const int D3D11_SRV_DIMENSION_TEXTURECUBE = 5;
         ulong _fenceValue;
@@ -259,7 +260,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 {
                     BindSrv(_whiteSrv);
                 }
-                UploadConstants(d.R, d.G, d.B, d.A, d.UseTexture);
+                UploadConstants(d);
                 DrawVerts(d.Verts, d.VertFloats, d.IndexCount);
             }
             Flush11();
@@ -271,13 +272,15 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             if (draws.Length == 0) return;
             SetRasterizer();
             SetBlend();
-            SetTopology();
             SetWorldShaders();
             BindSampler();
             _boundWorldColor = 0;
             foreach (var d in draws)
             {
-                if (d.IndexCount < 3 || d.Vbo == 0) continue;
+                bool line = d.Mode == 1 || d.Mode == 3;
+                if (d.Vbo == 0) continue;
+                if (!line && d.IndexCount < 3) continue;
+                if (line && d.IndexCount < 2) continue;
                 int vpW = d.VpW > 0 ? d.VpW : _width;
                 int vpH = d.VpH > 0 ? d.VpH : _height;
                 if (vpW <= 0 || vpH <= 0) continue;
@@ -295,6 +298,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 nint ib = d.Ebo != 0 ? SyncGpuBuffer(d.Ebo, D3D11_BIND_INDEX_BUFFER) : nint.Zero;
                 int kind = d.Kind;
                 if (d.VtxStride >= 80) kind = 2;
+                SetTopology(d.Mode);
                 if (kind == 1 && _skyReady)
                 {
                     SetSkyShaders();
@@ -309,7 +313,19 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                     SetModelShaders();
                     nint srv = ResolveSrv(d.Texture, d.UseTexture > 0.5f ? 1f : 0f);
                     BindSrv(srv != nint.Zero ? srv : _whiteSrv);
-                    UploadModelConstants(d.Mvp, d.Model, d.View, d.Projection, d.UseTexture);
+                    nint opac = d.HasOpacity > 0.5f ? ResolveSrv(d.OpacityTex, 1f) : _whiteSrv;
+                    BindSrvAt(1, opac != nint.Zero ? opac : _whiteSrv);
+                    UploadModelConstants(d);
+                    BindWorldMesh(vb, ib, d.VtxStride, d.IdxStride);
+                    SetDepth(d.DepthOn);
+                }
+                else if (kind != 3 && _scnReady)
+                {
+                    SetSceneShaders();
+                    nint srv = d.UseTexture > 0.5f ? ResolveSrv(d.Texture, d.UseTexture) : _whiteSrv;
+                    BindSrv(srv != nint.Zero ? srv : _whiteSrv);
+                    UploadSceneConstants(d.Model, d.View, d.Projection, d.HasTexture > 0.5f ? d.HasTexture : d.UseTexture);
+                    BindWorldLayout(d.UvOff);
                     BindWorldMesh(vb, ib, d.VtxStride, d.IdxStride);
                     SetDepth(d.DepthOn);
                 }
@@ -434,8 +450,29 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             elems[6] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "BLENDWEIGHT", Format = 2, AlignedByteOffset = 64 };
             _mdlLayout = CreateInputLayout(elems, vsPtr, vsLen);
             ReleaseBlob(vsBlob); ReleaseBlob(psBlob);
-            _mdlCb = CreateBuffer11(384, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+            _mdlCb = CreateBuffer11(256, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
             _mdlReady = _mdlVs != nint.Zero && _mdlPs != nint.Zero && _mdlLayout != nint.Zero && _mdlCb != nint.Zero;
+        }
+
+        void BuildScenePipeline()
+        {
+            byte[] vsSrc = System.Text.Encoding.ASCII.GetBytes(SceneShader.VertexShaderSource);
+            byte[] psSrc = System.Text.Encoding.ASCII.GetBytes(SceneShader.FragmentShaderSource);
+            if (!Compile(vsSrc, "vs", "vs_5_0", out nint vsBlob) ||
+                !Compile(psSrc, "ps", "ps_5_0", out nint psBlob))
+                return;
+            nint vsPtr = BlobPtr(vsBlob); ulong vsLen = BlobLen(vsBlob);
+            nint psPtr = BlobPtr(psBlob); ulong psLen = BlobLen(psBlob);
+            _scnVs = CreateVertexShader(vsPtr, vsLen);
+            _scnPs = CreatePixelShader(psPtr, psLen);
+            var elems = new D3D11_INPUT_ELEMENT_DESC[3];
+            elems[0] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "POSITION", Format = DXGI_FORMAT_R32G32B32_FLOAT, AlignedByteOffset = 0 };
+            elems[1] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "COLOR", Format = 2, AlignedByteOffset = 12 };
+            elems[2] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "TEXCOORD", Format = 16, AlignedByteOffset = 28 };
+            _scnLayout = CreateInputLayout(elems, vsPtr, vsLen);
+            ReleaseBlob(vsBlob); ReleaseBlob(psBlob);
+            _scnCb = CreateBuffer11(256, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+            _scnReady = _scnVs != nint.Zero && _scnPs != nint.Zero && _scnLayout != nint.Zero && _scnCb != nint.Zero;
         }
 
 
@@ -466,25 +503,10 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         void BuildUiPipeline()
         {
-            const string hlsl = @"
-cbuffer CB : register(b0) { float4 Color; float UseTexture; float2 Viewport; float Pad; };
-Texture2D Tex : register(t0);
-SamplerState Samp : register(s0);
-struct VSIn { float2 pos : POSITION; float2 uv : TEXCOORD; };
-struct VSOut { float4 pos : SV_POSITION; float2 uv : TEXCOORD; };
-VSOut vs(VSIn i) {
-    VSOut o;
-    o.pos = float4(i.pos, 0, 1);
-    o.uv = i.uv;
-    return o;
-}
-float4 ps(VSOut i) : SV_TARGET {
-    float4 t = UseTexture > 0.5 ? Tex.Sample(Samp, i.uv) : float4(1,1,1,1);
-    return t * Color;
-}";
-            byte[] src = System.Text.Encoding.ASCII.GetBytes(hlsl);
-            if (!Compile(src, "vs", "vs_5_0", out nint vsBlob) ||
-                !Compile(src, "ps", "ps_5_0", out nint psBlob))
+            byte[] srcVs = System.Text.Encoding.ASCII.GetBytes(UiShader.VertexShaderSource);
+            byte[] srcPs = System.Text.Encoding.ASCII.GetBytes(UiShader.FragmentShaderSource);
+            if (!Compile(srcVs, "vs", "vs_5_0", out nint vsBlob) ||
+                !Compile(srcPs, "ps", "ps_5_0", out nint psBlob))
             {
                 return;
             }
@@ -500,7 +522,7 @@ float4 ps(VSOut i) : SV_TARGET {
             ReleaseBlob(vsBlob); ReleaseBlob(psBlob);
 
             _vb = CreateBuffer11(1024 * 1024, D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
-            _cb = CreateBuffer11(32, 4 /* CONSTANT_BUFFER */, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+            _cb = CreateBuffer11(128, 4 /* CONSTANT_BUFFER */, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
             _sampler = CreateSampler();
             _rs = CreateRasterizer();
             _blend = CreateBlend();
@@ -633,12 +655,17 @@ float4 ps(VSOut i) : SV_TARGET {
             return true;
         }
 
-        void SetTopology()
+        void SetTopology(int glMode = 4)
         {
+            if (_ctx11 == nint.Zero) return;
             // ID3D11DeviceContext::IASetPrimitiveTopology is vtable slot 24.
-            // Slot 16 is PSSetConstantBuffers — calling that with a topology enum AVs.
+            int topo = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+            if (glMode == 0) topo = 1;
+            else if (glMode == 1) topo = 2;
+            else if (glMode == 3) topo = 3;
+            else if (glMode == 5) topo = 5;
             var fn = (SetTopoFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 24), typeof(SetTopoFn));
-            fn(_ctx11, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+            fn(_ctx11, topo);
         }
 
         void SetShaders()
@@ -693,6 +720,33 @@ float4 ps(VSOut i) : SV_TARGET {
             Marshal.FreeHGlobal(box);
         }
 
+        void SetSceneShaders()
+        {
+            var vs = (SetVsFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 11), typeof(SetVsFn));
+            vs(_ctx11, _scnVs, nint.Zero, 0);
+            var ps = (SetPsFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 9), typeof(SetPsFn));
+            ps(_ctx11, _scnPs, nint.Zero, 0);
+            var il = (SetIlFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 17), typeof(SetIlFn));
+            il(_ctx11, _scnLayout);
+            nint box = Marshal.AllocHGlobal(nint.Size);
+            Marshal.WriteIntPtr(box, _scnCb);
+            var cb = (SetCbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 7), typeof(SetCbFn));
+            cb(_ctx11, 0, 1, box);
+            var psCb = (SetCbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 16), typeof(SetCbFn));
+            psCb(_ctx11, 0, 1, box);
+            Marshal.FreeHGlobal(box);
+        }
+
+        void UploadSceneConstants(float[] model, float[] view, float[] proj, float hasTex)
+        {
+            var data = new float[52];
+            Copy16(model, data, 0);
+            Copy16(view, data, 16);
+            Copy16(proj, data, 32);
+            data[48] = hasTex;
+            MapWrite(_scnCb, data, 208);
+        }
+
         void UploadSkyConstants(float[] view, float[] proj, float[] orient, float verticalOffset)
         {
             var data = new float[52];
@@ -704,23 +758,33 @@ float4 ps(VSOut i) : SV_TARGET {
             MapWrite(_skyCb, data, 208);
         }
 
-        void UploadModelConstants(float[] mvp, float[] model, float[] view, float[] proj, float useTex)
+        void UploadModelConstants(D3D12RenderContext.WorldDrawOp d)
         {
-            // DirectX/ModelShader CB: row_major float4x4 Mvp; float4 Color; float UseTexture; float UseSky; float2 Pad;
-            var data = new float[24];
-            if (mvp != null && mvp.Length >= 16)
-                Copy16(mvp, data, 0);
+            var data = new float[40];
+            if (d.Mvp != null && d.Mvp.Length >= 16)
+                Copy16(d.Mvp, data, 0);
             else
             {
-                Copy16(model, data, 0);
-                // If only the split matrices arrived, compose model*view*proj into Mvp.
-                var composed = ComposeMvp(model, view, proj);
+                var composed = ComposeMvp(d.Model, d.View, d.Projection);
                 if (composed != null) Copy16(composed, data, 0);
+                else Copy16(d.Model, data, 0);
             }
-            data[16] = 1f; data[17] = 1f; data[18] = 1f; data[19] = 1f;
-            data[20] = useTex;
-            data[21] = 0f;
-            MapWrite(_mdlCb, data, 96);
+            // DirectX/ModelShader CB: Mvp, LightDir, LightColor, AmbientColor, intensity, ambient, hasOpacity, slots
+            if (d.LightDir != null && d.LightDir.Length >= 3
+                && (d.LightDir[0]*d.LightDir[0] + d.LightDir[1]*d.LightDir[1] + d.LightDir[2]*d.LightDir[2]) > 0.0001f)
+            { data[16] = d.LightDir[0]; data[17] = d.LightDir[1]; data[18] = d.LightDir[2]; }
+            else { data[16] = -0.85f; data[17] = 0.10f; data[18] = -0.52f; }
+            if (d.LightColor != null && d.LightColor.Length >= 3)
+            { data[20] = d.LightColor[0]; data[21] = d.LightColor[1]; data[22] = d.LightColor[2]; }
+            else { data[20] = 1f; data[21] = 1f; data[22] = 1f; }
+            if (d.AmbientColor != null && d.AmbientColor.Length >= 3)
+            { data[24] = d.AmbientColor[0]; data[25] = d.AmbientColor[1]; data[26] = d.AmbientColor[2]; }
+            else { data[24] = 0.45f; data[25] = 0.45f; data[26] = 0.48f; }
+            data[28] = d.LightIntensity > 0.001f ? d.LightIntensity : 1f;
+            data[29] = d.AmbientStrength > 0.001f ? d.AmbientStrength : 0.30f;
+            data[30] = d.HasOpacity;
+            data[31] = d.HasOpacity > 0.5f ? 15f : 0f;
+            MapWrite(_mdlCb, data, 128);
         }
 
         static float[] ComposeMvp(float[] model, float[] view, float[] proj)
@@ -758,9 +822,10 @@ float4 ps(VSOut i) : SV_TARGET {
             else { data[0] = data[5] = data[10] = data[15] = 1f; }
             Copy16(view, data, 16);
             Copy16(proj, data, 32);
-            if (lightDir != null && lightDir.Length >= 3)
+            if (lightDir != null && lightDir.Length >= 3
+                && (lightDir[0]*lightDir[0] + lightDir[1]*lightDir[1] + lightDir[2]*lightDir[2]) > 0.0001f)
             { data[48] = lightDir[0]; data[49] = lightDir[1]; data[50] = lightDir[2]; }
-            else { data[48] = 0.35f; data[49] = 0.55f; data[50] = 0.75f; }
+            else { data[48] = -0.85f; data[49] = 0.10f; data[50] = -0.52f; }
             data[51] = 0f;
             if (lightColor != null && lightColor.Length >= 3)
             { data[52] = lightColor[0]; data[53] = lightColor[1]; data[54] = lightColor[2]; }
@@ -772,8 +837,8 @@ float4 ps(VSOut i) : SV_TARGET {
             data[59] = 1f;
             data[60] = hasTexture;
             data[61] = unlit;
-            data[62] = lightIntensity > 0.001f ? lightIntensity : 1f;
-            data[63] = ambientStrength > 0.001f ? ambientStrength : 0.30f;
+            data[62] = lightIntensity;
+            data[63] = ambientStrength;
             MapWrite(_wcb, data, 256);
         }
 
@@ -1144,10 +1209,15 @@ void SetWorldShaders()
 
         void BindSrv(nint srv)
         {
+            BindSrvAt(0, srv);
+        }
+
+        void BindSrvAt(int slot, nint srv)
+        {
             nint box = Marshal.AllocHGlobal(nint.Size);
             Marshal.WriteIntPtr(box, srv);
             var fn = (SetSrvFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 8), typeof(SetSrvFn));
-            fn(_ctx11, 0, 1, box);
+            fn(_ctx11, (uint)slot, 1u, box);
             Marshal.FreeHGlobal(box);
         }
 
@@ -1253,12 +1323,19 @@ void SetWorldShaders()
             Marshal.FreeHGlobal(vbBox); Marshal.FreeHGlobal(strideBox); Marshal.FreeHGlobal(offBox);
         }
 
-        void UploadConstants(float r, float g, float b, float a, float useTex)
+        void UploadConstants(D3D12RenderContext.DrawOp d)
         {
-            float[] cb = new float[8];
-            cb[0] = r; cb[1] = g; cb[2] = b; cb[3] = a;
-            cb[4] = useTex; cb[5] = _width; cb[6] = _height;
-            MapWrite(_cb, cb, 32);
+            // Matches DirectX/UiShader.cbuffer (80 bytes, 16-byte aligned).
+            float[] cb = new float[20];
+            cb[0] = d.R; cb[1] = d.G; cb[2] = d.B; cb[3] = d.A;
+            cb[4] = d.UseTexture;
+            cb[5] = d.UseRounded;
+            cb[6] = d.BorderWidth;
+            cb[7] = 0f;
+            cb[8] = d.Rx; cb[9] = d.Ry; cb[10] = d.Rz; cb[11] = d.Rw;
+            cb[12] = d.RectW; cb[13] = d.RectH; cb[14] = 0f; cb[15] = 0f;
+            cb[16] = d.Br; cb[17] = d.Bg; cb[18] = d.Bb; cb[19] = d.Ba;
+            MapWrite(_cb, cb, 80);
         }
 
         void Draw(int vertexCount)

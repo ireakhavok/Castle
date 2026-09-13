@@ -35,6 +35,8 @@ namespace SiegeEngine.Core.GPU.Shaders
             // Do NOT key off samplerCube — terrain and model GLSL both declare
             // samplerCube for point-shadows. That remapped every world program
             // onto the skybox clip.xyww path (streaks, no terrain/meshes).
+            if (vs.IndexOf("uLightVP", System.StringComparison.Ordinal) >= 0)
+                return (DirectX.ShadowShader.VertexShaderSource, DirectX.ShadowShader.FragmentShaderSource);
             if (fs.IndexOf("uSkybox", System.StringComparison.Ordinal) >= 0
                 || vs.IndexOf("uOrientation", System.StringComparison.Ordinal) >= 0)
                 return (DirectX.SkyboxShader.VertexShaderSource, DirectX.SkyboxShader.FragmentShaderSource);
@@ -48,7 +50,11 @@ namespace SiegeEngine.Core.GPU.Shaders
                 || vs.IndexOf("uPolyFactor", System.StringComparison.Ordinal) >= 0
                 || fs.IndexOf("uPolyUnits", System.StringComparison.Ordinal) >= 0)
                 return (DirectX.TerrainShader.VertexShaderSource, DirectX.TerrainShader.FragmentShaderSource);
-            if (vs.IndexOf("uPointSize", System.StringComparison.Ordinal) >= 0)
+            if (fs.IndexOf("uUseRounded", System.StringComparison.Ordinal) >= 0
+                || fs.IndexOf("uBorderRadius", System.StringComparison.Ordinal) >= 0)
+                return (DirectX.UiShader.VertexShaderSource, DirectX.UiShader.FragmentShaderSource);
+            if (vs.IndexOf("uPointSize", System.StringComparison.Ordinal) >= 0
+                || vs.IndexOf("uOutline", System.StringComparison.Ordinal) >= 0)
                 return (DirectX.PointShader.VertexShaderSource, DirectX.PointShader.FragmentShaderSource);
             if (vs.IndexOf("uTime", System.StringComparison.Ordinal) >= 0 && vs.IndexOf("sin(", System.StringComparison.Ordinal) >= 0)
                 return (DirectX.WaterShader.VertexShaderSource, DirectX.WaterShader.FragmentShaderSource);
