@@ -178,20 +178,22 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             RecordDraw(count, indexed: true);
         }
 
-        static float[] PackXyUv(byte[] vb, int stride)
+        static float[] PackXyUv(byte[] vb, int stride, int maxVerts)
         {
             if (vb == null || vb.Length < 8) return Array.Empty<float>();
             if (stride < 8) stride = 8;
             int verts = vb.Length / stride;
+            if (maxVerts > 0 && verts > maxVerts) verts = maxVerts;
             if (verts <= 0) return Array.Empty<float>();
             int uvOff = (stride == 20 || stride == 24) ? 12 : 8;
             var dst = new float[verts * 4];
             for (int i = 0; i < verts; i++)
             {
                 int s = i * stride;
+                if (s + 4 >= vb.Length) break;
                 dst[i * 4 + 0] = BitConverter.ToSingle(vb, s);
                 dst[i * 4 + 1] = BitConverter.ToSingle(vb, s + 4);
-                if (stride >= uvOff + 8)
+                if (stride >= uvOff + 8 && s + uvOff + 8 <= vb.Length)
                 {
                     dst[i * 4 + 2] = BitConverter.ToSingle(vb, s + uvOff);
                     dst[i * 4 + 3] = BitConverter.ToSingle(vb, s + uvOff + 4);
@@ -204,12 +206,10 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         {
             if (!_buffers.TryGetValue(_boundArray, out var vb) || vb == null || vb.Length < 8) return;
             int stride = _stride <= 0 ? 16 : _stride;
-            if (!indexed && indexCount > 0)
-            {
-                int guess = vb.Length / (int)indexCount;
-                if (guess >= 8 && guess <= 32) stride = guess;
-            }
-            else if (indexed && _buffers.TryGetValue(_boundElement, out var ib) && ib != null && ib.Length >= 2)
+            // DrawArrays must not guess stride from allocated-bytes / draw-count.
+            // TextRenderer keeps a large preallocated VBO and draws a short glyph run;
+            // that guess lands in 8..32 and reads UV as XY — glyphs sliver across the screen.
+            if (indexed && _buffers.TryGetValue(_boundElement, out var ib) && ib != null && ib.Length >= 2)
             {
                 int idxStride = (indexCount > 0 && ib.Length == (int)indexCount * 2) ? 2 : 4;
                 int nIdx = Math.Min(idxStride == 2 ? ib.Length / 2 : ib.Length / 4, indexCount > 0 ? (int)indexCount : int.MaxValue);
@@ -222,17 +222,12 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 int guess = vb.Length / Math.Max(1, maxI + 1);
                 if (guess >= 8 && guess <= 64) stride = guess;
             }
-            float[] packed = PackXyUv(vb, stride);
+            int liveVerts = 0;
+            if (!indexed && indexCount > 0)
+                liveVerts = (int)indexCount;
+            float[] packed = PackXyUv(vb, stride, liveVerts);
             if (packed.Length < 8) return;
             int packedVerts = packed.Length / 4;
-            if (!indexed && indexCount > 0 && packedVerts > (int)indexCount)
-            {
-                int keep = (int)indexCount * 4;
-                var cut = new float[keep];
-                Array.Copy(packed, cut, keep);
-                packed = cut;
-                packedVerts = (int)indexCount;
-            }
             packed = ExpandToTriangles(packed, packedVerts, indexed, indexCount);
             if (packed.Length < 12) return;
             GetUniform4(Loc("uColor"), out float r, out float g, out float b, out float a);

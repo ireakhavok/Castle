@@ -24,6 +24,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         const int D3D11_USAGE_DYNAMIC = 2;
         const int D3D11_CPU_ACCESS_WRITE = 0x10000;
         const int D3D11_MAP_WRITE_DISCARD = 4;
+        const int D3D11_MAP_WRITE_NO_OVERWRITE = 5;
+        const int VbBytes = 1024 * 1024;
         const int D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST = 4;
         const int D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT = 0x14;
         const int D3D11_TEXTURE_ADDRESS_CLAMP = 3;
@@ -68,6 +70,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         nint _fenceEvent;
         int _frame;
         int _width, _height;
+        int _vbOffset;
         bool _uiReady;
         bool _loggedLayout;
         bool _loggedMissingTex;
@@ -190,6 +193,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             SetTopology();
             SetShaders();
             BindSampler();
+            _vbOffset = VbBytes; // force a DISCARD on the first upload this present
 
             if (!_loggedLayout && draws.Length > 0)
             {
@@ -431,8 +435,6 @@ float4 ps(VSOut i) : SV_TARGET {
             int verts = vertFloats / 4;
             float[] tri = src;
             int o = vertFloats;
-            // RecordDraw already expanded DrawElements / 4-vert fans to a triangle list.
-            // A leftover 4-vert quad (BackgroundRenderer fan if expansion was skipped) still tessellates here.
             if (verts == 4)
             {
                 tri = new float[24];
@@ -452,8 +454,7 @@ float4 ps(VSOut i) : SV_TARGET {
                 o = keep * 4;
             }
             if (o < 12) return false;
-            const int vbBytes = 1024 * 1024;
-            int maxVerts = vbBytes / 16;
+            int maxVerts = VbBytes / 16;
             maxVerts -= maxVerts % 3;
             int totalVerts = o / 4;
             int start = 0;
@@ -463,22 +464,41 @@ float4 ps(VSOut i) : SV_TARGET {
                 if (n > maxVerts) n = maxVerts;
                 n -= n % 3;
                 if (n < 3) break;
-                int floatOff = start * 4;
-                int floatCount = n * 4;
-                MapWriteOffset(tri, floatOff, floatCount);
-                BindVb();
+                int byteOff = UploadRing(tri, start * 4, n * 4);
+                if (byteOff < 0) break;
+                BindVb(byteOff);
                 Draw(n);
+                Flush11();
                 start += n;
             }
             return start >= 3;
         }
 
-        void MapWriteOffset(float[] data, int floatOffset, int floatCount)
+        // 11-on-12 does not rename a 1MB dynamic VB on WRITE_DISCARD.
+        // Discarding in place leaves every recorded Draw pointing at the last upload
+        // (the below-fold rows of a tall list). Ring with NO_OVERWRITE so every
+        // draw keeps its own bytes until Present/Flush11.
+        int UploadRing(float[] data, int floatOffset, int floatCount)
         {
+            int bytes = floatCount * 4;
+            if (bytes <= 0 || bytes > VbBytes) return -1;
+            int mapType;
+            if (_vbOffset + bytes > VbBytes)
+            {
+                if (_vbOffset > 0 && _vbOffset < VbBytes)
+                    Flush11();
+                mapType = D3D11_MAP_WRITE_DISCARD;
+                _vbOffset = 0;
+            }
+            else
+            {
+                mapType = D3D11_MAP_WRITE_NO_OVERWRITE;
+            }
             nint mappedBox = Marshal.AllocHGlobal(nint.Size * 2);
             Marshal.WriteIntPtr(mappedBox, nint.Zero);
             var map = (MapFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 14), typeof(MapFn));
-            int hr = map(_ctx11, _vb, 0, D3D11_MAP_WRITE_DISCARD, 0, mappedBox);
+            int hr = map(_ctx11, _vb, 0, mapType, 0, mappedBox);
+            int destOff = _vbOffset;
             if (hr >= 0)
             {
                 nint dest = Marshal.ReadIntPtr(mappedBox);
@@ -486,22 +506,25 @@ float4 ps(VSOut i) : SV_TARGET {
                 {
                     int n = Math.Min(floatCount, data.Length - floatOffset);
                     if (n > 0)
-                        Marshal.Copy(data, floatOffset, dest, n);
+                        Marshal.Copy(data, floatOffset, dest + destOff, n);
                 }
             }
             var unmap = (UnmapFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 15), typeof(UnmapFn));
             unmap(_ctx11, _vb, 0);
             Marshal.FreeHGlobal(mappedBox);
+            if (hr < 0) return -1;
+            _vbOffset += bytes;
+            return destOff;
         }
 
-        void BindVb()
+        void BindVb(int byteOffset)
         {
             nint vbBox = Marshal.AllocHGlobal(nint.Size);
             Marshal.WriteIntPtr(vbBox, _vb);
             nint strideBox = Marshal.AllocHGlobal(4);
             Marshal.WriteInt32(strideBox, 16);
             nint offBox = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(offBox, 0);
+            Marshal.WriteInt32(offBox, byteOffset);
             var fn = (SetVbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 18), typeof(SetVbFn));
             fn(_ctx11, 0, 1, vbBox, strideBox, offBox);
             Marshal.FreeHGlobal(vbBox); Marshal.FreeHGlobal(strideBox); Marshal.FreeHGlobal(offBox);
