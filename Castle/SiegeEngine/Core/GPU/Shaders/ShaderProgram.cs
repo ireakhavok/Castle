@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.GPU
+// Folder: SiegeEngine.Core.GPU
 // File: ShaderProgram.cs
 using System;
 using System.Collections.Generic;
@@ -24,6 +24,13 @@ namespace SiegeEngine.Core.GPU.Shaders
                 throw new ArgumentNullException(nameof(vertexShaderSource));
             if (string.IsNullOrEmpty(fragmentShaderSource))
                 throw new ArgumentNullException(nameof(fragmentShaderSource));
+
+            if (ShaderBackend.IsHlsl(_renderContext))
+            {
+                var mapped = ShaderBackend.Map(vertexShaderSource, fragmentShaderSource);
+                vertexShaderSource = mapped.vs;
+                fragmentShaderSource = mapped.fs;
+            }
 
             uint vertexShader = _renderContext.CreateShader(_renderContext.Enums.VertexShader);
             _renderContext.ShaderSource(vertexShader, vertexShaderSource);

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace SiegeEngine.Core.GPU.ContextManagement
 {
@@ -45,16 +46,38 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             public readonly uint ColorTarget;
             public readonly bool DepthOn;
             public readonly bool UseSky;
+            public readonly uint Program;
+            public readonly int Kind;
+            public readonly float[] Model;
+            public readonly float[] View;
+            public readonly float[] Projection;
+            public readonly float[] Orientation;
+            public readonly float VerticalOffset;
+            public readonly float Unlit;
+            public readonly float HasTexture;
+            public readonly float LightIntensity;
+            public readonly float AmbientStrength;
+            public readonly float[] LightDir;
+            public readonly float[] LightColor;
+            public readonly float[] AmbientColor;
             public readonly int VpX, VpY, VpW, VpH;
             public readonly int ScX, ScY, ScW, ScH;
             public readonly bool ScissorOn;
             public WorldDrawOp(uint vbo, uint ebo, int vtxStride, int uvOff, int idxStride, uint indexCount, float[] mvp,
                 float r, float g, float b, float a, float useTex, uint tex, uint colorTarget, bool depthOn, bool useSky,
+                uint program, int kind,
+                float[] model, float[] view, float[] projection, float[] orientation,
+                float verticalOffset, float unlit, float hasTexture, float lightIntensity, float ambientStrength,
+                float[] lightDir, float[] lightColor, float[] ambientColor,
                 int vpX, int vpY, int vpW, int vpH, int scX, int scY, int scW, int scH, bool scissorOn)
             {
                 Vbo = vbo; Ebo = ebo; VtxStride = vtxStride; UvOff = uvOff; IdxStride = idxStride; IndexCount = indexCount; Mvp = mvp;
                 R = r; G = g; B = b; A = a; UseTexture = useTex; Texture = tex;
-                ColorTarget = colorTarget; DepthOn = depthOn; UseSky = useSky;
+                ColorTarget = colorTarget; DepthOn = depthOn; UseSky = useSky; Program = program; Kind = kind;
+                Model = model; View = view; Projection = projection; Orientation = orientation;
+                VerticalOffset = verticalOffset; Unlit = unlit; HasTexture = hasTexture;
+                LightIntensity = lightIntensity; AmbientStrength = ambientStrength;
+                LightDir = lightDir; LightColor = lightColor; AmbientColor = ambientColor;
                 VpX = vpX; VpY = vpY; VpW = vpW; VpH = vpH;
                 ScX = scX; ScY = scY; ScW = scW; ScH = scH; ScissorOn = scissorOn;
             }
@@ -75,6 +98,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             public int Width, Height;
             public byte[] Rgba;
             public int Generation;
+            public bool IsCubemap;
+            public byte[][] Faces;
         }
 
         readonly List<DrawOp> _draws = new List<DrawOp>();
@@ -96,6 +121,16 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         uint _boundElement;
         uint _boundTexture;
         uint _boundProgram;
+        readonly Dictionary<uint, string> _shaderSource = new Dictionary<uint, string>();
+        readonly Dictionary<uint, int> _shaderType = new Dictionary<uint, int>();
+        readonly Dictionary<uint, int> _shaderStatus = new Dictionary<uint, int>();
+        readonly Dictionary<uint, string> _shaderLog = new Dictionary<uint, string>();
+        readonly Dictionary<uint, List<uint>> _programShaders = new Dictionary<uint, List<uint>>();
+        readonly Dictionary<uint, string> _programVs = new Dictionary<uint, string>();
+        readonly Dictionary<uint, string> _programFs = new Dictionary<uint, string>();
+        readonly Dictionary<uint, int> _programKind = new Dictionary<uint, int>();
+        readonly Dictionary<uint, int> _programStatus = new Dictionary<uint, int>();
+        readonly Dictionary<uint, string> _programLog = new Dictionary<uint, string>();
         uint _boundVao;
         int _activeTexUnit;
         int _nextUniformLoc = 1;
@@ -144,6 +179,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         }
 
         public bool TryGetTexture(uint id, out CpuTexture tex) => _textures.TryGetValue(id, out tex);
+        public bool IsCubemap(uint id) => _textures.TryGetValue(id, out var t) && t != null && t.IsCubemap;
         public bool TryGetBuffer(uint id, out byte[] bytes) => _buffers.TryGetValue(id, out bytes);
         public int GetBufferGeneration(uint id) => _bufGen.TryGetValue(id, out int g) ? g : 0;
         public uint GetFramebufferColor(uint fbo) => fbo != 0 && _fboColor.TryGetValue(fbo, out uint c) ? c : 0;
@@ -532,7 +568,18 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             }
             GetUniform4(Loc("uColor"), out float r, out float g, out float b, out float a);
             if (a <= 0f) { r = g = b = a = 1f; }
-            bool useSky = Loc("uOrientation") >= 0 && _uniforms.ContainsKey(Loc("uOrientation"));
+            int kind = GetProgramKind(_boundProgram);
+            bool useSky = kind == 1;
+            float hasTex = GetUniform1(Loc("uHasTexture"));
+            if (hasTex == 0 && useTex > 0.5f) hasTex = 1f;
+            float unlit = GetUniform1(Loc("uUnlit"));
+            float vertical = GetUniform1(Loc("uVerticalOffset"));
+            float lightIntensity = GetUniform1(Loc("uLightIntensity"));
+            float ambientStrength = GetUniform1(Loc("uAmbientStrength"));
+            GetUniform3(Loc("uLightDir"), out float ldx, out float ldy, out float ldz);
+            GetUniform3(Loc("uLightColor"), out float lcx, out float lcy, out float lcz);
+            GetUniform3(Loc("uAmbientColor"), out float acx, out float acy, out float acz);
+            GetMatrix("uOrientation", out var orient);
             uint colorTarget = GetFramebufferColor(_boundFbo);
             int vpX, vpY, vpW, vpH;
             if (colorTarget != 0)
@@ -548,6 +595,10 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             }
             _world.Add(new WorldDrawOp(_boundArray, _boundElement, stride, uvOff, idxStride, indexCount, mvp,
                 r, g, b, a, useTex, tex, colorTarget, _depthOn, useSky,
+                _boundProgram, kind,
+                PackMatrix(model), PackMatrix(view), PackMatrix(proj), PackMatrix(orient),
+                vertical, unlit, hasTex, lightIntensity, ambientStrength,
+                new[] { ldx, ldy, ldz }, new[] { lcx, lcy, lcz }, new[] { acx, acy, acz },
                 vpX, vpY, vpW, vpH,
                 vpX, vpY, vpW, vpH, true));
         }
@@ -586,6 +637,26 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 return idx;
             }
             return null;
+        }
+
+        static float[] PackMatrix(System.Numerics.Matrix4x4 m)
+        {
+            return new[]
+            {
+                m.M11, m.M12, m.M13, m.M14,
+                m.M21, m.M22, m.M23, m.M24,
+                m.M31, m.M32, m.M33, m.M34,
+                m.M41, m.M42, m.M43, m.M44
+            };
+        }
+
+        void GetUniform3(int loc, out float x, out float y, out float z)
+        {
+            x = y = z = 0;
+            if (loc < 0 || !_uniforms.TryGetValue(loc, out var v) || v == null) return;
+            if (v.Length > 0) x = v[0];
+            if (v.Length > 1) y = v[1];
+            if (v.Length > 2) z = v[2];
         }
 
         void GetMatrix(string name, out System.Numerics.Matrix4x4 m)
@@ -725,6 +796,28 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 {
                 }
             }
+            int cubeBase = Enums.TextureCubeMapPositiveX;
+            int face = target - cubeBase;
+            bool cubeFace = cubeBase != 0 && face >= 0 && face < 6;
+            bool cubeTarget = target == Enums.TextureCubeMap || cubeFace;
+            if (cubeTarget)
+            {
+                if (prev != null && prev.IsCubemap && prev.Faces != null)
+                {
+                    tex.IsCubemap = true;
+                    tex.Faces = prev.Faces;
+                    if (prev.Width > 0) { tex.Width = prev.Width; tex.Height = prev.Height; }
+                }
+                else
+                {
+                    tex.IsCubemap = true;
+                    tex.Faces = new byte[6][];
+                }
+                if (cubeFace)
+                    tex.Faces[face] = tex.Rgba;
+                else if (tex.Faces[0] == null)
+                    tex.Faces[0] = tex.Rgba;
+            }
             _textures[_boundTexture] = tex;
         }
         public void TexParameter(int target, int pname, int param) { }
@@ -735,20 +828,181 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public bool IsTexture(uint texture) => _textures.ContainsKey(texture);
         public void GenerateMipmap(int target) { }
 
-        public uint CreateProgram() => _nextProgram++;
-        public uint CreateShader(int type) => _nextShader++;
-        public void ShaderSource(uint shader, string source) { }
-        public void CompileShader(uint shader) { }
-        public void GetShader(uint shader, int param, out int value) { value = 1; }
-        public string GetShaderInfoLog(uint shader) => "";
-        public void AttachShader(uint program, uint shader) { }
-        public void DetachShader(uint program, uint shader) { }
-        public void LinkProgram(uint program) { }
-        public void GetProgram(uint program, int prop, out int value) { value = 1; }
-        public string GetProgramInfoLog(uint program) => "";
-        public void DeleteShader(uint shader) { }
-        public void DeleteProgram(uint program) { }
+        public uint CreateProgram()
+        {
+            uint id = _nextProgram++;
+            _programShaders[id] = new List<uint>();
+            _programStatus[id] = 1;
+            _programLog[id] = "";
+            return id;
+        }
+        public uint CreateShader(int type)
+        {
+            uint id = _nextShader++;
+            _shaderType[id] = type;
+            _shaderStatus[id] = 0;
+            _shaderLog[id] = "";
+            return id;
+        }
+        public void ShaderSource(uint shader, string source)
+        {
+            _shaderSource[shader] = source ?? "";
+        }
+        [DllImport("d3dcompiler_47.dll", CallingConvention = CallingConvention.StdCall)]
+        static extern int D3DCompile(
+            byte[] pSrcData, nint srcDataSize, string pSourceName, nint pDefines,
+            nint pInclude, string pEntryPoint, string pTarget,
+            uint flags1, uint flags2, out nint ppCode, out nint ppErrorMsgs);
+
+        public void CompileShader(uint shader)
+        {
+            if (!_shaderSource.TryGetValue(shader, out string src) || string.IsNullOrEmpty(src))
+            {
+                _shaderStatus[shader] = 0;
+                _shaderLog[shader] = "No shader source.";
+                return;
+            }
+            bool glsl = src.IndexOf("#version", StringComparison.Ordinal) >= 0;
+            bool hlsl = src.IndexOf("SV_POSITION", StringComparison.OrdinalIgnoreCase) >= 0
+                || src.IndexOf("SV_TARGET", StringComparison.OrdinalIgnoreCase) >= 0
+                || src.IndexOf("register(b", StringComparison.Ordinal) >= 0;
+            if (glsl && !hlsl)
+            {
+                _shaderStatus[shader] = 1;
+                _shaderLog[shader] = "";
+                return;
+            }
+            bool isVs = _shaderType.TryGetValue(shader, out int ty) && ty == Enums.VertexShader;
+            string entry = isVs ? "vs" : "ps";
+            string target = isVs ? "vs_5_0" : "ps_5_0";
+            byte[] bytes = Encoding.ASCII.GetBytes(src);
+            int hr = D3DCompile(bytes, (nint)bytes.Length, "world.hlsl", nint.Zero, nint.Zero, entry, target, 0, 0, out nint blob, out nint err);
+            if (hr < 0)
+            {
+                string msg = "";
+                if (err != nint.Zero)
+                {
+                    try
+                    {
+                        var ptrFn = (BlobPtrFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(err, 3), typeof(BlobPtrFn));
+                        var lenFn = (BlobLenFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(err, 4), typeof(BlobLenFn));
+                        nint p = ptrFn(err);
+                        ulong n = lenFn(err);
+                        if (p != nint.Zero && n > 0) msg = Marshal.PtrToStringAnsi(p) ?? "";
+                    }
+                    catch { }
+                    Marshal.Release(err);
+                }
+                if (blob != nint.Zero) Marshal.Release(blob);
+                _shaderStatus[shader] = 0;
+                _shaderLog[shader] = string.IsNullOrEmpty(msg) ? ("D3DCompile HRESULT " + hr.ToString("X8")) : msg;
+                Console.Error.WriteLine("D3DCompile failed (" + entry + " " + target + "): " + _shaderLog[shader]);
+                return;
+            }
+            if (err != nint.Zero) Marshal.Release(err);
+            if (blob != nint.Zero) Marshal.Release(blob);
+            _shaderStatus[shader] = 1;
+            _shaderLog[shader] = "";
+        }
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate nint BlobPtrFn(nint self);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate ulong BlobLenFn(nint self);
+        public void GetShader(uint shader, int param, out int value)
+        {
+            if (param == Enums.CompileStatus)
+            {
+                value = _shaderStatus.TryGetValue(shader, out int s) ? s : 0;
+                return;
+            }
+            value = 0;
+        }
+        public string GetShaderInfoLog(uint shader)
+        {
+            return _shaderLog.TryGetValue(shader, out string log) ? log ?? "" : "";
+        }
+        public void AttachShader(uint program, uint shader)
+        {
+            if (!_programShaders.TryGetValue(program, out var list) || list == null)
+            {
+                list = new List<uint>();
+                _programShaders[program] = list;
+            }
+            if (!list.Contains(shader)) list.Add(shader);
+        }
+        public void DetachShader(uint program, uint shader)
+        {
+            if (_programShaders.TryGetValue(program, out var list) && list != null)
+                list.Remove(shader);
+        }
+        public void LinkProgram(uint program)
+        {
+            string vs = "";
+            string fs = "";
+            if (_programShaders.TryGetValue(program, out var list) && list != null)
+            {
+                foreach (uint sid in list)
+                {
+                    if (!_shaderSource.TryGetValue(sid, out string src)) continue;
+                    int type = _shaderType.TryGetValue(sid, out int t) ? t : 0;
+                    if (type == Enums.VertexShader) vs = src;
+                    else if (type == Enums.FragmentShader) fs = src;
+                }
+            }
+            _programVs[program] = vs;
+            _programFs[program] = fs;
+            _programKind[program] = ClassifyProgram(vs, fs);
+            _programStatus[program] = 1;
+            _programLog[program] = "";
+        }
+        public void GetProgram(uint program, int prop, out int value)
+        {
+            if (prop == Enums.LinkStatus)
+            {
+                value = _programStatus.TryGetValue(program, out int s) ? s : 0;
+                return;
+            }
+            value = 0;
+        }
+        public string GetProgramInfoLog(uint program)
+        {
+            return _programLog.TryGetValue(program, out string log) ? log ?? "" : "";
+        }
+        public void DeleteShader(uint shader)
+        {
+            _shaderSource.Remove(shader);
+            _shaderType.Remove(shader);
+            _shaderStatus.Remove(shader);
+            _shaderLog.Remove(shader);
+        }
+        public void DeleteProgram(uint program)
+        {
+            _programShaders.Remove(program);
+            _programVs.Remove(program);
+            _programFs.Remove(program);
+            _programKind.Remove(program);
+            _programStatus.Remove(program);
+            _programLog.Remove(program);
+        }
         public void UseProgram(uint program) { _boundProgram = program; }
+
+        public bool TryGetProgramSources(uint program, out string vs, out string fs)
+        {
+            vs = _programVs.TryGetValue(program, out var v) ? v : "";
+            fs = _programFs.TryGetValue(program, out var f) ? f : "";
+            return !string.IsNullOrEmpty(vs) && !string.IsNullOrEmpty(fs);
+        }
+        public int GetProgramKind(uint program) => _programKind.TryGetValue(program, out int k) ? k : 0;
+
+        static int ClassifyProgram(string vs, string fs)
+        {
+            string a = (vs ?? "") + (fs ?? "");
+            if (a.IndexOf("uSkybox", StringComparison.Ordinal) >= 0 || a.IndexOf("TextureCube", StringComparison.Ordinal) >= 0)
+                return 1;
+            if (a.IndexOf("uAlbedoMap", StringComparison.Ordinal) >= 0 || a.IndexOf("BLENDWEIGHT", StringComparison.Ordinal) >= 0)
+                return 2;
+            if (a.IndexOf("uUnlit", StringComparison.Ordinal) >= 0)
+                return 0;
+            return 0;
+        }
         public int GetUniformLocation(uint program, string name)
         {
             if (string.IsNullOrEmpty(name)) return -1;

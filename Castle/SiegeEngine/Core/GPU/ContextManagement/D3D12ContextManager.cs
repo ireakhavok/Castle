@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
+using SiegeEngine.Core.GPU.Shaders.DirectX;
+
 namespace SiegeEngine.Core.GPU.ContextManagement
 {
     /// <summary>
@@ -79,6 +81,11 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         nint _wvs, _wps, _wlayout, _wlayout28, _wvb, _wcb, _dssOn, _dssOff, _depthTex, _dsv;
         int _wvbOffset;
         bool _worldReady;
+        nint _skyVs, _skyPs, _skyLayout, _skyCb;
+        nint _mdlVs, _mdlPs, _mdlLayout, _mdlCb;
+        bool _skyReady, _mdlReady;
+        const int D3D11_RESOURCE_MISC_TEXTURECUBE = 4;
+        const int D3D11_SRV_DIMENSION_TEXTURECUBE = 5;
         ulong _fenceValue;
         nint _fenceEvent;
         int _frame;
@@ -160,6 +167,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
             BuildUiPipeline();
             BuildWorldPipeline();
+            BuildSkyPipeline();
+            BuildModelPipeline();
             CreateDepth();
 
             _backend = new D3D12RenderContext(_width, _height);
@@ -281,17 +290,41 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 nint vb = SyncGpuBuffer(d.Vbo, D3D11_BIND_VERTEX_BUFFER);
                 if (vb == nint.Zero) continue;
                 nint ib = d.Ebo != 0 ? SyncGpuBuffer(d.Ebo, D3D11_BIND_INDEX_BUFFER) : nint.Zero;
-                if (d.UseTexture > 0.5f)
+                int kind = d.Kind;
+                if (d.VtxStride >= 80) kind = 2;
+                if (kind == 1 && _skyReady)
                 {
-                    nint srv = ResolveSrv(d.Texture, d.UseTexture);
+                    SetSkyShaders();
+                    nint srv = ResolveSrv(d.Texture, 1f);
                     BindSrv(srv != nint.Zero ? srv : _whiteSrv);
+                    UploadSkyConstants(d.View, d.Projection, d.Orientation, d.VerticalOffset);
+                    BindWorldMesh(vb, ib, d.VtxStride, d.IdxStride);
+                    SetDepth(false);
+                }
+                else if (kind == 2 && _mdlReady)
+                {
+                    SetModelShaders();
+                    nint srv = ResolveSrv(d.Texture, d.UseTexture > 0.5f ? 1f : 0f);
+                    BindSrv(srv != nint.Zero ? srv : _whiteSrv);
+                    UploadModelConstants(d.Mvp, d.Model, d.View, d.Projection, d.UseTexture);
+                    BindWorldMesh(vb, ib, d.VtxStride, d.IdxStride);
+                    SetDepth(d.DepthOn);
                 }
                 else
-                    BindSrv(_whiteSrv);
-                UploadWorldConstants(d.Mvp, d.R, d.G, d.B, d.A, d.UseTexture, d.UseSky);
-                BindWorldLayout(d.UvOff);
-                BindWorldMesh(vb, ib, d.VtxStride, d.IdxStride);
-                SetDepth(d.DepthOn);
+                {
+                    SetWorldShaders();
+                    if (d.UseTexture > 0.5f)
+                    {
+                        nint srv = ResolveSrv(d.Texture, d.UseTexture);
+                        BindSrv(srv != nint.Zero ? srv : _whiteSrv);
+                    }
+                    else
+                        BindSrv(_whiteSrv);
+                    UploadWorldConstants(d.Mvp, d.R, d.G, d.B, d.A, d.UseTexture, false);
+                    BindWorldLayout(d.UvOff);
+                    BindWorldMesh(vb, ib, d.VtxStride, d.IdxStride);
+                    SetDepth(d.DepthOn);
+                }
                 if (ib != nint.Zero)
                     DrawIndexed((int)d.IndexCount);
                 else
@@ -351,6 +384,71 @@ float4 ps(VSOut i) : SV_TARGET {
             _dssOff = CreateDepthState(false);
             _worldReady = _wvs != nint.Zero && _wps != nint.Zero && _wlayout != nint.Zero && _wcb != nint.Zero;
         }
+
+        bool CompileHlsl(string source, string entry, string profile, out string log)
+        {
+            log = "";
+            if (string.IsNullOrEmpty(source))
+            {
+                log = "HLSL source is empty.";
+                return false;
+            }
+            byte[] src = System.Text.Encoding.ASCII.GetBytes(source);
+            if (!Compile(src, entry, profile, out nint blob))
+            {
+                log = "D3DCompile failed for " + entry + " " + profile;
+                return false;
+            }
+            if (blob != nint.Zero) ReleaseBlob(blob);
+            return true;
+        }
+
+        void BuildSkyPipeline()
+        {
+            byte[] vsSrc = System.Text.Encoding.ASCII.GetBytes(SkyboxShader.VertexShaderSource);
+            byte[] psSrc = System.Text.Encoding.ASCII.GetBytes(SkyboxShader.FragmentShaderSource);
+            if (!Compile(vsSrc, "vs", "vs_5_0", out nint vsBlob) ||
+                !Compile(psSrc, "ps", "ps_5_0", out nint psBlob))
+                return;
+            nint vsPtr = BlobPtr(vsBlob); ulong vsLen = BlobLen(vsBlob);
+            nint psPtr = BlobPtr(psBlob); ulong psLen = BlobLen(psBlob);
+            _skyVs = CreateVertexShader(vsPtr, vsLen);
+            _skyPs = CreatePixelShader(psPtr, psLen);
+            var elems = new D3D11_INPUT_ELEMENT_DESC[3];
+            elems[0] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "POSITION", Format = DXGI_FORMAT_R32G32B32_FLOAT, AlignedByteOffset = 0 };
+            elems[1] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "COLOR", Format = 2, AlignedByteOffset = 12 };
+            elems[2] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "TEXCOORD", Format = 16, AlignedByteOffset = 28 };
+            _skyLayout = CreateInputLayout(elems, vsPtr, vsLen);
+            ReleaseBlob(vsBlob); ReleaseBlob(psBlob);
+            _skyCb = CreateBuffer11(256, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+            _skyReady = _skyVs != nint.Zero && _skyPs != nint.Zero && _skyLayout != nint.Zero && _skyCb != nint.Zero;
+        }
+
+        void BuildModelPipeline()
+        {
+            byte[] vsSrc = System.Text.Encoding.ASCII.GetBytes(ModelShader.VertexShaderSource);
+            byte[] psSrc = System.Text.Encoding.ASCII.GetBytes(ModelShader.FragmentShaderSource);
+            if (!Compile(vsSrc, "vs", "vs_5_0", out nint vsBlob) ||
+                !Compile(psSrc, "ps", "ps_5_0", out nint psBlob))
+                return;
+            nint vsPtr = BlobPtr(vsBlob); ulong vsLen = BlobLen(vsBlob);
+            nint psPtr = BlobPtr(psBlob); ulong psLen = BlobLen(psBlob);
+            _mdlVs = CreateVertexShader(vsPtr, vsLen);
+            _mdlPs = CreatePixelShader(psPtr, psLen);
+            var elems = new D3D11_INPUT_ELEMENT_DESC[7];
+            elems[0] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "POSITION", Format = DXGI_FORMAT_R32G32B32_FLOAT, AlignedByteOffset = 0 };
+            elems[1] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "NORMAL", Format = DXGI_FORMAT_R32G32B32_FLOAT, AlignedByteOffset = 12 };
+            elems[2] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "TEXCOORD", Format = 16, AlignedByteOffset = 24 };
+            elems[3] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "TEXCOORD", SemanticIndex = 1, Format = 41, AlignedByteOffset = 32 };
+            elems[4] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "TANGENT", Format = DXGI_FORMAT_R32G32B32_FLOAT, AlignedByteOffset = 36 };
+            elems[5] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "BLENDINDICES", Format = 2, AlignedByteOffset = 48 };
+            elems[6] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "BLENDWEIGHT", Format = 2, AlignedByteOffset = 64 };
+            _mdlLayout = CreateInputLayout(elems, vsPtr, vsLen);
+            ReleaseBlob(vsBlob); ReleaseBlob(psBlob);
+            _mdlCb = CreateBuffer11(384, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+            _mdlReady = _mdlVs != nint.Zero && _mdlPs != nint.Zero && _mdlLayout != nint.Zero && _mdlCb != nint.Zero;
+        }
+
 
         void CreateDepth()
         {
@@ -459,8 +557,18 @@ float4 ps(VSOut i) : SV_TARGET {
             if (_gpuTex.TryGetValue(texId, out nint existing) && existing != nint.Zero
                 && _gpuTexGen.TryGetValue(texId, out int gen) && gen == cpu.Generation)
                 return _gpuSrv[texId];
-            nint tex = CreateTexture2D(cpu.Width, cpu.Height, cpu.Rgba);
-            nint srv = CreateSrv(tex);
+            nint tex;
+            nint srv;
+            if (cpu.IsCubemap && cpu.Faces != null)
+            {
+                tex = CreateTextureCube(cpu.Width, cpu.Height, cpu.Faces);
+                srv = CreateCubeSrv(tex);
+            }
+            else
+            {
+                tex = CreateTexture2D(cpu.Width, cpu.Height, cpu.Rgba);
+                srv = CreateSrv(tex);
+            }
             _gpuTex[texId] = tex;
             _gpuSrv[texId] = srv;
             _gpuTexGen[texId] = cpu.Generation;
@@ -529,7 +637,7 @@ float4 ps(VSOut i) : SV_TARGET {
 
         void SetTopology()
         {
-            var fn = (SetTopoFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 24), typeof(SetTopoFn));
+            var fn = (SetTopoFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 16), typeof(SetTopoFn));
             fn(_ctx11, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
 
@@ -550,7 +658,77 @@ float4 ps(VSOut i) : SV_TARGET {
             Marshal.FreeHGlobal(box);
         }
 
-        void SetWorldShaders()
+        
+        void SetSkyShaders()
+        {
+            var vs = (SetVsFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 11), typeof(SetVsFn));
+            vs(_ctx11, _skyVs, nint.Zero, 0);
+            var ps = (SetPsFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 9), typeof(SetPsFn));
+            ps(_ctx11, _skyPs, nint.Zero, 0);
+            var il = (SetIlFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 17), typeof(SetIlFn));
+            il(_ctx11, _skyLayout);
+            var cb = (SetCbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 7), typeof(SetCbFn));
+            nint box = Marshal.AllocHGlobal(nint.Size);
+            Marshal.WriteIntPtr(box, _skyCb);
+            cb(_ctx11, 0, 1, box);
+            var psCb = (SetCbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 16), typeof(SetCbFn));
+            psCb(_ctx11, 0, 1, box);
+            Marshal.FreeHGlobal(box);
+        }
+
+        void SetModelShaders()
+        {
+            var vs = (SetVsFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 11), typeof(SetVsFn));
+            vs(_ctx11, _mdlVs, nint.Zero, 0);
+            var ps = (SetPsFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 9), typeof(SetPsFn));
+            ps(_ctx11, _mdlPs, nint.Zero, 0);
+            var il = (SetIlFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 17), typeof(SetIlFn));
+            il(_ctx11, _mdlLayout);
+            var cb = (SetCbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 7), typeof(SetCbFn));
+            nint box = Marshal.AllocHGlobal(nint.Size);
+            Marshal.WriteIntPtr(box, _mdlCb);
+            cb(_ctx11, 0, 1, box);
+            var psCb = (SetCbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 16), typeof(SetCbFn));
+            psCb(_ctx11, 0, 1, box);
+            Marshal.FreeHGlobal(box);
+        }
+
+        void UploadSkyConstants(float[] view, float[] proj, float[] orient, float verticalOffset)
+        {
+            var data = new float[52];
+            Copy16(view, data, 0);
+            Copy16(proj, data, 16);
+            Copy16(orient, data, 32);
+            data[48] = verticalOffset;
+            MapWrite(_skyCb, data, 208);
+        }
+
+        void UploadModelConstants(float[] mvp, float[] model, float[] view, float[] proj, float useTex)
+        {
+            var data = new float[84];
+            Copy16(model ?? mvp, data, 0);
+            Copy16(view, data, 16);
+            Copy16(proj, data, 32);
+            Copy16(model ?? mvp, data, 48);
+            data[64] = 0.35f; data[65] = 0.55f; data[66] = 0.75f;
+            data[68] = 1f; data[69] = 1f; data[70] = 1f;
+            data[72] = 0.45f; data[73] = 0.45f; data[74] = 0.48f;
+            data[76] = 0.85f;
+            data[77] = 0.30f;
+            MapWrite(_mdlCb, data, 320);
+        }
+
+        static void Copy16(float[] src, float[] dst, int off)
+        {
+            if (src != null && src.Length >= 16)
+                Array.Copy(src, 0, dst, off, 16);
+            else
+            {
+                dst[off] = dst[off + 5] = dst[off + 10] = dst[off + 15] = 1f;
+            }
+        }
+
+void SetWorldShaders()
         {
             var vs = (SetVsFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 11), typeof(SetVsFn));
             vs(_ctx11, _wvs, nint.Zero, 0);
@@ -1515,7 +1693,82 @@ float4 ps(VSOut i) : SV_TARGET {
             finally { Marshal.FreeHGlobal(descPtr); Marshal.FreeHGlobal(box); }
         }
 
-        nint CreateTexture2D(int w, int h, byte[] rgba)
+        
+        nint CreateTextureCube(int w, int h, byte[][] faces)
+        {
+            if (w <= 0 || h <= 0 || faces == null) return nint.Zero;
+            var desc = new D3D11_TEXTURE2D_DESC
+            {
+                Width = (uint)w, Height = (uint)h, MipLevels = 1, ArraySize = 6,
+                Format = DXGI_FORMAT_R8G8B8A8_UNORM, SampleCount = 1, SampleQuality = 0,
+                Usage = D3D11_USAGE_DEFAULT, BindFlags = D3D11_BIND_SHADER_RESOURCE,
+                MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE
+            };
+            nint descPtr = Marshal.AllocHGlobal(Marshal.SizeOf<D3D11_TEXTURE2D_DESC>());
+            Marshal.StructureToPtr(desc, descPtr, false);
+            int faceBytes = w * h * 4;
+            nint dataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<D3D11_SUBRESOURCE_DATA>() * 6);
+            nint[] pins = new nint[6];
+            try
+            {
+                for (int i = 0; i < 6; i++)
+                {
+                    byte[] src = (faces.Length > i && faces[i] != null && faces[i].Length >= faceBytes)
+                        ? faces[i]
+                        : (faces.Length > 0 && faces[0] != null ? faces[0] : null);
+                    nint pix = Marshal.AllocHGlobal(Math.Max(faceBytes, 4));
+                    pins[i] = pix;
+                    if (src != null)
+                        Marshal.Copy(src, 0, pix, Math.Min(src.Length, faceBytes));
+                    var data = new D3D11_SUBRESOURCE_DATA { pSysMem = pix, SysMemPitch = (uint)(w * 4) };
+                    Marshal.StructureToPtr(data, dataPtr + i * Marshal.SizeOf<D3D11_SUBRESOURCE_DATA>(), false);
+                }
+                nint box = Marshal.AllocHGlobal(nint.Size);
+                Marshal.WriteIntPtr(box, nint.Zero);
+                var fn = (CreateTexFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_device11, 5), typeof(CreateTexFn));
+                int hr = fn(_device11, descPtr, dataPtr, box);
+                nint tex = hr >= 0 ? Marshal.ReadIntPtr(box) : nint.Zero;
+                Marshal.FreeHGlobal(box);
+                return tex;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(descPtr);
+                Marshal.FreeHGlobal(dataPtr);
+                for (int i = 0; i < pins.Length; i++)
+                    if (pins[i] != nint.Zero) Marshal.FreeHGlobal(pins[i]);
+            }
+        }
+
+        nint CreateCubeSrv(nint resource)
+        {
+            if (resource == nint.Zero) return nint.Zero;
+            var desc = new D3D11_SHADER_RESOURCE_VIEW_DESC
+            {
+                Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+                ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE,
+                MostDetailedMip = 0,
+                MipLevels = 1
+            };
+            nint descPtr = Marshal.AllocHGlobal(Marshal.SizeOf<D3D11_SHADER_RESOURCE_VIEW_DESC>());
+            Marshal.StructureToPtr(desc, descPtr, false);
+            nint box = Marshal.AllocHGlobal(nint.Size);
+            Marshal.WriteIntPtr(box, nint.Zero);
+            try
+            {
+                var fn = (CreateSrvFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_device11, 7), typeof(CreateSrvFn));
+                int hr = fn(_device11, resource, descPtr, box);
+                if (hr < 0) return nint.Zero;
+                return Marshal.ReadIntPtr(box);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(descPtr);
+                Marshal.FreeHGlobal(box);
+            }
+        }
+
+nint CreateTexture2D(int w, int h, byte[] rgba)
         {
             var desc = new D3D11_TEXTURE2D_DESC
             {
