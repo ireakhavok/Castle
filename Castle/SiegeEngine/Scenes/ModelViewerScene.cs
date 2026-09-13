@@ -17,6 +17,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Text.Json;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 namespace SiegeEngine.Scenes
 {
     public unsafe class ModelViewerScene : Scene

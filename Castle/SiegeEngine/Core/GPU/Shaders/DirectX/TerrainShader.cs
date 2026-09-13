@@ -17,6 +17,9 @@ cbuffer CB : register(b0)
     float uUnlit;
     float uLightIntensity;
     float uAmbientStrength;
+    row_major float4x4 CascadeVP;
+    float ShadowsEnabled;
+    float3 PadS;
 };
 struct VSIn
 {
@@ -58,8 +61,12 @@ cbuffer CB : register(b0)
     float uUnlit;
     float uLightIntensity;
     float uAmbientStrength;
+    row_major float4x4 CascadeVP;
+    float ShadowsEnabled;
+    float3 PadS;
 };
 Texture2D uTexture : register(t0);
+Texture2D uShadowAtlas : register(t2);
 SamplerState Samp : register(s0);
 struct VSOut
 {
@@ -68,17 +75,28 @@ struct VSOut
     float2 vUV : TEXCOORD;
     float3 vWorldPos : TEXCOORD1;
 };
+float SampleSunShadow(float3 worldPos)
+{
+    if (ShadowsEnabled < 0.5) return 1.0;
+    float4 clip = mul(float4(worldPos, 1.0), CascadeVP);
+    float3 proj = clip.xyz / max(clip.w, 0.0001);
+    proj = proj * 0.5 + 0.5;
+    if (proj.x < 0.0 || proj.x > 1.0 || proj.y < 0.0 || proj.y > 1.0) return 1.0;
+    if (proj.z < 0.0 || proj.z > 1.0) return 1.0;
+    float2 atlasUv = proj.xy * 0.5;
+    atlasUv = clamp(atlasUv, 0.001, 0.499);
+    float stored = uShadowAtlas.Sample(Samp, atlasUv).r;
+    float dz = max(proj.z - stored, 0.0);
+    float vis = exp(-40.0 * dz);
+    return lerp(0.08, 1.0, saturate(vis));
+}
 float4 ps(VSOut i) : SV_TARGET
 {
     if (uUnlit > 0.5)
         return float4(0.486, 1.0, 0.796, 1.0);
-    float4 albedo = i.vColor;
+    float3 rgb = i.vColor.rgb;
     if (uHasTexture > 0.5)
-    {
-        if (i.vUV.x < 0.0 || i.vUV.x > 1.0 || i.vUV.y < 0.0 || i.vUV.y > 1.0)
-            discard;
-        albedo = uTexture.Sample(Samp, i.vUV);
-    }
+        rgb = uTexture.Sample(Samp, i.vUV).rgb;
     float3 dx = ddx(i.vWorldPos);
     float3 dy = ddy(i.vWorldPos);
     float3 normal = normalize(cross(dx, dy));
@@ -88,21 +106,18 @@ float4 ps(VSOut i) : SV_TARGET
     if (dot(ldir, ldir) < 0.0001)
         ldir = float3(-0.85, 0.10, -0.52);
     float3 lightDir = normalize(-ldir);
-    // D3D pixel-origin flips ddy vs GL. Two-sided NdotL keeps the heightmap
-    // as bright as the GL one-sided path instead of lighting the underside.
     float diff = abs(dot(normal, lightDir));
-    float amb = uAmbientStrength;
-    if (amb <= 0.0) amb = 0.30;
+    float amb = uAmbientStrength > 0.0 ? uAmbientStrength : 0.30;
     float3 ambientCol = uAmbientColor.xyz;
     if (dot(ambientCol, ambientCol) < 0.0001)
         ambientCol = float3(0.45, 0.45, 0.48);
     float3 lightCol = uLightColor.xyz;
     if (dot(lightCol, lightCol) < 0.0001)
         lightCol = float3(1, 1, 1);
-    float intensity = uLightIntensity;
-    if (intensity <= 0.0) intensity = 1.0;
-    float3 lit = amb * albedo.rgb * ambientCol + diff * albedo.rgb * lightCol * intensity;
-    return float4(lit, albedo.a);
+    float intensity = uLightIntensity > 0.0 ? uLightIntensity : 1.0;
+    float shadow = SampleSunShadow(i.vWorldPos);
+    float3 lit = amb * rgb * ambientCol + diff * rgb * lightCol * intensity * shadow;
+    return float4(lit, 1.0);
 }";
     }
 }

@@ -3,6 +3,7 @@
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 using System;
 using System.Collections.Generic;
 using System.Numerics;

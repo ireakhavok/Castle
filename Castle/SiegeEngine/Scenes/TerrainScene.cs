@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Numerics;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 namespace SiegeEngine.Scenes
 {
     public unsafe class TerrainScene : GameScene

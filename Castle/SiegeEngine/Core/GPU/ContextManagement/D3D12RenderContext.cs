@@ -73,6 +73,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             public readonly float[] LightColor;
             public readonly float[] AmbientColor;
             public readonly float HasOpacity;
+            public readonly float OpacitySlots;
             public readonly uint OpacityTex;
             public readonly int VpX, VpY, VpW, VpH;
             public readonly int ScX, ScY, ScW, ScH;
@@ -84,7 +85,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 float[] model, float[] view, float[] projection, float[] orientation,
                 float verticalOffset, float unlit, float hasTexture, float lightIntensity, float ambientStrength,
                 float[] lightDir, float[] lightColor, float[] ambientColor,
-                float hasOpacity, uint opacityTex,
+                float hasOpacity, float opacitySlots, uint opacityTex,
                 int vpX, int vpY, int vpW, int vpH, int scX, int scY, int scW, int scH, bool scissorOn, int mode)
             {
                 Vbo = vbo; Ebo = ebo; VtxStride = vtxStride; UvOff = uvOff; IdxStride = idxStride; IndexCount = indexCount; Mvp = mvp;
@@ -94,7 +95,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 VerticalOffset = verticalOffset; Unlit = unlit; HasTexture = hasTexture;
                 LightIntensity = lightIntensity; AmbientStrength = ambientStrength;
                 LightDir = lightDir; LightColor = lightColor; AmbientColor = ambientColor;
-                HasOpacity = hasOpacity; OpacityTex = opacityTex;
+                HasOpacity = hasOpacity; OpacitySlots = opacitySlots; OpacityTex = opacityTex;
                 VpX = vpX; VpY = vpY; VpW = vpW; VpH = vpH;
                 ScX = scX; ScY = scY; ScW = scW; ScH = scH; ScissorOn = scissorOn; Mode = mode;
             }
@@ -164,6 +165,11 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         int _presentX, _presentY, _presentW, _presentH;
 
         public float ClearR, ClearG, ClearB, ClearA = 1f;
+        public uint FrameShadowAtlas;
+        public float FrameShadowsEnabled;
+        public float[] FrameCascadeVP;
+        public float[] FrameBones;
+        public float FrameHasBones;
         public int ViewportX { get; private set; }
         public int ViewportY { get; private set; }
         public int ViewportWidth { get; private set; }
@@ -487,7 +493,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         bool RecordFullscreenBlit(uint count)
         {
             if (count != 3 || _boundFbo != 0) return false;
-            uint tex = _texUnit[0] != 0 ? _texUnit[0] : _boundTexture;
+            uint tex = _texUnit[0];
             if (tex == 0) return false;
             if (_boundArray != 0 && _buffers.TryGetValue(_boundArray, out var have) && have != null && have.Length >= 8)
                 return false;
@@ -573,8 +579,9 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             bool isLine = mode == Enums.Lines || mode == 1 || mode == 3;
             if (!isLine && indexCount < 3) return;
             if (isLine && indexCount < 2) return;
-            // Shadow / cube FBOs are square. SMAA world is the panel (not square) — keep those.
-            if (_boundFbo != 0 && ViewportWidth == ViewportHeight && ViewportWidth >= 256)
+            // Shadow / cube FBOs are square. Keep sky and the sun-atlas pass.
+            int recKind = GetProgramKind(_boundProgram);
+            if (recKind != 1 && recKind != 5 && _boundFbo != 0 && ViewportWidth == ViewportHeight && ViewportWidth >= 256)
                 return;
             if (stride < 12) stride = 12;
             int uvOff = _uvOff;
@@ -628,15 +635,46 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 vpH = _presentH > 0 ? _presentH : ViewportHeight;
             }
             float hasOpacity = GetUniform1(Loc("uHasOpacity"));
-            uint opacityTex = _texUnit.Length > 15 ? _texUnit[15] : 0;
-            if (opacityTex == 0 && _texUnit.Length > 1) opacityTex = _texUnit[1];
+            float opacitySlots = GetUniform1(Loc("uOpacitySlots"));
+            if (opacitySlots >= 15f) { opacitySlots = 0f; hasOpacity = 0f; }
+            uint opacityTex = 0;
+            int opacUnit = (int)GetUniform1(Loc("uOpacityMap"));
+            if (opacUnit >= 0 && opacUnit < _texUnit.Length && _texUnit[opacUnit] != 0)
+                opacityTex = _texUnit[opacUnit];
+            else if (_texUnit.Length > 15 && _texUnit[15] != 0)
+                opacityTex = _texUnit[15];
+            if (_texUnit.Length > 12 && _texUnit[12] != 0)
+                FrameShadowAtlas = _texUnit[12];
+            if (GetUniform1(Loc("uShadowsEnabled")) > 0.5f) FrameShadowsEnabled = 1f;
+            GetMatrix("uCascadeVP[0]", out var cvp);
+            if (cvp == System.Numerics.Matrix4x4.Identity)
+                GetMatrix("uCascadeVP", out cvp);
+            FrameCascadeVP = PackMatrix(cvp);
+            FrameHasBones = GetUniform1(Loc("uHasBones"));
+            if (FrameHasBones > 0.5f)
+            {
+                var bones = new float[64 * 16];
+                for (int bi = 0; bi < 64; bi++)
+                {
+                    GetMatrix("uBoneTransforms[" + bi + "]", out var bm);
+                    var packed = PackMatrix(bm);
+                    Array.Copy(packed, 0, bones, bi * 16, 16);
+                }
+                FrameBones = bones;
+            }
+            if (kind == 5)
+            {
+                GetMatrix("uLightVP", out var lightVp);
+                view = lightVp;
+                proj = lightVp;
+            }
             _world.Add(new WorldDrawOp(_boundArray, _boundElement, stride, uvOff, idxStride, indexCount, mvp,
                 r, g, b, a, useTex, tex, colorTarget, _depthOn, useSky,
                 _boundProgram, kind,
                 PackMatrix(model), PackMatrix(view), PackMatrix(proj), PackMatrix(orient),
                 vertical, unlit, hasTex, lightIntensity, ambientStrength,
                 new[] { ldx, ldy, ldz }, new[] { lcx, lcy, lcz }, new[] { acx, acy, acz },
-                hasOpacity, opacityTex,
+                hasOpacity, opacitySlots, opacityTex,
                 vpX, vpY, vpW, vpH,
                 vpX, vpY, vpW, vpH, true, mode));
         }
@@ -779,6 +817,14 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             _boundTexture = texture;
             if (_activeTexUnit >= 0 && _activeTexUnit < _texUnit.Length)
                 _texUnit[_activeTexUnit] = texture;
+            if (texture != 0 && target == Enums.TextureCubeMap)
+            {
+                if (!_textures.TryGetValue(texture, out var ct) || ct == null)
+                    ct = new CpuTexture();
+                ct.IsCubemap = true;
+                if (ct.Faces == null) ct.Faces = new byte[6][];
+                _textures[texture] = ct;
+            }
         }
         public void TexImage2D(int target, int level, int internalformat, uint width, uint height, int border, int format, int type, void* pixels)
         {
@@ -1044,8 +1090,11 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         static int ClassifyProgram(string vs, string fs)
         {
             string a = (vs ?? "") + (fs ?? "");
-            if (a.IndexOf("uSkybox", StringComparison.Ordinal) >= 0 || a.IndexOf("uOrientation", StringComparison.Ordinal) >= 0)
+            if (a.IndexOf("uSkybox", StringComparison.Ordinal) >= 0 || a.IndexOf("uOrientation", StringComparison.Ordinal) >= 0
+                || a.IndexOf("TextureCube", StringComparison.Ordinal) >= 0)
                 return 1;
+            if (a.IndexOf("uLightVP", StringComparison.Ordinal) >= 0)
+                return 5;
             if (a.IndexOf("uAlbedoMap", StringComparison.Ordinal) >= 0 || a.IndexOf("BLENDWEIGHT", StringComparison.Ordinal) >= 0)
                 return 2;
             if (a.IndexOf("uUnlit", StringComparison.Ordinal) >= 0)

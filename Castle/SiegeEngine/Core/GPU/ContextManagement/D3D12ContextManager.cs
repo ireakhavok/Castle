@@ -84,7 +84,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         nint _skyVs, _skyPs, _skyLayout, _skyCb;
         nint _mdlVs, _mdlPs, _mdlLayout, _mdlCb;
         nint _scnVs, _scnPs, _scnLayout, _scnCb;
-        bool _skyReady, _mdlReady, _scnReady;
+        nint _shVs, _shPs, _shLayout, _shCb, _boneCb;
+        bool _skyReady, _mdlReady, _scnReady, _shReady;
         const int D3D11_RESOURCE_MISC_TEXTURECUBE = 4;
         const int D3D11_SRV_DIMENSION_TEXTURECUBE = 5;
         ulong _fenceValue;
@@ -170,6 +171,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             BuildWorldPipeline();
             BuildSkyPipeline();
             BuildModelPipeline();
+            BuildShadowPipeline();
             if (!_worldReady) Console.Error.WriteLine("[D3D12] Terrain/Scene pipeline is not ready.");
             if (!_skyReady) Console.Error.WriteLine("[D3D12] Skybox pipeline is not ready.");
             if (!_mdlReady) Console.Error.WriteLine("[D3D12] Model pipeline is not ready.");
@@ -271,11 +273,19 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             var draws = _backend.TakeWorldDraws();
             if (draws.Length == 0) return;
             SetRasterizer();
-            SetBlend();
+            SetBlend(false);
             SetWorldShaders();
             BindSampler();
             _boundWorldColor = 0;
-            foreach (var d in draws)
+            var ordered = new D3D12RenderContext.WorldDrawOp[draws.Length];
+            int w = 0;
+            for (int i = 0; i < draws.Length; i++)
+                if (draws[i].Kind == 5) ordered[w++] = draws[i];
+            for (int i = 0; i < draws.Length; i++)
+                if (draws[i].Kind == 1 || draws[i].UseSky) ordered[w++] = draws[i];
+            for (int i = 0; i < draws.Length; i++)
+                if (draws[i].Kind != 5 && draws[i].Kind != 1 && !draws[i].UseSky) ordered[w++] = draws[i];
+            foreach (var d in ordered)
             {
                 bool line = d.Mode == 1 || d.Mode == 3;
                 if (d.Vbo == 0) continue;
@@ -284,12 +294,18 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 int vpW = d.VpW > 0 ? d.VpW : _width;
                 int vpH = d.VpH > 0 ? d.VpH : _height;
                 if (vpW <= 0 || vpH <= 0) continue;
-                BindWorldTarget(d.ColorTarget, vpW, vpH);
-                if (d.ColorTarget != 0)
+                uint target = d.ColorTarget;
+                if (target == 0 && (d.Kind == 1 || d.UseSky))
+                {
+                    for (int i = 0; i < ordered.Length; i++)
+                        if (ordered[i].ColorTarget != 0) { target = ordered[i].ColorTarget; break; }
+                }
+                BindWorldTarget(target, vpW, vpH);
+                if (target != 0)
                     SetViewportLocal(d.VpX, d.VpY, vpW, vpH);
                 else
                     SetViewport(d.VpX, d.VpY, vpW, vpH);
-                bool clipOk = d.ColorTarget != 0
+                bool clipOk = target != 0
                     ? SetScissorLocal(d.VpX, d.VpY, vpW, vpH)
                     : SetScissor(d.VpX, d.VpY, vpW, vpH);
                 if (!clipOk) continue;
@@ -297,9 +313,18 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 if (vb == nint.Zero) continue;
                 nint ib = d.Ebo != 0 ? SyncGpuBuffer(d.Ebo, D3D11_BIND_INDEX_BUFFER) : nint.Zero;
                 int kind = d.Kind;
-                if (d.VtxStride >= 80) kind = 2;
+                if (d.UseSky) kind = 1;
+                else if (kind != 5 && d.VtxStride >= 80) kind = 2;
                 SetTopology(d.Mode);
-                if (kind == 1 && _skyReady)
+                if (kind == 5 && _shReady)
+                {
+                    SetShadowShaders();
+                    BindSrv(_whiteSrv);
+                    UploadShadowConstants(d);
+                    BindWorldMesh(vb, ib, d.VtxStride, d.IdxStride);
+                    SetDepth(true);
+                }
+                else if (kind == 1 && _skyReady)
                 {
                     SetSkyShaders();
                     nint srv = ResolveSrv(d.Texture, 1f);
@@ -315,7 +340,11 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                     BindSrv(srv != nint.Zero ? srv : _whiteSrv);
                     nint opac = d.HasOpacity > 0.5f ? ResolveSrv(d.OpacityTex, 1f) : _whiteSrv;
                     BindSrvAt(1, opac != nint.Zero ? opac : _whiteSrv);
+                    uint atlas = _backend.FrameShadowAtlas;
+                    nint shSrv = atlas != 0 ? ResolveSrv(atlas, 1f) : _whiteSrv;
+                    BindSrvAt(2, shSrv != nint.Zero ? shSrv : _whiteSrv);
                     UploadModelConstants(d);
+                    UploadBones();
                     BindWorldMesh(vb, ib, d.VtxStride, d.IdxStride);
                     SetDepth(d.DepthOn);
                 }
@@ -340,6 +369,11 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                     }
                     else
                         BindSrv(_whiteSrv);
+                    {
+                        uint atlasT = _backend.FrameShadowAtlas;
+                        nint shT = atlasT != 0 ? ResolveSrv(atlasT, 1f) : _whiteSrv;
+                        BindSrvAt(2, shT != nint.Zero ? shT : _whiteSrv);
+                    }
                     UploadTerrainConstants(d.Model, d.View, d.Projection, d.Mvp,
                         d.LightDir, d.LightColor, d.AmbientColor,
                         useTex, d.Unlit, d.LightIntensity, d.AmbientStrength);
@@ -378,7 +412,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             elems[2].AlignedByteOffset = 24;
             _wlayout = CreateInputLayout(elems, vsPtr, vsLen);
             ReleaseBlob(vsBlob); ReleaseBlob(psBlob);
-            _wcb = CreateBuffer11(256, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+            _wcb = CreateBuffer11(512, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
             _dssOn = CreateDepthState(true);
             _dssOff = CreateDepthState(false);
             _worldReady = _wvs != nint.Zero && _wps != nint.Zero && _wlayout != nint.Zero && _wcb != nint.Zero;
@@ -450,8 +484,32 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             elems[6] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "BLENDWEIGHT", Format = 2, AlignedByteOffset = 64 };
             _mdlLayout = CreateInputLayout(elems, vsPtr, vsLen);
             ReleaseBlob(vsBlob); ReleaseBlob(psBlob);
-            _mdlCb = CreateBuffer11(256, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+            _mdlCb = CreateBuffer11(512, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
             _mdlReady = _mdlVs != nint.Zero && _mdlPs != nint.Zero && _mdlLayout != nint.Zero && _mdlCb != nint.Zero;
+            _boneCb = CreateBuffer11(64 * 64, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+        }
+
+        void BuildShadowPipeline()
+        {
+            byte[] vsSrc = System.Text.Encoding.ASCII.GetBytes(ShadowShader.VertexShaderSource);
+            byte[] psSrc = System.Text.Encoding.ASCII.GetBytes(ShadowShader.FragmentShaderSource);
+            if (!Compile(vsSrc, "vs", "vs_5_0", out nint vsBlob) ||
+                !Compile(psSrc, "ps", "ps_5_0", out nint psBlob))
+            {
+                Console.Error.WriteLine("[D3D12] Shadow pipeline failed to compile.");
+                return;
+            }
+            nint vsPtr = BlobPtr(vsBlob); ulong vsLen = BlobLen(vsBlob);
+            nint psPtr = BlobPtr(psBlob); ulong psLen = BlobLen(psBlob);
+            _shVs = CreateVertexShader(vsPtr, vsLen);
+            _shPs = CreatePixelShader(psPtr, psLen);
+            var elems = new D3D11_INPUT_ELEMENT_DESC[1];
+            elems[0] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "POSITION", Format = DXGI_FORMAT_R32G32B32_FLOAT, AlignedByteOffset = 0 };
+            _shLayout = CreateInputLayout(elems, vsPtr, vsLen);
+            ReleaseBlob(vsBlob); ReleaseBlob(psBlob);
+            _shCb = CreateBuffer11(256, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+            _shReady = _shVs != nint.Zero && _shPs != nint.Zero && _shLayout != nint.Zero && _shCb != nint.Zero;
+            if (!_shReady) Console.Error.WriteLine("[D3D12] Shadow pipeline is not ready.");
         }
 
         void BuildScenePipeline()
@@ -747,6 +805,55 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             MapWrite(_scnCb, data, 208);
         }
 
+        void SetShadowShaders()
+        {
+            var vs = (SetVsFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 11), typeof(SetVsFn));
+            vs(_ctx11, _shVs, nint.Zero, 0);
+            var ps = (SetPsFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 9), typeof(SetPsFn));
+            ps(_ctx11, _shPs, nint.Zero, 0);
+            var il = (SetIlFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 17), typeof(SetIlFn));
+            il(_ctx11, _shLayout);
+            var cb = (SetCbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 7), typeof(SetCbFn));
+            nint box = Marshal.AllocHGlobal(nint.Size);
+            Marshal.WriteIntPtr(box, _shCb);
+            cb(_ctx11, 0, 1, box);
+            var psCb = (SetCbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 16), typeof(SetCbFn));
+            psCb(_ctx11, 0, 1, box);
+            Marshal.FreeHGlobal(box);
+        }
+
+        void UploadShadowConstants(D3D12RenderContext.WorldDrawOp d)
+        {
+            var data = new float[32];
+            float[] lightVp = d.View != null && d.View.Length >= 16 ? d.View : d.Projection;
+            Copy16(lightVp, data, 0);
+            Copy16(d.Model, data, 16);
+            MapWrite(_shCb, data, 128);
+        }
+
+        void UploadBones()
+        {
+            if (_boneCb == nint.Zero) return;
+            var bones = _backend.FrameBones;
+            var data = new float[64 * 16];
+            if (bones != null)
+                Array.Copy(bones, data, Math.Min(bones.Length, data.Length));
+            else
+            {
+                for (int i = 0; i < 64; i++)
+                    data[i * 16] = data[i * 16 + 5] = data[i * 16 + 10] = data[i * 16 + 15] = 1f;
+            }
+            MapWrite(_boneCb, data, data.Length * 4);
+            if (_mdlReady)
+            {
+                nint box = Marshal.AllocHGlobal(nint.Size);
+                Marshal.WriteIntPtr(box, _boneCb);
+                var vsCb = (SetCbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 7), typeof(SetCbFn));
+                vsCb(_ctx11, 1, 1, box);
+                Marshal.FreeHGlobal(box);
+            }
+        }
+
         void UploadSkyConstants(float[] view, float[] proj, float[] orient, float verticalOffset)
         {
             var data = new float[52];
@@ -760,7 +867,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         void UploadModelConstants(D3D12RenderContext.WorldDrawOp d)
         {
-            var data = new float[40];
+            var data = new float[72];
             if (d.Mvp != null && d.Mvp.Length >= 16)
                 Copy16(d.Mvp, data, 0);
             else
@@ -769,22 +876,25 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 if (composed != null) Copy16(composed, data, 0);
                 else Copy16(d.Model, data, 0);
             }
-            // DirectX/ModelShader CB: Mvp, LightDir, LightColor, AmbientColor, intensity, ambient, hasOpacity, slots
+            Copy16(d.Model, data, 16);
             if (d.LightDir != null && d.LightDir.Length >= 3
                 && (d.LightDir[0]*d.LightDir[0] + d.LightDir[1]*d.LightDir[1] + d.LightDir[2]*d.LightDir[2]) > 0.0001f)
-            { data[16] = d.LightDir[0]; data[17] = d.LightDir[1]; data[18] = d.LightDir[2]; }
-            else { data[16] = -0.85f; data[17] = 0.10f; data[18] = -0.52f; }
+            { data[32] = d.LightDir[0]; data[33] = d.LightDir[1]; data[34] = d.LightDir[2]; }
+            else { data[32] = -0.85f; data[33] = 0.10f; data[34] = -0.52f; }
             if (d.LightColor != null && d.LightColor.Length >= 3)
-            { data[20] = d.LightColor[0]; data[21] = d.LightColor[1]; data[22] = d.LightColor[2]; }
-            else { data[20] = 1f; data[21] = 1f; data[22] = 1f; }
+            { data[36] = d.LightColor[0]; data[37] = d.LightColor[1]; data[38] = d.LightColor[2]; }
+            else { data[36] = 1f; data[37] = 1f; data[38] = 1f; }
             if (d.AmbientColor != null && d.AmbientColor.Length >= 3)
-            { data[24] = d.AmbientColor[0]; data[25] = d.AmbientColor[1]; data[26] = d.AmbientColor[2]; }
-            else { data[24] = 0.45f; data[25] = 0.45f; data[26] = 0.48f; }
-            data[28] = d.LightIntensity > 0.001f ? d.LightIntensity : 1f;
-            data[29] = d.AmbientStrength > 0.001f ? d.AmbientStrength : 0.30f;
-            data[30] = d.HasOpacity;
-            data[31] = d.HasOpacity > 0.5f ? 15f : 0f;
-            MapWrite(_mdlCb, data, 128);
+            { data[40] = d.AmbientColor[0]; data[41] = d.AmbientColor[1]; data[42] = d.AmbientColor[2]; }
+            else { data[40] = 0.45f; data[41] = 0.45f; data[42] = 0.48f; }
+            data[44] = d.LightIntensity > 0.001f ? d.LightIntensity : 1f;
+            data[45] = d.AmbientStrength > 0.001f ? d.AmbientStrength : 0.16f;
+            data[46] = d.HasOpacity;
+            data[47] = (d.OpacitySlots > 0f && d.OpacitySlots < 15f) ? d.OpacitySlots : 0f;
+            Copy16(_backend.FrameCascadeVP, data, 48);
+            data[64] = _backend.FrameShadowsEnabled;
+            data[65] = _backend.FrameHasBones;
+            MapWrite(_mdlCb, data, 272);
         }
 
         static float[] ComposeMvp(float[] model, float[] view, float[] proj)
@@ -817,7 +927,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             float hasTexture, float unlit, float lightIntensity, float ambientStrength)
         {
             // DirectX/TerrainShader CB layout.
-            var data = new float[64];
+            var data = new float[84];
             if (model != null && model.Length >= 16) Copy16(model, data, 0);
             else { data[0] = data[5] = data[10] = data[15] = 1f; }
             Copy16(view, data, 16);
@@ -839,7 +949,9 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             data[61] = unlit;
             data[62] = lightIntensity;
             data[63] = ambientStrength;
-            MapWrite(_wcb, data, 256);
+            Copy16(_backend.FrameCascadeVP, data, 64);
+            data[80] = _backend.FrameShadowsEnabled;
+            MapWrite(_wcb, data, 336);
         }
 
         static void Copy16(float[] src, float[] dst, int off)
@@ -1707,14 +1819,13 @@ void SetWorldShaders()
             finally { Marshal.FreeHGlobal(descPtr); Marshal.FreeHGlobal(box); }
         }
 
-        void SetBlend()
+        void SetBlend(bool enable = true)
         {
-            if (_blend == nint.Zero) return;
             float[] factor = { 1, 1, 1, 1 };
             nint fac = Marshal.AllocHGlobal(16);
             Marshal.Copy(factor, 0, fac, 4);
             var fn = (OmSetBlendFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 35), typeof(OmSetBlendFn));
-            fn(_ctx11, _blend, fac, 0xFFFFFFFFu);
+            fn(_ctx11, enable ? _blend : nint.Zero, fac, 0xFFFFFFFFu);
             Marshal.FreeHGlobal(fac);
         }
 

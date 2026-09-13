@@ -2,6 +2,7 @@
 // File: UIQuadRenderer.cs
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;

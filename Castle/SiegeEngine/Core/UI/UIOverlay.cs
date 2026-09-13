@@ -5,6 +5,7 @@ using SiegeEngine.Core.Events;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.GPU.Shaders;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 using SiegeEngine.Core.UI.Elements;
 using SiegeEngine.Core.UI.JSParser;
 using System;

@@ -1,6 +1,7 @@
 ﻿//SiegeEngine.Rendering/ShaderSetup.cs
 using Silk.NET.OpenGL;
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.Shaders
 {

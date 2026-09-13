@@ -18,6 +18,7 @@ using System.IO;
 using System.Numerics;
 using System.Text.Json;
 using ToolChest;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene

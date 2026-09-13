@@ -6,6 +6,7 @@ using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.GPU.Shaders;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 using SiegeEngine.Core.Managers;
 using System;
 using System.Collections.Generic;

@@ -18,6 +18,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Numerics;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 namespace SiegeEngine.Scenes
 {
     public unsafe class RuntimeGameplayScene : GameScene
