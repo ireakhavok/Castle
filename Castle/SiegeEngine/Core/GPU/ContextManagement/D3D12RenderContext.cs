@@ -30,20 +30,26 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             }
         }
 
-        /// <summary>Clip-space xyzw + uv world triangles. VS passes pos through after GL→D3D z.</summary>
         public readonly struct WorldDrawOp
         {
-            public readonly float[] Verts; // 6 floats/vert: clip.xyzw, uv
-            public readonly int VertFloats;
+            public readonly uint Vbo;
+            public readonly uint Ebo;
+            public readonly int VtxStride;
+            public readonly int UvOff;
+            public readonly int IdxStride;
+            public readonly uint IndexCount;
+            public readonly float[] Mvp;
             public readonly float R, G, B, A;
             public readonly float UseTexture;
             public readonly uint Texture;
             public readonly int VpX, VpY, VpW, VpH;
             public readonly int ScX, ScY, ScW, ScH;
             public readonly bool ScissorOn;
-            public WorldDrawOp(float[] verts, int vertFloats, float r, float g, float b, float a, float useTex, uint tex, int vpX, int vpY, int vpW, int vpH, int scX, int scY, int scW, int scH, bool scissorOn)
+            public WorldDrawOp(uint vbo, uint ebo, int vtxStride, int uvOff, int idxStride, uint indexCount, float[] mvp,
+                float r, float g, float b, float a, float useTex, uint tex,
+                int vpX, int vpY, int vpW, int vpH, int scX, int scY, int scW, int scH, bool scissorOn)
             {
-                Verts = verts; VertFloats = vertFloats;
+                Vbo = vbo; Ebo = ebo; VtxStride = vtxStride; UvOff = uvOff; IdxStride = idxStride; IndexCount = indexCount; Mvp = mvp;
                 R = r; G = g; B = b; A = a; UseTexture = useTex; Texture = tex;
                 VpX = vpX; VpY = vpY; VpW = vpW; VpH = vpH;
                 ScX = scX; ScY = scY; ScW = scW; ScH = scH; ScissorOn = scissorOn;
@@ -96,6 +102,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         bool _depthOn;
         uint _boundFbo;
         uint _nextFbo = 1;
+        int _presentX, _presentY, _presentW, _presentH;
 
         public float ClearR, ClearG, ClearB, ClearA = 1f;
         public int ViewportX { get; private set; }
@@ -111,6 +118,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             ViewportWidth = width;
             ViewportHeight = height;
             _scX = 0; _scY = 0; _scW = width; _scH = height;
+            _presentX = 0; _presentY = 0; _presentW = width; _presentH = height;
             _scissorOn = false;
         }
 
@@ -129,6 +137,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         }
 
         public bool TryGetTexture(uint id, out CpuTexture tex) => _textures.TryGetValue(id, out tex);
+        public bool TryGetBuffer(uint id, out byte[] bytes) => _buffers.TryGetValue(id, out bytes);
 
         public void ClearColor(float red, float green, float blue, float alpha)
         {
@@ -142,6 +151,13 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             ViewportY = y;
             ViewportWidth = Math.Max(1, (int)width);
             ViewportHeight = Math.Max(1, (int)height);
+            if (_boundFbo == 0)
+            {
+                _presentX = ViewportX;
+                _presentY = ViewportY;
+                _presentW = ViewportWidth;
+                _presentH = ViewportHeight;
+            }
         }
 
         public int GetError() => 0;
@@ -168,7 +184,17 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             _activeTexUnit = u;
             _boundTexture = _texUnit[u];
         }
-        public void BindFramebuffer(int target, uint framebuffer) { _boundFbo = framebuffer; }
+        public void BindFramebuffer(int target, uint framebuffer)
+        {
+            _boundFbo = framebuffer;
+            if (framebuffer == 0)
+            {
+                ViewportX = _presentX;
+                ViewportY = _presentY;
+                ViewportWidth = Math.Max(1, _presentW);
+                ViewportHeight = Math.Max(1, _presentH);
+            }
+        }
         public int CheckFramebufferStatus(int target) => Enums.FramebufferComplete;
         public void DrawBuffer(int mode) { }
         public void ReadBuffer(int mode) { }
@@ -355,6 +381,16 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         void RecordDraw(uint indexCount, bool indexed)
         {
+            if (_boundVao != 0)
+            {
+                var vao = EnsureVao(_boundVao);
+                if (vao.Array != 0) _boundArray = vao.Array;
+                if (vao.Element != 0) _boundElement = vao.Element;
+                if (vao.Stride[0] > 0) _stride = vao.Stride[0];
+                if (vao.Size[0] > 0) _posSize = vao.Size[0];
+                _posOff = vao.Offset[0];
+                if (vao.Size[2] >= 2) _uvOff = vao.Offset[2];
+            }
             if (!_buffers.TryGetValue(_boundArray, out var vb) || vb == null || vb.Length < 8) return;
             int stride = _stride <= 0 ? 16 : _stride;
             if (_posSize >= 3 || stride > 16)
@@ -411,51 +447,44 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         void RecordWorld(byte[] vb, int stride, uint indexCount, bool indexed)
         {
+            if (_boundArray == 0 || indexCount < 3) return;
+            // Shadow / cube FBOs are square. SMAA world is the panel (not square) — keep those.
+            if (_boundFbo != 0 && ViewportWidth == ViewportHeight && ViewportWidth >= 256)
+                return;
             if (stride < 12) stride = 12;
-            int posOff = _posOff;
             int uvOff = _uvOff;
-            if (uvOff < 8) uvOff = stride >= 32 ? 24 : -1;
-            int[] idx = BuildIndices(indexed, indexCount, vb.Length / stride);
-            if (idx == null || idx.Length < 3) return;
+            if (uvOff < 8)
+                uvOff = stride >= 32 ? 24 : (stride >= 28 ? 28 : -1);
             GetMatrix("uModel", out var model);
             GetMatrix("uView", out var view);
             GetMatrix("uProjection", out var proj);
-            System.Numerics.Matrix4x4 mvp = model * view * proj;
-            var dst = new float[idx.Length * 6];
-            int o = 0;
-            for (int i = 0; i < idx.Length; i++)
+            var mvpMat = model * view * proj;
+            var mvp = new float[]
             {
-                int s = idx[i] * stride + posOff;
-                if (s + 12 > vb.Length) continue;
-                float x = BitConverter.ToSingle(vb, s);
-                float y = BitConverter.ToSingle(vb, s + 4);
-                float z = BitConverter.ToSingle(vb, s + 8);
-                var clip = System.Numerics.Vector4.Transform(new System.Numerics.Vector4(x, y, z, 1f), mvp);
-                clip.Z = clip.Z * 0.5f + clip.W * 0.5f;
-                float u = 0f, v = 0f;
-                if (uvOff >= 0 && idx[i] * stride + uvOff + 8 <= vb.Length)
-                {
-                    u = BitConverter.ToSingle(vb, idx[i] * stride + uvOff);
-                    v = BitConverter.ToSingle(vb, idx[i] * stride + uvOff + 4);
-                }
-                dst[o++] = clip.X; dst[o++] = clip.Y; dst[o++] = clip.Z; dst[o++] = clip.W;
-                dst[o++] = u; dst[o++] = v;
-            }
-            if (o < 18) return;
-            if (o != dst.Length)
-            {
-                var cut = new float[o];
-                Array.Copy(dst, cut, o);
-                dst = cut;
-            }
+                mvpMat.M11, mvpMat.M12, mvpMat.M13, mvpMat.M14,
+                mvpMat.M21, mvpMat.M22, mvpMat.M23, mvpMat.M24,
+                mvpMat.M31, mvpMat.M32, mvpMat.M33, mvpMat.M34,
+                mvpMat.M41, mvpMat.M42, mvpMat.M43, mvpMat.M44
+            };
+            int idxStride = 4;
+            if (_buffers.TryGetValue(_boundElement, out var ib) && ib != null && indexCount > 0 && ib.Length == (int)indexCount * 2)
+                idxStride = 2;
             uint tex = _texUnit[0] != 0 ? _texUnit[0] : _boundTexture;
             float useTex = tex != 0 ? 1f : 0f;
+            if (GetUniform1(Loc("uHasTexture")) == 0 && useTex > 0.5f && GetUniform1(Loc("uUseTexture")) == 0 && GetUniform1(Loc("uUseTex")) == 0)
+            {
+                // terrain sets uHasTexture; models bind albedo without that flag — keep tex
+            }
             GetUniform4(Loc("uColor"), out float r, out float g, out float b, out float a);
             if (a <= 0f) { r = g = b = a = 1f; }
-            if (GetUniform1(Loc("uHasTexture")) == 0 && tex == 0) useTex = 0f;
-            _world.Add(new WorldDrawOp(dst, dst.Length, r, g, b, a, useTex, tex,
-                ViewportX, ViewportY, ViewportWidth, ViewportHeight,
-                _scX, _scY, _scW > 0 ? _scW : ViewportWidth, _scH > 0 ? _scH : ViewportHeight, _scissorOn));
+            int vpX = _presentW > 0 ? _presentX : ViewportX;
+            int vpY = _presentW > 0 ? _presentY : ViewportY;
+            int vpW = _presentW > 0 ? _presentW : ViewportWidth;
+            int vpH = _presentH > 0 ? _presentH : ViewportHeight;
+            _world.Add(new WorldDrawOp(_boundArray, _boundElement, stride, uvOff, idxStride, indexCount, mvp,
+                r, g, b, a, useTex, tex,
+                vpX, vpY, vpW, vpH,
+                vpX, vpY, vpW, vpH, true));
         }
 
         int[] BuildIndices(bool indexed, uint indexCount, int vertCount)

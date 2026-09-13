@@ -20,8 +20,12 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         const int D3D11_BIND_RENDER_TARGET = 0x20;
         const int D3D11_BIND_SHADER_RESOURCE = 0x08;
         const int D3D11_BIND_VERTEX_BUFFER = 0x01;
+        const int D3D11_BIND_INDEX_BUFFER = 0x02;
         const int D3D11_BIND_DEPTH_STENCIL = 0x40;
         const int DXGI_FORMAT_D24_UNORM_S8_UINT = 45;
+        const int DXGI_FORMAT_R32G32B32_FLOAT = 6;
+        const int DXGI_FORMAT_R32_UINT = 42;
+        const int DXGI_FORMAT_R16_UINT = 57;
         const int D3D11_CLEAR_DEPTH = 1;
         const int D3D11_COMPARISON_LESS = 2;
         const int D3D11_DEPTH_WRITE_MASK_ALL = 1;
@@ -72,7 +76,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         nint[] _wrapped11 = new nint[FrameCount];
         nint[] _rtv11 = new nint[FrameCount];
         nint _vs, _ps, _layout, _vb, _cb, _sampler, _rs, _blend, _whiteSrv, _whiteTex;
-        nint _wvs, _wps, _wlayout, _wvb, _wcb, _dssOn, _dssOff, _depthTex, _dsv;
+        nint _wvs, _wps, _wlayout, _wlayout28, _wvb, _wcb, _dssOn, _dssOff, _depthTex, _dsv;
         int _wvbOffset;
         bool _worldReady;
         ulong _fenceValue;
@@ -84,6 +88,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         readonly Dictionary<uint, nint> _gpuTex = new Dictionary<uint, nint>();
         readonly Dictionary<uint, nint> _gpuSrv = new Dictionary<uint, nint>();
         readonly Dictionary<uint, int> _gpuTexGen = new Dictionary<uint, int>();
+        readonly Dictionary<uint, nint> _gpuBuf = new Dictionary<uint, nint>();
+        readonly Dictionary<uint, int> _gpuBufBytes = new Dictionary<uint, int>();
 
         public override string BackendName => "DirectX12";
         public override bool DrawsUi => true;
@@ -194,7 +200,6 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             Flush11();
 
             ComVtable.Call2i(_swap, 8, 1, 0);
-            WaitGpu();
             _frame++;
         }
 
@@ -237,6 +242,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 UploadConstants(d.R, d.G, d.B, d.A, d.UseTexture);
                 DrawVerts(d.Verts, d.VertFloats, d.IndexCount);
             }
+            Flush11();
         }
 
         void FlushWorld()
@@ -249,18 +255,17 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             SetWorldShaders();
             BindSampler();
             SetDepth(true);
-            _wvbOffset = WorldVbBytes;
             foreach (var d in draws)
             {
-                if (d.Verts == null || d.VertFloats < 18) continue;
+                if (d.IndexCount < 3 || d.Vbo == 0) continue;
                 int vpW = d.VpW > 0 ? d.VpW : _width;
                 int vpH = d.VpH > 0 ? d.VpH : _height;
                 if (vpW <= 0 || vpH <= 0) continue;
                 SetViewport(d.VpX, d.VpY, vpW, vpH);
-                bool clipOk = (d.ScissorOn && d.ScW > 0 && d.ScH > 0)
-                    ? SetScissor(d.ScX, d.ScY, d.ScW, d.ScH)
-                    : SetScissor(d.VpX, d.VpY, vpW, vpH);
-                if (!clipOk) continue;
+                if (!SetScissor(d.VpX, d.VpY, vpW, vpH)) continue;
+                nint vb = SyncGpuBuffer(d.Vbo, D3D11_BIND_VERTEX_BUFFER);
+                if (vb == nint.Zero) continue;
+                nint ib = d.Ebo != 0 ? SyncGpuBuffer(d.Ebo, D3D11_BIND_INDEX_BUFFER) : nint.Zero;
                 if (d.UseTexture > 0.5f)
                 {
                     nint srv = ResolveSrv(d.Texture, d.UseTexture);
@@ -268,8 +273,13 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 }
                 else
                     BindSrv(_whiteSrv);
-                UploadWorldConstants(d.R, d.G, d.B, d.A, d.UseTexture);
-                DrawWorldVerts(d.Verts, d.VertFloats);
+                UploadWorldConstants(d.Mvp, d.R, d.G, d.B, d.A, d.UseTexture);
+                BindWorldLayout(d.UvOff);
+                BindWorldMesh(vb, ib, d.VtxStride, d.IdxStride);
+                if (ib != nint.Zero)
+                    DrawIndexed((int)d.IndexCount);
+                else
+                    Draw((int)d.IndexCount);
             }
             SetDepth(false);
         }
@@ -277,12 +287,24 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         void BuildWorldPipeline()
         {
             const string hlsl = @"
-cbuffer CB : register(b0) { float4 Color; float UseTexture; float3 Pad; };
+cbuffer CB : register(b0) {
+    row_major float4x4 Mvp;
+    float4 Color;
+    float UseTexture;
+    float3 Pad;
+};
 Texture2D Tex : register(t0);
 SamplerState Samp : register(s0);
-struct VSIn { float4 pos : POSITION; float2 uv : TEXCOORD; };
+struct VSIn { float3 pos : POSITION; float2 uv : TEXCOORD; };
 struct VSOut { float4 pos : SV_POSITION; float2 uv : TEXCOORD; };
-VSOut vs(VSIn i) { VSOut o; o.pos = i.pos; o.uv = i.uv; return o; }
+VSOut vs(VSIn i) {
+    VSOut o;
+    float4 c = mul(float4(i.pos, 1), Mvp);
+    c.z = c.z * 0.5 + c.w * 0.5;
+    o.pos = c;
+    o.uv = i.uv;
+    return o;
+}
 float4 ps(VSOut i) : SV_TARGET {
     float4 t = UseTexture > 0.5 ? Tex.Sample(Samp, i.uv) : float4(1,1,1,1);
     return t * Color;
@@ -296,15 +318,16 @@ float4 ps(VSOut i) : SV_TARGET {
             _wvs = CreateVertexShader(vsPtr, vsLen);
             _wps = CreatePixelShader(psPtr, psLen);
             var elems = new D3D11_INPUT_ELEMENT_DESC[2];
-            elems[0] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "POSITION", Format = 2 /* R32G32B32A32_FLOAT */, AlignedByteOffset = 0 };
-            elems[1] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "TEXCOORD", Format = 16 /* R32G32_FLOAT */, AlignedByteOffset = 16 };
+            elems[0] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "POSITION", Format = DXGI_FORMAT_R32G32B32_FLOAT, AlignedByteOffset = 0 };
+            elems[1] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "TEXCOORD", Format = 16, AlignedByteOffset = 24 };
             _wlayout = CreateInputLayout(elems, vsPtr, vsLen);
+            elems[1].AlignedByteOffset = 28;
+            _wlayout28 = CreateInputLayout(elems, vsPtr, vsLen);
             ReleaseBlob(vsBlob); ReleaseBlob(psBlob);
-            _wvb = CreateBuffer11(WorldVbBytes, D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
-            _wcb = CreateBuffer11(32, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+            _wcb = CreateBuffer11(256, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
             _dssOn = CreateDepthState(true);
             _dssOff = CreateDepthState(false);
-            _worldReady = _wvs != nint.Zero && _wps != nint.Zero && _wlayout != nint.Zero && _wvb != nint.Zero && _wcb != nint.Zero;
+            _worldReady = _wvs != nint.Zero && _wps != nint.Zero && _wlayout != nint.Zero && _wcb != nint.Zero;
         }
 
         void CreateDepth()
@@ -519,17 +542,98 @@ float4 ps(VSOut i) : SV_TARGET {
             fn(_ctx11, state, 0);
         }
 
-        void UploadWorldConstants(float r, float g, float b, float a, float useTex)
+        void UploadWorldConstants(float[] mvp, float r, float g, float b, float a, float useTex)
         {
-            float[] data = { r, g, b, a, useTex, 0, 0, 0 };
-            MapWrite(_wcb, data, 32);
+            var data = new float[24];
+            if (mvp != null && mvp.Length >= 16)
+                Array.Copy(mvp, data, 16);
+            else
+            {
+                data[0] = data[5] = data[10] = data[15] = 1f;
+            }
+            data[16] = r; data[17] = g; data[18] = b; data[19] = a;
+            data[20] = useTex;
+            MapWrite(_wcb, data, 96);
+        }
+
+        void BindWorldLayout(int uvOff)
+        {
+            nint layout = uvOff == 28 && _wlayout28 != nint.Zero ? _wlayout28 : _wlayout;
+            if (layout == nint.Zero) layout = _wlayout;
+            var il = (SetIlFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 17), typeof(SetIlFn));
+            il(_ctx11, layout);
+        }
+
+        nint SyncGpuBuffer(uint id, int bind)
+        {
+            if (id == 0 || !_backend.TryGetBuffer(id, out var bytes) || bytes == null || bytes.Length < 4)
+                return nint.Zero;
+            if (_gpuBuf.TryGetValue(id, out nint existing) && existing != nint.Zero
+                && _gpuBufBytes.TryGetValue(id, out int n) && n == bytes.Length)
+                return existing;
+            if (existing != nint.Zero) ComVtable.Release(existing);
+            nint buf = CreateBuffer11Init(bytes.Length, bind, bytes);
+            _gpuBuf[id] = buf;
+            _gpuBufBytes[id] = bytes.Length;
+            return buf;
+        }
+
+        nint CreateBuffer11Init(int bytes, int bind, byte[] data)
+        {
+            var desc = new D3D11_BUFFER_DESC
+            {
+                ByteWidth = (uint)((Math.Max(bytes, 16) + 15) & ~15),
+                Usage = D3D11_USAGE_DEFAULT,
+                BindFlags = bind
+            };
+            nint descPtr = Marshal.AllocHGlobal(Marshal.SizeOf<D3D11_BUFFER_DESC>());
+            Marshal.StructureToPtr(desc, descPtr, false);
+            nint pix = Marshal.AllocHGlobal(data.Length);
+            Marshal.Copy(data, 0, pix, data.Length);
+            var init = new D3D11_SUBRESOURCE_DATA { pSysMem = pix, SysMemPitch = (uint)data.Length };
+            nint initPtr = Marshal.AllocHGlobal(Marshal.SizeOf<D3D11_SUBRESOURCE_DATA>());
+            Marshal.StructureToPtr(init, initPtr, false);
             nint box = Marshal.AllocHGlobal(nint.Size);
-            Marshal.WriteIntPtr(box, _wcb);
-            var cb = (SetCbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 7), typeof(SetCbFn));
-            cb(_ctx11, 0, 1, box);
-            var pcb = (SetCbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 16), typeof(SetCbFn));
-            pcb(_ctx11, 0, 1, box);
-            Marshal.FreeHGlobal(box);
+            Marshal.WriteIntPtr(box, nint.Zero);
+            try
+            {
+                var fn = (CreateBufFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_device11, 3), typeof(CreateBufFn));
+                int hr = fn(_device11, descPtr, initPtr, box);
+                if (hr < 0) return nint.Zero;
+                return Marshal.ReadIntPtr(box);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(descPtr);
+                Marshal.FreeHGlobal(initPtr);
+                Marshal.FreeHGlobal(pix);
+                Marshal.FreeHGlobal(box);
+            }
+        }
+
+        void BindWorldMesh(nint vb, nint ib, int vtxStride, int idxStride)
+        {
+            nint vbBox = Marshal.AllocHGlobal(nint.Size);
+            Marshal.WriteIntPtr(vbBox, vb);
+            nint strideBox = Marshal.AllocHGlobal(4);
+            Marshal.WriteInt32(strideBox, Math.Max(vtxStride, 12));
+            nint offBox = Marshal.AllocHGlobal(4);
+            Marshal.WriteInt32(offBox, 0);
+            var setVb = (SetVbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 18), typeof(SetVbFn));
+            setVb(_ctx11, 0, 1, vbBox, strideBox, offBox);
+            Marshal.FreeHGlobal(vbBox); Marshal.FreeHGlobal(strideBox); Marshal.FreeHGlobal(offBox);
+            if (ib != nint.Zero)
+            {
+                int fmt = idxStride == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+                var setIb = (SetIbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 19), typeof(SetIbFn));
+                setIb(_ctx11, ib, fmt, 0);
+            }
+        }
+
+        void DrawIndexed(int indexCount)
+        {
+            var fn = (DrawIndexedFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 12), typeof(DrawIndexedFn));
+            fn(_ctx11, (uint)indexCount, 0, 0);
         }
 
         void DrawWorldVerts(float[] src, int floats)
@@ -660,7 +764,6 @@ float4 ps(VSOut i) : SV_TARGET {
                 if (byteOff < 0) break;
                 BindVb(byteOff);
                 Draw(n);
-                Flush11();
                 start += n;
             }
             return start >= 3;
@@ -825,10 +928,12 @@ float4 ps(VSOut i) : SV_TARGET {
             foreach (var kv in _gpuTex) ComVtable.Release(kv.Value);
             ComVtable.Release(_whiteSrv); ComVtable.Release(_whiteTex);
             ReleaseDepth();
+            foreach (var kv in _gpuBuf) ComVtable.Release(kv.Value);
+            _gpuBuf.Clear();
             ComVtable.Release(_sampler); ComVtable.Release(_cb); ComVtable.Release(_vb);
             ComVtable.Release(_layout); ComVtable.Release(_vs); ComVtable.Release(_ps);
             ComVtable.Release(_wcb); ComVtable.Release(_wvb);
-            ComVtable.Release(_wlayout); ComVtable.Release(_wvs); ComVtable.Release(_wps);
+            ComVtable.Release(_wlayout); ComVtable.Release(_wlayout28); ComVtable.Release(_wvs); ComVtable.Release(_wps);
             ComVtable.Release(_dssOn); ComVtable.Release(_dssOff);
             for (int i = 0; i < FrameCount; i++)
             {
@@ -1378,6 +1483,8 @@ float4 ps(VSOut i) : SV_TARGET {
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void SetSrvFn(nint self, uint start, uint num, nint srvs);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void SetVbFn(nint self, uint start, uint num, nint bufs, nint strides, nint offsets);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void DrawFn(nint self, uint count, uint start);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void DrawIndexedFn(nint self, uint count, uint startIndex, int baseVertex);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void SetIbFn(nint self, nint buffer, int format, uint offset);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int ResizeBuffersFn(nint self, uint count, uint width, uint height, int format, uint flags);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int MapFn(nint self, nint res, uint sub, int map, int flags, nint mapped);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void UnmapFn(nint self, nint res, uint sub);
