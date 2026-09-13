@@ -72,8 +72,6 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         int _width, _height;
         int _vbOffset;
         bool _uiReady;
-        bool _loggedLayout;
-        bool _loggedMissingTex;
         readonly Dictionary<uint, nint> _gpuTex = new Dictionary<uint, nint>();
         readonly Dictionary<uint, nint> _gpuSrv = new Dictionary<uint, nint>();
         readonly Dictionary<uint, int> _gpuTexGen = new Dictionary<uint, int>();
@@ -138,7 +136,6 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             }
 
             BuildUiPipeline();
-            Console.WriteLine($"[DirectX12] Device+swapchain+11on12 hwnd=0x{_host.Hwnd:X} FL=0x{fl:X} ui={_uiReady}");
 
             _backend = new D3D12RenderContext(_width, _height);
             _backend.ClearR = 0.08f; _backend.ClearG = 0.08f; _backend.ClearB = 0.10f; _backend.ClearA = 1f;
@@ -195,21 +192,6 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             BindSampler();
             _vbOffset = VbBytes; // force a DISCARD on the first upload this present
 
-            if (!_loggedLayout && draws.Length > 0)
-            {
-                _loggedLayout = true;
-                var s = draws[0];
-                float minx = float.MaxValue, maxx = float.MinValue, miny = float.MaxValue, maxy = float.MinValue;
-                if (s.Verts != null)
-                {
-                    for (int i = 0; i + 1 < s.Verts.Length; i += 4)
-                    {
-                        minx = Math.Min(minx, s.Verts[i]); maxx = Math.Max(maxx, s.Verts[i]);
-                        miny = Math.Min(miny, s.Verts[i + 1]); maxy = Math.Max(maxy, s.Verts[i + 1]);
-                    }
-                }
-                Console.WriteLine($"[DirectX12] UI layout draws={draws.Length} floats={s.VertFloats} idx={s.IndexCount} pos=[{minx:0.##},{miny:0.##}]-[{maxx:0.##},{maxy:0.##}] vp={_width}x{_height}");
-            }
             foreach (var d in draws)
             {
                 if (d.Verts == null || d.VertFloats < 8) continue;
@@ -226,14 +208,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 {
                     nint srv = ResolveSrv(d.Texture, d.UseTexture);
                     if (srv == nint.Zero || srv == _whiteSrv)
-                    {
-                        if (!_loggedMissingTex)
-                        {
-                            _loggedMissingTex = true;
-                            Console.WriteLine($"[DirectX12] textured draw skipped (no CPU tex id={d.Texture})");
-                        }
                         continue;
-                    }
                     BindSrv(srv);
                 }
                 else
@@ -267,7 +242,6 @@ float4 ps(VSOut i) : SV_TARGET {
             if (!Compile(src, "vs", "vs_5_0", out nint vsBlob) ||
                 !Compile(src, "ps", "ps_5_0", out nint psBlob))
             {
-                Console.WriteLine("[DirectX12] HLSL compile failed — clear-only this session");
                 return;
             }
             nint vsPtr = BlobPtr(vsBlob); ulong vsLen = BlobLen(vsBlob);
@@ -304,7 +278,6 @@ float4 ps(VSOut i) : SV_TARGET {
                     if (p != nint.Zero && n > 0) msg = Marshal.PtrToStringAnsi(p) ?? "";
                     ReleaseBlob(err);
                 }
-                Console.WriteLine($"[DirectX12] D3DCompile {entry} hr=0x{hr:X8} {msg}");
                 return false;
             }
             if (err != nint.Zero) ReleaseBlob(err);
@@ -885,11 +858,7 @@ float4 ps(VSOut i) : SV_TARGET {
                 var fn = (CreateRsFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_device11, 22), typeof(CreateRsFn));
                 int hr = fn(_device11, descPtr, box);
                 if (hr < 0)
-                {
-                    Console.WriteLine($"[DirectX12] CreateRasterizerState hr=0x{hr:X8}");
                     return nint.Zero;
-                }
-                Console.WriteLine("[DirectX12] Rasterizer Cull=NONE");
                 return Marshal.ReadIntPtr(box);
             }
             finally { Marshal.FreeHGlobal(descPtr); Marshal.FreeHGlobal(box); }
@@ -930,11 +899,7 @@ float4 ps(VSOut i) : SV_TARGET {
                 var fn = (CreateBlendFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_device11, 20), typeof(CreateBlendFn));
                 int hr = fn(_device11, descPtr, box);
                 if (hr < 0)
-                {
-                    Console.WriteLine($"[DirectX12] CreateBlendState hr=0x{hr:X8}");
                     return nint.Zero;
-                }
-                Console.WriteLine("[DirectX12] Blend SrcAlpha/InvSrcAlpha");
                 return Marshal.ReadIntPtr(box);
             }
             finally { Marshal.FreeHGlobal(descPtr); Marshal.FreeHGlobal(box); }

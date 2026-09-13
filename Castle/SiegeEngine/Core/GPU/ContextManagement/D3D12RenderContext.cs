@@ -54,6 +54,9 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         int _stride = 16;
         int _scX, _scY, _scW, _scH;
         bool _scissorOn;
+        bool _blendOn;
+        uint _boundFbo;
+        uint _nextFbo = 1;
 
         public float ClearR, ClearG, ClearB, ClearA = 1f;
         public int ViewportX { get; private set; }
@@ -99,17 +102,19 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public void Enable(int cap)
         {
             if (cap == Enums.ScissorTest) _scissorOn = true;
+            if (cap == Enums.Blend) _blendOn = true;
         }
         public void Disable(int cap)
         {
             if (cap == Enums.ScissorTest) _scissorOn = false;
+            if (cap == Enums.Blend) _blendOn = false;
         }
         public void BlendFunc(int src, int dst) { }
         public void DepthMask(bool mask) { }
         public void DepthFunc(int func) { }
         public void ColorMask(bool r, bool g, bool b, bool a) { }
         public void ActiveTexture(int unit) { }
-        public void BindFramebuffer(int target, uint framebuffer) { }
+        public void BindFramebuffer(int target, uint framebuffer) { _boundFbo = framebuffer; }
         public int CheckFramebufferStatus(int target) => Enums.FramebufferComplete;
         public void DrawBuffer(int mode) { }
         public void ReadBuffer(int mode) { }
@@ -124,8 +129,38 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public void FrontFace(int mode) { }
         public void LineWidth(float width) { }
         public void GetFloat(int pname, out float param) { param = 0; }
-        public void GetInteger(int pname, out int data) { data = 0; }
-        public void GetInteger(int pname, int* data) { if (data != null) *data = 0; }
+        public void GetInteger(int pname, out int data)
+        {
+            data = 0;
+            if (pname == Enums.FramebufferBinding) data = (int)_boundFbo;
+            else if (pname == Enums.ScissorTest) data = _scissorOn ? 1 : 0;
+            else if (pname == Enums.Blend) data = _blendOn ? 1 : 0;
+            else if (pname == Enums.Viewport) data = ViewportWidth;
+        }
+        public void GetInteger(int pname, int* data)
+        {
+            if (data == null) return;
+            if (pname == Enums.Viewport)
+            {
+                data[0] = ViewportX;
+                data[1] = ViewportY;
+                data[2] = Math.Max(1, ViewportWidth);
+                data[3] = Math.Max(1, ViewportHeight);
+                return;
+            }
+            if (pname == Enums.ScissorBox)
+            {
+                data[0] = _scX;
+                data[1] = _scY;
+                data[2] = Math.Max(1, _scW);
+                data[3] = Math.Max(1, _scH);
+                return;
+            }
+            if (pname == Enums.FramebufferBinding) { *data = (int)_boundFbo; return; }
+            if (pname == Enums.ScissorTest) { *data = _scissorOn ? 1 : 0; return; }
+            if (pname == Enums.Blend) { *data = _blendOn ? 1 : 0; return; }
+            *data = 0;
+        }
         public bool IsExtensionPresent(string extension) => false;
 
         public uint GenVertexArray() => _nextBuffer++;
@@ -206,6 +241,9 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         {
             if (!_buffers.TryGetValue(_boundArray, out var vb) || vb == null || vb.Length < 8) return;
             int stride = _stride <= 0 ? 16 : _stride;
+            // World meshes use 3-component positions and strides > 16.
+            // Recording them as UI xy/uv slivers kills panel overlays after SMAA.
+            if (stride > 16) return;
             // DrawArrays must not guess stride from allocated-bytes / draw-count.
             // TextRenderer keeps a large preallocated VBO and draws a short glyph run;
             // that guess lands in 8..32 and reads UV as XY — glyphs sliver across the screen.
@@ -220,8 +258,9 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                     if (v > maxI) maxI = v;
                 }
                 int guess = vb.Length / Math.Max(1, maxI + 1);
-                if (guess >= 8 && guess <= 64) stride = guess;
+                if (guess >= 8 && guess <= 16) stride = guess;
             }
+            if (stride > 16) return;
             int liveVerts = 0;
             if (!indexed && indexCount > 0)
                 liveVerts = (int)indexCount;
@@ -368,14 +407,11 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                         }
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
-                    Console.WriteLine($"[DirectX12] TexImage2D copy failed: {ex.Message}");
                 }
             }
             _textures[_boundTexture] = tex;
-            if (tex.Width * tex.Height >= 64)
-                Console.WriteLine($"[DirectX12] TexImage2D id={_boundTexture} {tex.Width}x{tex.Height} format={format} bytes={tex.Rgba?.Length ?? 0} gen={tex.Generation}");
         }
         public void TexParameter(int target, int pname, int param) { }
         public void TexParameterf(int target, int pname, float param) { }
@@ -438,7 +474,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             if (v.Length > 3) w = v[3];
         }
 
-        public void GenFramebuffers(uint n, out uint framebuffers) { framebuffers = 0; }
+        public void GenFramebuffers(uint n, out uint framebuffers) { framebuffers = _nextFbo++; }
         public void DeleteFramebuffers(uint n, uint* framebuffers) { }
         public void FramebufferTexture2D(int target, int attachment, int textarget, uint texture, int level) { }
         public void GenRenderbuffers(uint n, out uint renderbuffers) { renderbuffers = 0; }
