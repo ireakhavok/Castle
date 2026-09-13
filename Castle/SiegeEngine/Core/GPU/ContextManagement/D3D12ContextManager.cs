@@ -113,7 +113,6 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD
             };
             _swap = CreateSwapChain(_factory, _queue, ref scDesc);
-
             for (uint i = 0; i < FrameCount; i++)
                 _bb12[i] = GetSwapBuffer(_swap, i);
 
@@ -149,7 +148,11 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public override void Present()
         {
             if (_swap == nint.Zero || _ctx11 == nint.Zero) return;
+            SyncSwapchainSize();
+            if (_swap == nint.Zero || _ctx11 == nint.Zero) return;
             int idx = _frame % FrameCount;
+            if (_wrapped11[idx] == nint.Zero || _rtv11[idx] == nint.Zero)
+                return;
 
             Acquire(_wrapped11[idx]);
 
@@ -209,11 +212,12 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 if (FullyOffNdc(d.Verts, d.VertFloats)) continue;
                 int vpW = d.VpW > 0 ? d.VpW : _width;
                 int vpH = d.VpH > 0 ? d.VpH : _height;
+                if (vpW <= 0 || vpH <= 0) continue;
                 SetViewport(d.VpX, d.VpY, vpW, vpH);
-                if (d.ScissorOn && d.ScW > 0 && d.ScH > 0)
-                    SetScissor(d.ScX, d.ScY, d.ScW, d.ScH);
-                else
-                    SetScissor(0, 0, _width, _height);
+                bool clipOk = (d.ScissorOn && d.ScW > 0 && d.ScH > 0)
+                    ? SetScissor(d.ScX, d.ScY, d.ScW, d.ScH)
+                    : SetScissor(d.VpX, d.VpY, vpW, vpH);
+                if (!clipOk) continue;
                 if (d.UseTexture > 0.5f)
                 {
                     nint srv = ResolveSrv(d.Texture, d.UseTexture);
@@ -232,10 +236,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 {
                     BindSrv(_whiteSrv);
                 }
-                int verts = UploadVerts(d.Verts, d.VertFloats, d.IndexCount);
-                if (verts < 3) continue;
                 UploadConstants(d.R, d.G, d.B, d.A, d.UseTexture);
-                Draw(verts);
+                DrawVerts(d.Verts, d.VertFloats, d.IndexCount);
             }
         }
 
@@ -357,7 +359,7 @@ float4 ps(VSOut i) : SV_TARGET {
             Marshal.FreeHGlobal(p);
         }
 
-        void SetScissor(int glX, int glY, int glW, int glH)
+        bool SetScissor(int glX, int glY, int glW, int glH)
         {
             int w = Math.Max(glW, 1);
             int h = Math.Max(glH, 1);
@@ -369,14 +371,15 @@ float4 ps(VSOut i) : SV_TARGET {
             if (top < 0) top = 0;
             if (right > _width) right = _width;
             if (bottom > _height) bottom = _height;
-            if (right <= left) { left = 0; right = _width; }
-            if (bottom <= top) { top = 0; bottom = _height; }
+            if (right <= left || bottom <= top)
+                return false;
             var rc = new D3D11_RECT { Left = left, Top = top, Right = right, Bottom = bottom };
             nint p = Marshal.AllocHGlobal(Marshal.SizeOf<D3D11_RECT>());
             Marshal.StructureToPtr(rc, p, false);
             var fn = (SetScissorFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 45), typeof(SetScissorFn));
             fn(_ctx11, 1, p);
             Marshal.FreeHGlobal(p);
+            return true;
         }
 
         void SetTopology()
@@ -420,11 +423,11 @@ float4 ps(VSOut i) : SV_TARGET {
             Marshal.FreeHGlobal(box);
         }
 
-        int UploadVerts(float[] src, int floats, uint indexCount)
+        bool DrawVerts(float[] src, int floats, uint indexCount)
         {
             int vertFloats = Math.Min(floats, src.Length);
             vertFloats -= vertFloats % 4;
-            if (vertFloats < 12) return 0;
+            if (vertFloats < 12) return false;
             int verts = vertFloats / 4;
             float[] tri = src;
             int o = vertFloats;
@@ -445,10 +448,54 @@ float4 ps(VSOut i) : SV_TARGET {
             else if (verts % 3 != 0)
             {
                 int keep = verts - (verts % 3);
-                if (keep < 3) return 0;
+                if (keep < 3) return false;
                 o = keep * 4;
             }
-            MapWrite(_vb, tri, o * 4);
+            if (o < 12) return false;
+            const int vbBytes = 1024 * 1024;
+            int maxVerts = vbBytes / 16;
+            maxVerts -= maxVerts % 3;
+            int totalVerts = o / 4;
+            int start = 0;
+            while (start < totalVerts)
+            {
+                int n = totalVerts - start;
+                if (n > maxVerts) n = maxVerts;
+                n -= n % 3;
+                if (n < 3) break;
+                int floatOff = start * 4;
+                int floatCount = n * 4;
+                MapWriteOffset(tri, floatOff, floatCount);
+                BindVb();
+                Draw(n);
+                start += n;
+            }
+            return start >= 3;
+        }
+
+        void MapWriteOffset(float[] data, int floatOffset, int floatCount)
+        {
+            nint mappedBox = Marshal.AllocHGlobal(nint.Size * 2);
+            Marshal.WriteIntPtr(mappedBox, nint.Zero);
+            var map = (MapFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 14), typeof(MapFn));
+            int hr = map(_ctx11, _vb, 0, D3D11_MAP_WRITE_DISCARD, 0, mappedBox);
+            if (hr >= 0)
+            {
+                nint dest = Marshal.ReadIntPtr(mappedBox);
+                if (dest != nint.Zero)
+                {
+                    int n = Math.Min(floatCount, data.Length - floatOffset);
+                    if (n > 0)
+                        Marshal.Copy(data, floatOffset, dest, n);
+                }
+            }
+            var unmap = (UnmapFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 15), typeof(UnmapFn));
+            unmap(_ctx11, _vb, 0);
+            Marshal.FreeHGlobal(mappedBox);
+        }
+
+        void BindVb()
+        {
             nint vbBox = Marshal.AllocHGlobal(nint.Size);
             Marshal.WriteIntPtr(vbBox, _vb);
             nint strideBox = Marshal.AllocHGlobal(4);
@@ -458,7 +505,6 @@ float4 ps(VSOut i) : SV_TARGET {
             var fn = (SetVbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 18), typeof(SetVbFn));
             fn(_ctx11, 0, 1, vbBox, strideBox, offBox);
             Marshal.FreeHGlobal(vbBox); Marshal.FreeHGlobal(strideBox); Marshal.FreeHGlobal(offBox);
-            return o / 4;
         }
 
         void UploadConstants(float r, float g, float b, float a, float useTex)
@@ -490,6 +536,56 @@ float4 ps(VSOut i) : SV_TARGET {
             var unmap = (UnmapFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 15), typeof(UnmapFn));
             unmap(_ctx11, resource, 0);
             Marshal.FreeHGlobal(mappedBox);
+        }
+
+        void SyncSwapchainSize()
+        {
+            if (_controlContext == null || _window == nint.Zero) return;
+            _controlContext.GetWindowSize(_window, out int w, out int h);
+            w = Math.Max(1, w);
+            h = Math.Max(1, h);
+            if (w == _width && h == _height) return;
+            ResizeSwapchain(w, h);
+        }
+
+        void ResizeSwapchain(int w, int h)
+        {
+            try { WaitGpu(); } catch { }
+            if (_ctx11 != nint.Zero)
+            {
+                UnbindRtv();
+                Flush11();
+            }
+            for (int i = 0; i < FrameCount; i++)
+            {
+                if (_rtv11[i] != nint.Zero) { ComVtable.Release(_rtv11[i]); _rtv11[i] = nint.Zero; }
+                if (_wrapped11[i] != nint.Zero) { ComVtable.Release(_wrapped11[i]); _wrapped11[i] = nint.Zero; }
+                if (_bb12[i] != nint.Zero) { ComVtable.Release(_bb12[i]); _bb12[i] = nint.Zero; }
+            }
+            var resize = (ResizeBuffersFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_swap, 13), typeof(ResizeBuffersFn));
+            int hr = resize(_swap, (uint)FrameCount, (uint)w, (uint)h, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+            if (hr < 0)
+                return;
+            _width = w;
+            _height = h;
+            _frame = 0;
+            for (uint i = 0; i < FrameCount; i++)
+            {
+                _bb12[i] = GetSwapBuffer(_swap, i);
+                _wrapped11[i] = WrapResource(_bb12[i]);
+                _rtv11[i] = CreateRtv11(_wrapped11[i]);
+            }
+            if (_backend != null)
+            {
+                _backend.Viewport(0, 0, (uint)_width, (uint)_height);
+                _backend.Scissor(0, 0, (uint)_width, (uint)_height);
+            }
+        }
+
+        void UnbindRtv()
+        {
+            var om = (OmSetFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 33), typeof(OmSetFn));
+            om(_ctx11, 0, nint.Zero, nint.Zero);
         }
 
         void WaitGpu()
@@ -995,6 +1091,7 @@ float4 ps(VSOut i) : SV_TARGET {
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void SetSrvFn(nint self, uint start, uint num, nint srvs);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void SetVbFn(nint self, uint start, uint num, nint bufs, nint strides, nint offsets);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void DrawFn(nint self, uint count, uint start);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int ResizeBuffersFn(nint self, uint count, uint width, uint height, int format, uint flags);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int MapFn(nint self, nint res, uint sub, int map, int flags, nint mapped);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void UnmapFn(nint self, nint res, uint sub);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int SignalFn(nint self, nint fence, ulong value);
