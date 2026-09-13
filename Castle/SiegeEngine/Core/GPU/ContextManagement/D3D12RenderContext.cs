@@ -42,15 +42,19 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             public readonly float R, G, B, A;
             public readonly float UseTexture;
             public readonly uint Texture;
+            public readonly uint ColorTarget;
+            public readonly bool DepthOn;
+            public readonly bool UseSky;
             public readonly int VpX, VpY, VpW, VpH;
             public readonly int ScX, ScY, ScW, ScH;
             public readonly bool ScissorOn;
             public WorldDrawOp(uint vbo, uint ebo, int vtxStride, int uvOff, int idxStride, uint indexCount, float[] mvp,
-                float r, float g, float b, float a, float useTex, uint tex,
+                float r, float g, float b, float a, float useTex, uint tex, uint colorTarget, bool depthOn, bool useSky,
                 int vpX, int vpY, int vpW, int vpH, int scX, int scY, int scW, int scH, bool scissorOn)
             {
                 Vbo = vbo; Ebo = ebo; VtxStride = vtxStride; UvOff = uvOff; IdxStride = idxStride; IndexCount = indexCount; Mvp = mvp;
                 R = r; G = g; B = b; A = a; UseTexture = useTex; Texture = tex;
+                ColorTarget = colorTarget; DepthOn = depthOn; UseSky = useSky;
                 VpX = vpX; VpY = vpY; VpW = vpW; VpH = vpH;
                 ScX = scX; ScY = scY; ScW = scW; ScH = scH; ScissorOn = scissorOn;
             }
@@ -78,6 +82,9 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         readonly Dictionary<uint, VaoState> _vaos = new Dictionary<uint, VaoState>();
         readonly uint[] _texUnit = new uint[32];
         readonly Dictionary<uint, byte[]> _buffers = new Dictionary<uint, byte[]>();
+        readonly Dictionary<uint, int> _bufGen = new Dictionary<uint, int>();
+        readonly Dictionary<uint, uint> _fboColor = new Dictionary<uint, uint>();
+        readonly Dictionary<uint, float[]> _fboClear = new Dictionary<uint, float[]>();
         readonly Dictionary<uint, CpuTexture> _textures = new Dictionary<uint, CpuTexture>();
         readonly Dictionary<int, float[]> _uniforms = new Dictionary<int, float[]>();
         readonly Dictionary<string, int> _uniformNames = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -138,13 +145,39 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         public bool TryGetTexture(uint id, out CpuTexture tex) => _textures.TryGetValue(id, out tex);
         public bool TryGetBuffer(uint id, out byte[] bytes) => _buffers.TryGetValue(id, out bytes);
+        public int GetBufferGeneration(uint id) => _bufGen.TryGetValue(id, out int g) ? g : 0;
+        public uint GetFramebufferColor(uint fbo) => fbo != 0 && _fboColor.TryGetValue(fbo, out uint c) ? c : 0;
+        public bool TryTakeFramebufferClear(uint colorTex, out float r, out float g, out float b, out float a)
+        {
+            r = g = b = 0; a = 1;
+            if (colorTex == 0 || !_fboClear.TryGetValue(colorTex, out var c) || c == null || c.Length < 4)
+                return false;
+            r = c[0]; g = c[1]; b = c[2]; a = c[3];
+            _fboClear.Remove(colorTex);
+            return true;
+        }
+        public bool TextureHasCpuPixels(uint id)
+        {
+            if (!_textures.TryGetValue(id, out var tex) || tex == null || tex.Rgba == null)
+                return false;
+            int n = Math.Min(tex.Rgba.Length, 64);
+            for (int i = 0; i < n; i++)
+                if (tex.Rgba[i] != 0) return true;
+            return false;
+        }
 
         public void ClearColor(float red, float green, float blue, float alpha)
         {
             ClearR = red; ClearG = green; ClearB = blue; ClearA = alpha;
         }
 
-        public void Clear(int mask) { }
+        public void Clear(int mask)
+        {
+            if (_boundFbo == 0) return;
+            uint color = GetFramebufferColor(_boundFbo);
+            if (color == 0) return;
+            _fboClear[color] = new[] { ClearR, ClearG, ClearB, ClearA };
+        }
         public void Viewport(int x, int y, uint width, uint height)
         {
             ViewportX = x;
@@ -301,6 +334,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             var bytes = new byte[size];
             if (data != null && size > 0) Marshal.Copy((nint)data, bytes, 0, (int)size);
             _buffers[id] = bytes;
+            _bufGen.TryGetValue(id, out int gen);
+            _bufGen[id] = gen + 1;
         }
 
         public void BufferSubData(int target, int offset, uint size, void* data)
@@ -311,6 +346,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             int len = Math.Min((int)size, bytes.Length - offset);
             if (len <= 0) return;
             Marshal.Copy((nint)data, bytes, offset, len);
+            _bufGen.TryGetValue(id, out int gen);
+            _bufGen[id] = gen + 1;
         }
 
         public void EnableVertexAttribArray(uint index)
@@ -348,6 +385,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public void DeleteBuffers(uint n, uint* buffers) { }
         public void DrawArrays(int mode, int first, uint count)
         {
+            if (RecordFullscreenBlit(count))
+                return;
             RecordDraw(count, indexed: false);
         }
         public void DrawElements(int mode, uint count, int type, void* indices)
@@ -379,6 +418,20 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             return dst;
         }
 
+        bool RecordFullscreenBlit(uint count)
+        {
+            if (count != 3 || _boundFbo != 0) return false;
+            uint tex = _texUnit[0] != 0 ? _texUnit[0] : _boundTexture;
+            if (tex == 0) return false;
+            if (_boundArray != 0 && _buffers.TryGetValue(_boundArray, out var have) && have != null && have.Length >= 8)
+                return false;
+            float[] packed = { -1f, -1f, 0f, 1f,  3f, -1f, 2f, 1f,  -1f, 3f, 0f, -1f };
+            _draws.Add(new DrawOp(packed, packed.Length, 3, 1f, 1f, 1f, 1f, 1f, tex,
+                ViewportX, ViewportY, ViewportWidth, ViewportHeight,
+                _scX, _scY, _scW > 0 ? _scW : ViewportWidth, _scH > 0 ? _scH : ViewportHeight, _scissorOn));
+            return true;
+        }
+
         void RecordDraw(uint indexCount, bool indexed)
         {
             if (_boundVao != 0)
@@ -398,6 +451,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 RecordWorld(vb, stride, indexCount, indexed);
                 return;
             }
+            if (_boundFbo != 0)
+                return;
             // DrawArrays must not guess stride from allocated-bytes / draw-count.
             // TextRenderer keeps a large preallocated VBO and draws a short glyph run;
             // that guess lands in 8..32 and reads UV as XY — glyphs sliver across the screen.
@@ -454,7 +509,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             if (stride < 12) stride = 12;
             int uvOff = _uvOff;
             if (uvOff < 8)
-                uvOff = stride >= 32 ? 24 : (stride >= 28 ? 28 : -1);
+                uvOff = stride == 36 ? 28 : (stride >= 32 ? 24 : (stride >= 28 ? 28 : 12));
             GetMatrix("uModel", out var model);
             GetMatrix("uView", out var view);
             GetMatrix("uProjection", out var proj);
@@ -477,12 +532,22 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             }
             GetUniform4(Loc("uColor"), out float r, out float g, out float b, out float a);
             if (a <= 0f) { r = g = b = a = 1f; }
-            int vpX = _presentW > 0 ? _presentX : ViewportX;
-            int vpY = _presentW > 0 ? _presentY : ViewportY;
-            int vpW = _presentW > 0 ? _presentW : ViewportWidth;
-            int vpH = _presentH > 0 ? _presentH : ViewportHeight;
+            bool useSky = Loc("uOrientation") >= 0 && _uniforms.ContainsKey(Loc("uOrientation"));
+            uint colorTarget = GetFramebufferColor(_boundFbo);
+            int vpX, vpY, vpW, vpH;
+            if (colorTarget != 0)
+            {
+                vpX = ViewportX; vpY = ViewportY; vpW = ViewportWidth; vpH = ViewportHeight;
+            }
+            else
+            {
+                vpX = _presentW > 0 ? _presentX : ViewportX;
+                vpY = _presentW > 0 ? _presentY : ViewportY;
+                vpW = _presentW > 0 ? _presentW : ViewportWidth;
+                vpH = _presentH > 0 ? _presentH : ViewportHeight;
+            }
             _world.Add(new WorldDrawOp(_boundArray, _boundElement, stride, uvOff, idxStride, indexCount, mvp,
-                r, g, b, a, useTex, tex,
+                r, g, b, a, useTex, tex, colorTarget, _depthOn, useSky,
                 vpX, vpY, vpW, vpH,
                 vpX, vpY, vpW, vpH, true));
         }
@@ -725,7 +790,11 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         public void GenFramebuffers(uint n, out uint framebuffers) { framebuffers = _nextFbo++; }
         public void DeleteFramebuffers(uint n, uint* framebuffers) { }
-        public void FramebufferTexture2D(int target, int attachment, int textarget, uint texture, int level) { }
+        public void FramebufferTexture2D(int target, int attachment, int textarget, uint texture, int level)
+        {
+            if (_boundFbo == 0 || texture == 0) return;
+            _fboColor[_boundFbo] = texture;
+        }
         public void GenRenderbuffers(uint n, out uint renderbuffers) { renderbuffers = 0; }
         public void DeleteRenderbuffers(uint n, uint* renderbuffers) { }
         public void BindRenderbuffer(int target, uint renderbuffer) { }

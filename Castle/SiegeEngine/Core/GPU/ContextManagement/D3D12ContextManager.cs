@@ -90,6 +90,14 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         readonly Dictionary<uint, int> _gpuTexGen = new Dictionary<uint, int>();
         readonly Dictionary<uint, nint> _gpuBuf = new Dictionary<uint, nint>();
         readonly Dictionary<uint, int> _gpuBufBytes = new Dictionary<uint, int>();
+        readonly Dictionary<uint, int> _gpuBufGen = new Dictionary<uint, int>();
+        readonly Dictionary<uint, WorldRt> _worldRt = new Dictionary<uint, WorldRt>();
+        uint _boundWorldColor;
+        struct WorldRt
+        {
+            public nint Tex, Rtv, Srv, Depth, Dsv;
+            public int W, H;
+        }
 
         public override string BackendName => "DirectX12";
         public override bool DrawsUi => true;
@@ -254,15 +262,22 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             SetTopology();
             SetWorldShaders();
             BindSampler();
-            SetDepth(true);
+            _boundWorldColor = 0;
             foreach (var d in draws)
             {
                 if (d.IndexCount < 3 || d.Vbo == 0) continue;
                 int vpW = d.VpW > 0 ? d.VpW : _width;
                 int vpH = d.VpH > 0 ? d.VpH : _height;
                 if (vpW <= 0 || vpH <= 0) continue;
-                SetViewport(d.VpX, d.VpY, vpW, vpH);
-                if (!SetScissor(d.VpX, d.VpY, vpW, vpH)) continue;
+                BindWorldTarget(d.ColorTarget, vpW, vpH);
+                if (d.ColorTarget != 0)
+                    SetViewportLocal(d.VpX, d.VpY, vpW, vpH);
+                else
+                    SetViewport(d.VpX, d.VpY, vpW, vpH);
+                bool clipOk = d.ColorTarget != 0
+                    ? SetScissorLocal(d.VpX, d.VpY, vpW, vpH)
+                    : SetScissor(d.VpX, d.VpY, vpW, vpH);
+                if (!clipOk) continue;
                 nint vb = SyncGpuBuffer(d.Vbo, D3D11_BIND_VERTEX_BUFFER);
                 if (vb == nint.Zero) continue;
                 nint ib = d.Ebo != 0 ? SyncGpuBuffer(d.Ebo, D3D11_BIND_INDEX_BUFFER) : nint.Zero;
@@ -273,15 +288,17 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 }
                 else
                     BindSrv(_whiteSrv);
-                UploadWorldConstants(d.Mvp, d.R, d.G, d.B, d.A, d.UseTexture);
+                UploadWorldConstants(d.Mvp, d.R, d.G, d.B, d.A, d.UseTexture, d.UseSky);
                 BindWorldLayout(d.UvOff);
                 BindWorldMesh(vb, ib, d.VtxStride, d.IdxStride);
+                SetDepth(d.DepthOn);
                 if (ib != nint.Zero)
                     DrawIndexed((int)d.IndexCount);
                 else
                     Draw((int)d.IndexCount);
             }
             SetDepth(false);
+            BindSwapchainTarget();
         }
 
         void BuildWorldPipeline()
@@ -291,23 +308,27 @@ cbuffer CB : register(b0) {
     row_major float4x4 Mvp;
     float4 Color;
     float UseTexture;
-    float3 Pad;
+    float UseSky;
+    float2 Pad;
 };
 Texture2D Tex : register(t0);
 SamplerState Samp : register(s0);
-struct VSIn { float3 pos : POSITION; float2 uv : TEXCOORD; };
-struct VSOut { float4 pos : SV_POSITION; float2 uv : TEXCOORD; };
+struct VSIn { float3 pos : POSITION; float4 col : COLOR; float2 uv : TEXCOORD; };
+struct VSOut { float4 pos : SV_POSITION; float4 col : COLOR; float2 uv : TEXCOORD; };
 VSOut vs(VSIn i) {
     VSOut o;
     float4 c = mul(float4(i.pos, 1), Mvp);
-    c.z = c.z * 0.5 + c.w * 0.5;
+    if (UseSky > 0.5) c = float4(c.xy, c.w, c.w);
+    else c.z = c.z * 0.5 + c.w * 0.5;
     o.pos = c;
+    o.col = i.col;
     o.uv = i.uv;
     return o;
 }
 float4 ps(VSOut i) : SV_TARGET {
     float4 t = UseTexture > 0.5 ? Tex.Sample(Samp, i.uv) : float4(1,1,1,1);
-    return t * Color;
+    float4 vcol = i.col.a > 0.001 ? i.col : float4(1,1,1,1);
+    return t * Color * vcol;
 }";
             byte[] src = System.Text.Encoding.ASCII.GetBytes(hlsl);
             if (!Compile(src, "vs", "vs_5_0", out nint vsBlob) ||
@@ -317,12 +338,13 @@ float4 ps(VSOut i) : SV_TARGET {
             nint psPtr = BlobPtr(psBlob); ulong psLen = BlobLen(psBlob);
             _wvs = CreateVertexShader(vsPtr, vsLen);
             _wps = CreatePixelShader(psPtr, psLen);
-            var elems = new D3D11_INPUT_ELEMENT_DESC[2];
+            var elems = new D3D11_INPUT_ELEMENT_DESC[3];
             elems[0] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "POSITION", Format = DXGI_FORMAT_R32G32B32_FLOAT, AlignedByteOffset = 0 };
-            elems[1] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "TEXCOORD", Format = 16, AlignedByteOffset = 24 };
-            _wlayout = CreateInputLayout(elems, vsPtr, vsLen);
-            elems[1].AlignedByteOffset = 28;
+            elems[1] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "COLOR", Format = 2, AlignedByteOffset = 12 };
+            elems[2] = new D3D11_INPUT_ELEMENT_DESC { SemanticName = "TEXCOORD", Format = 16, AlignedByteOffset = 28 };
             _wlayout28 = CreateInputLayout(elems, vsPtr, vsLen);
+            elems[2].AlignedByteOffset = 24;
+            _wlayout = CreateInputLayout(elems, vsPtr, vsLen);
             ReleaseBlob(vsBlob); ReleaseBlob(psBlob);
             _wcb = CreateBuffer11(256, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
             _dssOn = CreateDepthState(true);
@@ -413,6 +435,7 @@ float4 ps(VSOut i) : SV_TARGET {
                     if (p != nint.Zero && n > 0) msg = Marshal.PtrToStringAnsi(p) ?? "";
                     ReleaseBlob(err);
                 }
+                Console.Error.WriteLine("D3DCompile failed (" + entry + " " + target + "): " + msg);
                 return false;
             }
             if (err != nint.Zero) ReleaseBlob(err);
@@ -422,6 +445,16 @@ float4 ps(VSOut i) : SV_TARGET {
         nint ResolveSrv(uint texId, float useTex)
         {
             if (useTex <= 0.5f || texId == 0) return _whiteSrv;
+            if (_worldRt.TryGetValue(texId, out var self) && self.Srv != nint.Zero)
+                return self.Srv;
+            if (!_backend.TextureHasCpuPixels(texId) && _backend.TryGetTexture(texId, out var empty) && empty != null)
+            {
+                foreach (var kv in _worldRt)
+                {
+                    if (kv.Value.Srv != nint.Zero && kv.Value.W == empty.Width && kv.Value.H == empty.Height)
+                        return kv.Value.Srv;
+                }
+            }
             if (!_backend.TryGetTexture(texId, out var cpu) || cpu == null || cpu.Rgba == null || cpu.Width <= 0) return nint.Zero;
             if (_gpuTex.TryGetValue(texId, out nint existing) && existing != nint.Zero
                 && _gpuTexGen.TryGetValue(texId, out int gen) && gen == cpu.Generation)
@@ -542,7 +575,7 @@ float4 ps(VSOut i) : SV_TARGET {
             fn(_ctx11, state, 0);
         }
 
-        void UploadWorldConstants(float[] mvp, float r, float g, float b, float a, float useTex)
+        void UploadWorldConstants(float[] mvp, float r, float g, float b, float a, float useTex, bool useSky)
         {
             var data = new float[24];
             if (mvp != null && mvp.Length >= 16)
@@ -553,6 +586,7 @@ float4 ps(VSOut i) : SV_TARGET {
             }
             data[16] = r; data[17] = g; data[18] = b; data[19] = a;
             data[20] = useTex;
+            data[21] = useSky ? 1f : 0f;
             MapWrite(_wcb, data, 96);
         }
 
@@ -564,17 +598,174 @@ float4 ps(VSOut i) : SV_TARGET {
             il(_ctx11, layout);
         }
 
+        void BindWorldTarget(uint colorTex, int vpW, int vpH)
+        {
+            if (colorTex == 0)
+            {
+                if (_boundWorldColor != 0)
+                    BindSwapchainTarget();
+                return;
+            }
+            if (!EnsureWorldRt(colorTex, vpW, vpH, out var rt) || rt.Rtv == nint.Zero)
+            {
+                BindSwapchainTarget();
+                return;
+            }
+            if (_boundWorldColor == colorTex) return;
+            nint rtvBox = Marshal.AllocHGlobal(nint.Size);
+            Marshal.WriteIntPtr(rtvBox, rt.Rtv);
+            var om = (OmSetFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 33), typeof(OmSetFn));
+            om(_ctx11, 1, rtvBox, rt.Dsv);
+            Marshal.FreeHGlobal(rtvBox);
+            if (_backend.TryTakeFramebufferClear(colorTex, out float cr, out float cg, out float cb, out float ca))
+            {
+                float[] color = { cr, cg, cb, ca };
+                nint colorPtr = Marshal.AllocHGlobal(16);
+                Marshal.Copy(color, 0, colorPtr, 4);
+                var clear = (ClearRtvFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 50), typeof(ClearRtvFn));
+                clear(_ctx11, rt.Rtv, colorPtr);
+                Marshal.FreeHGlobal(colorPtr);
+                if (rt.Dsv != nint.Zero)
+                {
+                    var cds = (ClearDsvFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 53), typeof(ClearDsvFn));
+                    cds(_ctx11, rt.Dsv, D3D11_CLEAR_DEPTH, 1f, 0);
+                }
+            }
+            _boundWorldColor = colorTex;
+        }
+
+        void BindSwapchainTarget()
+        {
+            int idx = _frame % FrameCount;
+            nint rtvBox = Marshal.AllocHGlobal(nint.Size);
+            Marshal.WriteIntPtr(rtvBox, _rtv11[idx]);
+            var om = (OmSetFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 33), typeof(OmSetFn));
+            om(_ctx11, 1, rtvBox, _dsv);
+            Marshal.FreeHGlobal(rtvBox);
+            _boundWorldColor = 0;
+        }
+
+        void SetViewportLocal(int x, int y, int w, int h)
+        {
+            int ww = Math.Max(w, 1);
+            int hh = Math.Max(h, 1);
+            var vp = new D3D11_VIEWPORT { TopLeftX = x, TopLeftY = y, Width = ww, Height = hh, MinDepth = 0, MaxDepth = 1 };
+            nint p = Marshal.AllocHGlobal(Marshal.SizeOf<D3D11_VIEWPORT>());
+            Marshal.StructureToPtr(vp, p, false);
+            var fn = (SetVpFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 44), typeof(SetVpFn));
+            fn(_ctx11, 1, p);
+            Marshal.FreeHGlobal(p);
+        }
+
+        bool SetScissorLocal(int x, int y, int w, int h)
+        {
+            int left = x;
+            int top = y;
+            int right = x + Math.Max(w, 1);
+            int bottom = y + Math.Max(h, 1);
+            if (right <= left || bottom <= top) return false;
+            var rc = new D3D11_RECT { Left = left, Top = top, Right = right, Bottom = bottom };
+            nint p = Marshal.AllocHGlobal(Marshal.SizeOf<D3D11_RECT>());
+            Marshal.StructureToPtr(rc, p, false);
+            var fn = (SetScissorFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 45), typeof(SetScissorFn));
+            fn(_ctx11, 1, p);
+            Marshal.FreeHGlobal(p);
+            return true;
+        }
+
+        bool EnsureWorldRt(uint colorTex, int vpW, int vpH, out WorldRt rt)
+        {
+            rt = default;
+            if (colorTex == 0) return false;
+            int w = vpW;
+            int h = vpH;
+            if (_backend.TryGetTexture(colorTex, out var cpu) && cpu != null && cpu.Width > 0 && cpu.Height > 0)
+            {
+                w = cpu.Width;
+                h = cpu.Height;
+            }
+            w = Math.Max(w, 1);
+            h = Math.Max(h, 1);
+            if (_worldRt.TryGetValue(colorTex, out rt) && rt.Tex != nint.Zero && rt.W == w && rt.H == h)
+                return true;
+            if (rt.Tex != nint.Zero)
+            {
+                ComVtable.Release(rt.Rtv); ComVtable.Release(rt.Srv); ComVtable.Release(rt.Tex);
+                ComVtable.Release(rt.Dsv); ComVtable.Release(rt.Depth);
+            }
+            var desc = new D3D11_TEXTURE2D_DESC
+            {
+                Width = (uint)w, Height = (uint)h, MipLevels = 1, ArraySize = 1,
+                Format = DXGI_FORMAT_R8G8B8A8_UNORM, SampleCount = 1, SampleQuality = 0,
+                Usage = D3D11_USAGE_DEFAULT,
+                BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE
+            };
+            nint tex = CreateTexture2DRaw(ref desc);
+            if (tex == nint.Zero) return false;
+            var depthDesc = new D3D11_TEXTURE2D_DESC
+            {
+                Width = (uint)w, Height = (uint)h, MipLevels = 1, ArraySize = 1,
+                Format = DXGI_FORMAT_D24_UNORM_S8_UINT, SampleCount = 1, SampleQuality = 0,
+                Usage = D3D11_USAGE_DEFAULT, BindFlags = D3D11_BIND_DEPTH_STENCIL
+            };
+            nint depth = CreateTexture2DRaw(ref depthDesc);
+            rt = new WorldRt
+            {
+                Tex = tex,
+                Rtv = CreateRtv11(tex),
+                Srv = CreateSrv(tex),
+                Depth = depth,
+                Dsv = CreateDsv(depth),
+                W = w,
+                H = h
+            };
+            _worldRt[colorTex] = rt;
+            float[] color = { _backend.ClearR, _backend.ClearG, _backend.ClearB, _backend.ClearA };
+            nint colorPtr = Marshal.AllocHGlobal(16);
+            Marshal.Copy(color, 0, colorPtr, 4);
+            var clear = (ClearRtvFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 50), typeof(ClearRtvFn));
+            clear(_ctx11, rt.Rtv, colorPtr);
+            Marshal.FreeHGlobal(colorPtr);
+            if (rt.Dsv != nint.Zero)
+            {
+                var cds = (ClearDsvFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 53), typeof(ClearDsvFn));
+                cds(_ctx11, rt.Dsv, D3D11_CLEAR_DEPTH, 1f, 0);
+            }
+            return rt.Rtv != nint.Zero;
+        }
+
+        void UpdateSubresource(nint resource, byte[] data)
+        {
+            if (resource == nint.Zero || data == null || data.Length == 0) return;
+            nint src = Marshal.AllocHGlobal(data.Length);
+            Marshal.Copy(data, 0, src, data.Length);
+            try
+            {
+                var fn = (UpdateSubFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 48), typeof(UpdateSubFn));
+                fn(_ctx11, resource, 0, nint.Zero, src, (uint)data.Length, 0);
+            }
+            finally { Marshal.FreeHGlobal(src); }
+        }
+
         nint SyncGpuBuffer(uint id, int bind)
         {
             if (id == 0 || !_backend.TryGetBuffer(id, out var bytes) || bytes == null || bytes.Length < 4)
                 return nint.Zero;
+            int gen = _backend.GetBufferGeneration(id);
             if (_gpuBuf.TryGetValue(id, out nint existing) && existing != nint.Zero
                 && _gpuBufBytes.TryGetValue(id, out int n) && n == bytes.Length)
+            {
+                if (_gpuBufGen.TryGetValue(id, out int have) && have == gen)
+                    return existing;
+                UpdateSubresource(existing, bytes);
+                _gpuBufGen[id] = gen;
                 return existing;
+            }
             if (existing != nint.Zero) ComVtable.Release(existing);
             nint buf = CreateBuffer11Init(bytes.Length, bind, bytes);
             _gpuBuf[id] = buf;
             _gpuBufBytes[id] = bytes.Length;
+            _gpuBufGen[id] = gen;
             return buf;
         }
 
@@ -930,6 +1121,15 @@ float4 ps(VSOut i) : SV_TARGET {
             ReleaseDepth();
             foreach (var kv in _gpuBuf) ComVtable.Release(kv.Value);
             _gpuBuf.Clear();
+            foreach (var kv in _worldRt)
+            {
+                ComVtable.Release(kv.Value.Rtv);
+                ComVtable.Release(kv.Value.Srv);
+                ComVtable.Release(kv.Value.Tex);
+                ComVtable.Release(kv.Value.Dsv);
+                ComVtable.Release(kv.Value.Depth);
+            }
+            _worldRt.Clear();
             ComVtable.Release(_sampler); ComVtable.Release(_cb); ComVtable.Release(_vb);
             ComVtable.Release(_layout); ComVtable.Release(_vs); ComVtable.Release(_ps);
             ComVtable.Release(_wcb); ComVtable.Release(_wvb);
@@ -1486,6 +1686,7 @@ float4 ps(VSOut i) : SV_TARGET {
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void DrawIndexedFn(nint self, uint count, uint startIndex, int baseVertex);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void SetIbFn(nint self, nint buffer, int format, uint offset);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int ResizeBuffersFn(nint self, uint count, uint width, uint height, int format, uint flags);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void UpdateSubFn(nint self, nint res, uint sub, nint box, nint src, uint rowPitch, uint depthPitch);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int MapFn(nint self, nint res, uint sub, int map, int flags, nint mapped);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void UnmapFn(nint self, nint res, uint sub);
         [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int SignalFn(nint self, nint fence, ulong value);
