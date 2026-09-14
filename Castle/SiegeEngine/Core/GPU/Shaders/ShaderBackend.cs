@@ -5,8 +5,9 @@ using SiegeEngine.Core.GPU.ContextManagement;
 namespace SiegeEngine.Core.GPU.Shaders
 {
     /// <summary>
-    /// Context-selected shader language. OpenGL keeps the GLSL constants on
-    /// the existing shader classes. DirectX sources live under Shaders/DirectX/.
+    /// Single place renderers ask for shader source. OpenGL constants stay on
+    /// the existing classes. DirectX constants live under Shaders/DirectX/.
+    /// ShaderProgram.Map uses the same table so GLSL constructors still work.
     /// </summary>
     public static class ShaderBackend
     {
@@ -28,13 +29,41 @@ namespace SiegeEngine.Core.GPU.Shaders
             return IsHlsl(ctx) ? hlsl : glsl;
         }
 
+        public static (string vs, string fs) Skybox(IRenderContext ctx)
+        {
+            return (
+                Vertex(ctx, OpenGL.SkyboxShader.VertexShaderSource, DirectX.SkyboxShader.VertexShaderSource),
+                Fragment(ctx, OpenGL.SkyboxShader.FragmentShaderSource, DirectX.SkyboxShader.FragmentShaderSource));
+        }
+
+        public static (string vs, string fs) Model(IRenderContext ctx)
+        {
+            return (
+                Vertex(ctx, OpenGL.ModelShader.VertexShaderSource, DirectX.ModelShader.VertexShaderSource),
+                Fragment(ctx, OpenGL.ModelShader.FragmentShaderSource, DirectX.ModelShader.FragmentShaderSource));
+        }
+
+        public static (string vs, string fs) Terrain(IRenderContext ctx)
+        {
+            // TerrainShader lives in the parent Shaders namespace (file is under OpenGL/).
+            return (
+                Vertex(ctx, TerrainShader.VertexShaderSource, DirectX.TerrainShader.VertexShaderSource),
+                Fragment(ctx, TerrainShader.FragmentShaderSource, DirectX.TerrainShader.FragmentShaderSource));
+        }
+
+        public static (string vs, string fs) Ui(IRenderContext ctx)
+        {
+            return (
+                Vertex(ctx, OpenGL.UiShader.VertexSource, DirectX.UiShader.VertexShaderSource),
+                Fragment(ctx, OpenGL.UiShader.FragmentSource, DirectX.UiShader.FragmentShaderSource));
+        }
+
         public static (string vs, string fs) Map(string vertexSource, string fragmentSource)
         {
             string vs = vertexSource ?? "";
             string fs = fragmentSource ?? "";
-            // Do NOT key off samplerCube — terrain and model GLSL both declare
-            // samplerCube for point-shadows. That remapped every world program
-            // onto the skybox clip.xyww path (streaks, no terrain/meshes).
+            if (AlreadyHlsl(vs) || AlreadyHlsl(fs))
+                return (vs, fs);
             if (vs.IndexOf("uLightVP", System.StringComparison.Ordinal) >= 0)
                 return (DirectX.ShadowShader.VertexShaderSource, DirectX.ShadowShader.FragmentShaderSource);
             if (fs.IndexOf("uSkybox", System.StringComparison.Ordinal) >= 0
@@ -62,7 +91,21 @@ namespace SiegeEngine.Core.GPU.Shaders
                 return (DirectX.SceneShader.VertexShaderSource, DirectX.SceneShader.FragmentShaderSource);
             if (vs.IndexOf("aTexCoord", System.StringComparison.Ordinal) >= 0 && fs.IndexOf("uTexture", System.StringComparison.Ordinal) >= 0)
                 return (DirectX.SpriteShader.VertexShaderSource, DirectX.SpriteShader.FragmentShaderSource);
+            if (fs.IndexOf("uInvResolution", System.StringComparison.Ordinal) >= 0
+                || vs.IndexOf("gl_VertexID", System.StringComparison.Ordinal) >= 0)
+                return (DirectX.AntiAliasingShaders.FullscreenVertex, DirectX.AntiAliasingShaders.CopyFragment);
+            if (fs.IndexOf("uFogDensity", System.StringComparison.Ordinal) >= 0
+                || fs.IndexOf("uFogColor", System.StringComparison.Ordinal) >= 0)
+                return (DirectX.FogShaders.FullscreenVertex, DirectX.FogShaders.VolumetricFragment);
             return (vs, fs);
+        }
+
+        static bool AlreadyHlsl(string src)
+        {
+            if (string.IsNullOrEmpty(src)) return false;
+            return src.IndexOf("SV_POSITION", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || src.IndexOf("SV_TARGET", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || src.IndexOf("register(b", System.StringComparison.Ordinal) >= 0;
         }
     }
 }

@@ -1,9 +1,8 @@
-﻿// Folder: SiegeEngine/Core/Rendering
+// Folder: SiegeEngine/Core/Rendering
 // File: SkyboxRenderer.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
-using SiegeEngine.Core.GPU.Shaders.OpenGL;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -24,7 +23,9 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void Initialize()
         {
-            _skyShader = new ShaderProgram(_renderContext, SkyboxShader.VertexShaderSource, SkyboxShader.FragmentShaderSource);
+            if (_skyShader != null) return;
+            var src = ShaderBackend.Skybox(_renderContext);
+            _skyShader = new ShaderProgram(_renderContext, src.vs, src.fs);
             _cubeBuffer = new VertexBuffer(_renderContext);
             BuildCubeMesh();
         }
@@ -54,6 +55,7 @@ namespace SiegeEngine.Core.GPU.Renderers
         public void LoadSkybox(SkyboxData skybox)
         {
             if (skybox == null || !skybox.Enabled) return;
+            if (_skyShader == null) Initialize();
             TextureLoader.DeleteTexture(_renderContext, ref _cubemapTexture);
             if (skybox.Type == "Cubemap" && !string.IsNullOrEmpty(skybox.CubemapPath))
             {
@@ -67,7 +69,11 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void RenderSkybox(SkyboxData skybox, Matrix4x4 view, Matrix4x4 projection)
         {
-            if (skybox == null || !skybox.Enabled || _cubemapTexture == 0) return;
+            if (skybox == null || !skybox.Enabled) return;
+            if (_skyShader == null || _cubeBuffer == null) Initialize();
+            if (_skyShader == null || _cubeBuffer == null) return;
+            if (_cubemapTexture == 0) LoadSkybox(skybox);
+            if (_cubemapTexture == 0) return;
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
             _skyShader.Use();

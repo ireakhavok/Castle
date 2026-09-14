@@ -349,7 +349,9 @@ namespace SiegeEngine.Core.GPU
                 {
                     fixed (byte* ptr = pixelData)
                     {
-                        renderContext.TexImage2D(renderContext.Enums.TextureCubeMapPositiveX, 0, renderContext.Enums.InternalRgba, (uint)bmp.Width, (uint)bmp.Height, 0, renderContext.Enums.PixelBgra, renderContext.Enums.UnsignedByte, ptr);
+                        int face0 = renderContext.Enums.TextureCubeMapPositiveX;
+                        for (int i = 0; i < 6; i++)
+                            renderContext.TexImage2D(face0 + i, 0, renderContext.Enums.InternalRgba, (uint)bmp.Width, (uint)bmp.Height, 0, renderContext.Enums.PixelBgra, renderContext.Enums.UnsignedByte, ptr);
                     }
                 }
             }

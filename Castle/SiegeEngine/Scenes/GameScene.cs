@@ -175,8 +175,9 @@ namespace SiegeEngine.Scenes
         protected virtual void RenderSkybox(Matrix4x4 view, Matrix4x4 projection)
         {
             SkyboxData data = _skyboxData ?? _sceneData?.Skybox;
-            if (_skyboxRenderer != null && data != null && data.Enabled)
-                _skyboxRenderer.RenderSkybox(data, view, projection);
+            if (data == null || !data.Enabled) return;
+            EnsureSkyboxRenderer();
+            _skyboxRenderer.RenderSkybox(data, view, projection);
         }
 
         protected virtual void RenderTerrain(Matrix4x4 view, Matrix4x4 projection)
