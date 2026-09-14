@@ -67,7 +67,7 @@ VSOut vs(VSIn i)
     c.z = c.z * 0.5 + c.w * 0.5;
     o.pos = c;
     o.vTexCoord = i.aTexCoord;
-    o.vNormal = nrm;
+    o.vNormal = mul(nrm, (float3x3)Model);
     o.vMaterialIndex = i.aMaterialIndex;
     o.vWorldPos = mul(skinned, Model).xyz;
     return o;
