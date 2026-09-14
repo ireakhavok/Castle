@@ -622,6 +622,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             GetUniform4(Loc("uColor"), out float r, out float g, out float b, out float a);
             if (a <= 0f) { r = g = b = a = 1f; }
             int kind = GetProgramKind(_boundProgram);
+            if (kind != 1 && tex != 0 && IsCubemap(tex)) kind = 1;
             bool useSky = kind == 1;
             float hasTex = GetUniform1(Loc("uHasTexture"));
             if (hasTex == 0 && useTex > 0.5f) hasTex = 1f;
@@ -1180,15 +1181,14 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public void FramebufferTexture2D(int target, int attachment, int textarget, uint texture, int level)
         {
             if (_boundFbo == 0 || texture == 0) return;
+            if (_fboColor != null && attachment != Enums.DepthAttachment)
+                _fboColor[_boundFbo] = texture;
             if (attachment == Enums.DepthAttachment)
             {
                 if (_fboDepth != null) _fboDepth[_boundFbo] = texture;
                 if (_fboColor != null && !_fboColor.ContainsKey(_boundFbo))
                     _fboColor[_boundFbo] = texture;
-                return;
             }
-            if (attachment == Enums.ColorAttachment0 && _fboColor != null)
-                _fboColor[_boundFbo] = texture;
         }
         public void GenRenderbuffers(uint n, out uint renderbuffers) { renderbuffers = 0; }
         public void DeleteRenderbuffers(uint n, uint* renderbuffers) { }

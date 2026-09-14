@@ -87,7 +87,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         nint _shVs, _shPs, _shLayout, _shCb, _boneCb;
         bool _skyReady, _mdlReady, _scnReady, _shReady;
         const int D3D11_RESOURCE_MISC_TEXTURECUBE = 4;
-        const int D3D11_SRV_DIMENSION_TEXTURECUBE = 5;
+        const int D3D11_SRV_DIMENSION_TEXTURECUBE = 9;
         ulong _fenceValue;
         nint _fenceEvent;
         int _frame;
@@ -102,6 +102,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         readonly Dictionary<uint, int> _gpuBufGen = new Dictionary<uint, int>();
         readonly Dictionary<uint, WorldRt> _worldRt = new Dictionary<uint, WorldRt>();
         uint _boundWorldColor;
+        uint _lastWorldColor;
         struct WorldRt
         {
             public nint Tex, Rtv, Srv, Depth, Dsv;
@@ -295,19 +296,47 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 int vpH = d.VpH > 0 ? d.VpH : _height;
                 if (vpW <= 0 || vpH <= 0) continue;
                 uint target = d.ColorTarget;
-                if (target == 0 && (d.Kind == 1 || d.UseSky))
+                bool skyDraw = d.Kind == 1 || d.UseSky;
+                if (skyDraw)
                 {
-                    for (int i = 0; i < ordered.Length; i++)
-                        if (ordered[i].ColorTarget != 0) { target = ordered[i].ColorTarget; break; }
+                    if (_lastWorldColor != 0)
+                        target = _lastWorldColor;
+                    else
+                    {
+                        target = 0;
+                        for (int i = 0; i < ordered.Length; i++)
+                        {
+                            var other = ordered[i];
+                            if (other.Kind == 5) continue;
+                            if (other.ColorTarget == 0) continue;
+                            int ow = other.VpW > 0 ? other.VpW : 0;
+                            int oh = other.VpH > 0 ? other.VpH : 0;
+                            if (ow == oh && ow >= 256) continue;
+                            target = other.ColorTarget;
+                            break;
+                        }
+                    }
                 }
+                else if (target != 0 && !(vpW == vpH && vpW >= 256))
+                    _lastWorldColor = target;
                 BindWorldTarget(target, vpW, vpH);
+                int sx = d.VpX, sy = d.VpY, sw = vpW, sh = vpH;
+                if (skyDraw && target != 0)
+                {
+                    sx = 0; sy = 0; sw = vpW; sh = vpH;
+                    if (_worldRt.TryGetValue(target, out var skyRt) && skyRt.W > 0 && skyRt.H > 0)
+                    {
+                        sw = Math.Max(skyRt.W, 1);
+                        sh = Math.Max(skyRt.H, 1);
+                    }
+                }
                 if (target != 0)
-                    SetViewportLocal(d.VpX, d.VpY, vpW, vpH);
+                    SetViewportLocal(sx, sy, sw, sh);
                 else
-                    SetViewport(d.VpX, d.VpY, vpW, vpH);
+                    SetViewport(sx, sy, sw, sh);
                 bool clipOk = target != 0
-                    ? SetScissorLocal(d.VpX, d.VpY, vpW, vpH)
-                    : SetScissor(d.VpX, d.VpY, vpW, vpH);
+                    ? SetScissorLocal(sx, sy, sw, sh)
+                    : SetScissor(sx, sy, sw, sh);
                 if (!clipOk) continue;
                 nint vb = SyncGpuBuffer(d.Vbo, D3D11_BIND_VERTEX_BUFFER);
                 if (vb == nint.Zero) continue;
@@ -326,8 +355,15 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 }
                 else if (kind == 1 && _skyReady)
                 {
+                    SetDepth(false);
                     SetSkyShaders();
                     uint skyTex = d.Texture != 0 ? d.Texture : _backend.FirstCubemap();
+                    if (skyTex != 0 && _backend.TryGetTexture(skyTex, out var skyCpu) && skyCpu != null)
+                    {
+                        skyCpu.IsCubemap = true;
+                        if (skyCpu.Faces == null && skyCpu.Rgba != null)
+                            skyCpu.Faces = new[] { skyCpu.Rgba, skyCpu.Rgba, skyCpu.Rgba, skyCpu.Rgba, skyCpu.Rgba, skyCpu.Rgba };
+                    }
                     nint srv = ResolveSrv(skyTex, 1f);
                     BindSrv(srv != nint.Zero ? srv : _whiteSrv);
                     UploadSkyConstants(d.View, d.Projection, d.Orientation, d.VerticalOffset);
@@ -390,6 +426,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             SetDepth(false);
             BindSwapchainTarget();
         }
+
 
         void BuildWorldPipeline()
         {

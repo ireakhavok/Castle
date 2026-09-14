@@ -35,7 +35,8 @@ VSOut vs(VSIn i)
     view[3][2] = 0;
     float4 viewPos = mul(float4(pos, 1.0), view);
     float4 clip = mul(viewPos, uProjection);
-    o.pos = float4(clip.xy, clip.w, clip.w);
+    // GL writes clip.xyww (ndc z = 1). D3D depth-clips z >= w, so pull in one ulp.
+    o.pos = float4(clip.xy, clip.w * 0.999f, clip.w);
     o.vTexCoord = mul(i.aPosition, (float3x3)uOrientation);
     return o;
 }";
