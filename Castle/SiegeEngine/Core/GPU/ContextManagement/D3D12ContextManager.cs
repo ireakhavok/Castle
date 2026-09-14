@@ -82,7 +82,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         int _wvbOffset;
         bool _worldReady;
         nint _skyVs, _skyPs, _skyLayout, _skyCb;
-        nint _mdlVs, _mdlPs, _mdlLayout, _mdlCb;
+        nint _mdlVs, _mdlPs, _mdlLayout, _mdlCb, _casCb;
         nint _scnVs, _scnPs, _scnLayout, _scnCb;
         nint _shVs, _shPs, _shLayout, _shCb, _boneCb;
         bool _skyReady, _mdlReady, _scnReady, _shReady;
@@ -327,7 +327,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 else if (kind == 1 && _skyReady)
                 {
                     SetSkyShaders();
-                    nint srv = ResolveSrv(d.Texture, 1f);
+                    uint skyTex = d.Texture != 0 ? d.Texture : _backend.FirstCubemap();
+                    nint srv = ResolveSrv(skyTex, 1f);
                     BindSrv(srv != nint.Zero ? srv : _whiteSrv);
                     UploadSkyConstants(d.View, d.Projection, d.Orientation, d.VerticalOffset);
                     BindWorldMesh(vb, ib, d.VtxStride, d.IdxStride);
@@ -485,6 +486,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             _mdlLayout = CreateInputLayout(elems, vsPtr, vsLen);
             ReleaseBlob(vsBlob); ReleaseBlob(psBlob);
             _mdlCb = CreateBuffer11(512, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
+            _casCb = CreateBuffer11(272, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
             _mdlReady = _mdlVs != nint.Zero && _mdlPs != nint.Zero && _mdlLayout != nint.Zero && _mdlCb != nint.Zero;
             _boneCb = CreateBuffer11(64 * 64, 4, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
         }
@@ -776,6 +778,35 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             var psCb = (SetCbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 16), typeof(SetCbFn));
             psCb(_ctx11, 0, 1, box);
             Marshal.FreeHGlobal(box);
+            BindCascadeCb();
+        }
+
+
+        void BindCascadeCb()
+        {
+            if (_casCb == nint.Zero) return;
+            UploadCascadeConstants();
+            nint box = Marshal.AllocHGlobal(nint.Size);
+            Marshal.WriteIntPtr(box, _casCb);
+            var vsCb = (SetCbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 7), typeof(SetCbFn));
+            vsCb(_ctx11, 2, 1, box);
+            var psCb = (SetCbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 16), typeof(SetCbFn));
+            psCb(_ctx11, 2, 1, box);
+            Marshal.FreeHGlobal(box);
+        }
+
+        void UploadCascadeConstants()
+        {
+            var data = new float[68];
+            if (_backend.FrameCascadeVP != null)
+                Array.Copy(_backend.FrameCascadeVP, data, Math.Min(_backend.FrameCascadeVP.Length, 64));
+            else
+            {
+                for (int i = 0; i < 4; i++)
+                    data[i * 16] = data[i * 16 + 5] = data[i * 16 + 10] = data[i * 16 + 15] = 1f;
+            }
+            data[64] = _backend.FrameCascadeCount > 0.5f ? _backend.FrameCascadeCount : 4f;
+            MapWrite(_casCb, data, 272);
         }
 
         void SetSceneShaders()
@@ -979,6 +1010,7 @@ void SetWorldShaders()
             var pcb = (SetCbFn)Marshal.GetDelegateForFunctionPointer(ComVtable.Slot(_ctx11, 16), typeof(SetCbFn));
             pcb(_ctx11, 0, 1, box);
             Marshal.FreeHGlobal(box);
+            BindCascadeCb();
         }
 
         void SetDepth(bool on)

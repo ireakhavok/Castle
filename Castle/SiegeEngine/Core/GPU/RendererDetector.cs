@@ -46,12 +46,9 @@ namespace SiegeEngine.Core.GPU
         public static List<string> DetectAvailable()
         {
             List<string> available = new List<string>();
-
-            // Detect OpenGL
-            if (IsOpenGLSupported())
-            {
-                available.Add("OpenGL");
-            }
+            available.Add("OpenGL");
+            // Detect OpenGL presence for logging; list always includes it.
+            IsOpenGLSupported();
 
             // Detect Vulkan
             try

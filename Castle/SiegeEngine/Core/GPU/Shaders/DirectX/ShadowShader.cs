@@ -17,9 +17,8 @@ VSOut vs(VSIn i)
     VSOut o;
     float4 world = mul(float4(i.aPosition, 1.0), uModel);
     float4 clip = mul(world, uLightVP);
+    clip.y = -clip.y;
     float ndcZ = clip.z / max(clip.w, 1e-5);
-    // LightVP is GL-style Z in -1..1. Store 0..1 like GL gl_FragDepth.
-    // Remap SV_POSITION.z to 0..w so DX does not clip the near half of the volume.
     float z01 = saturate(ndcZ * 0.5 + 0.5);
     o.depth = z01;
     clip.z = z01 * clip.w;

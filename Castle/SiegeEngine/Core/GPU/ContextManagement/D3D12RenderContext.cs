@@ -127,6 +127,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         readonly Dictionary<uint, byte[]> _buffers = new Dictionary<uint, byte[]>();
         readonly Dictionary<uint, int> _bufGen = new Dictionary<uint, int>();
         readonly Dictionary<uint, uint> _fboColor = new Dictionary<uint, uint>();
+        readonly Dictionary<uint, uint> _fboDepth = new Dictionary<uint, uint>();
         readonly Dictionary<uint, float[]> _fboClear = new Dictionary<uint, float[]>();
         readonly Dictionary<uint, CpuTexture> _textures = new Dictionary<uint, CpuTexture>();
         readonly Dictionary<uint, Dictionary<int, float[]>> _programUniforms = new Dictionary<uint, Dictionary<int, float[]>>();
@@ -168,6 +169,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public uint FrameShadowAtlas;
         public float FrameShadowsEnabled;
         public float[] FrameCascadeVP;
+        public float FrameCascadeCount;
         public float[] FrameBones;
         public float FrameHasBones;
         public int ViewportX { get; private set; }
@@ -203,9 +205,19 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         public bool TryGetTexture(uint id, out CpuTexture tex) => _textures.TryGetValue(id, out tex);
         public bool IsCubemap(uint id) => _textures.TryGetValue(id, out var t) && t != null && t.IsCubemap;
+        public uint FirstCubemap()
+        {
+            foreach (var kv in _textures)
+            {
+                if (kv.Value != null && kv.Value.IsCubemap && kv.Key != 0)
+                    return kv.Key;
+            }
+            return 0;
+        }
         public bool TryGetBuffer(uint id, out byte[] bytes) => _buffers.TryGetValue(id, out bytes);
         public int GetBufferGeneration(uint id) => _bufGen.TryGetValue(id, out int g) ? g : 0;
-        public uint GetFramebufferColor(uint fbo) => fbo != 0 && _fboColor.TryGetValue(fbo, out uint c) ? c : 0;
+        public uint GetFramebufferColor(uint fbo) => fbo != 0 && _fboColor != null && _fboColor.TryGetValue(fbo, out uint c) ? c : 0;
+        public uint GetFramebufferDepth(uint fbo) => fbo != 0 && _fboDepth != null && _fboDepth.TryGetValue(fbo, out uint d) ? d : 0;
         public bool TryTakeFramebufferClear(uint colorTex, out float r, out float g, out float b, out float a)
         {
             r = g = b = 0; a = 1;
@@ -622,6 +634,12 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             GetUniform3(Loc("uAmbientColor"), out float acx, out float acy, out float acz);
             GetMatrix("uOrientation", out var orient);
             uint colorTarget = GetFramebufferColor(_boundFbo);
+            int kindNow = GetProgramKind(_boundProgram);
+            if (kindNow == 5 && colorTarget == 0)
+            {
+                uint depthTex = GetFramebufferDepth(_boundFbo);
+                if (depthTex != 0) colorTarget = depthTex;
+            }
             int vpX, vpY, vpW, vpH;
             if (colorTarget != 0)
             {
@@ -646,10 +664,26 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             if (_texUnit.Length > 12 && _texUnit[12] != 0)
                 FrameShadowAtlas = _texUnit[12];
             if (GetUniform1(Loc("uShadowsEnabled")) > 0.5f) FrameShadowsEnabled = 1f;
-            GetMatrix("uCascadeVP[0]", out var cvp);
-            if (cvp == System.Numerics.Matrix4x4.Identity)
-                GetMatrix("uCascadeVP", out cvp);
-            FrameCascadeVP = PackMatrix(cvp);
+            if (FrameCascadeVP == null || FrameCascadeVP.Length < 64)
+                FrameCascadeVP = new float[64];
+            bool anyCascade = false;
+            var packedCascades = new float[64];
+            for (int ci = 0; ci < 4; ci++)
+            {
+                GetMatrix("uCascadeVP[" + ci + "]", out var cvi);
+                if (ci == 0 && cvi == System.Numerics.Matrix4x4.Identity)
+                    GetMatrix("uCascadeVP", out cvi);
+                var pm = PackMatrix(cvi);
+                Array.Copy(pm, 0, packedCascades, ci * 16, 16);
+                if (cvi != System.Numerics.Matrix4x4.Identity)
+                    anyCascade = true;
+            }
+            if (anyCascade)
+            {
+                FrameCascadeVP = packedCascades;
+                float cc = GetUniform1(Loc("uCascadeCount"));
+                FrameCascadeCount = cc > 0.5f ? cc : 4f;
+            }
             FrameHasBones = GetUniform1(Loc("uHasBones"));
             if (FrameHasBones > 0.5f)
             {
@@ -1116,8 +1150,9 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public void Uniform4(int location, float x, float y, float z, float w) { ActiveUniforms()[location] = new[] { x, y, z, w }; }
         public void UniformMatrix4(int location, uint count, bool transpose, float* value)
         {
-            var m = new float[16];
-            if (value != null) Marshal.Copy((nint)value, m, 0, 16);
+            int n = (int)(count <= 0 ? 16 : count * 16);
+            var m = new float[n];
+            if (value != null) Marshal.Copy((nint)value, m, 0, n);
             ActiveUniforms()[location] = m;
         }
         public void UniformMatrix3(int location, uint count, bool transpose, float* value) { }
@@ -1145,7 +1180,15 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public void FramebufferTexture2D(int target, int attachment, int textarget, uint texture, int level)
         {
             if (_boundFbo == 0 || texture == 0) return;
-            _fboColor[_boundFbo] = texture;
+            if (attachment == Enums.DepthAttachment)
+            {
+                if (_fboDepth != null) _fboDepth[_boundFbo] = texture;
+                if (_fboColor != null && !_fboColor.ContainsKey(_boundFbo))
+                    _fboColor[_boundFbo] = texture;
+                return;
+            }
+            if (attachment == Enums.ColorAttachment0 && _fboColor != null)
+                _fboColor[_boundFbo] = texture;
         }
         public void GenRenderbuffers(uint n, out uint renderbuffers) { renderbuffers = 0; }
         public void DeleteRenderbuffers(uint n, uint* renderbuffers) { }

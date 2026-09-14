@@ -102,20 +102,43 @@ struct VSOut
     float vMaterialIndex : TEXCOORD1;
     float3 vWorldPos : TEXCOORD2;
 };
-float SampleSunShadow(float3 worldPos)
+cbuffer Cascades : register(b2)
 {
-    if (ShadowsEnabled < 0.5) return 1.0;
-    float4 clip = mul(float4(worldPos, 1.0), CascadeVP);
+    row_major float4x4 uCascadeVP4[4];
+    float uCascadeCount;
+    float3 PadCas;
+};
+float SampleCascadeAt(int cascade, float3 worldPos)
+{
+    float4 clip = mul(float4(worldPos, 1.0), uCascadeVP4[cascade]);
     float3 proj = clip.xyz / max(clip.w, 0.0001);
     proj = proj * 0.5 + 0.5;
-    if (proj.x < 0.0 || proj.x > 1.0 || proj.y < 0.0 || proj.y > 1.0) return 1.0;
-    if (proj.z < 0.0 || proj.z > 1.0) return 1.0;
-    float2 atlasUv = proj.xy * 0.5;
-    atlasUv = clamp(atlasUv, 0.001, 0.499);
+    if (proj.x < 0.0 || proj.x > 1.0 || proj.y < 0.0 || proj.y > 1.0)
+        return -1.0;
+    if (proj.z < 0.0 || proj.z > 1.0)
+        return -1.0;
+    float cell = 0.5;
+    float2 origin = float2(float(cascade - (cascade / 2) * 2), float(cascade / 2)) * cell;
+    float2 atlasUv = origin + proj.xy * cell;
+    atlasUv = clamp(atlasUv, origin + float2(0.001, 0.001), origin + float2(cell - 0.001, cell - 0.001));
     float stored = uShadowAtlas.Sample(Samp, atlasUv).r;
     float dz = max(proj.z - stored, 0.0);
     float vis = exp(-40.0 * dz);
     return lerp(0.08, 1.0, saturate(vis));
+}
+float SampleSunShadow(float3 worldPos)
+{
+    if (ShadowsEnabled < 0.5) return 1.0;
+    int n = (int)uCascadeCount;
+    if (n < 1) n = 1;
+    if (n > 4) n = 4;
+    for (int i = 0; i < 4; i++)
+    {
+        if (i >= n) break;
+        float s = SampleCascadeAt(i, worldPos);
+        if (s >= 0.0) return s;
+    }
+    return 1.0;
 }
 float4 ps(VSOut i) : SV_TARGET
 {
