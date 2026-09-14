@@ -134,7 +134,7 @@ float4 ps(VSOut i) : SV_TARGET
     float3 ldir = LightDir.xyz;
     if (dot(ldir, ldir) < 0.001) ldir = float3(-0.85, 0.10, -0.52);
     float3 lightDir = normalize(-ldir);
-    float diff = abs(dot(n, lightDir));
+    float diff = max(dot(n, lightDir), 0.0);
     float amb = AmbientStrength > 0.0 ? AmbientStrength : 0.16;
     float3 ambientCol = AmbientColor.xyz;
     if (dot(ambientCol, ambientCol) < 0.001) ambientCol = float3(0.45, 0.45, 0.48);
