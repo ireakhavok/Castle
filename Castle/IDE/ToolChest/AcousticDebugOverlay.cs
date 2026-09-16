@@ -37,7 +37,7 @@ namespace ToolChest
         private Vector3 _lastPerceivedListener;
         private readonly List<Vector3> _lastPerceivedSources = new List<Vector3>();
         private readonly List<(bool losClear, Vector3 perceivedDir, float intensity, float pathLength)> _cachedPerceived = new List<(bool, Vector3, float, float)>();
-        private const float PerceivedMoveThreshold = 0.75f;
+        private const float PerceivedMoveThreshold = 0.25f;
         private const float SpeedOfSound = 34300f;
         private AcousticRayTracer _sharedTracer;
         private AcousticGeometry _sharedGeometry;
@@ -110,45 +110,35 @@ namespace ToolChest
                 _geometryDirty = true;
                 _hadHeightProvider = true;
             }
-            float transformSig = entities.Count;
-            for (int i = 0; i < entities.Count; i++)
-            {
-                var physics = entities[i]?.GetComponent<PhysicsComponent>();
-                if (physics == null) continue;
-                transformSig += physics.Position.X + physics.Position.Y * 0.13f + physics.Position.Z * 0.37f
-                    + physics.Rotation.X + physics.Rotation.Y * 0.17f + physics.Rotation.Z * 0.29f + physics.Rotation.W;
-            }
-            if (transformSig != _lastTransformSig)
-            {
-                _geometryDirty = true;
-                _lastTransformSig = transformSig;
-                _lastPerceivedVersion = uint.MaxValue;
-            }
             if (entities.Count != _lastEntityCount)
             {
                 _geometryDirty = true;
                 _lastEntityCount = entities.Count;
             }
+            bool geometryJustRebuilt = false;
             if (_geometryDirty)
             {
                 _geometry.Rebuild(entities, height);
                 _geometryDirty = false;
-                _lastPaintedVisibilityVersion = uint.MaxValue;
+                geometryJustRebuilt = true;
+                _surfaceVerts.Clear();
+                _surfaceIndices.Clear();
                 _lastPerceivedVersion = uint.MaxValue;
                 _awaitingRaster = true;
                 _rasterVersionAtEnable = uint.MaxValue;
             }
             Vector3 listener = _getListenerPos();
             var sources = _getSourcePositions() ?? Array.Empty<Vector3>();
-            AcousticRayTracer activeTracer = HasSharedProvider ? _sharedTracer : _tracer;
-            AcousticGeometry activeGeom = HasSharedProvider && _sharedGeometry != null ? _sharedGeometry : _geometry;
+            // Overlay paints from its own tracer so a dragged editor listener
+            // rebuilds the intersection without touching AudioSystem.
+            AcousticRayTracer activeTracer = _tracer;
+            AcousticGeometry activeGeom = _geometry;
             if (activeTracer == null || activeGeom == null || activeGeom.TriangleCount <= 0)
                 return;
-            if (!HasSharedProvider)
-            {
-                activeTracer.KickDebugBidirectional(listener, sources);
-                activeTracer.TryCompletePendingRaster();
-            }
+            activeTracer.KickDebugBidirectional(listener, sources);
+            activeTracer.TryCompletePendingRaster();
+            if (geometryJustRebuilt)
+                _lastPaintedVisibilityVersion = activeTracer.VisibilityVersion;
             if (_rasterVersionAtEnable == uint.MaxValue)
                 _rasterVersionAtEnable = activeTracer.VisibilityVersion;
             if (activeTracer.VisibilityVersion != _rasterVersionAtEnable)
@@ -186,7 +176,7 @@ namespace ToolChest
             }
             RebuildLineMesh(listener, sources);
 
-            if (_surfaceBuffer != null)
+            if (_surfaceBuffer != null && _surfaceVerts.Count > 0)
                 _surfaceRenderer.DrawTriangles(_surfaceBuffer, view, projection);
 
             if (_lineBuffer != null && _lineIndices.Count > 0)

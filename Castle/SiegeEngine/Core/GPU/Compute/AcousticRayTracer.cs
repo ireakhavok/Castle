@@ -190,7 +190,31 @@ namespace SiegeEngine.Core.GPU.Compute
                 _debugSegments.Clear();
                 return;
             }
-            if (_pendingRaster) return;
+            if (_pendingRaster)
+            {
+                bool pendingStale =
+                    Vector3.DistanceSquared(listenerPos, _pendingListener) > VisibilityMoveThreshold * VisibilityMoveThreshold ||
+                    Vector3.DistanceSquared(primarySource, _pendingSource) > VisibilityMoveThreshold * VisibilityMoveThreshold ||
+                    _geometry.GeometryVersion != _pendingGeometryVersion;
+                if (!pendingStale)
+                    return;
+                if (_fencePending && _pendingFence != 0)
+                {
+                    _renderContext.ClientWaitSync(_pendingFence, 0, 0);
+                    _renderContext.DeleteSync(_pendingFence);
+                    _pendingFence = 0;
+                    _fencePending = false;
+                }
+                _pendingListener = listenerPos;
+                _pendingSource = primarySource;
+                _pendingGeometryVersion = _geometry.GeometryVersion;
+                _pendingFace = 0;
+                int restartWrite = _fsWrite;
+                _listenerVisible[restartWrite].Clear();
+                _sourceVisible[restartWrite].Clear();
+                _mutual[restartWrite].Clear();
+                return;
+            }
             int read = _fsRead;
             bool needRecompute =
                 !_fsValid[read] ||
