@@ -315,6 +315,11 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             if (_disposed || _geometry.TriangleCount <= 0 || !_fboReady)
                 return false;
+            _renderContext.GetInteger(_renderContext.Enums.FramebufferBinding, out int savedFbo);
+            int* savedVp = stackalloc int[4];
+            _renderContext.GetInteger(_renderContext.Enums.Viewport, savedVp);
+            int* savedSc = stackalloc int[4];
+            _renderContext.GetInteger(_renderContext.Enums.ScissorBox, savedSc);
             int guard = 0;
             while (_pendingRaster && guard++ < 16)
             {
@@ -323,6 +328,9 @@ namespace SiegeEngine.Core.GPU.Compute
                 if (!TryCompletePendingRaster() && _pendingRaster && !(_fencePending && _pendingFence != 0))
                     break;
             }
+            _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, (uint)savedFbo);
+            _renderContext.Viewport(savedVp[0], savedVp[1], (uint)savedVp[2], (uint)savedVp[3]);
+            _renderContext.Scissor(savedSc[0], savedSc[1], (uint)savedSc[2], (uint)savedSc[3]);
             return !_pendingRaster;
         }
         private bool AdvancePrimary()

@@ -142,12 +142,28 @@ namespace ToolChest
             AcousticGeometry activeGeom = _geometry;
             if (activeTracer == null || activeGeom == null || activeGeom.TriangleCount <= 0)
                 return;
+            // IssueRasterFace binds the 512 ID FBO and Viewport(0,0,512,512),
+            // then restores FBO 0 + ViewportWidth/Height (window). That is
+            // not the scene-editor panel target. Save the real draw target
+            // and put it back before the overlay draws, or the meetings flash
+            // to one side for a frame while you drag.
+            _renderContext.GetInteger(_renderContext.Enums.FramebufferBinding, out int savedFbo);
+            int* savedVp = stackalloc int[4];
+            _renderContext.GetInteger(_renderContext.Enums.Viewport, savedVp);
+            int* savedSc = stackalloc int[4];
+            _renderContext.GetInteger(_renderContext.Enums.ScissorBox, savedSc);
+
             activeTracer.KickDebugBidirectional(listener, sources);
             activeTracer.FlushPendingRaster();
             listener = _getListenerPos();
             sources = _getSourcePositions() ?? Array.Empty<Vector3>();
             activeTracer.KickDebugBidirectional(listener, sources);
             activeTracer.FlushPendingRaster();
+
+            _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, (uint)savedFbo);
+            _renderContext.Viewport(savedVp[0], savedVp[1], (uint)savedVp[2], (uint)savedVp[3]);
+            _renderContext.Scissor(savedSc[0], savedSc[1], (uint)savedSc[2], (uint)savedSc[3]);
+
             if (activeTracer.VisibilityVersion != _lastPaintedVisibilityVersion)
             {
                 RebuildSurfaceMesh(activeTracer, activeGeom);
