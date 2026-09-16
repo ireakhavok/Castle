@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/GPU/Compute
+// Folder: SiegeEngine/Core/GPU/Compute
 // File: AcousticRayTracer.cs
 using System;
 using System.Collections.Generic;
@@ -179,6 +179,15 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             // Residual multi-bounce path removed entirely for this stage.
         }
+        public Vector3 PrimarySampleListener => _fsValid[_fsRead] ? _fsListenerPos[_fsRead] : _lastListenerPos;
+        public Vector3 PrimarySampleSource => _fsValid[_fsRead] ? _fsSourcePos[_fsRead] : _lastPrimarySource;
+        public bool HasPrimarySample => _fsValid[_fsRead];
+        public IReadOnlyCollection<int> GetPrimaryMutualFree()
+        {
+            if (_fsValid[_fsRead]) return _mutual[_fsRead];
+            return _emptyMutual;
+        }
+        static readonly HashSet<int> _emptyMutual = new HashSet<int>();
         public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources)
         {
             if (_disposed) return;
@@ -190,31 +199,7 @@ namespace SiegeEngine.Core.GPU.Compute
                 _debugSegments.Clear();
                 return;
             }
-            if (_pendingRaster)
-            {
-                bool pendingStale =
-                    Vector3.DistanceSquared(listenerPos, _pendingListener) > VisibilityMoveThreshold * VisibilityMoveThreshold ||
-                    Vector3.DistanceSquared(primarySource, _pendingSource) > VisibilityMoveThreshold * VisibilityMoveThreshold ||
-                    _geometry.GeometryVersion != _pendingGeometryVersion;
-                if (!pendingStale)
-                    return;
-                if (_fencePending && _pendingFence != 0)
-                {
-                    _renderContext.ClientWaitSync(_pendingFence, 0, 0);
-                    _renderContext.DeleteSync(_pendingFence);
-                    _pendingFence = 0;
-                    _fencePending = false;
-                }
-                _pendingListener = listenerPos;
-                _pendingSource = primarySource;
-                _pendingGeometryVersion = _geometry.GeometryVersion;
-                _pendingFace = 0;
-                int restartWrite = _fsWrite;
-                _listenerVisible[restartWrite].Clear();
-                _sourceVisible[restartWrite].Clear();
-                _mutual[restartWrite].Clear();
-                return;
-            }
+            if (_pendingRaster) return;
             int read = _fsRead;
             bool needRecompute =
                 !_fsValid[read] ||
@@ -320,6 +305,25 @@ namespace SiegeEngine.Core.GPU.Compute
                 AdvanceSecondary();
             }
             return primaryDidWork;
+        }
+
+        /// <summary>
+        /// Finish the in-flight debug cube now. Overlay-only. AudioSystem
+        /// still advances one batch per Update via TryCompletePendingRaster.
+        /// </summary>
+        public bool FlushPendingRaster()
+        {
+            if (_disposed || _geometry.TriangleCount <= 0 || !_fboReady)
+                return false;
+            int guard = 0;
+            while (_pendingRaster && guard++ < 16)
+            {
+                if (_fencePending && _pendingFence != 0)
+                    _renderContext.ClientWaitSync(_pendingFence, 0, 16_000_000UL);
+                if (!TryCompletePendingRaster() && _pendingRaster && !(_fencePending && _pendingFence != 0))
+                    break;
+            }
+            return !_pendingRaster;
         }
         private bool AdvancePrimary()
         {

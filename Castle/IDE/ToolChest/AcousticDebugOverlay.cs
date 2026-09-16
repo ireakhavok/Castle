@@ -1,4 +1,4 @@
-﻿// Folder: ToolChest
+// Folder: ToolChest
 // File: AcousticDebugOverlay.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Interfaces;
@@ -37,14 +37,14 @@ namespace ToolChest
         private Vector3 _lastPerceivedListener;
         private readonly List<Vector3> _lastPerceivedSources = new List<Vector3>();
         private readonly List<(bool losClear, Vector3 perceivedDir, float intensity, float pathLength)> _cachedPerceived = new List<(bool, Vector3, float, float)>();
+        // Match AcousticRayTracer.VisibilityMoveThreshold so the direction ray
+        // and the painted mutual surface update on the same listener move.
         private const float PerceivedMoveThreshold = 0.25f;
         private const float SpeedOfSound = 34300f;
         private AcousticRayTracer _sharedTracer;
         private AcousticGeometry _sharedGeometry;
         private float _lastTransformSig = float.NaN;
         private bool _hadHeightProvider;
-        private bool _awaitingRaster;
-        private uint _rasterVersionAtEnable = uint.MaxValue;
         private bool HasSharedProvider => _sharedTracer != null;
         public bool Enabled { get; set; } = false;
         public bool ShowListenerRays { get; set; } = true;
@@ -95,9 +95,6 @@ namespace ToolChest
                 _wasEnabled = true;
                 _lastPaintedVisibilityVersion = uint.MaxValue;
                 _lastPerceivedVersion = uint.MaxValue;
-                _awaitingRaster = true;
-                _rasterVersionAtEnable = uint.MaxValue;
-                _lastTransformSig = float.NaN;
                 _hadHeightProvider = false;
             }
             EnsureResources();
@@ -110,46 +107,53 @@ namespace ToolChest
                 _geometryDirty = true;
                 _hadHeightProvider = true;
             }
+            // Sound sources are query points — moving them must not rebuild geometry.
+            float transformSig = entities.Count;
+            for (int i = 0; i < entities.Count; i++)
+            {
+                var e = entities[i];
+                if (e == null) continue;
+                if (e.GetComponent<SoundComponent>() != null) continue;
+                var physics = e.GetComponent<PhysicsComponent>();
+                if (physics == null) continue;
+                transformSig += physics.Position.X + physics.Position.Y * 0.13f + physics.Position.Z * 0.37f
+                    + physics.Rotation.X + physics.Rotation.Y * 0.17f + physics.Rotation.Z * 0.29f + physics.Rotation.W;
+            }
+            if (transformSig != _lastTransformSig)
+            {
+                _geometryDirty = true;
+                _lastTransformSig = transformSig;
+            }
             if (entities.Count != _lastEntityCount)
             {
                 _geometryDirty = true;
                 _lastEntityCount = entities.Count;
             }
-            bool geometryJustRebuilt = false;
             if (_geometryDirty)
             {
                 _geometry.Rebuild(entities, height);
                 _geometryDirty = false;
-                geometryJustRebuilt = true;
-                _surfaceVerts.Clear();
-                _surfaceIndices.Clear();
+                _lastPaintedVisibilityVersion = uint.MaxValue;
                 _lastPerceivedVersion = uint.MaxValue;
-                _awaitingRaster = true;
-                _rasterVersionAtEnable = uint.MaxValue;
             }
             Vector3 listener = _getListenerPos();
             var sources = _getSourcePositions() ?? Array.Empty<Vector3>();
-            // Overlay paints from its own tracer so a dragged editor listener
-            // rebuilds the intersection without touching AudioSystem.
             AcousticRayTracer activeTracer = _tracer;
             AcousticGeometry activeGeom = _geometry;
             if (activeTracer == null || activeGeom == null || activeGeom.TriangleCount <= 0)
                 return;
             activeTracer.KickDebugBidirectional(listener, sources);
-            activeTracer.TryCompletePendingRaster();
-            if (geometryJustRebuilt)
-                _lastPaintedVisibilityVersion = activeTracer.VisibilityVersion;
-            if (_rasterVersionAtEnable == uint.MaxValue)
-                _rasterVersionAtEnable = activeTracer.VisibilityVersion;
-            if (activeTracer.VisibilityVersion != _rasterVersionAtEnable)
-                _awaitingRaster = false;
+            activeTracer.FlushPendingRaster();
+            listener = _getListenerPos();
+            sources = _getSourcePositions() ?? Array.Empty<Vector3>();
+            activeTracer.KickDebugBidirectional(listener, sources);
+            activeTracer.FlushPendingRaster();
             if (activeTracer.VisibilityVersion != _lastPaintedVisibilityVersion)
             {
                 RebuildSurfaceMesh(activeTracer, activeGeom);
                 _lastPaintedVisibilityVersion = activeTracer.VisibilityVersion;
             }
             bool needPerceived =
-                _awaitingRaster ||
                 activeTracer.VisibilityVersion != _lastPerceivedVersion ||
                 Vector3.DistanceSquared(listener, _lastPerceivedListener) > PerceivedMoveThreshold * PerceivedMoveThreshold ||
                 sources.Count != _lastPerceivedSources.Count;
@@ -176,7 +180,9 @@ namespace ToolChest
             }
             RebuildLineMesh(listener, sources);
 
-            if (_surfaceBuffer != null && _surfaceVerts.Count > 0)
+            bool sampleMatchesListener = !activeTracer.HasPrimarySample
+                || Vector3.DistanceSquared(listener, activeTracer.PrimarySampleListener) <= PerceivedMoveThreshold * PerceivedMoveThreshold;
+            if (sampleMatchesListener && _surfaceBuffer != null && _surfaceVerts.Count > 0)
                 _surfaceRenderer.DrawTriangles(_surfaceBuffer, view, projection);
 
             if (_lineBuffer != null && _lineIndices.Count > 0)
@@ -244,7 +250,7 @@ namespace ToolChest
                 }
                 if (perceivedDir.LengthSquared() > 1e-6f && intensity > 0.01f)
                 {
-                    float rayLen = Math.Min(Math.Max(pathLen * 0.6f, dist * 0.4f), 30.0f) * (0.4f + 0.6f * Math.Clamp(intensity, 0f, 1f));
+                    float rayLen = Math.Min(Math.Max(pathLen * 0.6f, dist * 0.4f), 30.0f) * (0.4f + 0.6f * Math.Clamp(intensity, 0.35f, 1f));
                     Vector3 end = listener + perceivedDir * rayLen;
                     Vector4 col = new Vector4(PerceivedColor.X, PerceivedColor.Y, PerceivedColor.Z, PerceivedColor.W * Math.Clamp(intensity, 0.35f, 1.0f));
                     AddLine(_lineVerts, _lineIndices, listener, end, col);
