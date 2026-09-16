@@ -40,13 +40,38 @@ namespace Keystone
         public static void OnProjectOpened(string lastContext)
         {
             ClearMemory();
+            PreloadFromDisk();
             var strategy = PanelManager.Current?.IDEStrategy;
             strategy?.ClearBladeCaches();
             if (!string.IsNullOrEmpty(lastContext))
                 strategy?.SetActiveBlade(lastContext);
             LoadLayoutForContext(lastContext);
-            if (!LayoutFileExists(lastContext))
+            if (!_memoryCache.ContainsKey(lastContext ?? ""))
                 EnsureLayoutForContext(lastContext);
+        }
+
+        static void PreloadFromDisk()
+        {
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
+                return;
+            foreach (string path in Directory.GetFiles(projectPath, "layout.*.json"))
+            {
+                string name = Path.GetFileName(path);
+                if (!name.StartsWith("layout.", StringComparison.OrdinalIgnoreCase) || !name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                string context = name.Substring("layout.".Length, name.Length - "layout.".Length - ".json".Length);
+                if (string.IsNullOrEmpty(context)) continue;
+                try
+                {
+                    _memoryCache[context] = File.ReadAllText(path);
+                    Console.WriteLine($"[ProjectLayoutManager] Preloaded blade '{context}' into memory");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ProjectLayoutManager] Failed to preload '{context}': {ex.Message}");
+                }
+            }
         }
 
         public static void SaveCurrentLayout(string contextName)
@@ -62,23 +87,32 @@ namespace Keystone
 
             try
             {
-                string fullState = strategy.SerializeState();
-                _memoryCache[contextName] = fullState;
-
-                string layoutPath = LayoutFilePath(contextName);
-                if (!string.IsNullOrEmpty(layoutPath))
-                {
-                    File.WriteAllText(layoutPath, fullState);
-                    Console.WriteLine($"[ProjectLayoutManager] Also committed to disk (project active)");
-                }
-                else
-                {
-                    Console.WriteLine($"[ProjectLayoutManager] Saved to memory only (no project loaded)");
-                }
+                _memoryCache[contextName] = strategy.SerializeState();
+                Console.WriteLine($"[ProjectLayoutManager] Cached '{contextName}' in memory (disk flush is Save only)");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[ProjectLayoutManager] ERROR saving '{contextName}': {ex.Message}");
+            }
+        }
+
+        public static bool TryRestoreFromMemory(string contextName)
+        {
+            if (string.IsNullOrEmpty(contextName)) return false;
+            if (!_memoryCache.TryGetValue(contextName, out string json) || string.IsNullOrEmpty(json))
+                return false;
+            var strategy = PanelManager.Current?.IDEStrategy;
+            if (strategy == null) return false;
+            try
+            {
+                strategy.DeserializeState(json);
+                Console.WriteLine($"[ProjectLayoutManager] Restored '{contextName}' from memory cache");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ProjectLayoutManager] ERROR restoring '{contextName}' from memory: {ex.Message}");
+                return false;
             }
         }
 
@@ -95,39 +129,19 @@ namespace Keystone
 
             strategy.ClearAll();
 
-            string layoutPath = LayoutFilePath(contextName);
-            if (!string.IsNullOrEmpty(layoutPath) && File.Exists(layoutPath))
-            {
-                try
-                {
-                    string json = File.ReadAllText(layoutPath);
-                    strategy.DeserializeState(json);
-                    _memoryCache[contextName] = json;
-                    Console.WriteLine($"[ProjectLayoutManager] SUCCESS: Restored saved layout file for '{contextName}'");
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[ProjectLayoutManager] ERROR: Failed to restore layout file: {ex.Message}");
-                    return;
-                }
-            }
+            if (TryRestoreFromMemory(contextName))
+                return;
 
-            Console.WriteLine("[ProjectLayoutManager] No layout file - leaving workspace blank (no seed)");
+            Console.WriteLine("[ProjectLayoutManager] No cached layout - leaving workspace blank (no disk read on switch)");
         }
 
         public static void EnsureLayoutForContext(string contextName)
         {
             if (string.IsNullOrEmpty(contextName)) return;
-
-            string projectPath = ProjectSettings.Current.ActiveProject;
-            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
+            if (_memoryCache.ContainsKey(contextName))
                 return;
 
-            if (LayoutFileExists(contextName))
-                return;
-
-            Console.WriteLine($"[ProjectLayoutManager] Creating new layout JSON for '{contextName}'");
+            Console.WriteLine($"[ProjectLayoutManager] Seeding default layout for '{contextName}' into memory");
             OpenDefaultCompanions?.Invoke(contextName);
             SaveCurrentLayout(contextName);
         }
