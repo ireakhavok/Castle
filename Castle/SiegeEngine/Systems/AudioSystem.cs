@@ -45,6 +45,7 @@ namespace SiegeEngine.Systems
         private readonly List<Vector3> _freeSurfaceSources = new List<Vector3>();
         private readonly List<(int entityId, Vector3 pos)> _freeSurfaceSecondary = new List<(int entityId, Vector3 pos)>();
         private bool _autoPlayScanned;
+        private int _lastAutoPlayEntityCount = -1;
         private bool _geometryUploaded;
         private int _lastGeometryEntityCount = -1;
         private uint _lastGeometryVersion;
@@ -289,10 +290,15 @@ namespace SiegeEngine.Systems
                     }
                 }
             }
-            if (!_autoPlayScanned)
+            if (_server != null)
             {
-                ScanAndRegisterAutoPlay();
-                _autoPlayScanned = true;
+                int liveCount = _server.GetEntities().Count;
+                if (!_autoPlayScanned || liveCount != _lastAutoPlayEntityCount)
+                {
+                    ScanAndRegisterAutoPlay();
+                    _autoPlayScanned = true;
+                    _lastAutoPlayEntityCount = liveCount;
+                }
             }
             // Geometry dirty tracking – rebuild only when entities or GeometryVersion actually change.
             if (_gpuOcclusionReady && _server != null)
@@ -326,8 +332,14 @@ namespace SiegeEngine.Systems
                 secondary.Clear();
                 for (int i = 0; i < snapshot.Count; i++)
                 {
+                    var entity = _server.GetEntityById(snapshot[i].EntityId);
+                    if (entity != null)
+                    {
+                        var phys = entity.GetComponent<PhysicsComponent>();
+                        if (phys != null)
+                            snapshot[i].Source.Position = phys.Position;
+                    }
                     if (!snapshot[i].Started) continue;
-                    // Only local non-sensitive AutoPlay sources receive independent free-surface
                     if (snapshot[i].Source.IsSensitive) continue;
                     sources.Add(snapshot[i].Source.Position);
                     if (i > 0)
@@ -530,6 +542,7 @@ namespace SiegeEngine.Systems
                     if (soundComp == null || !soundComp.AutoPlay) continue;
                     var physics = entity.GetComponent<PhysicsComponent>();
                     if (physics == null) continue;
+                    if (_autoPlayRegs.Exists(r => r.EntityId == entity.Id)) continue;
                     var src = new SoundSource
                     {
                         EntityId = entity.Id,
