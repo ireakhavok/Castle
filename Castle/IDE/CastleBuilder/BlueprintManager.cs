@@ -124,31 +124,31 @@ namespace CastleBuilder
         }
         public static void EnsureDefaultSceneIfNeeded()
         {
-            string projectPath = ProjectSettings.Current.ActiveProject;
-            if (!string.IsNullOrEmpty(projectPath) && Directory.Exists(projectPath))
+            var live = EditorScene.Current?.GetProjectData();
+            if (live != null && live.Scenes != null && live.Scenes.Count > 0)
+                return;
+            if (ProjectSettings.Current.CurrentLevel != null)
+                return;
+            if (string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject))
             {
-                string jsonPath = Path.Combine(projectPath, "project.json");
-                if (!File.Exists(jsonPath)) return;
-                string json = File.ReadAllText(jsonPath);
-                var data = JsonSerializer.Deserialize<ProjectData>(json, EntityData.SerializerOptions) ?? new ProjectData();
-                if (data.Scenes == null || data.Scenes.Count == 0)
-                {
-                    data.Scenes = new Dictionary<string, SceneData>();
-                    var level = new Level() { Name = "Main" };
-                    var sceneData = new SceneData { Name = "Main", SceneType = "TerrainTest" };
-                    sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
-                    sceneData.Terrain = level.Terrain ?? new TerrainData();
-                    sceneData.Environment = level.Environment ?? new EnvironmentSettings();
-                    sceneData.Skybox = level.Skybox ?? new SkyboxData();
-                    data.Scenes["Main"] = sceneData;
-                    data.LastOpenedScene = "Main";
-                    File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
-                    ProjectSettings.Current.SetCurrentLevel(level);
-                    Console.WriteLine("[BlueprintManager] Auto-created default scene 'Main' with Level as single source of truth");
-                }
+                Console.WriteLine("[BlueprintManager.EnsureDefaultSceneIfNeeded] No active project - skipping default scene creation");
                 return;
             }
-            Console.WriteLine("[BlueprintManager.EnsureDefaultSceneIfNeeded] No active project - skipping default scene creation");
+            var level = new Level() { Name = "Main" };
+            var sceneData = new SceneData { Name = "Main", SceneType = "TerrainTest" };
+            sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
+            sceneData.Terrain = level.Terrain ?? new TerrainData();
+            sceneData.Environment = level.Environment ?? new EnvironmentSettings();
+            sceneData.Skybox = level.Skybox ?? new SkyboxData();
+            if (live != null)
+            {
+                if (live.Scenes == null)
+                    live.Scenes = new Dictionary<string, SceneData>();
+                live.Scenes["Main"] = sceneData;
+                live.LastOpenedScene = "Main";
+            }
+            ProjectSettings.Current.SetCurrentLevel(level);
+            Console.WriteLine("[BlueprintManager.EnsureDefaultSceneIfNeeded] In-memory default scene 'Main' (no disk write)");
         }
         public static void SaveCurrentProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -254,6 +254,7 @@ namespace CastleBuilder
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Materialized {uniquePackKeys.Count} asset packs to Assets/ folder");
             }
             SaveAllPanelStates(data);
+            data.LastContext = _previousContext ?? data.LastContext ?? "Scene Editor";
             data.UseFixedTimestep = RuntimeSettings.Current.UseFixedTimestep;
             data.StepRateHz = RuntimeSettings.Current.StepRateHz;
             data.GravityZ = RuntimeSettings.Current.GravityZ;
@@ -724,28 +725,11 @@ namespace CastleBuilder
             {
                 strategy?.ClearAll();
             }
-            string projectPath = ProjectSettings.Current.ActiveProject;
-            if (!string.IsNullOrEmpty(projectPath))
-            {
-                string jsonPath = Path.Combine(projectPath, "project.json");
-                if (File.Exists(jsonPath))
-                {
-                    string json = File.ReadAllText(jsonPath);
-                    var data = JsonSerializer.Deserialize<ProjectData>(json, EntityData.SerializerOptions) ?? new ProjectData();
-                    data.LastContext = newContext;
-                    ApplyLiveSceneCatalog(data);
-                    SaveAllPanelStates(data);
-                    File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
-                }
-            }
-            if (!hadCache && ProjectLayoutManager.LayoutFileExists(newContext)
-                && (strategy == null || !strategy.HasActiveContent()))
-            {
-                ProjectLayoutManager.LoadLayoutForContext(newContext);
-            }
+            if (!hadCache && (strategy == null || !strategy.HasActiveContent()))
+                ProjectLayoutManager.TryRestoreFromMemory(newContext);
             CompanionLayoutHelper.EnsureLayout(newContext);
             _previousContext = newContext;
-            Console.WriteLine($"[BlueprintManager.OnContextChanged] Context switch complete → '{newContext}' (memory hotswap, no close/dispose)");
+            Console.WriteLine($"[BlueprintManager.OnContextChanged] Context switch complete → '{newContext}' (memory cache only, no disk)");
         }
         private void OnFileSelected(FileSelectedEvent e)
         {

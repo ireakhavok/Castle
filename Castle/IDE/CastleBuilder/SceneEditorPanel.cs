@@ -1022,7 +1022,7 @@ namespace CastleBuilder
                     node.Children.Add(meshId);
                 }
             }
-            Console.WriteLine($"[SceneEditorPanel.GetCurrentHierarchy] Returned {nodes.Count} nodes (root + {entities.Count} entities)");
+            //Console.WriteLine($"[SceneEditorPanel.GetCurrentHierarchy] Returned {nodes.Count} nodes (root + {entities.Count} entities)");
             return nodes;
         }
         public object GetObjectForNode(string nodeId)

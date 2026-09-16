@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/GPU/Compute
+// Folder: SiegeEngine/Core/GPU/Compute
 // File: AcousticRayTracer.cs
 using System;
 using System.Collections.Generic;
@@ -179,6 +179,15 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             // Residual multi-bounce path removed entirely for this stage.
         }
+        public Vector3 PrimarySampleListener => _fsValid[_fsRead] ? _fsListenerPos[_fsRead] : _lastListenerPos;
+        public Vector3 PrimarySampleSource => _fsValid[_fsRead] ? _fsSourcePos[_fsRead] : _lastPrimarySource;
+        public bool HasPrimarySample => _fsValid[_fsRead];
+        public IReadOnlyCollection<int> GetPrimaryMutualFree()
+        {
+            if (_fsValid[_fsRead]) return _mutual[_fsRead];
+            return _emptyMutual;
+        }
+        static readonly HashSet<int> _emptyMutual = new HashSet<int>();
         public void KickDebugBidirectional(Vector3 listenerPos, IReadOnlyList<Vector3> sources)
         {
             if (_disposed) return;
@@ -296,6 +305,33 @@ namespace SiegeEngine.Core.GPU.Compute
                 AdvanceSecondary();
             }
             return primaryDidWork;
+        }
+
+        /// <summary>
+        /// Finish the in-flight debug cube now. Overlay-only. AudioSystem
+        /// still advances one batch per Update via TryCompletePendingRaster.
+        /// </summary>
+        public bool FlushPendingRaster()
+        {
+            if (_disposed || _geometry.TriangleCount <= 0 || !_fboReady)
+                return false;
+            _renderContext.GetInteger(_renderContext.Enums.FramebufferBinding, out int savedFbo);
+            int* savedVp = stackalloc int[4];
+            _renderContext.GetInteger(_renderContext.Enums.Viewport, savedVp);
+            int* savedSc = stackalloc int[4];
+            _renderContext.GetInteger(_renderContext.Enums.ScissorBox, savedSc);
+            int guard = 0;
+            while (_pendingRaster && guard++ < 16)
+            {
+                if (_fencePending && _pendingFence != 0)
+                    _renderContext.ClientWaitSync(_pendingFence, 0, 16_000_000UL);
+                if (!TryCompletePendingRaster() && _pendingRaster && !(_fencePending && _pendingFence != 0))
+                    break;
+            }
+            _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, (uint)savedFbo);
+            _renderContext.Viewport(savedVp[0], savedVp[1], (uint)savedVp[2], (uint)savedVp[3]);
+            _renderContext.Scissor(savedSc[0], savedSc[1], (uint)savedSc[2], (uint)savedSc[3]);
+            return !_pendingRaster;
         }
         private bool AdvancePrimary()
         {
