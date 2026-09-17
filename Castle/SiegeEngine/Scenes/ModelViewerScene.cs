@@ -552,7 +552,8 @@ namespace SiegeEngine.Scenes
         protected override void GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection)
         {
             view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
-            projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f);
+            float farPlane = MathF.Max(_cameraDistance * 20f, 5000f);
+            projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, MathF.Max(AspectRatio, 0.01f), 0.05f, farPlane);
         }
         public override void Render(IReadOnlyList<Entity> entities)
         {
@@ -562,6 +563,14 @@ namespace SiegeEngine.Scenes
             PushViewerTextureRoot();
             try
             {
+                var e = _renderContext.Enums;
+                _renderContext.Disable(e.Blend);
+                _renderContext.Enable(e.DepthTest);
+                _renderContext.DepthMask(true);
+                _renderContext.DepthFunc(e.Less);
+                _renderContext.ColorMask(true, true, true, true);
+                _renderContext.ClearColor(0.18f, 0.18f, 0.20f, 1f);
+                _renderContext.Clear(e.ColorBufferBit | e.DepthBufferBit);
                 RenderContent(entities, view, projection);
             }
             finally

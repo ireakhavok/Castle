@@ -171,7 +171,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices, receiveShadows: true);
         }
 
-        public void RenderModel(FBXModel fbxModel, ModelManager.ModelData modelData, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, Matrix4x4 modelMatrix, Matrix4x4[] boneMatrices, Matrix3x3[] normalMatrices, bool receiveShadows, ICollection<int> hiddenMeshIndices = null, IList<MeshMaterialOption> materialOptions = null)
+        public void RenderModel(FBXModel fbxModel, ModelManager.ModelData modelData, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, Matrix4x4 modelMatrix, Matrix4x4[] boneMatrices, Matrix3x3[] normalMatrices, bool receiveShadows, ICollection<int> hiddenMeshIndices = null, IList<MeshMaterialOption> materialOptions = null, bool applyLod = true)
         {
             if (modelData == null) return;
             if (modelMatrix == default) modelMatrix = Matrix4x4.Identity;
@@ -229,9 +229,14 @@ namespace SiegeEngine.Core.GPU.Renderers
             {
                 int gpuIndex = renderIndex;
                 renderIndex++;
-                float lodDist = Vector3.Distance(viewPos, modelMatrix.Translation);
-                float lodSize = EstimateRadius(fbxModel, modelData, Vector3.One) * 2f;
-                if (IsMeshSkipped(_hiddenMeshIndices, fbxModel?.Meshes, gpuIndex, lodDist, lodSize))
+                if (applyLod)
+                {
+                    float lodDist = Vector3.Distance(viewPos, modelMatrix.Translation);
+                    float lodSize = EstimateRadius(fbxModel, modelData, Vector3.One) * 2f;
+                    if (IsMeshSkipped(_hiddenMeshIndices, fbxModel?.Meshes, gpuIndex, lodDist, lodSize))
+                        continue;
+                }
+                else if (_hiddenMeshIndices != null && _hiddenMeshIndices.Contains(gpuIndex))
                     continue;
 
                 try
