@@ -125,6 +125,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         void UpdateBuffer(GpuHandle buffer, ReadOnlySpan<byte> data, int offset = 0);
         void SetConstants<T>(int slot, in T data) where T : unmanaged;
         void DrawIndexed(int indexCount);
+        void Draw(int vertexCount);
         void Dispatch(uint groupsX, uint groupsY = 1, uint groupsZ = 1);
     }
 }

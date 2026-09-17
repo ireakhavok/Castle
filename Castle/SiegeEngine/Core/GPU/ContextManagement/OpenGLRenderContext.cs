@@ -18,6 +18,9 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         private uint _generation;
         private readonly Dictionary<ulong, uint> _live = new Dictionary<ulong, uint>();
         private readonly Dictionary<uint, int> _pipelinePrimitive = new Dictionary<uint, int>();
+        private readonly Dictionary<uint, VertexLayout> _pipelineLayout = new Dictionary<uint, VertexLayout>();
+        private readonly Dictionary<uint, GpuRenderState> _pipelineState = new Dictionary<uint, GpuRenderState>();
+        private readonly Dictionary<uint, uint> _pipelineVao = new Dictionary<uint, uint>();
         private readonly uint[] _uboSlots = new uint[8];
         private GpuHandle _boundPipeline;
 
@@ -327,6 +330,12 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
             GpuHandle handle = Track(GpuResourceKind.Pipeline, program);
             _pipelinePrimitive[program] = desc.State.Primitive;
+            _pipelineLayout[program] = desc.Layout;
+            _pipelineState[program] = desc.State;
+            uint vao = GenVertexArray();
+            _pipelineVao[program] = vao;
+            BindBlock(program, "FrameCB", ConstantSlot.Frame);
+            BindBlock(program, "ObjectCB", ConstantSlot.Object);
             return handle;
         }
 
@@ -364,6 +373,13 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             if (handle.Kind == GpuResourceKind.Pipeline)
             {
                 _pipelinePrimitive.Remove(handle.Id);
+                _pipelineLayout.Remove(handle.Id);
+                _pipelineState.Remove(handle.Id);
+                if (_pipelineVao.TryGetValue(handle.Id, out uint vao))
+                {
+                    _pipelineVao.Remove(handle.Id);
+                    DeleteVertexArray(vao);
+                }
                 DeleteProgram(handle.Id);
             }
             else if (handle.Kind == GpuResourceKind.Buffer)
@@ -382,6 +398,10 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 return;
             UseProgram(pipeline.Id);
             _boundPipeline = pipeline;
+            if (_pipelineVao.TryGetValue(pipeline.Id, out uint vao))
+                BindVertexArray(vao);
+            if (_pipelineState.TryGetValue(pipeline.Id, out GpuRenderState state))
+                ApplyState(state);
         }
 
         public void BindVertexBuffer(GpuHandle buffer, int slot, int stride, int offset)
@@ -389,6 +409,24 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             if (!IsLive(buffer) || buffer.Kind != GpuResourceKind.Buffer)
                 return;
             BindBuffer(_enums.ArrayBuffer, buffer.Id);
+            if (!_boundPipeline.IsValid)
+                return;
+            if (!_pipelineLayout.TryGetValue(_boundPipeline.Id, out VertexLayout layout) || layout == null)
+                return;
+            int strideUse = stride > 0 ? stride : layout.Stride;
+            for (int i = 0; i < layout.Attributes.Length; i++)
+            {
+                VertexAttribute attr = layout.Attributes[i];
+                if (attr.Slot != slot)
+                    continue;
+                int loc = VertexLayout.Location(attr.Semantic);
+                EnableVertexAttribArray((uint)loc);
+                int type = attr.Type != 0 ? attr.Type : _enums.Float;
+                if (type == _enums.Int)
+                    VertexAttribIPointer((uint)loc, attr.Size, type, (uint)strideUse, (void*)(offset + attr.Offset));
+                else
+                    VertexAttribPointer((uint)loc, attr.Size, type, false, (uint)strideUse, (void*)(offset + attr.Offset));
+            }
         }
 
         public void BindIndexBuffer(GpuHandle buffer)
@@ -437,6 +475,14 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             if (_boundPipeline.IsValid && _pipelinePrimitive.TryGetValue(_boundPipeline.Id, out int primitive))
                 mode = primitive;
             DrawElements(mode, (uint)indexCount, _enums.UnsignedInt, null);
+        }
+
+        public void Draw(int vertexCount)
+        {
+            int mode = _enums.Triangles;
+            if (_boundPipeline.IsValid && _pipelinePrimitive.TryGetValue(_boundPipeline.Id, out int primitive))
+                mode = primitive;
+            DrawArrays(mode, 0, (uint)vertexCount);
         }
 
         public void Dispatch(uint groupsX, uint groupsY = 1, uint groupsZ = 1)
@@ -504,6 +550,30 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         static ulong Pack(GpuResourceKind kind, uint id)
         {
             return ((ulong)kind << 32) | id;
+        }
+
+        void BindBlock(uint program, string name, int binding)
+        {
+            uint index = _gl.GetUniformBlockIndex(program, name);
+            if (index == uint.MaxValue)
+                return;
+            _gl.UniformBlockBinding(program, index, (uint)binding);
+        }
+
+        void ApplyState(in GpuRenderState state)
+        {
+            if (state.DepthTest) Enable(_enums.DepthTest);
+            else Disable(_enums.DepthTest);
+            DepthMask(state.DepthWrite);
+            if (state.Blend) Enable(_enums.Blend);
+            else Disable(_enums.Blend);
+            if (state.CullMode == _enums.None)
+                Disable(_enums.CullFace);
+            else
+            {
+                Enable(_enums.CullFace);
+                CullFace(state.CullMode);
+            }
         }
     }
 }

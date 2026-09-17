@@ -8,6 +8,7 @@ using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Lighting;
+using SiegeEngine.Core.GPU.Renderers;
 using SiegeEngine.Core.GPU.Shaders;
 using SiegeEngine.Core.UI;
 using System;
@@ -29,7 +30,7 @@ namespace SiegeEngine.Scenes
         private string _currentAnimationPath;
         private VertexBuffer _skeletonBuffer;
         private VertexBuffer _bindSkeletonBuffer;
-        private ShaderProgram _pointShader;
+        private LineRenderer _lineRenderer;
         private ShaderProgram _textShader;
         private Matrix4x4[] _currentGlobalTransforms;
         private Matrix4x4[] _currentBindGlobals;
@@ -87,7 +88,8 @@ namespace SiegeEngine.Scenes
             _modelRenderer.Initialize();
             _skeletonBuffer = new VertexBuffer(_renderContext);
             _bindSkeletonBuffer = new VertexBuffer(_renderContext);
-            _pointShader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
+            _lineRenderer = new LineRenderer(_renderContext);
+            _lineRenderer.Initialize();
             _textShader = new ShaderProgram(_renderContext, TextShader.VertexShaderSource, TextShader.FragmentShaderSource);
             LoadMesh(_meshPath);
             DiscoverAnimationFiles();
@@ -759,12 +761,12 @@ namespace SiegeEngine.Scenes
         {
             _modelRenderer.OpacityModelKey = _currentModelKey;
             _modelRenderer.RenderModel(_model, _modelData, view, projection, _cameraPosition, Matrix4x4.Identity, _boneMatrices, _currentNormalTransforms, receiveShadows: false, hiddenMeshIndices: HiddenMeshIndices, materialOptions: MaterialOptions);
-            if (_showSkeleton) _modelRenderer.RenderSkeletonDebug(_skeletonBuffer, _pointShader, view, projection);
-            if (_bindSkeletonBuffer != null && _showBindPoseSkeleton) _modelRenderer.RenderSkeletonDebug(_bindSkeletonBuffer, _pointShader, view, projection);
+            if (_showSkeleton) _lineRenderer.DrawLines(_skeletonBuffer, view, projection);
+            if (_bindSkeletonBuffer != null && _showBindPoseSkeleton) _lineRenderer.DrawLines(_bindSkeletonBuffer, view, projection);
         }
         public override void Dispose()
         {
-            _pointShader?.Dispose();
+            _lineRenderer?.Dispose();
             _textShader?.Dispose();
             _skeletonBuffer?.Dispose();
             _bindSkeletonBuffer?.Dispose();

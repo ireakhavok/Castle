@@ -32,6 +32,10 @@ namespace SiegeEngine.Core.GPU.Shaders
         public int ReceiveShadows;
         public int Pad0;
         public int Pad1;
+        public float PointSize;
+        public float Pad2;
+        public float Pad3;
+        public float Pad4;
     }
 
     [StructLayout(LayoutKind.Sequential)]

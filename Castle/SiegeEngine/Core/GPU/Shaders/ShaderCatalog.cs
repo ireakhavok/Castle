@@ -65,8 +65,22 @@ namespace SiegeEngine.Core.GPU.Shaders
                 VertexSource = src.Vertex,
                 FragmentSource = src.Fragment,
                 ComputeSource = src.Compute,
+                Layout = DefaultLayout(id, ctx.Enums),
                 State = DefaultState(id, ctx.Enums)
             };
+        }
+
+        static VertexLayout DefaultLayout(ShaderId id, AbstractRenderEnums enums)
+        {
+            if (id == ShaderId.Point)
+            {
+                return new VertexLayout(28, new[]
+                {
+                    new VertexAttribute(VertexSemantic.Position, enums.Float, 3, 0, 0),
+                    new VertexAttribute(VertexSemantic.Color, enums.Float, 4, 12, 0)
+                });
+            }
+            return null;
         }
 
         static ShaderSourceSet VsFs(string vertex, string fragment)

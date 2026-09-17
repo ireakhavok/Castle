@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/GPU/Renderers
+// Folder: SiegeEngine/Core/GPU/Renderers
 // File: DebugSurfaceRenderer.cs
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
@@ -10,7 +10,7 @@ namespace SiegeEngine.Core.GPU.Renderers
     public unsafe class DebugSurfaceRenderer
     {
         private readonly IRenderContext _renderContext;
-        private ShaderProgram _shader;
+        private GpuHandle _pipeline;
 
         public DebugSurfaceRenderer(IRenderContext renderContext)
         {
@@ -19,7 +19,14 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void Initialize()
         {
-            _shader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
+            if (_pipeline.IsValid)
+                return;
+            PipelineDesc desc = ShaderCatalog.Describe(ShaderId.Point, _renderContext);
+            desc.State.Primitive = _renderContext.Enums.Triangles;
+            desc.State.DepthTest = false;
+            desc.State.DepthWrite = false;
+            desc.State.Blend = true;
+            _pipeline = _renderContext.CreatePipeline(desc);
         }
 
         public void DrawTriangles(VertexBuffer buffer, Matrix4x4 view, Matrix4x4 projection)
@@ -29,7 +36,8 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void DrawTriangles(VertexBuffer buffer, Matrix4x4 model, Matrix4x4 view, Matrix4x4 projection)
         {
-            if (buffer == null || _shader == null) return;
+            if (buffer == null) return;
+            if (!_pipeline.IsValid) Initialize();
             uint indexCount = buffer.GetIndexCount();
             uint vertexCount = buffer.GetVertexCount();
             if (indexCount == 0 && vertexCount == 0) return;
@@ -38,17 +46,17 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
 
-            _shader.Use();
-            _shader.SetMatrix4("uModel", model);
-            _shader.SetMatrix4("uView", view);
-            _shader.SetMatrix4("uProjection", projection);
-            _shader.SetUniform("uPointSize", 6f);
+            FrameCB frame = new FrameCB { View = view, Projection = projection };
+            ObjectCB obj = new ObjectCB { Model = model, PointSize = 6f };
+            _renderContext.BindPipeline(_pipeline);
+            _renderContext.SetConstants(ConstantSlot.Frame, frame);
+            _renderContext.SetConstants(ConstantSlot.Object, obj);
 
             buffer.Bind();
             if (indexCount > 0)
-                _renderContext.DrawElements(_renderContext.Enums.Triangles, indexCount, _renderContext.Enums.UnsignedInt, null);
+                _renderContext.DrawIndexed((int)indexCount);
             else
-                _renderContext.DrawArrays(_renderContext.Enums.Triangles, 0, vertexCount);
+                _renderContext.Draw((int)vertexCount);
 
             _renderContext.Disable(_renderContext.Enums.Blend);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
@@ -56,8 +64,11 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void Dispose()
         {
-            _shader?.Dispose();
-            _shader = null;
+            if (_pipeline.IsValid)
+            {
+                _renderContext.Destroy(_pipeline);
+                _pipeline = GpuHandle.Invalid;
+            }
         }
     }
 }
