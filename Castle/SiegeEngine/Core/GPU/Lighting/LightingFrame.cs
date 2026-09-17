@@ -517,7 +517,6 @@ namespace SiegeEngine.Core.GPU.Lighting
         public void ApplyTo(ShaderProgram shader, IRenderContext renderContext)
         {
             if (shader == null) return;
-
             shader.SetUniform("uAmbientColor", AmbientColor.X, AmbientColor.Y, AmbientColor.Z);
             shader.SetUniform("uAmbientStrength", 0.16f);
             shader.SetUniform("uLightDir", Sun.Direction.X, Sun.Direction.Y, Sun.Direction.Z);
@@ -621,6 +620,121 @@ namespace SiegeEngine.Core.GPU.Lighting
             shader.SetUniform("uSpotShadowMap", SpotShadowUnit);
 
             renderContext.ActiveTexture(renderContext.Enums.Texture0);
+            UploadConstants(renderContext);
+        }
+
+        public void ApplyConstants(IRenderContext renderContext)
+        {
+            if (renderContext == null) return;
+            UploadConstants(renderContext);
+            bool shadows;
+            uint atlas;
+            LightingFrame ready = (ShadowsReady && ShadowAtlas != 0) ? this : LastReady;
+            if (ShadowMapRenderer.WrittenSunAtlas != 0)
+                atlas = ShadowMapRenderer.WrittenSunAtlas;
+            else
+                atlas = ready != null ? ready.ShadowAtlas : 0;
+            shadows = atlas != 0 && ShadowQuality != ShadowQuality.Off && Sun.CastShadows && Sun.Technique == ShadowTechnique.ShadowMap;
+            renderContext.ActiveTexture(renderContext.Enums.Texture0 + ShadowAtlasUnit);
+            renderContext.BindTexture(renderContext.Enums.Texture2D, shadows ? atlas : 0);
+            renderContext.ActiveTexture(renderContext.Enums.Texture0 + PointShadowUnit);
+            renderContext.BindTexture(renderContext.Enums.TextureCubeMap, PointShadowCube);
+            renderContext.ActiveTexture(renderContext.Enums.Texture0 + SpotShadowUnit);
+            renderContext.BindTexture(renderContext.Enums.Texture2D, SpotShadowMap);
+            renderContext.ActiveTexture(renderContext.Enums.Texture0);
+        }
+
+        void UploadConstants(IRenderContext renderContext)
+        {
+            float sunPunch = Sun.Intensity <= 0f ? 0f : MathF.Min(Sun.Intensity * 1.5f, 4f);
+            int fogMode = Fog.Mode == FogMode.Off || Fog.Quality == FogQuality.Off ? 0 : (int)Fog.Mode;
+            GpuPointLight p0 = PointCount > 0 ? Points[0] : default;
+            GpuPointLight p1 = PointCount > 1 ? Points[1] : default;
+            GpuPointLight p2 = PointCount > 2 ? Points[2] : default;
+            GpuPointLight p3 = PointCount > 3 ? Points[3] : default;
+            GpuSpotLight s0 = SpotCount > 0 ? Spots[0] : default;
+            GpuSpotLight s1 = SpotCount > 1 ? Spots[1] : default;
+            LightCB light = default;
+            light.LightDir = new Vector4(Sun.Direction, 0f);
+            light.LightColor = new Vector4(Sun.Color, 0f);
+            light.AmbientColor = new Vector4(AmbientColor, 0f);
+            light.LightIntensity = sunPunch;
+            light.AmbientStrength = 0.16f;
+            light.SpecularStrength = 0.05f;
+            light.Shininess = 4f;
+            light.PointCount = PointCount;
+            light.SpotCount = SpotCount;
+            light.FogMode = fogMode;
+            light.FogColor = new Vector4(Fog.Color, 0f);
+            light.FogDensity = Fog.Density;
+            light.FogStart = Fog.Start;
+            light.FogHeight = Fog.Height;
+            light.FogHeightFalloff = Fog.HeightFalloff;
+            light.PointPos0 = new Vector4(p0.Position, 0f);
+            light.PointPos1 = new Vector4(p1.Position, 0f);
+            light.PointPos2 = new Vector4(p2.Position, 0f);
+            light.PointPos3 = new Vector4(p3.Position, 0f);
+            light.PointColor0 = new Vector4(p0.Color, 0f);
+            light.PointColor1 = new Vector4(p1.Color, 0f);
+            light.PointColor2 = new Vector4(p2.Color, 0f);
+            light.PointColor3 = new Vector4(p3.Color, 0f);
+            light.PointIntensityRange0 = new Vector4(p0.Intensity, p0.Range > 0f ? p0.Range : 1f, 0f, 0f);
+            light.PointIntensityRange1 = new Vector4(p1.Intensity, p1.Range > 0f ? p1.Range : 1f, 0f, 0f);
+            light.PointIntensityRange2 = new Vector4(p2.Intensity, p2.Range > 0f ? p2.Range : 1f, 0f, 0f);
+            light.PointIntensityRange3 = new Vector4(p3.Intensity, p3.Range > 0f ? p3.Range : 1f, 0f, 0f);
+            light.SpotPos0 = new Vector4(s0.Position, 0f);
+            light.SpotPos1 = new Vector4(s1.Position, 0f);
+            light.SpotDir0 = new Vector4(s0.Direction, 0f);
+            light.SpotDir1 = new Vector4(s1.Direction, 0f);
+            light.SpotColor0 = new Vector4(s0.Color, 0f);
+            light.SpotColor1 = new Vector4(s1.Color, 0f);
+            light.SpotIntensityRange0 = new Vector4(s0.Intensity, s0.Range > 0f ? s0.Range : 1f, 0f, 0f);
+            light.SpotIntensityRange1 = new Vector4(s1.Intensity, s1.Range > 0f ? s1.Range : 1f, 0f, 0f);
+            light.SpotCone0 = new Vector4(s0.InnerConeCos, s0.OuterConeCos, 0f, 0f);
+            light.SpotCone1 = new Vector4(s1.InnerConeCos, s1.OuterConeCos, 0f, 0f);
+            LightingFrame ready = (ShadowsReady && ShadowAtlas != 0) ? this : LastReady;
+            uint atlas;
+            int cascadeCount;
+            Vector4 splits;
+            Matrix4x4[] cascades;
+            if (ShadowMapRenderer.WrittenSunAtlas != 0)
+            {
+                atlas = ShadowMapRenderer.WrittenSunAtlas;
+                cascadeCount = ShadowMapRenderer.WrittenCascadeCount;
+                splits = ShadowMapRenderer.WrittenCascadeSplits;
+                cascades = ShadowMapRenderer.WrittenCascadeVP;
+            }
+            else
+            {
+                atlas = ready != null ? ready.ShadowAtlas : 0;
+                cascadeCount = ready != null ? ready.CascadeCount : 0;
+                splits = ready != null ? ready.CascadeSplits : default;
+                cascades = ready != null ? ready.CascadeVP : CascadeVP;
+            }
+            bool shadows = atlas != 0 && ShadowQuality != ShadowQuality.Off && Sun.CastShadows && Sun.Technique == ShadowTechnique.ShadowMap;
+            Vector4 zRange = ShadowMapRenderer.WrittenCascadeZRange;
+            if (zRange == default && ready != null)
+                zRange = ready.CascadeZRange;
+            bool pointShadows = ShadowQuality != ShadowQuality.Off && PointShadowCube != 0 && PointCount > 0 && Points[0].CastShadows;
+            ShadowCB shadow = default;
+            shadow.CascadeVP0 = cascades != null && cascades.Length > 0 ? cascades[0] : Matrix4x4.Identity;
+            shadow.CascadeVP1 = cascades != null && cascades.Length > 1 ? cascades[1] : Matrix4x4.Identity;
+            shadow.CascadeVP2 = cascades != null && cascades.Length > 2 ? cascades[2] : Matrix4x4.Identity;
+            shadow.CascadeVP3 = cascades != null && cascades.Length > 3 ? cascades[3] : Matrix4x4.Identity;
+            shadow.CascadeSplits = splits;
+            shadow.CascadeZRange = zRange;
+            shadow.ShadowsEnabled = shadows ? 1 : 0;
+            shadow.ReceiveShadows = 1;
+            shadow.CascadeCount = shadows ? cascadeCount : 0;
+            shadow.ShadowSmooth = ShadowSmooth ? 1 : 0;
+            shadow.ShadowBias = ShadowMapRenderer.EsmExponent(ShadowQuality);
+            shadow.ShadowAtlasSize = ShadowMapRenderer.WrittenAtlasSize > 0 ? ShadowMapRenderer.WrittenAtlasSize : ShadowMapRenderer.AtlasSize(ShadowQuality);
+            shadow.ShadowStrength = ShadowMapRenderer.ShadowStrength(ShadowQuality);
+            shadow.PointShadowsEnabled = pointShadows ? 1 : 0;
+            shadow.PointShadowFar = PointCount > 0 && Points[0].Range > 0f ? Points[0].Range : 1f;
+            shadow.PointShadowStrength = 0.15f;
+            renderContext.SetConstants(ConstantSlot.Light, light);
+            renderContext.SetConstants(ConstantSlot.Shadow, shadow);
         }
 
         public static LightingFrame Studio(Vector3 cameraPos, Vector3 lookTarget)

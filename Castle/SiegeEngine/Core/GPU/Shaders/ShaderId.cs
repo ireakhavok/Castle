@@ -20,6 +20,17 @@ namespace SiegeEngine.Core.GPU.Shaders
         AcousticId = 13,
         AcousticResidual = 14,
         AntiAliasing = 15,
-        ColorCompose = 16
+        ColorCompose = 16,
+        Terrain = 17,
+        AaCopy = 18,
+        AaFxaa = 19,
+        AaSmaa = 20,
+        AaTaa = 21,
+        CcExtract = 22,
+        CcDownsample = 23,
+        CcUpsample = 24,
+        CcCompose = 25,
+        CcLuma = 26,
+        CcAdapt = 27
     }
 }

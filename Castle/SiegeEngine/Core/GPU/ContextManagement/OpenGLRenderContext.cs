@@ -337,6 +337,12 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             _pipelineVao[program] = vao;
             BindBlock(program, "FrameCB", ConstantSlot.Frame);
             BindBlock(program, "ObjectCB", ConstantSlot.Object);
+            BindBlock(program, "SkinCB", ConstantSlot.Skin);
+            BindBlock(program, "MaterialCB", ConstantSlot.Material);
+            BindBlock(program, "LightCB", ConstantSlot.Light);
+            BindBlock(program, "ShadowCB", ConstantSlot.Shadow);
+            BindBlock(program, "UiCB", ConstantSlot.Ui);
+            BindBlock(program, "PostCB", ConstantSlot.Post);
             return handle;
         }
 

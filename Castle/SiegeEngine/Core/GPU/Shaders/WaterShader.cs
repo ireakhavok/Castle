@@ -2,8 +2,8 @@ namespace SiegeEngine.Core.GPU.Shaders
 {
     public static class WaterShader
     {
-        public const string VertexShaderSource = @"
-            #version 330 core
+        public const string VertexShaderSource = @"            #version 330 core
+
             layout (location = 0) in vec3 aPosition;
             layout (location = 1) in vec4 aColor;
             layout(std140) uniform FrameCB
@@ -25,8 +25,8 @@ namespace SiegeEngine.Core.GPU.Shaders
                 vColor = vec4(0.0, 0.5, 1.0, 1.0);
             }";
 
-        public const string FragmentShaderSource = @"
-            #version 330 core
+        public const string FragmentShaderSource = @"            #version 330 core
+
             in vec4 vColor;
             out vec4 FragColor;
             void main()

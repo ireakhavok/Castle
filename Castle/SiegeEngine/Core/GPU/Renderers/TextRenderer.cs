@@ -15,6 +15,7 @@ namespace SiegeEngine.Core.GPU.Renderers
         private readonly nint _window;
         private uint _textVao, _textVbo;
         private ShaderProgram _shaderProgram;
+        private GpuHandle _pipeline;
         private Dictionary<string, SystemFontRenderer> _fontRenderers = new Dictionary<string, SystemFontRenderer>();
         private SystemFontRenderer _defaultFontRenderer;
 
@@ -215,6 +216,8 @@ namespace SiegeEngine.Core.GPU.Renderers
         public void Initialize(ShaderProgram shaderProgram)
         {
             _shaderProgram = shaderProgram;
+            if (!_pipeline.IsValid)
+                _pipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Ui, _renderContext));
             _renderContext.GenVertexArrays(1, out _textVao);
             _renderContext.GenBuffers(1, out _textVbo);
             _renderContext.BindVertexArray(_textVao);
@@ -345,11 +348,13 @@ namespace SiegeEngine.Core.GPU.Renderers
         {
             if (run.Glyphs.Count == 0) return;
 
-            _shaderProgram.Use();
-            _shaderProgram.SetUniform("uUseTexture", 1.0f);
-            _shaderProgram.SetMatrix4("uTransform", Matrix4x4.Identity);
-            _shaderProgram.SetUniform("uColor", color.X, color.Y, color.Z, color.W);
-            _shaderProgram.SetUniform("uTexture", 0);
+            _renderContext.BindPipeline(_pipeline);
+            _renderContext.SetConstants(ConstantSlot.Ui, new UiCB
+            {
+                Transform = Matrix4x4.Identity,
+                Color = color,
+                UseTexture = 1f
+            });
 
             // Group by atlas page (almost always a single page)
             int currentPage = -1;

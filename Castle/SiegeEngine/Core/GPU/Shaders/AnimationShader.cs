@@ -5,6 +5,122 @@ namespace SiegeEngine.Core.GPU.Shaders
     public static class AnimationShader
     {
         public const string VertexShaderSource = @"#version 330 core
+
+layout(std140) uniform FrameCB
+{
+    mat4 View;
+    mat4 Projection;
+    vec4 ViewPos;
+    float Time;
+    int HasTexture;
+    float PadFrame0;
+    float PadFrame1;
+};
+layout(std140) uniform ObjectCB
+{
+    mat4 Model;
+    mat4 NormalMatrix;
+    int HasBones;
+    int ReceiveShadows;
+    int Pad0;
+    int Pad1;
+    float PointSize;
+    float VerticalOffset;
+    float Pad3;
+    float Pad4;
+};
+layout(std140) uniform SkinCB
+{
+    mat4 BoneTransforms[128];
+};
+layout(std140) uniform MaterialCB
+{
+    int HasOpacity;
+    int OpacitySlots;
+    int DebugTextureOnly;
+    int DebugMaterialIndex;
+    int HasWorldAligned;
+    int MappingMode0;
+    int MappingMode1;
+    int MappingMode2;
+    int MappingMode3;
+    int PadMat0;
+    int PadMat1;
+    int PadMat2;
+    vec4 Tiling0;
+    vec4 Tiling1;
+    vec4 Tiling2;
+    vec4 Tiling3;
+    vec4 Offset0;
+    vec4 Offset1;
+    vec4 Offset2;
+    vec4 Offset3;
+    vec4 Rotation;
+    vec4 BlendSharpness;
+};
+layout(std140) uniform LightCB
+{
+    vec4 LightDir;
+    vec4 LightColor;
+    vec4 AmbientColor;
+    vec4 LightViewPos;
+    float LightIntensity;
+    float AmbientStrength;
+    float SpecularStrength;
+    float Shininess;
+    int PointCount;
+    int SpotCount;
+    int FogMode;
+    int PadLight0;
+    vec4 PointPos0;
+    vec4 PointPos1;
+    vec4 PointPos2;
+    vec4 PointPos3;
+    vec4 PointColor0;
+    vec4 PointColor1;
+    vec4 PointColor2;
+    vec4 PointColor3;
+    vec4 PointIntensityRange0;
+    vec4 PointIntensityRange1;
+    vec4 PointIntensityRange2;
+    vec4 PointIntensityRange3;
+    vec4 SpotPos0;
+    vec4 SpotPos1;
+    vec4 SpotDir0;
+    vec4 SpotDir1;
+    vec4 SpotColor0;
+    vec4 SpotColor1;
+    vec4 SpotIntensityRange0;
+    vec4 SpotIntensityRange1;
+    vec4 SpotCone0;
+    vec4 SpotCone1;
+    vec4 FogColor;
+    float FogDensity;
+    float FogStart;
+    float FogHeight;
+    float FogHeightFalloff;
+};
+layout(std140) uniform ShadowCB
+{
+    mat4 CascadeVP0;
+    mat4 CascadeVP1;
+    mat4 CascadeVP2;
+    mat4 CascadeVP3;
+    vec4 CascadeSplits;
+    vec4 CascadeZRange;
+    int ShadowsEnabled;
+    int ReceiveShadows;
+    int CascadeCount;
+    int ShadowSmooth;
+    float ShadowBias;
+    float ShadowAtlasSize;
+    float ShadowStrength;
+    int PointShadowsEnabled;
+    float PointShadowFar;
+    float PointShadowStrength;
+    float PadSh0;
+    float PadSh1;
+};
 layout(location = 0) in vec3 aPosition;
 layout(location = 2) in vec2 aTexCoord;
 layout(location = 3) in vec3 aNormal;
@@ -18,24 +134,17 @@ out vec3 FragPos;
 out float MaterialIndex;
 out vec3 vTangent;
 out vec4 vViewPos;
-uniform mat4 uModel;
-uniform mat4 uView;
-uniform mat4 uProjection;
-uniform mat4 uNormalMatrix;
-uniform int uHasBones;
-uniform mat4 uBoneMatrices[100];
-uniform mat3 uNormalMatrices[100];
 void main()
 {
     vec4 totalPosition = vec4(0.0);
     vec3 totalNormal = vec3(0.0);
     vec3 totalTangent = vec3(0.0);
     float sumWeights = 0.0;
-    if (uHasBones == 1) {
+    if (HasBones == 1) {
         for (int i = 0; i < 4; i++) {
             int boneIndex = int(aBoneIDs[i]);
             if (boneIndex < 0 || boneIndex >= 100) continue;
-            mat4 boneTransform = uBoneMatrices[boneIndex];
+            mat4 boneTransform = BoneTransforms[boneIndex];
             vec4 localPosition = boneTransform * vec4(aPosition, 1.0);
             totalPosition += localPosition * aWeights[i];
             vec3 localNormal = uNormalMatrices[boneIndex] * aNormal;
@@ -60,19 +169,135 @@ void main()
         totalNormal = aNormal;
         totalTangent = aTangent;
     }
-    mat3 nMat = mat3(uNormalMatrix);
+    mat3 nMat = mat3(NormalMatrix);
     if (dot(nMat[0], nMat[0]) < 0.0001)
-        nMat = mat3(uModel);
+        nMat = mat3(Model);
     Normal = normalize(nMat * totalNormal);
     vTangent = normalize(nMat * totalTangent);
-    FragPos = vec3(uModel * totalPosition);
+    FragPos = vec3(Model * totalPosition);
     TexCoord = aTexCoord;
     MaterialIndex = aMaterialIndex;
-    vViewPos = uView * vec4(FragPos, 1.0);
-    gl_Position = uProjection * uView * uModel * totalPosition;
+    vViewPos = View * vec4(FragPos, 1.0);
+    gl_Position = Projection * View * Model * totalPosition;
 }";
 
         public const string FragmentShaderSource = @"#version 330 core
+
+layout(std140) uniform FrameCB
+{
+    mat4 View;
+    mat4 Projection;
+    vec4 ViewPos;
+    float Time;
+    int HasTexture;
+    float PadFrame0;
+    float PadFrame1;
+};
+layout(std140) uniform ObjectCB
+{
+    mat4 Model;
+    mat4 NormalMatrix;
+    int HasBones;
+    int ReceiveShadows;
+    int Pad0;
+    int Pad1;
+    float PointSize;
+    float VerticalOffset;
+    float Pad3;
+    float Pad4;
+};
+layout(std140) uniform SkinCB
+{
+    mat4 BoneTransforms[128];
+};
+layout(std140) uniform MaterialCB
+{
+    int HasOpacity;
+    int OpacitySlots;
+    int DebugTextureOnly;
+    int DebugMaterialIndex;
+    int HasWorldAligned;
+    int MappingMode0;
+    int MappingMode1;
+    int MappingMode2;
+    int MappingMode3;
+    int PadMat0;
+    int PadMat1;
+    int PadMat2;
+    vec4 Tiling0;
+    vec4 Tiling1;
+    vec4 Tiling2;
+    vec4 Tiling3;
+    vec4 Offset0;
+    vec4 Offset1;
+    vec4 Offset2;
+    vec4 Offset3;
+    vec4 Rotation;
+    vec4 BlendSharpness;
+};
+layout(std140) uniform LightCB
+{
+    vec4 LightDir;
+    vec4 LightColor;
+    vec4 AmbientColor;
+    vec4 LightViewPos;
+    float LightIntensity;
+    float AmbientStrength;
+    float SpecularStrength;
+    float Shininess;
+    int PointCount;
+    int SpotCount;
+    int FogMode;
+    int PadLight0;
+    vec4 PointPos0;
+    vec4 PointPos1;
+    vec4 PointPos2;
+    vec4 PointPos3;
+    vec4 PointColor0;
+    vec4 PointColor1;
+    vec4 PointColor2;
+    vec4 PointColor3;
+    vec4 PointIntensityRange0;
+    vec4 PointIntensityRange1;
+    vec4 PointIntensityRange2;
+    vec4 PointIntensityRange3;
+    vec4 SpotPos0;
+    vec4 SpotPos1;
+    vec4 SpotDir0;
+    vec4 SpotDir1;
+    vec4 SpotColor0;
+    vec4 SpotColor1;
+    vec4 SpotIntensityRange0;
+    vec4 SpotIntensityRange1;
+    vec4 SpotCone0;
+    vec4 SpotCone1;
+    vec4 FogColor;
+    float FogDensity;
+    float FogStart;
+    float FogHeight;
+    float FogHeightFalloff;
+};
+layout(std140) uniform ShadowCB
+{
+    mat4 CascadeVP0;
+    mat4 CascadeVP1;
+    mat4 CascadeVP2;
+    mat4 CascadeVP3;
+    vec4 CascadeSplits;
+    vec4 CascadeZRange;
+    int ShadowsEnabled;
+    int ReceiveShadows;
+    int CascadeCount;
+    int ShadowSmooth;
+    float ShadowBias;
+    float ShadowAtlasSize;
+    float ShadowStrength;
+    int PointShadowsEnabled;
+    float PointShadowFar;
+    float PointShadowStrength;
+    float PadSh0;
+    float PadSh1;
+};
 in vec2 TexCoord;
 in vec3 Normal;
 in vec3 FragPos;
@@ -85,60 +310,12 @@ uniform sampler2D uAlbedoMap[4];
 uniform sampler2D uNormalMap[4];
 uniform sampler2D uMetallicMap[4];
 
-uniform int uHasOpacity;
-uniform int uOpacitySlots;
 uniform sampler2D uOpacityMap;
 
-uniform vec3 uLightDir;
-uniform vec3 uLightColor;
-uniform float uLightIntensity;
-uniform vec3 uViewPos;
-uniform float uAmbientStrength;
-uniform float uSpecularStrength;
-uniform float uShininess;
-uniform vec3 uAmbientColor;
 
-uniform int uHasWorldAligned;
-uniform int uMappingMode[4];
-uniform vec2 uTiling[4];
-uniform vec2 uOffset[4];
-uniform float uRotation[4];
-uniform float uBlendSharpness[4];
 
-uniform int uPointCount;
-uniform vec3 uPointPos[4];
-uniform vec3 uPointColor[4];
-uniform float uPointIntensity[4];
-uniform float uPointRange[4];
-uniform int uSpotCount;
-uniform vec3 uSpotPos[2];
-uniform vec3 uSpotDir[2];
-uniform vec3 uSpotColor[2];
-uniform float uSpotIntensity[2];
-uniform float uSpotRange[2];
-uniform float uSpotInner[2];
-uniform float uSpotOuter[2];
-uniform int uFogMode;
-uniform vec3 uFogColor;
-uniform float uFogDensity;
-uniform float uFogStart;
-uniform float uFogHeight;
-uniform float uFogHeightFalloff;
-uniform int uShadowsEnabled;
-uniform int uReceiveShadows;
-uniform int uCascadeCount;
-uniform mat4 uCascadeVP[4];
-uniform vec4 uCascadeSplits;
 uniform sampler2D uShadowAtlas;
-uniform float uShadowBias;
-uniform float uShadowAtlasSize;
-uniform float uShadowStrength;
-uniform int uShadowSmooth;
-uniform vec4 uCascadeZRange;
 uniform samplerCube uPointShadowCube;
-uniform int uPointShadowsEnabled;
-uniform float uPointShadowFar;
-uniform float uPointShadowStrength;
 
 vec3 SampleAlbedo(int matIdx, vec2 uv) {
     if (matIdx == 1) return texture(uAlbedoMap[1], uv).rgb;
@@ -190,10 +367,10 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
     atlasUv = clamp(atlasUv, atlasOrigin + vec2(0.001), atlasOrigin + vec2(cell - 0.001));
 
     float stored = texture(uShadowAtlas, atlasUv).r;
-    if (uShadowSmooth > 0) {
+    if (ShadowSmooth > 0) {
         // Box-filter the depth map, then one ESM compare.
         // Not PCF: we do not test this Z against neighbor rays.
-        float texel = cell / max(uShadowAtlasSize * 0.5, 1.0);
+        float texel = cell / max(ShadowAtlasSize * 0.5, 1.0);
         float acc = 0.0;
         int taps = 0;
         for (int x = -1; x <= 1; x++) {
@@ -207,17 +384,17 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
         stored = acc / float(max(taps, 1));
     }
 
-    float umbra = uShadowStrength;
+    float umbra = ShadowStrength;
     if (umbra < 0.0) umbra = 0.08;
 
     float zRange = 1.0;
-    if (cascade == 0) zRange = uCascadeZRange.x;
-    else if (cascade == 1) zRange = uCascadeZRange.y;
-    else if (cascade == 2) zRange = uCascadeZRange.z;
-    else zRange = uCascadeZRange.w;
+    if (cascade == 0) zRange = CascadeZRange.x;
+    else if (cascade == 1) zRange = CascadeZRange.y;
+    else if (cascade == 2) zRange = CascadeZRange.z;
+    else zRange = CascadeZRange.w;
     zRange = max(zRange, 1.0);
 
-    float kWorld = uShadowBias;
+    float kWorld = ShadowBias;
     if (kWorld < 1.0) kWorld = 40.0;
     float k = kWorld * zRange;
     float dz = max(proj.z - stored, 0.0);
@@ -226,10 +403,10 @@ float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
 }
 
 float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
-    if (uShadowsEnabled == 0 || uReceiveShadows == 0 || uCascadeCount <= 0)
+    if (ShadowsEnabled == 0 || ReceiveShadows == 0 || CascadeCount <= 0)
         return 1.0;
     for (int i = 0; i < 4; i++) {
-        if (i >= uCascadeCount) break;
+        if (i >= CascadeCount) break;
         float s = SampleCascadeAt(i, worldPos, normal);
         if (s >= 0.0) return s;
     }
@@ -237,7 +414,7 @@ float SampleCascadeShadow(vec3 worldPos, vec3 normal) {
 }
 
 float SamplePointShadow(vec3 worldPos, vec3 lightPos, float range) {
-    if (uPointShadowsEnabled == 0)
+    if (PointShadowsEnabled == 0)
         return 1.0;
     vec3 L = worldPos - lightPos;
     float dist = length(L);
@@ -247,8 +424,8 @@ float SamplePointShadow(vec3 worldPos, vec3 lightPos, float range) {
     vec3 up = abs(dir.z) < 0.99 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
     vec3 tangent = normalize(cross(up, dir));
     vec3 bitangent = cross(dir, tangent);
-    float current = dist / max(uPointShadowFar, 0.001);
-    float umbra = uPointShadowStrength;
+    float current = dist / max(PointShadowFar, 0.001);
+    float umbra = PointShadowStrength;
     if (umbra <= 0.0) umbra = 0.15;
     float disk = 0.006;
     float shadow = 0.0;
@@ -273,7 +450,7 @@ float SamplePointShadow(vec3 worldPos, vec3 lightPos, float range) {
 vec3 PointLighting(vec3 albedo, vec3 norm, vec3 viewDir) {
     vec3 sum = vec3(0.0);
     for (int i = 0; i < 4; i++) {
-        if (i >= uPointCount) break;
+        if (i >= PointCount) break;
         vec3 toLight = uPointPos[i] - FragPos;
         float dist = length(toLight);
         float range = max(uPointRange[i], 0.01);
@@ -291,7 +468,7 @@ vec3 PointLighting(vec3 albedo, vec3 norm, vec3 viewDir) {
 vec3 SpotLighting(vec3 albedo, vec3 norm, vec3 viewDir) {
     vec3 sum = vec3(0.0);
     for (int i = 0; i < 2; i++) {
-        if (i >= uSpotCount) break;
+        if (i >= SpotCount) break;
         vec3 toLight = uSpotPos[i] - FragPos;
         float dist = length(toLight);
         float range = max(uSpotRange[i], 0.01);
@@ -309,14 +486,14 @@ vec3 SpotLighting(vec3 albedo, vec3 norm, vec3 viewDir) {
 }
 
 vec3 ApplyFog(vec3 color) {
-    if (uFogMode == 0 || uFogMode == 3) return color;
-    float dist = length(uViewPos - FragPos);
-    float fogFactor = exp(-uFogDensity * dist);
-    if (uFogMode == 2) {
-        float heightTerm = exp(-uFogHeightFalloff * max(FragPos.z - uFogHeight, 0.0));
-        fogFactor = exp(-uFogDensity * dist * heightTerm);
+    if (FogMode == 0 || FogMode == 3) return color;
+    float dist = length(ViewPos.xyz - FragPos);
+    float fogFactor = exp(-FogDensity * dist);
+    if (FogMode == 2) {
+        float heightTerm = exp(-FogHeightFalloff * max(FragPos.z - FogHeight, 0.0));
+        fogFactor = exp(-FogDensity * dist * heightTerm);
     }
-    return mix(uFogColor, color, clamp(fogFactor, 0.0, 1.0));
+    return mix(FogColor.xyz, color, clamp(fogFactor, 0.0, 1.0));
 }
 
 void main()
@@ -325,7 +502,7 @@ void main()
     if (matIdx < 0) matIdx = 0;
     if (matIdx > 3) matIdx = 3;
 
-    if (uHasOpacity == 1 && ((uOpacitySlots >> matIdx) & 1) == 1) {
+    if (HasOpacity == 1 && ((OpacitySlots >> matIdx) & 1) == 1) {
         float mask = texture(uOpacityMap, TexCoord).r;
         if (mask <= 0.0) discard;
     }
@@ -338,7 +515,7 @@ void main()
     vec3 geoN = normalize(Normal);
     if (dot(geoN, geoN) < 0.001)
         geoN = vec3(0.0, 0.0, 1.0);
-    vec3 toCam = uViewPos - FragPos;
+    vec3 toCam = ViewPos.xyz - FragPos;
     if (dot(geoN, toCam) < 0.0)
         geoN = -geoN;
     vec3 normal = geoN;
@@ -356,15 +533,15 @@ void main()
             normal = mapped;
     }
 
-    vec3 ambient = uAmbientStrength * albedo * uAmbientColor;
-    vec3 lightDir = normalize(-uLightDir);
+    vec3 ambient = AmbientStrength * albedo * AmbientColor.xyz;
+    vec3 lightDir = normalize(-LightDir.xyz);
     float shadow = SampleCascadeShadow(FragPos, geoN);
     float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = diff * albedo * uLightColor * uLightIntensity * shadow;
-    vec3 viewDir = normalize(uViewPos - FragPos);
+    vec3 diffuse = diff * albedo * LightColor.xyz * LightIntensity * shadow;
+    vec3 viewDir = normalize(ViewPos.xyz - FragPos);
     vec3 halfwayDir = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), max(uShininess, 1.0));
-    vec3 specular = uSpecularStrength * spec * uLightColor * uLightIntensity * metallic * shadow;
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), max(Shininess, 1.0));
+    vec3 specular = SpecularStrength * spec * LightColor.xyz * LightIntensity * metallic * shadow;
     vec3 color = ambient + diffuse + specular;
     color += PointLighting(albedo, normal, viewDir);
     color += SpotLighting(albedo, normal, viewDir);

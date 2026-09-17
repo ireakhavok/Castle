@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/GPU/Renderers
+// Folder: SiegeEngine/Core/GPU/Renderers
 // File: SpriteRenderer.cs
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
@@ -10,7 +10,7 @@ namespace SiegeEngine.Core.GPU.Renderers
     public unsafe sealed class SpriteRenderer : IDisposable
     {
         private readonly IRenderContext _renderContext;
-        private ShaderProgram _shader;
+        private GpuHandle _pipeline;
         private bool _batchOpen;
 
         public SpriteRenderer(IRenderContext renderContext)
@@ -20,16 +20,17 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void Initialize()
         {
-            if (_shader == null)
-                _shader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
+            if (_pipeline.IsValid)
+                return;
+            _pipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Sprite, _renderContext));
         }
 
         public void Begin(Matrix4x4 view, Matrix4x4 projection)
         {
-            if (_shader == null) Initialize();
-            _shader.Use();
-            _shader.SetMatrix4("uView", view);
-            _shader.SetMatrix4("uProjection", projection);
+            if (!_pipeline.IsValid) Initialize();
+            FrameCB frame = new FrameCB { View = view, Projection = projection };
+            _renderContext.BindPipeline(_pipeline);
+            _renderContext.SetConstants(ConstantSlot.Frame, frame);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
@@ -38,14 +39,21 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void Draw(VertexBuffer buffer, uint textureId, Matrix4x4 model)
         {
-            if (!_batchOpen || buffer == null || textureId == 0 || _shader == null) return;
-            _shader.SetMatrix4("uModel", model);
+            if (!_batchOpen || buffer == null || textureId == 0) return;
+            ObjectCB obj = new ObjectCB { Model = model };
+            _renderContext.SetConstants(ConstantSlot.Object, obj);
             _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
             _renderContext.BindTexture(_renderContext.Enums.Texture2D, textureId);
-            buffer.Bind();
+            _renderContext.BindVertexBuffer(buffer.VertexHandle, 0, buffer.Stride, 0);
             uint indexCount = buffer.GetIndexCount();
             if (indexCount == 0) indexCount = 6;
-            _renderContext.DrawElements(_renderContext.Enums.Triangles, indexCount, _renderContext.Enums.UnsignedInt, null);
+            if (indexCount > 0)
+            {
+                _renderContext.BindIndexBuffer(buffer.IndexHandle);
+                _renderContext.DrawIndexed((int)indexCount);
+            }
+            else
+                _renderContext.Draw((int)buffer.GetVertexCount());
         }
 
         public void End()
@@ -60,8 +68,11 @@ namespace SiegeEngine.Core.GPU.Renderers
         public void Dispose()
         {
             if (_batchOpen) End();
-            _shader?.Dispose();
-            _shader = null;
+            if (_pipeline.IsValid)
+            {
+                _renderContext.Destroy(_pipeline);
+                _pipeline = GpuHandle.Invalid;
+            }
         }
     }
 }

@@ -4,8 +4,8 @@ namespace SiegeEngine.Core.GPU.Shaders
 {
     public static class PointShader
     {
-        public const string VertexShaderSource = @"
-            #version 330 core
+        public const string VertexShaderSource = @"            #version 330 core
+
             layout(location = 0) in vec3 aPosition;
             layout(location = 1) in vec4 aColor;
             out vec4 vColor;
@@ -38,8 +38,8 @@ namespace SiegeEngine.Core.GPU.Shaders
                 vColor = aColor;
                 gl_PointSize = PointSize;
             }";
-        public const string FragmentShaderSource = @"
-            #version 330 core
+        public const string FragmentShaderSource = @"            #version 330 core
+
             in vec4 vColor;
             out vec4 FragColor;
             void main()

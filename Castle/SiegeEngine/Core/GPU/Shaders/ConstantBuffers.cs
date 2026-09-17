@@ -13,6 +13,8 @@ namespace SiegeEngine.Core.GPU.Shaders
         public const int Material = 3;
         public const int Light = 4;
         public const int Shadow = 5;
+        public const int Ui = 6;
+        public const int Post = 7;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -141,4 +143,59 @@ namespace SiegeEngine.Core.GPU.Shaders
         public float Pad0;
         public float Pad1;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct UiCB
+    {
+        public Matrix4x4 Transform;
+        public Vector4 Color;
+        public Vector4 Color1;
+        public Vector4 Color2;
+        public Vector4 BorderRadius;
+        public Vector4 RectSize;
+        public Vector4 BorderColor;
+        public float UseTexture;
+        public float UseGradient;
+        public float UseRounded;
+        public float GradientFlip;
+        public int GradientAxis;
+        public float BorderWidth;
+        public float Outline;
+        public float Pad0;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PostCB
+    {
+        public Matrix4x4 PrevView;
+        public Matrix4x4 PrevProjection;
+        public Matrix4x4 InvView;
+        public Matrix4x4 InvProjection;
+        public Vector4 InvResolution;
+        public float Threshold;
+        public float Knee;
+        public float Exposure;
+        public float BloomIntensity;
+        public float Contrast;
+        public float Saturation;
+        public float Temperature;
+        public float TargetLuma;
+        public float Adapt;
+        public float AdaptedLuma;
+        public int HasHistory;
+        public int HasBloom;
+        public int HasPrev;
+        public int AutoExposure;
+        public int Tonemap;
+        public int Steps;
+        public float Intensity;
+        public int HasDepth;
+        public float Unlit;
+        public float PolyFactor;
+        public float PolyUnits;
+        public float LinearDepth;
+        public float FarPlane;
+        public Vector4 LightPos;
+    }
 }
+

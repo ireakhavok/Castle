@@ -4,8 +4,8 @@ namespace SiegeEngine.Core.GPU.Shaders
 {
     public static class SkyboxShader
     {
-        public const string VertexShaderSource = @"
-#version 330 core
+        public const string VertexShaderSource = @"#version 330 core
+
 layout(location = 0) in vec3 aPosition;
 out vec3 vTexCoord;
 layout(std140) uniform FrameCB
@@ -39,8 +39,8 @@ void main() {
     vTexCoord = mat3(Model) * aPosition;
 }";
 
-        public const string FragmentShaderSource = @"
-#version 330 core
+        public const string FragmentShaderSource = @"#version 330 core
+
 in vec3 vTexCoord;
 out vec4 FragColor;
 uniform samplerCube uSkybox;

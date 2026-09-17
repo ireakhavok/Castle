@@ -16,6 +16,7 @@ namespace SiegeEngine.Core.GPU.Renderers
         private readonly IRenderContext _renderContext;
         private uint _vao, _vbo, _ebo;
         private ShaderProgram _shader;
+        private GpuHandle _pipeline;
         private readonly float[] _batchVerts = new float[MaxBatchQuads * 16];
         private int _batchCount;
         private Vector4 _batchColor;
@@ -30,6 +31,7 @@ namespace SiegeEngine.Core.GPU.Renderers
         private void Initialize()
         {
             _shader = new ShaderProgram(_renderContext, UiShader.VertexSource, UiShader.FragmentSource);
+            _pipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Ui, _renderContext));
             _renderContext.GenVertexArrays(1, out _vao);
             _renderContext.BindVertexArray(_vao);
             _renderContext.GenBuffers(1, out _vbo);
@@ -54,6 +56,12 @@ namespace SiegeEngine.Core.GPU.Renderers
                 _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(indices.Length * sizeof(uint)), idxPtr, _renderContext.Enums.StaticDraw);
             }
             _renderContext.BindVertexArray(0);
+        }
+
+        void BindUi(in UiCB ui)
+        {
+            _renderContext.BindPipeline(_pipeline);
+            _renderContext.SetConstants(ConstantSlot.Ui, ui);
         }
 
         public void EnsureUIState()
@@ -96,12 +104,14 @@ namespace SiegeEngine.Core.GPU.Renderers
             }
             EnsureUIState();
             ResetVertexState();
-            _shader.Use();
-            _shader.SetMatrix4("uTransform", Matrix4x4.Identity);
-            _shader.SetUniform("uColor", _batchColor.X, _batchColor.Y, _batchColor.Z, _batchColor.W);
-            _shader.SetUniform("uUseTexture", 0.0f);
-            _shader.SetUniform("uUseRounded", 0.0f);
-            _shader.SetUniform("uBorderWidth", 0f);
+            BindUi(new UiCB
+            {
+                Transform = Matrix4x4.Identity,
+                Color = _batchColor,
+                UseTexture = 0f,
+                UseRounded = 0f,
+                BorderWidth = 0f
+            });
             _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
             int floats = _batchCount * 16;
             fixed (float* ptr = _batchVerts)
@@ -145,8 +155,13 @@ namespace SiegeEngine.Core.GPU.Renderers
             EnsureUIState();
             ResetVertexState();
 
-            _shader.Use();
-            _shader.SetMatrix4("uTransform", Matrix4x4.Identity);
+            BindUi(new UiCB
+            {
+                Transform = Matrix4x4.Identity,
+                Color = color,
+                UseTexture = 0f,
+                UseRounded = 0f
+            });
 
             float left = 2.0f * posX / viewportWidth - 1.0f;
             float right = 2.0f * (posX + sizeX) / viewportWidth - 1.0f;
@@ -162,10 +177,6 @@ namespace SiegeEngine.Core.GPU.Renderers
             }
 
             _renderContext.VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 2 * sizeof(float), (void*)0);
-
-            _shader.SetUniform("uColor", color.X, color.Y, color.Z, color.W);
-            _shader.SetUniform("uUseTexture", 0.0f);
-            _shader.SetUniform("uUseRounded", 0.0f);
 
             _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
             _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, (void*)0);
@@ -191,20 +202,18 @@ namespace SiegeEngine.Core.GPU.Renderers
             EnsureUIState();
             ResetVertexState();
 
-            _shader.Use();
-            _shader.SetMatrix4("uTransform", Matrix4x4.Identity);
-            _shader.SetUniform("uColor", color.X, color.Y, color.Z, color.W);
-            _shader.SetUniform("uUseTexture", 0.0f);
-
             float useRounded = borderRadius == Vector4.Zero ? 0f : 1f;
-            _shader.SetUniform("uUseRounded", useRounded);
-            if (useRounded > 0.5f)
+            BindUi(new UiCB
             {
-                _shader.SetUniform("uBorderRadius", borderRadius.X, borderRadius.Y, borderRadius.Z, borderRadius.W);
-                _shader.SetUniform("uRectSize", rectSize.X, rectSize.Y, 0f, 0f);
-            }
-            _shader.SetUniform("uBorderWidth", borderWidth);
-            _shader.SetUniform("uBorderColor", borderColor.X, borderColor.Y, borderColor.Z, borderColor.W);
+                Transform = Matrix4x4.Identity,
+                Color = color,
+                UseTexture = 0f,
+                UseRounded = useRounded,
+                BorderRadius = borderRadius,
+                RectSize = new Vector4(rectSize.X, rectSize.Y, 0f, 0f),
+                BorderWidth = borderWidth,
+                BorderColor = borderColor
+            });
 
             _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
 
@@ -260,11 +269,13 @@ namespace SiegeEngine.Core.GPU.Renderers
             EnsureUIState();
             ResetVertexState();
 
-            _shader.Use();
-            _shader.SetMatrix4("uTransform", Matrix4x4.Identity);
-            _shader.SetUniform("uColor", color.X, color.Y, color.Z, color.W);
-            _shader.SetUniform("uUseTexture", 0.0f);
-            _shader.SetUniform("uUseRounded", 0.0f);
+            BindUi(new UiCB
+            {
+                Transform = Matrix4x4.Identity,
+                Color = color,
+                UseTexture = 0f,
+                UseRounded = 0f
+            });
 
             _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
             fixed (float* ptr = vertices)
@@ -298,6 +309,8 @@ namespace SiegeEngine.Core.GPU.Renderers
                 _renderContext.DeleteBuffer(_ebo);
                 _ebo = 0;
             }
+            if (_pipeline.IsValid)
+                _renderContext.Destroy(_pipeline);
             _shader?.Dispose();
         }
     }

@@ -18,6 +18,8 @@ namespace SiegeEngine.Core.GPU.Renderers
         private readonly IRenderContext _renderContext;
         private ShaderProgram _modelShader;
         private ShaderProgram _animationShader;
+        private GpuHandle _modelPipeline;
+        private GpuHandle _animationPipeline;
         private List<int> _hiddenMeshIndices;
         private List<MeshMaterialOption> _materialOptions;
         private FBXModel _opacityModel;
@@ -72,6 +74,8 @@ namespace SiegeEngine.Core.GPU.Renderers
         {
             _modelShader = new ShaderProgram(_renderContext, ModelShader.VertexShaderSource, ModelShader.FragmentShaderSource);
             _animationShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
+            _modelPipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Model, _renderContext));
+            _animationPipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Animation, _renderContext));
         }
 
         // === SINGLE CANONICAL PATH — all scenes and panels now call this ===
@@ -182,6 +186,13 @@ namespace SiegeEngine.Core.GPU.Renderers
 
             bool hasBones = boneMatrices != null && boneMatrices.Length > 0 && fbxModel != null && fbxModel.HasSkin;
             ShaderProgram shader = hasBones ? _animationShader : _modelShader;
+            GpuHandle pipeline = hasBones ? _animationPipeline : _modelPipeline;
+            _renderContext.BindPipeline(pipeline);
+            FrameCB frame = new FrameCB { View = view, Projection = projection, ViewPos = new Vector4(viewPos, 1f) };
+            ObjectCB obj = new ObjectCB { Model = modelMatrix, NormalMatrix = BuildNormalMatrix(modelMatrix), HasBones = hasBones ? 1 : 0, ReceiveShadows = receiveShadows ? 1 : 0 };
+            _renderContext.SetConstants(ConstantSlot.Frame, frame);
+            _renderContext.SetConstants(ConstantSlot.Object, obj);
+            LightingFrame.Current?.ApplyConstants(_renderContext);
             shader.Use();
             shader.SetMatrix4("uModel", modelMatrix);
             shader.SetMatrix4("uNormalMatrix", BuildNormalMatrix(modelMatrix));
@@ -257,7 +268,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 BindOpacityOption(shader, gpuIndex);
 
                 _renderContext.BindVertexArray(mmr.Vao);
-                _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
+                _renderContext.DrawIndexed((int)mmr.IndexCount);
                 _renderContext.BindVertexArray(0);
             }
 
@@ -696,6 +707,8 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void Dispose()
         {
+            if (_modelPipeline.IsValid) _renderContext.Destroy(_modelPipeline);
+            if (_animationPipeline.IsValid) _renderContext.Destroy(_animationPipeline);
             _modelShader?.Dispose();
             _animationShader?.Dispose();
         }

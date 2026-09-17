@@ -94,13 +94,35 @@ namespace SiegeEngine.Core.GPU.Shaders
                     new VertexAttribute(VertexSemantic.Position, enums.Float, 3, 0, 0)
                 });
             }
-            if (id == ShaderId.Grid)
+            if (id == ShaderId.Grid || id == ShaderId.Sprite || id == ShaderId.Terrain)
             {
                 return new VertexLayout(36, new[]
                 {
                     new VertexAttribute(VertexSemantic.Position, enums.Float, 3, 0, 0),
                     new VertexAttribute(VertexSemantic.Color, enums.Float, 4, 12, 0),
                     new VertexAttribute(VertexSemantic.TexCoord, enums.Float, 2, 28, 0)
+                });
+            }
+            if (id == ShaderId.Model || id == ShaderId.Animation || id == ShaderId.Asset || id == ShaderId.ShadowDepth)
+            {
+                return new VertexLayout(88, new[]
+                {
+                    new VertexAttribute(VertexSemantic.Position, enums.Float, 3, 0, 0),
+                    new VertexAttribute(VertexSemantic.TexCoord, enums.Float, 2, 12, 0),
+                    new VertexAttribute(VertexSemantic.Normal, enums.Float, 3, 20, 0),
+                    new VertexAttribute(VertexSemantic.MaterialIndex, enums.Float, 1, 32, 0),
+                    new VertexAttribute(VertexSemantic.Tangent, enums.Float, 3, 36, 0),
+                    new VertexAttribute(VertexSemantic.BoneIds, enums.Float, 4, 48, 0),
+                    new VertexAttribute(VertexSemantic.BoneWeights, enums.Float, 4, 64, 0)
+                });
+            }
+            if (id == ShaderId.Text || id == ShaderId.Ui)
+            {
+                return new VertexLayout(32, new[]
+                {
+                    new VertexAttribute(VertexSemantic.Position, enums.Float, 2, 0, 0),
+                    new VertexAttribute(VertexSemantic.Color, enums.Float, 4, 8, 0),
+                    new VertexAttribute(VertexSemantic.TexCoord, enums.Float, 2, 24, 0)
                 });
             }
             return null;

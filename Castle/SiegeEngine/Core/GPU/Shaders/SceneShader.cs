@@ -4,8 +4,8 @@ namespace SiegeEngine.Core.GPU.Shaders
 {
     public static class SceneShader
     {
-        public const string VertexShaderSource = @"
-            #version 330 core
+        public const string VertexShaderSource = @"            #version 330 core
+
             layout(location = 0) in vec3 aPosition;
             layout(location = 1) in vec4 aColor;
             layout(location = 2) in vec2 aUV;
@@ -40,8 +40,8 @@ namespace SiegeEngine.Core.GPU.Shaders
                 vUV = aUV;
             }";
 
-        public const string FragmentShaderSource = @"
-            #version 330 core
+        public const string FragmentShaderSource = @"            #version 330 core
+
             in vec4 vColor;
             in vec2 vUV;
             out vec4 FragColor;
