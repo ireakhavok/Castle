@@ -59,9 +59,12 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.SetConstants(ConstantSlot.Frame, frame);
             _renderContext.SetConstants(ConstantSlot.Object, obj);
 
-            buffer.Bind();
+            _renderContext.BindVertexBuffer(buffer.VertexHandle, 0, buffer.Stride, 0);
             if (indexCount > 0)
+            {
+                _renderContext.BindIndexBuffer(buffer.IndexHandle);
                 _renderContext.DrawIndexed((int)indexCount);
+            }
             else
                 _renderContext.Draw((int)vertexCount);
 

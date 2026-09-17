@@ -21,6 +21,10 @@ namespace SiegeEngine.Core.GPU.Shaders
         public Matrix4x4 View;
         public Matrix4x4 Projection;
         public Vector4 ViewPos;
+        public float Time;
+        public int HasTexture;
+        public float PadFrame0;
+        public float PadFrame1;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -33,7 +37,7 @@ namespace SiegeEngine.Core.GPU.Shaders
         public int Pad0;
         public int Pad1;
         public float PointSize;
-        public float Pad2;
+        public float VerticalOffset;
         public float Pad3;
         public float Pad4;
     }

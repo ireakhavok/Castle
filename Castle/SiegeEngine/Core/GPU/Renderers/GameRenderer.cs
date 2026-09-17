@@ -26,6 +26,8 @@ namespace SiegeEngine.Core.GPU.Renderers
         private ShaderProgram _pointShader, _waterShader, _gridShader, _modelShader;
         private GpuHandle _pointPipeline;
         private GpuHandle _pointGpuBuffer;
+        private GpuHandle _waterPipeline;
+        private GpuHandle _waterGpuBuffer;
         private int _width, _height;
         public GameRenderer(IRenderContext renderContext, nint window, InputHandler inputHandler, Player player, ModelManager modelManager, IGameServer server = null, EventBus eventBus = null) : base(player)
         {
@@ -90,6 +92,17 @@ namespace SiegeEngine.Core.GPU.Renderers
             }
             _renderContext.EnableVertexAttribArray(0);
             _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, 3 * sizeof(float), (void*)0);
+            _waterPipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Water, _renderContext));
+            _waterGpuBuffer = _renderContext.CreateBuffer(new BufferDesc
+            {
+                Target = _renderContext.Enums.ArrayBuffer,
+                Usage = _renderContext.Enums.StaticDraw,
+                ByteSize = 4 * 3 * sizeof(float)
+            });
+            fixed (float* ptr = waterVertices)
+            {
+                _renderContext.UpdateBuffer(_waterGpuBuffer, new ReadOnlySpan<byte>((byte*)ptr, 4 * 3 * sizeof(float)));
+            }
             _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, 0);
             _renderContext.BindVertexArray(0);
             _renderContext.Enable(_renderContext.Enums.Blend);
@@ -145,10 +158,11 @@ namespace SiegeEngine.Core.GPU.Renderers
                     }
                     else if (entity.Type == "Water")
                     {
-                        _waterShader.Use();
-                        _waterShader.SetMatrix4("uModel", modelMatrix);
-                        _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _waterBuffer);
-                        _renderContext.DrawArrays(_renderContext.Enums.TriangleFan, 0, 4);
+                        FrameCB frame = new FrameCB { View = view, Projection = projection };
+                        _renderContext.BindPipeline(_waterPipeline);
+                        _renderContext.SetConstants(ConstantSlot.Frame, frame);
+                        _renderContext.BindVertexBuffer(_waterGpuBuffer, 0, 3 * sizeof(float), 0);
+                        _renderContext.Draw(4);
                     }
                 }
                 if (modelComp != null && physics != null)
@@ -249,6 +263,10 @@ namespace SiegeEngine.Core.GPU.Renderers
                 _renderContext.Destroy(_pointPipeline);
             if (_pointGpuBuffer.IsValid)
                 _renderContext.Destroy(_pointGpuBuffer);
+            if (_waterPipeline.IsValid)
+                _renderContext.Destroy(_waterPipeline);
+            if (_waterGpuBuffer.IsValid)
+                _renderContext.Destroy(_waterGpuBuffer);
             _pointShader.Dispose();
             _waterShader.Dispose();
             _gridShader.Dispose();

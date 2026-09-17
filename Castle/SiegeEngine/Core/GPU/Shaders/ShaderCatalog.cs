@@ -80,6 +80,29 @@ namespace SiegeEngine.Core.GPU.Shaders
                     new VertexAttribute(VertexSemantic.Color, enums.Float, 4, 12, 0)
                 });
             }
+            if (id == ShaderId.Skybox)
+            {
+                return new VertexLayout(36, new[]
+                {
+                    new VertexAttribute(VertexSemantic.Position, enums.Float, 3, 0, 0)
+                });
+            }
+            if (id == ShaderId.Water)
+            {
+                return new VertexLayout(12, new[]
+                {
+                    new VertexAttribute(VertexSemantic.Position, enums.Float, 3, 0, 0)
+                });
+            }
+            if (id == ShaderId.Grid)
+            {
+                return new VertexLayout(36, new[]
+                {
+                    new VertexAttribute(VertexSemantic.Position, enums.Float, 3, 0, 0),
+                    new VertexAttribute(VertexSemantic.Color, enums.Float, 4, 12, 0),
+                    new VertexAttribute(VertexSemantic.TexCoord, enums.Float, 2, 28, 0)
+                });
+            }
             return null;
         }
 
@@ -99,6 +122,8 @@ namespace SiegeEngine.Core.GPU.Shaders
                     return new GpuRenderState { DepthTest = false, DepthWrite = false, Blend = true, CullMode = enums.None, Primitive = enums.Triangles };
                 case ShaderId.Point:
                     return new GpuRenderState { DepthTest = true, DepthWrite = true, Primitive = enums.Points };
+                case ShaderId.Water:
+                    return new GpuRenderState { DepthTest = true, DepthWrite = true, Blend = true, Primitive = enums.TriangleFan };
                 default:
                     return new GpuRenderState { DepthTest = true, DepthWrite = true, CullMode = enums.Back, Primitive = enums.Triangles };
             }

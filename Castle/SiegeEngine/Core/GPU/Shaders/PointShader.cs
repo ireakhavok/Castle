@@ -14,6 +14,10 @@ namespace SiegeEngine.Core.GPU.Shaders
                 mat4 View;
                 mat4 Projection;
                 vec4 ViewPos;
+                float Time;
+                int HasTexture;
+                float PadFrame0;
+                float PadFrame1;
             };
             layout(std140) uniform ObjectCB
             {
@@ -24,7 +28,7 @@ namespace SiegeEngine.Core.GPU.Shaders
                 int Pad0;
                 int Pad1;
                 float PointSize;
-                float Pad2;
+                float VerticalOffset;
                 float Pad3;
                 float Pad4;
             };

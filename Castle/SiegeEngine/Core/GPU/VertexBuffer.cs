@@ -15,14 +15,30 @@ namespace SiegeEngine.Core.GPU
         private uint _ebo;
         private uint _vertexCount;
         private uint _indexCount;
+        private int _stride;
+        private GpuHandle _vertexHandle;
+        private GpuHandle _indexHandle;
         private bool _disposed;
         public uint Vao => _vao;
+        public int Stride => _stride;
+        public GpuHandle VertexHandle => _vertexHandle;
+        public GpuHandle IndexHandle => _indexHandle;
         public VertexBuffer(IRenderContext renderContext)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _vao = _renderContext.GenVertexArray();
-            _vbo = _renderContext.GenBuffer();
-            _ebo = _renderContext.GenBuffer();
+            _vertexHandle = _renderContext.CreateBuffer(new BufferDesc
+            {
+                Target = _renderContext.Enums.ArrayBuffer,
+                Usage = _renderContext.Enums.DynamicDraw
+            });
+            _indexHandle = _renderContext.CreateBuffer(new BufferDesc
+            {
+                Target = _renderContext.Enums.ElementArrayBuffer,
+                Usage = _renderContext.Enums.DynamicDraw
+            });
+            _vbo = _vertexHandle.Id;
+            _ebo = _indexHandle.Id;
         }
         public void Update(List<Entity> entities)
         {
@@ -58,6 +74,7 @@ namespace SiegeEngine.Core.GPU
                 _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, _renderContext.Enums.DynamicDraw);
             }
             uint stride = 7 * sizeof(float);
+            _stride = (int)stride;
             _renderContext.EnableVertexAttribArray(0);
             _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
             _renderContext.EnableVertexAttribArray(1);
@@ -74,8 +91,10 @@ namespace SiegeEngine.Core.GPU
             if (!_disposed)
             {
                 _renderContext.DeleteVertexArray(_vao);
-                _renderContext.DeleteBuffer(_vbo);
-                _renderContext.DeleteBuffer(_ebo);
+                if (_vertexHandle.IsValid)
+                    _renderContext.Destroy(_vertexHandle);
+                if (_indexHandle.IsValid)
+                    _renderContext.Destroy(_indexHandle);
                 _disposed = true;
             }
         }
@@ -106,6 +125,7 @@ namespace SiegeEngine.Core.GPU
                 _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, _renderContext.Enums.DynamicDraw);
             }
             uint stride = 7 * sizeof(float);
+            _stride = (int)stride;
             _renderContext.EnableVertexAttribArray(0);
             _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
             _renderContext.EnableVertexAttribArray(1);
@@ -127,6 +147,7 @@ namespace SiegeEngine.Core.GPU
                 _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, _renderContext.Enums.DynamicDraw);
             }
             uint stride = 9 * sizeof(float);
+            _stride = (int)stride;
             _renderContext.EnableVertexAttribArray(0);
             _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
             _renderContext.EnableVertexAttribArray(1);
@@ -150,6 +171,7 @@ namespace SiegeEngine.Core.GPU
                 _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, _renderContext.Enums.DynamicDraw);
             }
             uint stride = 9 * sizeof(float);
+            _stride = (int)stride;
             _renderContext.EnableVertexAttribArray(0);
             _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
             _renderContext.EnableVertexAttribArray(3);

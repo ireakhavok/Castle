@@ -21,6 +21,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         private readonly Dictionary<uint, VertexLayout> _pipelineLayout = new Dictionary<uint, VertexLayout>();
         private readonly Dictionary<uint, GpuRenderState> _pipelineState = new Dictionary<uint, GpuRenderState>();
         private readonly Dictionary<uint, uint> _pipelineVao = new Dictionary<uint, uint>();
+        private readonly Dictionary<uint, int> _textureTarget = new Dictionary<uint, int>();
         private readonly uint[] _uboSlots = new uint[8];
         private GpuHandle _boundPipeline;
 
@@ -355,14 +356,16 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public GpuHandle CreateTexture(in TextureDesc desc)
         {
             GenTextures(1, out uint texture);
+            int target = desc.Target != 0 ? desc.Target : _enums.Texture2D;
             if (desc.Width > 0 && desc.Height > 0)
             {
-                int target = desc.Target != 0 ? desc.Target : _enums.Texture2D;
                 int internalFormat = desc.InternalFormat != 0 ? desc.InternalFormat : _enums.InternalRgba;
                 BindTexture(target, texture);
                 TexImage2D(target, 0, internalFormat, (uint)desc.Width, (uint)desc.Height, 0, _enums.PixelRgba, _enums.UnsignedByte, null);
             }
-            return Track(GpuResourceKind.Texture, texture);
+            GpuHandle handle = Track(GpuResourceKind.Texture, texture);
+            _textureTarget[texture] = target;
+            return handle;
         }
 
         public void Destroy(GpuHandle handle)
@@ -388,6 +391,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             }
             else if (handle.Kind == GpuResourceKind.Texture)
             {
+                _textureTarget.Remove(handle.Id);
                 DeleteTexture(handle.Id);
             }
         }
@@ -441,7 +445,10 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             if (!IsLive(texture) || texture.Kind != GpuResourceKind.Texture)
                 return;
             ActiveTexture(_enums.Texture0 + slot);
-            BindTexture(_enums.Texture2D, texture.Id);
+            int target = _enums.Texture2D;
+            if (_textureTarget.TryGetValue(texture.Id, out int stored) && stored != 0)
+                target = stored;
+            BindTexture(target, texture.Id);
         }
 
         public void UpdateBuffer(GpuHandle buffer, ReadOnlySpan<byte> data, int offset = 0)
