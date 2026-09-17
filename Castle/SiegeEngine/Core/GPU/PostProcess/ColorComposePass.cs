@@ -3,6 +3,7 @@
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
 using System;
+using System.Numerics;
 using System.Diagnostics;
 
 namespace SiegeEngine.Core.GPU.PostProcess
@@ -68,6 +69,29 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _lastAdaptStamp = Stopwatch.GetTimestamp();
         }
 
+
+        void BindPost(in ColorComposeState state, float invW = 1f, float invH = 1f, float intensity = 1f, int hasBloom = 0, int hasPrev = 0, float adapt = 0f)
+        {
+            _rc.SetConstants(ConstantSlot.Post, new PostCB
+            {
+                InvResolution = new Vector4(invW, invH, 0f, 0f),
+                Threshold = state.BloomThreshold,
+                Knee = MathF.Max(state.BloomThreshold * 0.5f, 0.05f),
+                Exposure = state.Exposure,
+                BloomIntensity = state.BloomIntensity,
+                Contrast = state.Contrast,
+                Saturation = state.Saturation,
+                Temperature = state.Temperature,
+                TargetLuma = state.TargetLuma,
+                Adapt = adapt,
+                HasBloom = hasBloom,
+                HasPrev = hasPrev,
+                AutoExposure = state.AutoExposure ? 1 : 0,
+                Tonemap = (int)state.Tonemap,
+                Intensity = intensity
+            });
+        }
+
         public uint ResolveColor => _composeColor;
 
         public void Apply(uint sourceColor, int width, int height, ColorComposeState state)
@@ -91,10 +115,9 @@ namespace SiegeEngine.Core.GPU.PostProcess
                 _rc.BindFramebuffer(_e.Framebuffer, _extractFbo);
                 _rc.Viewport(0, 0, (uint)_width, (uint)_height);
                 _extract.Use();
+                BindPost(state, 1f / Math.Max(_width, 1), 1f / Math.Max(_height, 1));
                 Bind0(sourceColor);
                 _extract.SetUniform("uColor", 0);
-                _extract.SetUniform("uThreshold", state.BloomThreshold);
-                _extract.SetUniform("uKnee", MathF.Max(state.BloomThreshold * 0.5f, 0.05f));
                 DrawFullscreen();
 
                 uint src = _extractColor;
@@ -105,9 +128,9 @@ namespace SiegeEngine.Core.GPU.PostProcess
                     _rc.BindFramebuffer(_e.Framebuffer, _mipFbo[i]);
                     _rc.Viewport(0, 0, (uint)_mipW[i], (uint)_mipH[i]);
                     _down.Use();
+                    BindPost(state, 1f / Math.Max(srcW, 1), 1f / Math.Max(srcH, 1));
                     Bind0(src);
                     _down.SetUniform("uColor", 0);
-                    _down.SetUniform("uInvResolution", 1f / Math.Max(srcW, 1), 1f / Math.Max(srcH, 1));
                     DrawFullscreen();
                     src = _mipColor[i];
                     srcW = _mipW[i];
@@ -124,8 +147,7 @@ namespace SiegeEngine.Core.GPU.PostProcess
                     _rc.BindTexture(_e.Texture2D, _mipColor[i]);
                     _up.SetUniform("uLow", 0);
                     _up.SetUniform("uHigh", 1);
-                    _up.SetUniform("uInvResolution", 1f / Math.Max(_mipW[i + 1], 1), 1f / Math.Max(_mipH[i + 1], 1));
-                    _up.SetUniform("uAddLow", 1f);
+                    BindPost(state, 1f / Math.Max(_mipW[i + 1], 1), 1f / Math.Max(_mipH[i + 1], 1), 1f);
                     DrawFullscreen();
                     _rc.ActiveTexture(_e.Texture0 + 1);
                     _rc.BindTexture(_e.Texture2D, 0);
@@ -141,6 +163,7 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _rc.BindFramebuffer(_e.Framebuffer, _composeFbo);
             _rc.Viewport(0, 0, (uint)_width, (uint)_height);
             _compose.Use();
+            BindPost(state, 1f / Math.Max(_width, 1), 1f / Math.Max(_height, 1), hasBloom: bloomTex != 0 ? 1 : 0);
             Bind0(sourceColor);
             _rc.ActiveTexture(_e.Texture0 + 1);
             _rc.BindTexture(_e.Texture2D, bloomTex);

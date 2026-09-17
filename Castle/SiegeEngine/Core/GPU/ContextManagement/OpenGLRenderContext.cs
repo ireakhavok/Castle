@@ -408,16 +408,23 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 return;
             UseProgram(pipeline.Id);
             _boundPipeline = pipeline;
-            if (_pipelineVao.TryGetValue(pipeline.Id, out uint vao))
-                BindVertexArray(vao);
             if (_pipelineState.TryGetValue(pipeline.Id, out GpuRenderState state))
                 ApplyState(state);
+        }
+
+        public void BindUniformBlock(uint program, string blockName, int slot)
+        {
+            if (program == 0 || string.IsNullOrEmpty(blockName))
+                return;
+            BindBlock(program, blockName, slot);
         }
 
         public void BindVertexBuffer(GpuHandle buffer, int slot, int stride, int offset)
         {
             if (!IsLive(buffer) || buffer.Kind != GpuResourceKind.Buffer)
                 return;
+            if (_boundPipeline.IsValid && _pipelineVao.TryGetValue(_boundPipeline.Id, out uint vao))
+                BindVertexArray(vao);
             BindBuffer(_enums.ArrayBuffer, buffer.Id);
             if (!_boundPipeline.IsValid)
                 return;

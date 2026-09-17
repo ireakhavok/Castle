@@ -104,8 +104,12 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
             _renderContext.ColorMask(true, true, true, true);
             _renderContext.DepthMask(false);
-            _shaderProgram.SetUniform("uUseTexture", 1.0f);
-            _shaderProgram.SetUniform("uTexture", 0);
+            _renderContext.SetConstants(ConstantSlot.Ui, new UiCB
+            {
+                Transform = Matrix4x4.Identity,
+                Color = Vector4.One,
+                UseTexture = 1f
+            });
             _renderContext.Viewport(0, 0, (uint)width, (uint)height);
             _renderContext.Disable(_renderContext.Enums.ScissorTest);
             //Console.WriteLine($"EditorTextRenderer: Reset viewport to {width}x{height}, disabled scissor test for text '{text}'");
@@ -185,15 +189,23 @@ namespace SiegeEngine.Core.GPU.Renderers
                         _renderContext.BindTexture(_renderContext.Enums.Texture2D, textureId);
                         //Console.WriteLine($"EditorTextRenderer: Bound texture {textureId} for char '{c}'");
                     }
-                    _shaderProgram.SetUniform("uUseTexture", 1.0f);
+                    _renderContext.SetConstants(ConstantSlot.Ui, new UiCB
+                    {
+                        Transform = transform,
+                        Color = color,
+                        UseTexture = 1f
+                    });
                 }
                 else
                 {
                     _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
-                    _shaderProgram.SetUniform("uUseTexture", 0.0f);
-                    //Console.WriteLine($"EditorTextRenderer: No texture for char '{c}'");
+                    _renderContext.SetConstants(ConstantSlot.Ui, new UiCB
+                    {
+                        Transform = transform,
+                        Color = color,
+                        UseTexture = 0f
+                    });
                 }
-                _shaderProgram.SetMatrix4("uTransform", transform);
                 //Console.WriteLine($"EditorTextRenderer: Set uniforms for char '{c}', uColor: ({color.X}, {color.Y}, {color.Z}, {color.W})");
                 _renderContext.DrawArrays(_renderContext.Enums.TriangleFan, 0, 4);
                 int error = _renderContext.GetError();

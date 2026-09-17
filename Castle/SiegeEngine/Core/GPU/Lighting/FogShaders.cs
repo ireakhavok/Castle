@@ -29,7 +29,7 @@ layout(std140) uniform LightCB
     int PointCount;
     int SpotCount;
     int FogMode;
-    int PadLight0;
+    int LightPad0;
     vec4 PointPos0;
     vec4 PointPos1;
     vec4 PointPos2;
@@ -67,7 +67,7 @@ layout(std140) uniform ShadowCB
     vec4 CascadeSplits;
     vec4 CascadeZRange;
     int ShadowsEnabled;
-    int ReceiveShadows;
+    int ShadowReceiveShadows;
     int CascadeCount;
     int ShadowSmooth;
     float ShadowBias;
@@ -76,8 +76,8 @@ layout(std140) uniform ShadowCB
     int PointShadowsEnabled;
     float PointShadowFar;
     float PointShadowStrength;
-    float PadSh0;
-    float PadSh1;
+    float ShadowPad0;
+    float ShadowPad1;
 };
 layout(std140) uniform PostCB
 {
@@ -112,6 +112,12 @@ layout(std140) uniform PostCB
     vec4 LightPos;
 };
 out vec2 vUv;
+mat4 CascadeVPAt(int c) {
+    if (c == 1) return CascadeVP1;
+    if (c == 2) return CascadeVP2;
+    if (c == 3) return CascadeVP3;
+    return CascadeVP0;
+}
 void main() {
     vec2 pos = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
     vUv = pos;
@@ -143,7 +149,7 @@ layout(std140) uniform LightCB
     int PointCount;
     int SpotCount;
     int FogMode;
-    int PadLight0;
+    int LightPad0;
     vec4 PointPos0;
     vec4 PointPos1;
     vec4 PointPos2;
@@ -181,7 +187,7 @@ layout(std140) uniform ShadowCB
     vec4 CascadeSplits;
     vec4 CascadeZRange;
     int ShadowsEnabled;
-    int ReceiveShadows;
+    int ShadowReceiveShadows;
     int CascadeCount;
     int ShadowSmooth;
     float ShadowBias;
@@ -190,8 +196,8 @@ layout(std140) uniform ShadowCB
     int PointShadowsEnabled;
     float PointShadowFar;
     float PointShadowStrength;
-    float PadSh0;
-    float PadSh1;
+    float ShadowPad0;
+    float ShadowPad1;
 };
 layout(std140) uniform PostCB
 {
@@ -240,7 +246,7 @@ float cascadeShadow(vec3 worldPos) {
         return 1.0;
     for (int c = 0; c < 4; c++) {
         if (c >= CascadeCount) break;
-        vec4 lightClip = uCascadeVP[c] * vec4(worldPos, 1.0);
+        vec4 lightClip = CascadeVPAt(c) * vec4(worldPos, 1.0);
         vec3 proj = lightClip.xyz / max(lightClip.w, 0.0001);
         proj = proj * 0.5 + 0.5;
         if (proj.x > 0.001 && proj.x < 0.999 && proj.y > 0.001 && proj.y < 0.999 && proj.z > 0.0 && proj.z < 1.0) {

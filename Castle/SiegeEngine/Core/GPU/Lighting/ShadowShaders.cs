@@ -80,6 +80,27 @@ layout(std140) uniform PostCB
     float FarPlane;
     vec4 LightPos;
 };
+layout(std140) uniform ShadowCB
+{
+    mat4 CascadeVP0;
+    mat4 CascadeVP1;
+    mat4 CascadeVP2;
+    mat4 CascadeVP3;
+    vec4 CascadeSplits;
+    vec4 AtlasSize;
+    vec4 PointAtlasSize;
+    int ShadowsEnabled;
+    int ShadowReceiveShadows;
+    int CascadeCount;
+    int ShadowSmooth;
+    float ShadowStrength;
+    float ShadowBias;
+    float ShadowNormalBias;
+    float PointShadowBias;
+    float PointShadowStrength;
+    float ShadowPad0;
+    float ShadowPad1;
+};
 layout (location = 0) in vec3 aPosition;
 layout (location = 2) in vec2 aTexCoord;
 layout (location = 4) in float aMaterialIndex;
@@ -105,7 +126,7 @@ void main() {
     }
     vec4 world = Model * local;
     vWorldPos = world.xyz;
-    vec4 clip = uLightVP * world;
+    vec4 clip = CascadeVP0 * world;
     gl_Position = clip;
     vDepth01 = clip.z / max(clip.w, 0.0001) * 0.5 + 0.5;
 }";

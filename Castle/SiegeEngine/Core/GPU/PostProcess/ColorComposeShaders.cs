@@ -42,7 +42,7 @@ layout(std140) uniform PostCB
 
             in vec2 vUv;
             out vec4 FragColor;
-            uniform sampler2D Color;
+            uniform sampler2D uColor;
 
             float Luma(vec3 c)
             {
@@ -51,7 +51,7 @@ layout(std140) uniform PostCB
 
             void main()
             {
-                vec3 hdr = max(texture(Color, vUv).rgb, vec3(0.0));
+                vec3 hdr = max(texture(uColor, vUv).rgb, vec3(0.0));
                 float luma = Luma(hdr);
                 float knee = max(Knee, 0.0001);
                 float soft = luma - Threshold + knee;
@@ -98,16 +98,16 @@ layout(std140) uniform PostCB
 
             in vec2 vUv;
             out vec4 FragColor;
-            uniform sampler2D Color;
+            uniform sampler2D uColor;
 
             void main()
             {
                 vec2 rcp = InvResolution.xy;
-                vec3 a = texture(Color, vUv + vec2(-rcp.x, -rcp.y)).rgb;
-                vec3 b = texture(Color, vUv + vec2( rcp.x, -rcp.y)).rgb;
-                vec3 c = texture(Color, vUv + vec2(-rcp.x,  rcp.y)).rgb;
-                vec3 d = texture(Color, vUv + vec2( rcp.x,  rcp.y)).rgb;
-                vec3 e = texture(Color, vUv).rgb;
+                vec3 a = texture(uColor, vUv + vec2(-rcp.x, -rcp.y)).rgb;
+                vec3 b = texture(uColor, vUv + vec2( rcp.x, -rcp.y)).rgb;
+                vec3 c = texture(uColor, vUv + vec2(-rcp.x,  rcp.y)).rgb;
+                vec3 d = texture(uColor, vUv + vec2( rcp.x,  rcp.y)).rgb;
+                vec3 e = texture(uColor, vUv).rgb;
                 FragColor = vec4((a + b + c + d) * 0.125 + e * 0.5, 1.0);
             }";
 
@@ -164,7 +164,7 @@ layout(std140) uniform PostCB
                 blur += texture(uLow, vUv + vec2( rcp.x,  rcp.y)).rgb;
                 blur *= 1.0 / 12.0;
                 vec3 high = texture(uHigh, vUv).rgb;
-                FragColor = vec4(high + blur * uAddLow, 1.0);
+                FragColor = vec4(high + blur * Intensity, 1.0);
             }";
 
         public const string ComposeFragment = @"            #version 330 core
@@ -203,9 +203,9 @@ layout(std140) uniform PostCB
 
             in vec2 vUv;
             out vec4 FragColor;
-            uniform sampler2D Color;
+            uniform sampler2D uColor;
             uniform sampler2D uBloom;
-            uniform sampler2D AdaptedLuma;
+            uniform sampler2D uAdaptedLuma;
 
             float Luma(vec3 c)
             {
@@ -229,14 +229,14 @@ layout(std140) uniform PostCB
 
             void main()
             {
-                vec3 hdr = max(texture(Color, vUv).rgb, vec3(0.0));
+                vec3 hdr = max(texture(uColor, vUv).rgb, vec3(0.0));
                 if (HasBloom == 1)
                     hdr += max(texture(uBloom, vUv).rgb, vec3(0.0)) * BloomIntensity;
 
                 float ev = max(Exposure, 0.05);
                 if (AutoExposure == 1)
                 {
-                    float adapted = max(texture(AdaptedLuma, vec2(0.5)).r, 0.04);
+                    float adapted = max(texture(uAdaptedLuma, vec2(0.5)).r, 0.04);
                     float ratio = clamp(TargetLuma / adapted, 0.78, 1.35);
                     ev *= mix(1.0, ratio, 0.45);
                 }
@@ -298,11 +298,11 @@ layout(std140) uniform PostCB
 
             in vec2 vUv;
             out vec4 FragColor;
-            uniform sampler2D Color;
+            uniform sampler2D uColor;
 
             void main()
             {
-                vec3 hdr = max(texture(Color, vUv).rgb, vec3(0.0));
+                vec3 hdr = max(texture(uColor, vUv).rgb, vec3(0.0));
                 float luma = dot(hdr, vec3(0.2126, 0.7152, 0.0722));
                 vec2 d = vUv - vec2(0.5);
                 float w = exp(-dot(d, d) * 10.0);
@@ -345,16 +345,16 @@ layout(std140) uniform PostCB
 
             in vec2 vUv;
             out vec4 FragColor;
-            uniform sampler2D Color;
+            uniform sampler2D uColor;
 
             void main()
             {
                 vec2 rcp = InvResolution.xy;
                 vec4 acc = vec4(0.0);
-                acc += texture(Color, vUv + vec2(-rcp.x, -rcp.y));
-                acc += texture(Color, vUv + vec2( rcp.x, -rcp.y));
-                acc += texture(Color, vUv + vec2(-rcp.x,  rcp.y));
-                acc += texture(Color, vUv + vec2( rcp.x,  rcp.y));
+                acc += texture(uColor, vUv + vec2(-rcp.x, -rcp.y));
+                acc += texture(uColor, vUv + vec2( rcp.x, -rcp.y));
+                acc += texture(uColor, vUv + vec2(-rcp.x,  rcp.y));
+                acc += texture(uColor, vUv + vec2( rcp.x,  rcp.y));
                 FragColor = acc * 0.25;
             }";
 

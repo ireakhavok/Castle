@@ -62,6 +62,7 @@ namespace SiegeEngine.Core.GPU.Renderers
         {
             _renderContext.BindPipeline(_pipeline);
             _renderContext.SetConstants(ConstantSlot.Ui, ui);
+            ResetVertexState();
         }
 
         public void EnsureUIState()

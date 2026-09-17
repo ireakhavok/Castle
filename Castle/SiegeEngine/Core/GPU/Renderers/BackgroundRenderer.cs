@@ -137,6 +137,8 @@ namespace SiegeEngine.Core.GPU.Renderers
                 Color = Vector4.One,
                 UseTexture = 1f
             });
+            _renderContext.BindVertexArray(_bgVao);
+            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _bgVbo);
             _renderContext.DrawArrays(_renderContext.Enums.TriangleFan, 0, 4);
             _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
             _renderContext.BindVertexArray(0);

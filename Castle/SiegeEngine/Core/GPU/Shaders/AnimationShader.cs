@@ -22,8 +22,8 @@ layout(std140) uniform ObjectCB
     mat4 NormalMatrix;
     int HasBones;
     int ReceiveShadows;
-    int Pad0;
-    int Pad1;
+    int ObjectPad0;
+    int ObjectPad1;
     float PointSize;
     float VerticalOffset;
     float Pad3;
@@ -44,9 +44,9 @@ layout(std140) uniform MaterialCB
     int MappingMode1;
     int MappingMode2;
     int MappingMode3;
-    int PadMat0;
-    int PadMat1;
-    int PadMat2;
+    int MaterialPad0;
+    int MaterialPad1;
+    int MaterialPad2;
     vec4 Tiling0;
     vec4 Tiling1;
     vec4 Tiling2;
@@ -71,7 +71,7 @@ layout(std140) uniform LightCB
     int PointCount;
     int SpotCount;
     int FogMode;
-    int PadLight0;
+    int LightPad0;
     vec4 PointPos0;
     vec4 PointPos1;
     vec4 PointPos2;
@@ -109,7 +109,7 @@ layout(std140) uniform ShadowCB
     vec4 CascadeSplits;
     vec4 CascadeZRange;
     int ShadowsEnabled;
-    int ReceiveShadows;
+    int ShadowReceiveShadows;
     int CascadeCount;
     int ShadowSmooth;
     float ShadowBias;
@@ -118,8 +118,8 @@ layout(std140) uniform ShadowCB
     int PointShadowsEnabled;
     float PointShadowFar;
     float PointShadowStrength;
-    float PadSh0;
-    float PadSh1;
+    float ShadowPad0;
+    float ShadowPad1;
 };
 layout(location = 0) in vec3 aPosition;
 layout(location = 2) in vec2 aTexCoord;
@@ -147,9 +147,9 @@ void main()
             mat4 boneTransform = BoneTransforms[boneIndex];
             vec4 localPosition = boneTransform * vec4(aPosition, 1.0);
             totalPosition += localPosition * aWeights[i];
-            vec3 localNormal = uNormalMatrices[boneIndex] * aNormal;
+            vec3 localNormal = mat3(BoneTransforms[boneIndex]) * aNormal;
             totalNormal += localNormal * aWeights[i];
-            vec3 localTangent = uNormalMatrices[boneIndex] * aTangent;
+            vec3 localTangent = mat3(BoneTransforms[boneIndex]) * aTangent;
             totalTangent += localTangent * aWeights[i];
             sumWeights += aWeights[i];
         }
@@ -199,8 +199,8 @@ layout(std140) uniform ObjectCB
     mat4 NormalMatrix;
     int HasBones;
     int ReceiveShadows;
-    int Pad0;
-    int Pad1;
+    int ObjectPad0;
+    int ObjectPad1;
     float PointSize;
     float VerticalOffset;
     float Pad3;
@@ -221,9 +221,9 @@ layout(std140) uniform MaterialCB
     int MappingMode1;
     int MappingMode2;
     int MappingMode3;
-    int PadMat0;
-    int PadMat1;
-    int PadMat2;
+    int MaterialPad0;
+    int MaterialPad1;
+    int MaterialPad2;
     vec4 Tiling0;
     vec4 Tiling1;
     vec4 Tiling2;
@@ -248,7 +248,7 @@ layout(std140) uniform LightCB
     int PointCount;
     int SpotCount;
     int FogMode;
-    int PadLight0;
+    int LightPad0;
     vec4 PointPos0;
     vec4 PointPos1;
     vec4 PointPos2;
@@ -286,7 +286,7 @@ layout(std140) uniform ShadowCB
     vec4 CascadeSplits;
     vec4 CascadeZRange;
     int ShadowsEnabled;
-    int ReceiveShadows;
+    int ShadowReceiveShadows;
     int CascadeCount;
     int ShadowSmooth;
     float ShadowBias;
@@ -295,8 +295,8 @@ layout(std140) uniform ShadowCB
     int PointShadowsEnabled;
     float PointShadowFar;
     float PointShadowStrength;
-    float PadSh0;
-    float PadSh1;
+    float ShadowPad0;
+    float ShadowPad1;
 };
 in vec2 TexCoord;
 in vec3 Normal;
@@ -316,6 +316,66 @@ uniform sampler2D uOpacityMap;
 
 uniform sampler2D uShadowAtlas;
 uniform samplerCube uPointShadowCube;
+
+
+vec3 PointPosAt(int i) {
+    if (i == 1) return PointPos1.xyz;
+    if (i == 2) return PointPos2.xyz;
+    if (i == 3) return PointPos3.xyz;
+    return PointPos0.xyz;
+}
+vec3 PointColorAt(int i) {
+    if (i == 1) return PointColor1.xyz;
+    if (i == 2) return PointColor2.xyz;
+    if (i == 3) return PointColor3.xyz;
+    return PointColor0.xyz;
+}
+float PointIntensityAt(int i) {
+    if (i == 1) return PointIntensityRange1.x;
+    if (i == 2) return PointIntensityRange2.x;
+    if (i == 3) return PointIntensityRange3.x;
+    return PointIntensityRange0.x;
+}
+float PointRangeAt(int i) {
+    if (i == 1) return PointIntensityRange1.y;
+    if (i == 2) return PointIntensityRange2.y;
+    if (i == 3) return PointIntensityRange3.y;
+    return PointIntensityRange0.y;
+}
+vec3 SpotPosAt(int i) {
+    if (i == 1) return SpotPos1.xyz;
+    return SpotPos0.xyz;
+}
+vec3 SpotDirAt(int i) {
+    if (i == 1) return SpotDir1.xyz;
+    return SpotDir0.xyz;
+}
+vec3 SpotColorAt(int i) {
+    if (i == 1) return SpotColor1.xyz;
+    return SpotColor0.xyz;
+}
+float SpotIntensityAt(int i) {
+    if (i == 1) return SpotIntensityRange1.x;
+    return SpotIntensityRange0.x;
+}
+float SpotRangeAt(int i) {
+    if (i == 1) return SpotIntensityRange1.y;
+    return SpotIntensityRange0.y;
+}
+float SpotInnerAt(int i) {
+    if (i == 1) return SpotCone1.x;
+    return SpotCone0.x;
+}
+float SpotOuterAt(int i) {
+    if (i == 1) return SpotCone1.y;
+    return SpotCone0.y;
+}
+mat4 CascadeVPAt(int c) {
+    if (c == 1) return CascadeVP1;
+    if (c == 2) return CascadeVP2;
+    if (c == 3) return CascadeVP3;
+    return CascadeVP0;
+}
 
 vec3 SampleAlbedo(int matIdx, vec2 uv) {
     if (matIdx == 1) return texture(uAlbedoMap[1], uv).rgb;
@@ -353,7 +413,7 @@ int MetallicWidth(int matIdx) {
 }
 
 float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
-    vec4 clip = uCascadeVP[cascade] * vec4(worldPos, 1.0);
+    vec4 clip = CascadeVPAt(cascade) * vec4(worldPos, 1.0);
     vec3 proj = clip.xyz / max(clip.w, 0.0001);
     proj = proj * 0.5 + 0.5;
     if (proj.x < 0.0 || proj.x > 1.0 || proj.y < 0.0 || proj.y > 1.0)
@@ -451,16 +511,16 @@ vec3 PointLighting(vec3 albedo, vec3 norm, vec3 viewDir) {
     vec3 sum = vec3(0.0);
     for (int i = 0; i < 4; i++) {
         if (i >= PointCount) break;
-        vec3 toLight = uPointPos[i] - FragPos;
+        vec3 toLight = PointPosAt(i) - FragPos;
         float dist = length(toLight);
-        float range = max(uPointRange[i], 0.01);
+        float range = max(PointRangeAt(i), 0.01);
         if (dist > range) continue;
         vec3 L = toLight / max(dist, 0.0001);
         float att = 1.0 - clamp(dist / range, 0.0, 1.0);
         att *= att;
         float diff = max(dot(norm, L), 0.0);
-        float shadow = (i == 0) ? SamplePointShadow(FragPos, uPointPos[i], range) : 1.0;
-        sum += diff * albedo * uPointColor[i] * uPointIntensity[i] * att * shadow;
+        float shadow = (i == 0) ? SamplePointShadow(FragPos, PointPosAt(i), range) : 1.0;
+        sum += diff * albedo * PointColorAt(i) * PointIntensityAt(i) * att * shadow;
     }
     return sum;
 }
@@ -469,18 +529,18 @@ vec3 SpotLighting(vec3 albedo, vec3 norm, vec3 viewDir) {
     vec3 sum = vec3(0.0);
     for (int i = 0; i < 2; i++) {
         if (i >= SpotCount) break;
-        vec3 toLight = uSpotPos[i] - FragPos;
+        vec3 toLight = SpotPosAt(i) - FragPos;
         float dist = length(toLight);
-        float range = max(uSpotRange[i], 0.01);
+        float range = max(SpotRangeAt(i), 0.01);
         if (dist > range) continue;
         vec3 L = toLight / max(dist, 0.0001);
-        float theta = dot(L, normalize(-uSpotDir[i]));
-        float epsilon = max(uSpotInner[i] - uSpotOuter[i], 0.001);
-        float cone = clamp((theta - uSpotOuter[i]) / epsilon, 0.0, 1.0);
+        float theta = dot(L, normalize(-SpotDirAt(i)));
+        float epsilon = max(SpotInnerAt(i) - SpotOuterAt(i), 0.001);
+        float cone = clamp((theta - SpotOuterAt(i)) / epsilon, 0.0, 1.0);
         float att = 1.0 - clamp(dist / range, 0.0, 1.0);
         att *= att * cone;
         float diff = max(dot(norm, L), 0.0);
-        sum += diff * albedo * uSpotColor[i] * uSpotIntensity[i] * att;
+        sum += diff * albedo * SpotColorAt(i) * SpotIntensityAt(i) * att;
     }
     return sum;
 }

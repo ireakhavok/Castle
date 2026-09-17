@@ -70,6 +70,19 @@ namespace SiegeEngine.Core.GPU.Shaders
             _renderContext.DetachShader(_program, fragmentShader);
             _renderContext.DeleteShader(vertexShader);
             _renderContext.DeleteShader(fragmentShader);
+            BindConstantBlocks();
+        }
+
+        void BindConstantBlocks()
+        {
+            _renderContext.BindUniformBlock(_program, "FrameCB", ConstantSlot.Frame);
+            _renderContext.BindUniformBlock(_program, "ObjectCB", ConstantSlot.Object);
+            _renderContext.BindUniformBlock(_program, "SkinCB", ConstantSlot.Skin);
+            _renderContext.BindUniformBlock(_program, "MaterialCB", ConstantSlot.Material);
+            _renderContext.BindUniformBlock(_program, "LightCB", ConstantSlot.Light);
+            _renderContext.BindUniformBlock(_program, "ShadowCB", ConstantSlot.Shadow);
+            _renderContext.BindUniformBlock(_program, "UiCB", ConstantSlot.Ui);
+            _renderContext.BindUniformBlock(_program, "PostCB", ConstantSlot.Post);
         }
 
         public static ShaderProgram FromId(IRenderContext renderContext, ShaderId id)

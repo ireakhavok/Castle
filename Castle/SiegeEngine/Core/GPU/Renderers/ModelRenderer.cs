@@ -186,8 +186,6 @@ namespace SiegeEngine.Core.GPU.Renderers
 
             bool hasBones = boneMatrices != null && boneMatrices.Length > 0 && fbxModel != null && fbxModel.HasSkin;
             ShaderProgram shader = hasBones ? _animationShader : _modelShader;
-            GpuHandle pipeline = hasBones ? _animationPipeline : _modelPipeline;
-            _renderContext.BindPipeline(pipeline);
             FrameCB frame = new FrameCB { View = view, Projection = projection, ViewPos = new Vector4(viewPos, 1f) };
             ObjectCB obj = new ObjectCB { Model = modelMatrix, NormalMatrix = BuildNormalMatrix(modelMatrix), HasBones = hasBones ? 1 : 0, ReceiveShadows = receiveShadows ? 1 : 0 };
             _renderContext.SetConstants(ConstantSlot.Frame, frame);
