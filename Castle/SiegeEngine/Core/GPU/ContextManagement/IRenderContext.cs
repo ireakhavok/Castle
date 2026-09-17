@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/GPU/ContextManagement
+// Folder: SiegeEngine/Core/GPU/ContextManagement
 // File: IRenderContext.cs
 using System;
 
@@ -9,6 +9,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         AbstractRenderEnums Enums { get; }
         int ViewportWidth { get; }
         int ViewportHeight { get; }
+        RenderBackend Backend { get; }
 
         uint GenVertexArray();
         void GenVertexArrays(uint n, out uint arrays);
@@ -112,5 +113,18 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         uint FenceSync(int condition, uint flags);
         int ClientWaitSync(uint sync, uint flags, ulong timeout);
         void DeleteSync(uint sync);
+
+        GpuHandle CreatePipeline(in PipelineDesc desc);
+        GpuHandle CreateBuffer(in BufferDesc desc);
+        GpuHandle CreateTexture(in TextureDesc desc);
+        void Destroy(GpuHandle handle);
+        void BindPipeline(GpuHandle pipeline);
+        void BindVertexBuffer(GpuHandle buffer, int slot, int stride, int offset);
+        void BindIndexBuffer(GpuHandle buffer);
+        void BindTextureSlot(int slot, GpuHandle texture);
+        void UpdateBuffer(GpuHandle buffer, ReadOnlySpan<byte> data, int offset = 0);
+        void SetConstants<T>(int slot, in T data) where T : unmanaged;
+        void DrawIndexed(int indexCount);
+        void Dispatch(uint groupsX, uint groupsY = 1, uint groupsZ = 1);
     }
 }

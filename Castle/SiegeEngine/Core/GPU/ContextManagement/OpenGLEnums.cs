@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/GPU/ContextManagement
+// Folder: SiegeEngine/Core/GPU/ContextManagement
 // File: OpenGLEnums.cs
 using Silk.NET.OpenGL;
 
@@ -85,6 +85,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         // Compute / SSBO support
         public override int ComputeShader => (int)GLEnum.ComputeShader;
         public override int ShaderStorageBuffer => (int)GLEnum.ShaderStorageBuffer;
+        public override int UniformBuffer => (int)GLEnum.UniformBuffer;
         public override int ShaderStorageBarrierBit => (int)GLEnum.ShaderStorageBarrierBit;
         public override int MaxComputeWorkGroupCount => (int)GLEnum.MaxComputeWorkGroupCount;
         public override int MaxComputeWorkGroupSize => (int)GLEnum.MaxComputeWorkGroupSize;

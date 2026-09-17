@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/GPU/ContextManagement
+// Folder: SiegeEngine/Core/GPU/ContextManagement
 // File: AbstractRenderEnums.cs
 using System;
 
@@ -85,6 +85,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         // Compute / SSBO support
         public abstract int ComputeShader { get; }
         public abstract int ShaderStorageBuffer { get; }
+        public abstract int UniformBuffer { get; }
         public abstract int ShaderStorageBarrierBit { get; }
         public abstract int MaxComputeWorkGroupCount { get; }
         public abstract int MaxComputeWorkGroupSize { get; }

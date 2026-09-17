@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.GPU
+// Folder: SiegeEngine.Core.GPU
 // File: ShaderProgram.cs
 using System;
 using System.Collections.Generic;
@@ -16,6 +16,8 @@ namespace SiegeEngine.Core.GPU.Shaders
         private readonly Dictionary<string, int> _uniformLocations = new Dictionary<string, int>();
         private float[] _mat4Scratch = new float[16];
         private float[] _mat3Scratch = new float[9];
+
+        public ShaderId ShaderId { get; private set; }
 
         public ShaderProgram(IRenderContext renderContext, string vertexShaderSource, string fragmentShaderSource)
         {
@@ -68,6 +70,18 @@ namespace SiegeEngine.Core.GPU.Shaders
             _renderContext.DetachShader(_program, fragmentShader);
             _renderContext.DeleteShader(vertexShader);
             _renderContext.DeleteShader(fragmentShader);
+        }
+
+        public static ShaderProgram FromId(IRenderContext renderContext, ShaderId id)
+        {
+            if (renderContext == null)
+                throw new ArgumentNullException(nameof(renderContext));
+            ShaderSourceSet src = ShaderCatalog.Get(id, renderContext.Backend);
+            if (src.IsCompute)
+                throw new InvalidOperationException($"ShaderId '{id}' is compute.");
+            var program = new ShaderProgram(renderContext, src.Vertex, src.Fragment);
+            program.ShaderId = id;
+            return program;
         }
 
         public int FindUniform(string name) => GetLocation(name);

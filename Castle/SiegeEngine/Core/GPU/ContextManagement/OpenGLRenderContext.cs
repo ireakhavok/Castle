@@ -1,8 +1,10 @@
-﻿// Folder: SiegeEngine/Core/GPU/ContextManagement
+// Folder: SiegeEngine/Core/GPU/ContextManagement
 // File: OpenGLRenderContext.cs
 using Silk.NET.GLFW;
 using Silk.NET.OpenGL;
+using SiegeEngine.Core.GPU.Shaders;
 using System;
+using System.Collections.Generic;
 
 namespace SiegeEngine.Core.GPU.ContextManagement
 {
@@ -13,10 +15,16 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         private readonly AbstractRenderEnums _enums = new OpenGLEnums();
         private int _viewportWidth;
         private int _viewportHeight;
+        private uint _generation;
+        private readonly Dictionary<ulong, uint> _live = new Dictionary<ulong, uint>();
+        private readonly Dictionary<uint, int> _pipelinePrimitive = new Dictionary<uint, int>();
+        private readonly uint[] _uboSlots = new uint[8];
+        private GpuHandle _boundPipeline;
 
         public AbstractRenderEnums Enums => _enums;
         public int ViewportWidth => _viewportWidth;
         public int ViewportHeight => _viewportHeight;
+        public RenderBackend Backend => RenderBackend.OpenGL;
 
         public OpenGLRenderContext(Glfw glfw, GL gl)
         {
@@ -125,8 +133,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public void TexParameterf(int target, int pname, float param) =>
             _gl.TexParameter((TextureTarget)target, (TextureParameterName)pname, param);
 
-        public void PixelStore(int pname, int param) =>
-            _gl.PixelStore((PixelStoreParameter)pname, param);
+        public void PixelStore(int pname, int param) => _gl.PixelStore((PixelStoreParameter)pname, param);
 
         public void DeleteTexture(uint texture) => _gl.DeleteTextures(1, ref texture);
 
@@ -198,8 +205,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public void GetFloat(int pname, out float param) =>
             _gl.GetFloat((GetPName)pname, out param);
 
-        public void Scissor(int x, int y, uint width, uint height) =>
-            _gl.Scissor(x, y, width, height);
+        public void Scissor(int x, int y, uint width, uint height) => _gl.Scissor(x, y, width, height);
 
         public void CullFace(int mode) => _gl.CullFace((GLEnum)mode);
 
@@ -207,10 +213,6 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             _gl.FrontFace((FrontFaceDirection)mode);
 
         public void LineWidth(float width) => _gl.LineWidth(width);
-
-        // ------------------------------------------------------------------
-        // Framebuffer / Renderbuffer
-        // ------------------------------------------------------------------
 
         public void GenFramebuffers(uint n, out uint framebuffers) =>
             _gl.GenFramebuffers(n, out framebuffers);
@@ -241,10 +243,6 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         public void ClearBufferuiv(int buffer, int drawbuffer, uint* value) =>
             _gl.ClearBuffer((GLEnum)buffer, drawbuffer, value);
-
-        // ------------------------------------------------------------------
-        // Compute / SSBO support
-        // ------------------------------------------------------------------
 
         public void DispatchCompute(uint numGroupsX, uint numGroupsY, uint numGroupsZ) =>
             _gl.DispatchCompute(numGroupsX, numGroupsY, numGroupsZ);
@@ -283,10 +281,6 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             return _gl.GetProgramResourceLocation(program, (ProgramInterface)programInterface, name);
         }
 
-        // ------------------------------------------------------------------
-        // Pixel-pack / fence support for async free-surface ID readback
-        // ------------------------------------------------------------------
-
         public uint FenceSync(int condition, uint flags)
         {
             return (uint)_gl.FenceSync((SyncCondition)condition, (SyncBehaviorFlags)flags);
@@ -300,6 +294,216 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public void DeleteSync(uint sync)
         {
             _gl.DeleteSync((nint)sync);
+        }
+
+        public GpuHandle CreatePipeline(in PipelineDesc desc)
+        {
+            string vertex = desc.VertexSource;
+            string fragment = desc.FragmentSource;
+            string compute = desc.ComputeSource;
+            if (string.IsNullOrEmpty(vertex) && string.IsNullOrEmpty(compute))
+            {
+                ShaderSourceSet src = ShaderCatalog.Get(desc.ShaderId, RenderBackend.OpenGL);
+                vertex = src.Vertex;
+                fragment = src.Fragment;
+                compute = src.Compute;
+            }
+
+            uint program;
+            if (!string.IsNullOrEmpty(compute) && string.IsNullOrEmpty(vertex))
+            {
+                program = LinkStages(new[] { CompileStage(_enums.ComputeShader, compute) });
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(vertex) || string.IsNullOrEmpty(fragment))
+                    throw new ArgumentException("PipelineDesc requires vertex and fragment sources.");
+                program = LinkStages(new[]
+                {
+                    CompileStage(_enums.VertexShader, vertex),
+                    CompileStage(_enums.FragmentShader, fragment)
+                });
+            }
+
+            GpuHandle handle = Track(GpuResourceKind.Pipeline, program);
+            _pipelinePrimitive[program] = desc.State.Primitive;
+            return handle;
+        }
+
+        public GpuHandle CreateBuffer(in BufferDesc desc)
+        {
+            uint buffer = GenBuffer();
+            if (desc.ByteSize > 0)
+            {
+                int target = desc.Target != 0 ? desc.Target : _enums.ArrayBuffer;
+                int usage = desc.Usage != 0 ? desc.Usage : _enums.StaticDraw;
+                BindBuffer(target, buffer);
+                BufferData(target, (uint)desc.ByteSize, null, usage);
+            }
+            return Track(GpuResourceKind.Buffer, buffer);
+        }
+
+        public GpuHandle CreateTexture(in TextureDesc desc)
+        {
+            GenTextures(1, out uint texture);
+            if (desc.Width > 0 && desc.Height > 0)
+            {
+                int target = desc.Target != 0 ? desc.Target : _enums.Texture2D;
+                int internalFormat = desc.InternalFormat != 0 ? desc.InternalFormat : _enums.InternalRgba;
+                BindTexture(target, texture);
+                TexImage2D(target, 0, internalFormat, (uint)desc.Width, (uint)desc.Height, 0, _enums.PixelRgba, _enums.UnsignedByte, null);
+            }
+            return Track(GpuResourceKind.Texture, texture);
+        }
+
+        public void Destroy(GpuHandle handle)
+        {
+            if (!IsLive(handle))
+                return;
+            _live.Remove(Pack(handle.Kind, handle.Id));
+            if (handle.Kind == GpuResourceKind.Pipeline)
+            {
+                _pipelinePrimitive.Remove(handle.Id);
+                DeleteProgram(handle.Id);
+            }
+            else if (handle.Kind == GpuResourceKind.Buffer)
+            {
+                DeleteBuffer(handle.Id);
+            }
+            else if (handle.Kind == GpuResourceKind.Texture)
+            {
+                DeleteTexture(handle.Id);
+            }
+        }
+
+        public void BindPipeline(GpuHandle pipeline)
+        {
+            if (!IsLive(pipeline) || pipeline.Kind != GpuResourceKind.Pipeline)
+                return;
+            UseProgram(pipeline.Id);
+            _boundPipeline = pipeline;
+        }
+
+        public void BindVertexBuffer(GpuHandle buffer, int slot, int stride, int offset)
+        {
+            if (!IsLive(buffer) || buffer.Kind != GpuResourceKind.Buffer)
+                return;
+            BindBuffer(_enums.ArrayBuffer, buffer.Id);
+        }
+
+        public void BindIndexBuffer(GpuHandle buffer)
+        {
+            if (!IsLive(buffer) || buffer.Kind != GpuResourceKind.Buffer)
+                return;
+            BindBuffer(_enums.ElementArrayBuffer, buffer.Id);
+        }
+
+        public void BindTextureSlot(int slot, GpuHandle texture)
+        {
+            if (!IsLive(texture) || texture.Kind != GpuResourceKind.Texture)
+                return;
+            ActiveTexture(_enums.Texture0 + slot);
+            BindTexture(_enums.Texture2D, texture.Id);
+        }
+
+        public void UpdateBuffer(GpuHandle buffer, ReadOnlySpan<byte> data, int offset = 0)
+        {
+            if (!IsLive(buffer) || buffer.Kind != GpuResourceKind.Buffer || data.Length == 0)
+                return;
+            BindBuffer(_enums.ArrayBuffer, buffer.Id);
+            fixed (byte* ptr = data)
+            {
+                BufferSubData(_enums.ArrayBuffer, offset, (uint)data.Length, ptr);
+            }
+        }
+
+        public void SetConstants<T>(int slot, in T data) where T : unmanaged
+        {
+            if (slot < 0 || slot >= _uboSlots.Length)
+                return;
+            if (_uboSlots[slot] == 0)
+                _uboSlots[slot] = GenBuffer();
+            uint ubo = _uboSlots[slot];
+            T local = data;
+            uint size = (uint)sizeof(T);
+            BindBuffer(_enums.UniformBuffer, ubo);
+            BufferData(_enums.UniformBuffer, size, &local, _enums.DynamicDraw);
+            BindBufferBase(_enums.UniformBuffer, (uint)slot, ubo);
+        }
+
+        public void DrawIndexed(int indexCount)
+        {
+            int mode = _enums.Triangles;
+            if (_boundPipeline.IsValid && _pipelinePrimitive.TryGetValue(_boundPipeline.Id, out int primitive))
+                mode = primitive;
+            DrawElements(mode, (uint)indexCount, _enums.UnsignedInt, null);
+        }
+
+        public void Dispatch(uint groupsX, uint groupsY = 1, uint groupsZ = 1)
+        {
+            DispatchCompute(groupsX, groupsY, groupsZ);
+        }
+
+        uint CompileStage(int type, string source)
+        {
+            uint shader = CreateShader(type);
+            ShaderSource(shader, source);
+            CompileShader(shader);
+            GetShader(shader, _enums.CompileStatus, out int status);
+            if (status != 1)
+            {
+                string log = GetShaderInfoLog(shader);
+                DeleteShader(shader);
+                throw new Exception($"Shader compilation failed: {log}");
+            }
+            return shader;
+        }
+
+        uint LinkStages(uint[] stages)
+        {
+            uint program = CreateProgram();
+            for (int i = 0; i < stages.Length; i++)
+                AttachShader(program, stages[i]);
+            LinkProgram(program);
+            GetProgram(program, _enums.LinkStatus, out int status);
+            if (status != 1)
+            {
+                string log = GetProgramInfoLog(program);
+                for (int i = 0; i < stages.Length; i++)
+                {
+                    DetachShader(program, stages[i]);
+                    DeleteShader(stages[i]);
+                }
+                DeleteProgram(program);
+                throw new Exception($"Shader program linking failed: {log}");
+            }
+            for (int i = 0; i < stages.Length; i++)
+            {
+                DetachShader(program, stages[i]);
+                DeleteShader(stages[i]);
+            }
+            return program;
+        }
+
+        GpuHandle Track(GpuResourceKind kind, uint id)
+        {
+            _generation++;
+            if (_generation == 0)
+                _generation = 1;
+            _live[Pack(kind, id)] = _generation;
+            return new GpuHandle(id, _generation, kind);
+        }
+
+        bool IsLive(GpuHandle handle)
+        {
+            if (!handle.IsValid)
+                return false;
+            return _live.TryGetValue(Pack(handle.Kind, handle.Id), out uint gen) && gen == handle.Generation;
+        }
+
+        static ulong Pack(GpuResourceKind kind, uint id)
+        {
+            return ((ulong)kind << 32) | id;
         }
     }
 }
