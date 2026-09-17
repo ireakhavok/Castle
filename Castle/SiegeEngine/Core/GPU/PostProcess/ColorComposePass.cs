@@ -250,13 +250,16 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _rc.BindFramebuffer(_e.Framebuffer, destFbo);
             _rc.Viewport(0, 0, 1, 1);
             _adapt.Use();
+            _rc.SetConstants(ConstantSlot.Post, new PostCB
+            {
+                Adapt = k,
+                HasPrev = _hasAdapted ? 1 : 0
+            });
             Bind0(_lumaDownColor);
             _rc.ActiveTexture(_e.Texture0 + 1);
             _rc.BindTexture(_e.Texture2D, _hasAdapted ? prevTex : destTex);
             _adapt.SetUniform("uCurrent", 0);
             _adapt.SetUniform("uPrevious", 1);
-            _adapt.SetUniform("uAdapt", k);
-            _adapt.SetUniform("uHasPrev", _hasAdapted ? 1 : 0);
             DrawFullscreen();
             _rc.ActiveTexture(_e.Texture0 + 1);
             _rc.BindTexture(_e.Texture2D, 0);

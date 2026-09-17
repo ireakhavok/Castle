@@ -195,7 +195,7 @@ namespace SiegeEngine.Core.GPU.Shaders
         public float PolyUnits;
         public float LinearDepth;
         public float FarPlane;
+        public float PadPost0;
         public Vector4 LightPos;
     }
 }
-

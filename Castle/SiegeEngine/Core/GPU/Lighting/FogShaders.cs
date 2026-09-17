@@ -109,6 +109,9 @@ layout(std140) uniform PostCB
     float PolyUnits;
     float LinearDepth;
     float FarPlane;
+    float PadPost0;
+    float PadPost1;
+    float PadPost2;
     vec4 LightPos;
 };
 out vec2 vUv;
@@ -229,6 +232,9 @@ layout(std140) uniform PostCB
     float PolyUnits;
     float LinearDepth;
     float FarPlane;
+    float PadPost0;
+    float PadPost1;
+    float PadPost2;
     vec4 LightPos;
 };
 in vec2 vUv;

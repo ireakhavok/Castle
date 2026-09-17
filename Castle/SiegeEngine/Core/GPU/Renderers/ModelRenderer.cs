@@ -190,6 +190,8 @@ namespace SiegeEngine.Core.GPU.Renderers
             ObjectCB obj = new ObjectCB { Model = modelMatrix, NormalMatrix = BuildNormalMatrix(modelMatrix), HasBones = hasBones ? 1 : 0, ReceiveShadows = receiveShadows ? 1 : 0 };
             _renderContext.SetConstants(ConstantSlot.Frame, frame);
             _renderContext.SetConstants(ConstantSlot.Object, obj);
+            if (hasBones)
+                UploadSkin(boneMatrices);
             LightingFrame.Current?.ApplyConstants(_renderContext);
             shader.Use();
             shader.SetMatrix4("uModel", modelMatrix);
@@ -266,7 +268,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 BindOpacityOption(shader, gpuIndex);
 
                 _renderContext.BindVertexArray(mmr.Vao);
-                _renderContext.DrawIndexed((int)mmr.IndexCount);
+                _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                 _renderContext.BindVertexArray(0);
             }
 
@@ -701,6 +703,35 @@ namespace SiegeEngine.Core.GPU.Renderers
                 return 0.5f * sizeM.Length() * s;
             }
             return 0.5f * s;
+        }
+
+
+        unsafe void UploadSkin(Matrix4x4[] bones)
+        {
+            SkinCB skin = default;
+            int n = bones == null ? 0 : System.Math.Min(bones.Length, 128);
+            for (int i = 0; i < n; i++)
+            {
+                Matrix4x4 m = bones[i];
+                int o = i * 16;
+                skin.BoneTransforms[o + 0] = m.M11;
+                skin.BoneTransforms[o + 1] = m.M12;
+                skin.BoneTransforms[o + 2] = m.M13;
+                skin.BoneTransforms[o + 3] = m.M14;
+                skin.BoneTransforms[o + 4] = m.M21;
+                skin.BoneTransforms[o + 5] = m.M22;
+                skin.BoneTransforms[o + 6] = m.M23;
+                skin.BoneTransforms[o + 7] = m.M24;
+                skin.BoneTransforms[o + 8] = m.M31;
+                skin.BoneTransforms[o + 9] = m.M32;
+                skin.BoneTransforms[o + 10] = m.M33;
+                skin.BoneTransforms[o + 11] = m.M34;
+                skin.BoneTransforms[o + 12] = m.M41;
+                skin.BoneTransforms[o + 13] = m.M42;
+                skin.BoneTransforms[o + 14] = m.M43;
+                skin.BoneTransforms[o + 15] = m.M44;
+            }
+            _renderContext.SetConstants(ConstantSlot.Skin, skin);
         }
 
         public void Dispose()
