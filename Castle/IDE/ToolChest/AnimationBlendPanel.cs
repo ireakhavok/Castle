@@ -70,12 +70,15 @@ namespace ToolChest
             base.Init();
             _previewScene.Initialize((int)Size.Y, (int)Size.X);
             LoadUIFromFile("AnimationBlendUI.html");
+            _eventBus.Unsubscribe<GenericEvent>(OnGenericEvent);
+            _eventBus.Unsubscribe<FileSelectedEvent>(OnFileSelected);
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
             _uiOverlay.RefreshUI();
             _snapEnabled = _currentStack.SnapEnabled;
             UpdateGridMarkers();
-            CustomOverlays.Add(new BlendDotOverlay(this));
+            if (!CustomOverlays.OfType<BlendDotOverlay>().Any())
+                CustomOverlays.Add(new BlendDotOverlay(this));
         }
         private void LoadUIFromFile(string filename)
         {
@@ -187,15 +190,7 @@ namespace ToolChest
             }
             else if (hook == "AddAnimationAtPoint")
             {
-                if (_hasPendingAddCoord)
-                {
-                    string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
-                    var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
-                    fileSelector.UserData = $"AddBlendClipAt:{_pendingAddNormX},{_pendingAddNormY}";
-                    fileSelector.IsModal = true;
-                    _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
-                    _hasPendingAddCoord = false;
-                }
+                // File picker is opened from OnGenericEvent so this click does not open a second selector.
                 _uiOverlay.CloseContextMenu();
             }
             else if (hook == "CreatePack")
@@ -432,6 +427,8 @@ namespace ToolChest
         }
         public override void Dispose()
         {
+            _eventBus.Unsubscribe<GenericEvent>(OnGenericEvent);
+            _eventBus.Unsubscribe<FileSelectedEvent>(OnFileSelected);
             _previewScene.Dispose();
             base.Dispose();
         }
