@@ -1,6 +1,6 @@
-﻿// Folder: SiegeEngine/Core/GPU/Shaders
+// Folder: SiegeEngine/Core/GPU/Shaders/OpenGL
 // File: AcousticIdShader.cs
-namespace SiegeEngine.Core.GPU.Shaders
+namespace SiegeEngine.Core.GPU.Shaders.OpenGL
 {
     public static class AcousticIdShader
     {

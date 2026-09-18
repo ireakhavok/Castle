@@ -2,8 +2,7 @@
 // File: ShaderCatalog.cs
 using System;
 using SiegeEngine.Core.GPU.ContextManagement;
-using SiegeEngine.Core.GPU.Lighting;
-using SiegeEngine.Core.GPU.PostProcess;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.Shaders
 {

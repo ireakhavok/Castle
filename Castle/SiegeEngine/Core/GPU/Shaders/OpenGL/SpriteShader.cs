@@ -1,6 +1,6 @@
-﻿// Folder: SiegeEngine/Core/Rendering/Shaders
+// Folder: SiegeEngine/Core/GPU/Shaders/OpenGL
 // File: SpriteShader.cs
-namespace SiegeEngine.Core.GPU.Shaders
+namespace SiegeEngine.Core.GPU.Shaders.OpenGL
 {
     public static class SpriteShader
     {

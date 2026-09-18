@@ -8,6 +8,7 @@ using SiegeEngine.Core.Terrain;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.Renderers
 {

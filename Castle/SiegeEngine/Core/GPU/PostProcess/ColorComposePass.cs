@@ -5,6 +5,7 @@ using SiegeEngine.Core.GPU.Shaders;
 using System;
 using System.Numerics;
 using System.Diagnostics;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.PostProcess
 {
@@ -347,8 +348,7 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _rc.DepthMask(false);
             _rc.Disable(_e.CullFace);
             _rc.ColorMask(true, true, true, true);
-            ((OpenGLRenderContext)_rc).BindVertexArray(_emptyVao);
-            _rc.DrawArrays(_e.Triangles, 0, 3);
+            _rc.DrawFullscreen();
         }
 
         private void DestroyTargets()

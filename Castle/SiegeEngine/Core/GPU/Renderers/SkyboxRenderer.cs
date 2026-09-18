@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Rendering
+// Folder: SiegeEngine/Core/Rendering
 // File: SkyboxRenderer.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.GPU.ContextManagement;
@@ -6,6 +6,7 @@ using SiegeEngine.Core.GPU.Shaders;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.Renderers
 {

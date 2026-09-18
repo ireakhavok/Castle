@@ -63,6 +63,11 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         void BindDefaultRenderTarget();
         void UpdateBuffer(GpuHandle buffer, ReadOnlySpan<byte> data, int offset = 0);
         void UpdateTexture(GpuHandle texture, int width, int height, int format, int type, void* pixels);
+        void UpdateCubeFace(GpuHandle texture, int face, int width, int height, int format, int type, void* pixels);
+        void UpdateCubemapFace(GpuHandle texture, int faceTarget, int width, int height, int format, int type, void* pixels);
+        void SetTextureParam(GpuHandle texture, int pname, int param);
+        void GenerateMipmaps(GpuHandle texture);
+        void DrawFullscreen();
         void SetTextureParams(GpuHandle texture, int minFilter, int magFilter, int wrapS, int wrapT);
         void SetConstants<T>(int slot, in T data) where T : unmanaged;
         bool TryGetConstants<T>(int slot, out T data) where T : unmanaged;

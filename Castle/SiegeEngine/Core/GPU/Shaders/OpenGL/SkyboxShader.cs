@@ -1,6 +1,6 @@
-// Folder: SiegeEngine/Core/Rendering/Shaders
+// Folder: SiegeEngine/Core/GPU/Shaders/OpenGL
 // File: SkyboxShader.cs
-namespace SiegeEngine.Core.GPU.Shaders
+namespace SiegeEngine.Core.GPU.Shaders.OpenGL
 {
     public static class SkyboxShader
     {

@@ -1,4 +1,4 @@
-﻿namespace SiegeEngine.Core.GPU.Shaders
+namespace SiegeEngine.Core.GPU.Shaders.OpenGL
 {
     public static class AssetShader
     {

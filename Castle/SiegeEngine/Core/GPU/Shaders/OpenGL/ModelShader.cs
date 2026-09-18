@@ -1,8 +1,8 @@
-// Folder: SiegeEngine.Core.GPU.Shaders
-// File: AnimationShader.cs
-namespace SiegeEngine.Core.GPU.Shaders
+// Folder: SiegeEngine/Core/GPU/Shaders/OpenGL
+// File: ModelShader.cs
+namespace SiegeEngine.Core.GPU.Shaders.OpenGL
 {
-    public static class AnimationShader
+    public static class ModelShader
     {
         public const string VertexShaderSource = @"#version 330 core
 
@@ -121,49 +121,43 @@ layout(std140) uniform ShadowCB
     float ShadowPad0;
     float ShadowPad1;
 };
-layout(location = 0) in vec3 aPosition;
-layout(location = 2) in vec2 aTexCoord;
-layout(location = 3) in vec3 aNormal;
-layout(location = 4) in float aMaterialIndex;
-layout(location = 5) in vec3 aTangent;
-layout(location = 6) in vec4 aBoneIDs;
-layout(location = 7) in vec4 aWeights;
-out vec2 TexCoord;
-out vec3 Normal;
-out vec3 FragPos;
-out float MaterialIndex;
+layout (location = 0) in vec3 aPosition;
+layout (location = 2) in vec2 aTexCoord;
+layout (location = 3) in vec3 aNormal;
+layout (location = 4) in float aMaterialIndex;
+layout (location = 5) in vec3 aTangent;
+layout (location = 6) in vec4 aBoneIDs;
+layout (location = 7) in vec4 aBoneWeights;
+
+out vec2 vTexCoord;
+out vec3 vNormal;
 out vec3 vTangent;
+out vec3 vPosition;
+out vec3 vWorldPos;
+out float vMaterialIndex;
 out vec4 vViewPos;
-void main()
-{
+
+
+void main() {
+    vTexCoord = aTexCoord;
     vec4 totalPosition = vec4(0.0);
     vec3 totalNormal = vec3(0.0);
     vec3 totalTangent = vec3(0.0);
-    float sumWeights = 0.0;
     if (HasBones == 1) {
         for (int i = 0; i < 4; i++) {
-            int boneIndex = int(aBoneIDs[i]);
-            if (boneIndex < 0 || boneIndex >= 100) continue;
-            mat4 boneTransform = BoneTransforms[boneIndex];
-            vec4 localPosition = boneTransform * vec4(aPosition, 1.0);
-            totalPosition += localPosition * aWeights[i];
-            vec3 localNormal = mat3(BoneTransforms[boneIndex]) * aNormal;
-            totalNormal += localNormal * aWeights[i];
-            vec3 localTangent = mat3(BoneTransforms[boneIndex]) * aTangent;
-            totalTangent += localTangent * aWeights[i];
-            sumWeights += aWeights[i];
+            int id = int(aBoneIDs[i]);
+            if (id < 0 || id >= 128) continue;
+            mat4 boneMat = BoneTransforms[id];
+            vec4 localPos = boneMat * vec4(aPosition, 1.0);
+            totalPosition += localPos * aBoneWeights[i];
+            mat3 normalMat = mat3(boneMat);
+            totalNormal += (normalMat * aNormal) * aBoneWeights[i];
+            totalTangent += (normalMat * aTangent) * aBoneWeights[i];
         }
-        if (sumWeights > 0.001) {
-            totalPosition /= sumWeights;
-            totalNormal /= sumWeights;
-            totalTangent /= sumWeights;
-            totalNormal = normalize(totalNormal);
-            totalTangent = normalize(totalTangent);
-        } else {
+        if (dot(totalPosition, totalPosition) < 0.0001)
             totalPosition = vec4(aPosition, 1.0);
-            totalNormal = aNormal;
-            totalTangent = aTangent;
-        }
+        totalNormal = normalize(totalNormal);
+        totalTangent = normalize(totalTangent);
     } else {
         totalPosition = vec4(aPosition, 1.0);
         totalNormal = aNormal;
@@ -172,12 +166,12 @@ void main()
     mat3 nMat = mat3(NormalMatrix);
     if (dot(nMat[0], nMat[0]) < 0.0001)
         nMat = mat3(Model);
-    Normal = normalize(nMat * totalNormal);
+    vNormal = normalize(nMat * totalNormal);
     vTangent = normalize(nMat * totalTangent);
-    FragPos = vec3(Model * totalPosition);
-    TexCoord = aTexCoord;
-    MaterialIndex = aMaterialIndex;
-    vViewPos = View * vec4(FragPos, 1.0);
+    vPosition = vec3(Model * totalPosition);
+    vWorldPos = vPosition;
+    vMaterialIndex = aMaterialIndex;
+    vViewPos = View * vec4(vPosition, 1.0);
     gl_Position = Projection * View * Model * totalPosition;
 }";
 
@@ -298,19 +292,25 @@ layout(std140) uniform ShadowCB
     float ShadowPad0;
     float ShadowPad1;
 };
-in vec2 TexCoord;
-in vec3 Normal;
-in vec3 FragPos;
-in float MaterialIndex;
+in vec2 vTexCoord;
+in vec3 vNormal;
 in vec3 vTangent;
+in vec3 vPosition;
+in vec3 vWorldPos;
+in float vMaterialIndex;
 in vec4 vViewPos;
+
 out vec4 FragColor;
+
 
 uniform sampler2D uAlbedoMap[4];
 uniform sampler2D uNormalMap[4];
 uniform sampler2D uMetallicMap[4];
 
 uniform sampler2D uOpacityMap;
+
+
+
 
 
 
@@ -398,6 +398,13 @@ float SampleMetallic(int matIdx, vec2 uv) {
     return texture(uMetallicMap[0], uv).r;
 }
 
+int AlbedoWidth(int matIdx) {
+    if (matIdx == 1) return textureSize(uAlbedoMap[1], 0).x;
+    if (matIdx == 2) return textureSize(uAlbedoMap[2], 0).x;
+    if (matIdx == 3) return textureSize(uAlbedoMap[3], 0).x;
+    return textureSize(uAlbedoMap[0], 0).x;
+}
+
 int NormalWidth(int matIdx) {
     if (matIdx == 1) return textureSize(uNormalMap[1], 0).x;
     if (matIdx == 2) return textureSize(uNormalMap[2], 0).x;
@@ -410,6 +417,14 @@ int MetallicWidth(int matIdx) {
     if (matIdx == 2) return textureSize(uMetallicMap[2], 0).x;
     if (matIdx == 3) return textureSize(uMetallicMap[3], 0).x;
     return textureSize(uMetallicMap[0], 0).x;
+}
+
+vec2 WorldPlanarUV(vec3 worldPos, vec3 normal, int axis, vec2 tiling, vec2 offset) {
+    vec2 uv;
+    if (axis == 0) uv = worldPos.yz;
+    else if (axis == 1) uv = worldPos.xz;
+    else uv = worldPos.xy;
+    return uv * tiling + offset;
 }
 
 float SampleCascadeAt(int cascade, vec3 worldPos, vec3 normal) {
@@ -511,7 +526,7 @@ vec3 PointLighting(vec3 albedo, vec3 norm, vec3 viewDir) {
     vec3 sum = vec3(0.0);
     for (int i = 0; i < 4; i++) {
         if (i >= PointCount) break;
-        vec3 toLight = PointPosAt(i) - FragPos;
+        vec3 toLight = PointPosAt(i) - vPosition;
         float dist = length(toLight);
         float range = max(PointRangeAt(i), 0.01);
         if (dist > range) continue;
@@ -519,8 +534,10 @@ vec3 PointLighting(vec3 albedo, vec3 norm, vec3 viewDir) {
         float att = 1.0 - clamp(dist / range, 0.0, 1.0);
         att *= att;
         float diff = max(dot(norm, L), 0.0);
-        float shadow = (i == 0) ? SamplePointShadow(FragPos, PointPosAt(i), range) : 1.0;
-        sum += diff * albedo * PointColorAt(i) * PointIntensityAt(i) * att * shadow;
+        vec3 H = normalize(L + viewDir);
+        float spec = pow(max(dot(norm, H), 0.0), max(Shininess, 1.0));
+        float shadow = (i == 0) ? SamplePointShadow(vPosition, PointPosAt(i), range) : 1.0;
+        sum += (diff * albedo + spec * SpecularStrength) * PointColorAt(i) * PointIntensityAt(i) * att * shadow;
     }
     return sum;
 }
@@ -529,7 +546,7 @@ vec3 SpotLighting(vec3 albedo, vec3 norm, vec3 viewDir) {
     vec3 sum = vec3(0.0);
     for (int i = 0; i < 2; i++) {
         if (i >= SpotCount) break;
-        vec3 toLight = SpotPosAt(i) - FragPos;
+        vec3 toLight = SpotPosAt(i) - vPosition;
         float dist = length(toLight);
         float range = max(SpotRangeAt(i), 0.01);
         if (dist > range) continue;
@@ -540,72 +557,97 @@ vec3 SpotLighting(vec3 albedo, vec3 norm, vec3 viewDir) {
         float att = 1.0 - clamp(dist / range, 0.0, 1.0);
         att *= att * cone;
         float diff = max(dot(norm, L), 0.0);
-        sum += diff * albedo * SpotColorAt(i) * SpotIntensityAt(i) * att;
+        vec3 H = normalize(L + viewDir);
+        float spec = pow(max(dot(norm, H), 0.0), max(Shininess, 1.0));
+        sum += (diff * albedo + spec * SpecularStrength) * SpotColorAt(i) * SpotIntensityAt(i) * att;
     }
     return sum;
 }
 
 vec3 ApplyFog(vec3 color) {
+    // Volumetric (mode 3) is composited in FogPass. Do not also wash
+    // the forward color toward fog gray -- that made sunlit models gray.
     if (FogMode == 0 || FogMode == 3) return color;
-    float dist = length(ViewPos.xyz - FragPos);
+    float dist = length(ViewPos.xyz - vPosition);
     float fogFactor = exp(-FogDensity * dist);
     if (FogMode == 2) {
-        float heightTerm = exp(-FogHeightFalloff * max(FragPos.z - FogHeight, 0.0));
+        float heightTerm = exp(-FogHeightFalloff * max(vPosition.z - FogHeight, 0.0));
         fogFactor = exp(-FogDensity * dist * heightTerm);
     }
-    return mix(FogColor.xyz, color, clamp(fogFactor, 0.0, 1.0));
+    fogFactor = clamp(fogFactor, 0.0, 1.0);
+    return mix(FogColor.xyz, color, fogFactor);
 }
 
-void main()
-{
-    int matIdx = int(MaterialIndex);
+void main() {
+    int matIdx = int(vMaterialIndex);
     if (matIdx < 0) matIdx = 0;
     if (matIdx > 3) matIdx = 3;
 
+    // Opacity is per-material, same indexing as albedo. A leaf mask must
+    // not clip bark faces that share this MeshRender but have a different MatIdx.
     if (HasOpacity == 1 && ((OpacitySlots >> matIdx) & 1) == 1) {
-        float mask = texture(uOpacityMap, TexCoord).r;
+        float mask = texture(uOpacityMap, vTexCoord).r;
         if (mask <= 0.0) discard;
     }
 
-    vec3 albedo = SampleAlbedo(matIdx, TexCoord);
-    float metallic = 0.0;
-    if (MetallicWidth(matIdx) > 1)
-        metallic = SampleMetallic(matIdx, TexCoord);
+    if (DebugMaterialIndex == 1) {
+        if (matIdx == 0) FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+        else if (matIdx == 1) FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+        else if (matIdx == 2) FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+        else FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+        return;
+    }
 
-    vec3 geoN = normalize(Normal);
+    vec3 materialDiffuse = vec3(1.0, 1.0, 1.0);
+    if (AlbedoWidth(matIdx) > 0)
+        materialDiffuse = SampleAlbedo(matIdx, vTexCoord);
+
+    if (DebugTextureOnly == 1) {
+        FragColor = vec4(materialDiffuse, 1.0);
+        return;
+    }
+
+    vec3 geoN = normalize(vNormal);
     if (dot(geoN, geoN) < 0.001)
         geoN = vec3(0.0, 0.0, 1.0);
-    vec3 toCam = ViewPos.xyz - FragPos;
+    vec3 toCam = ViewPos.xyz - vPosition;
     if (dot(geoN, toCam) < 0.0)
         geoN = -geoN;
-    vec3 normal = geoN;
-    if (length(vTangent) > 0.001 && NormalWidth(matIdx) > 4)
-    {
+    vec3 norm = geoN;
+    if (length(vTangent) > 0.001 && NormalWidth(matIdx) > 4) {
         vec3 T = normalize(vTangent);
         T = normalize(T - dot(T, geoN) * geoN);
         vec3 B = cross(geoN, T);
-        vec3 tangentNormal = SampleNormalMap(matIdx, TexCoord) * 2.0 - 1.0;
+        vec3 tangentNormal = SampleNormalMap(matIdx, vTexCoord) * 2.0 - 1.0;
         tangentNormal.y = -tangentNormal.y;
         vec3 mapped = normalize(mat3(T, B, geoN) * tangentNormal);
         if (dot(mapped, geoN) < 0.0)
             mapped = -mapped;
         if (dot(mapped, geoN) > 0.15)
-            normal = mapped;
+            norm = mapped;
     }
 
-    vec3 ambient = AmbientStrength * albedo * AmbientColor.xyz;
+    float metallic = 0.0;
+    if (MetallicWidth(matIdx) > 0)
+        metallic = SampleMetallic(matIdx, vTexCoord);
+
     vec3 lightDir = normalize(-LightDir.xyz);
-    float shadow = SampleCascadeShadow(FragPos, geoN);
-    float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = diff * albedo * LightColor.xyz * LightIntensity * shadow;
-    vec3 viewDir = normalize(ViewPos.xyz - FragPos);
-    vec3 halfwayDir = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), max(Shininess, 1.0));
-    vec3 specular = SpecularStrength * spec * LightColor.xyz * LightIntensity * metallic * shadow;
-    vec3 color = ambient + diffuse + specular;
-    color += PointLighting(albedo, normal, viewDir);
-    color += SpotLighting(albedo, normal, viewDir);
-    FragColor = vec4(ApplyFog(color), 1.0);
+    float shadow = SampleCascadeShadow(vWorldPos, geoN);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * LightColor.xyz * LightIntensity * materialDiffuse * shadow;
+    vec3 ambient = AmbientStrength * materialDiffuse * AmbientColor.xyz;
+    vec3 viewDir = normalize(ViewPos.xyz - vPosition);
+    vec3 reflectDir = reflect(-lightDir, norm);
+    float specStrength = SpecularStrength * (1.0 - metallic);
+    float shininess = max(Shininess * (1.0 - metallic), 1.0);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
+    vec3 specular = specStrength * spec * LightColor.xyz * LightIntensity * (1.0 - metallic) * shadow;
+
+    vec3 result = ambient + diffuse + specular;
+    result += PointLighting(materialDiffuse, norm, viewDir);
+    result += SpotLighting(materialDiffuse, norm, viewDir);
+    result = ApplyFog(result);
+    FragColor = vec4(result, 1.0);
 }";
     }
 }

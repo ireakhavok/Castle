@@ -5,6 +5,7 @@ using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
 using System;
 using System.Numerics;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.Lighting
 {
@@ -88,8 +89,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             _rc.DepthMask(false);
             _rc.Disable(_e.CullFace);
             _rc.ColorMask(true, true, true, true);
-            ((OpenGLRenderContext)_rc).BindVertexArray(_emptyVao);
-            _rc.DrawArrays(_e.Triangles, 0, 3);
+            _rc.DrawFullscreen();
             ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0);
         }
 

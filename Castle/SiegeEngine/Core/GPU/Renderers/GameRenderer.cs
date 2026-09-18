@@ -1,4 +1,4 @@
-﻿using SiegeEngine.Systems;
+using SiegeEngine.Systems;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Core.GPU.Shaders;
 using System;
@@ -10,6 +10,7 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.Renderers
 {

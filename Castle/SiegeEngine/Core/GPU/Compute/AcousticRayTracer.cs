@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 namespace SiegeEngine.Core.GPU.Compute
 {
     public unsafe class AcousticRayTracer : IDisposable

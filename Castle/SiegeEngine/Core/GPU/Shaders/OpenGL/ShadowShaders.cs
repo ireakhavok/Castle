@@ -1,6 +1,6 @@
-// Folder: SiegeEngine/Core/GPU/Lighting
+// Folder: SiegeEngine/Core/GPU/Shaders/OpenGL
 // File: ShadowShaders.cs
-namespace SiegeEngine.Core.GPU.Lighting
+namespace SiegeEngine.Core.GPU.Shaders.OpenGL
 {
     public static class ShadowShaders
     {

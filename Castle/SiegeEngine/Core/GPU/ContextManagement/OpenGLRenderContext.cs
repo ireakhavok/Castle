@@ -21,6 +21,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         private readonly Dictionary<uint, int> _pipelinePrimitive = new Dictionary<uint, int>();
         private readonly Dictionary<uint, VertexLayout> _pipelineLayout = new Dictionary<uint, VertexLayout>();
         private readonly Dictionary<uint, GpuRenderState> _pipelineState = new Dictionary<uint, GpuRenderState>();
+        private uint _blitVao;
+        private bool _blitVaoCreated;
         private readonly Dictionary<uint, uint> _pipelineVao = new Dictionary<uint, uint>();
         private readonly Dictionary<uint, int> _textureTarget = new Dictionary<uint, int>();
         private readonly Dictionary<ulong, uint> _meshVao = new Dictionary<ulong, uint>();
@@ -617,6 +619,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             if (_textureTarget.TryGetValue(texture.Id, out int stored) && stored != 0)
                 target = stored;
             BindTexture(target, texture.Id);
+            PixelStore(_enums.UnpackAlignment, 1);
             int internalFormat = _enums.InternalRgba;
             TexImage2D(target, 0, internalFormat, (uint)width, (uint)height, 0, format, type, pixels);
         }
@@ -942,5 +945,74 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 CullFace(state.CullMode);
             }
         }
+
+        public void UpdateCubeFace(GpuHandle texture, int face, int width, int height, int format, int type, void* pixels)
+        {
+            if (!texture.IsValid || texture.Id == 0)
+                return;
+            int target = _enums.TextureCubeMap;
+            if (_textureTarget.TryGetValue(texture.Id, out int stored) && stored != 0)
+                target = stored;
+            BindTexture(target, texture.Id);
+            int faceTarget = _enums.TextureCubeMapPositiveX + face;
+            TexImage2D(faceTarget, 0, _enums.InternalRgba, (uint)width, (uint)height, 0, format, type, pixels);
+        }
+
+        public void GenerateMipmaps(GpuHandle texture)
+        {
+            if (!texture.IsValid || texture.Id == 0)
+                return;
+            int target = _enums.Texture2D;
+            if (_textureTarget.TryGetValue(texture.Id, out int stored) && stored != 0)
+                target = stored;
+            BindTexture(target, texture.Id);
+            GenerateMipmap(target);
+        }
+
+        public void DrawFullscreen()
+        {
+            Disable(_enums.DepthTest);
+            DepthMask(false);
+            Disable(_enums.CullFace);
+            Disable(_enums.Blend);
+            ColorMask(true, true, true, true);
+            if (_boundPipeline.IsValid && _pipelineVao.TryGetValue(_boundPipeline.Id, out uint vao) && vao != 0)
+                BindVertexArray(vao);
+            else
+            {
+                if (!_blitVaoCreated)
+                {
+                    _blitVao = GenVertexArray();
+                    _blitVaoCreated = true;
+                }
+                BindVertexArray(_blitVao);
+            }
+            DrawArrays(_enums.Triangles, 0, 3);
+        }
+
+
+        public void UpdateCubemapFace(GpuHandle texture, int faceTarget, int width, int height, int format, int type, void* pixels)
+        {
+            if (!texture.IsValid || texture.Id == 0)
+                return;
+            int target = _enums.TextureCubeMap;
+            if (_textureTarget.TryGetValue(texture.Id, out int stored) && stored != 0)
+                target = stored;
+            BindTexture(target, texture.Id);
+            TexImage2D(faceTarget, 0, _enums.InternalRgba, (uint)width, (uint)height, 0, format, type, pixels);
+        }
+
+        public void SetTextureParam(GpuHandle texture, int pname, int param)
+        {
+            if (!texture.IsValid || texture.Id == 0)
+                return;
+            int target = _enums.Texture2D;
+            if (_textureTarget.TryGetValue(texture.Id, out int stored) && stored != 0)
+                target = stored;
+            BindTexture(target, texture.Id);
+            TexParameter(target, pname, param);
+        }
+
+
     }
 }

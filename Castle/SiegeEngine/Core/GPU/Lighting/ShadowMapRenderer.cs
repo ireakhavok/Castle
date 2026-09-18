@@ -10,6 +10,7 @@ using SiegeEngine.Core.Managers;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.Lighting
 {
