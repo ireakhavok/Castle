@@ -285,6 +285,14 @@ namespace MapRoom
             {
                 AddSkyboxPanel.Open(_renderContext, _controlContext, _window, _eventBus);
             }
+            else if (hook == "OpenSkyboxRotate")
+            {
+                SkyboxRotatePanel.Open(_renderContext, _controlContext, _window, _eventBus);
+            }
+            else if (hook == "OpenAssetBrowser")
+            {
+                AssetBrowserPanel.Open(_renderContext, _controlContext, _window, _eventBus);
+            }
             else if (hook == "Export2D")
             {
                 if (!string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject))
@@ -427,14 +435,21 @@ namespace MapRoom
         public List<OutlinerNode> GetCurrentHierarchy()
         {
             var nodes = new List<OutlinerNode>();
-            nodes.Add(new OutlinerNode { Id = "terrain-root", Label = "Terrain", Icon = "🌲", Children = { "heightmap", "brush", "settings" } });
+            nodes.Add(new OutlinerNode { Id = "terrain-root", Label = "Terrain", Icon = "🌲", Children = { "heightmap", "skybox", "brush", "settings" } });
             nodes.Add(new OutlinerNode { Id = "heightmap", Label = "Heightmap", Icon = "📏", ParentId = "terrain-root" });
+            var sky = ProjectSettings.Current?.CurrentLevel?.Skybox;
+            string skyLabel = sky != null && sky.Enabled ? "Skybox" : "Skybox (none)";
+            nodes.Add(new OutlinerNode { Id = "skybox", Label = skyLabel, Icon = "🌌", ParentId = "terrain-root", AssociatedObject = sky });
             nodes.Add(new OutlinerNode { Id = "brush", Label = "Active Brush", Icon = "🖌️", ParentId = "terrain-root" });
             nodes.Add(new OutlinerNode { Id = "settings", Label = "Terrain Settings", Icon = "⚙️", ParentId = "terrain-root" });
             return nodes;
         }
         public object GetObjectForNode(string nodeId)
         {
+            if (nodeId == "skybox")
+                return ProjectSettings.Current?.CurrentLevel?.Skybox;
+            if (nodeId == "terrain-root" || nodeId == "settings")
+                return ProjectSettings.Current?.CurrentLevel;
             return null;
         }
         public void NotifyHierarchyChanged()

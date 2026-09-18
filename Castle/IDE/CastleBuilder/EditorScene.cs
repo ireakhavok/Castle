@@ -13,6 +13,7 @@ using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Lighting;
 using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
+using System;
 using System.Numerics;
 using System.Text.Json;
 namespace CastleBuilder
@@ -142,14 +143,52 @@ namespace CastleBuilder
                 return proxy.PhysicsWorld?.HeightProvider;
             return null;
         }
+        private Vector2 _placeNorm = new Vector2(0.5f, 0.5f);
+        private float _placeW = 1f;
+        private float _placeH = 1f;
+
+        public void SetPlacementCursor(Vector2 normalizedMouse, float contentW, float contentH)
+        {
+            _placeNorm = normalizedMouse;
+            _placeW = contentW;
+            _placeH = contentH;
+            if (_activeGameScene is TerrainCreatorScene tcs)
+                tcs.TryPerformPlacementRaycast(normalizedMouse, out _);
+        }
+
         public bool TryGetPlacementPosition(out Vector3 position)
+        {
+            return TryGetPlacementPosition(_placeNorm, _placeW, _placeH, out position);
+        }
+
+        public bool TryGetPlacementPosition(Vector2 normalizedMouse, float contentW, float contentH, out Vector3 position)
         {
             position = Vector3.Zero;
             if (_activeGameScene is TerrainCreatorScene tcs)
             {
-                return tcs.TryPerformPlacementRaycast(out position);
+                if (tcs.TryPerformPlacementRaycast(normalizedMouse, out position))
+                    return true;
             }
-            return false;
+            GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection);
+            if (!Matrix4x4.Invert(projection, out Matrix4x4 invProj)) return false;
+            if (!Matrix4x4.Invert(view, out Matrix4x4 invView)) return false;
+            float ndcX = normalizedMouse.X * 2f - 1f;
+            float ndcY = 1f - normalizedMouse.Y * 2f;
+            Vector4 ndcNear = new Vector4(ndcX, ndcY, -1f, 1f);
+            Vector4 ndcFar = new Vector4(ndcX, ndcY, 1f, 1f);
+            Vector4 eyeNearH = Vector4.Transform(ndcNear, invProj);
+            Vector4 eyeFarH = Vector4.Transform(ndcFar, invProj);
+            Vector3 eyeNear = new Vector3(eyeNearH.X / eyeNearH.W, eyeNearH.Y / eyeNearH.W, eyeNearH.Z / eyeNearH.W);
+            Vector3 eyeFar = new Vector3(eyeFarH.X / eyeFarH.W, eyeFarH.Y / eyeFarH.W, eyeFarH.Z / eyeFarH.W);
+            Vector3 origin = Vector3.Transform(eyeNear, invView);
+            Vector3 dir = Vector3.Normalize(Vector3.Transform(eyeFar, invView) - origin);
+            if (_activeGameScene is TerrainCreatorScene tcs2 && tcs2.TryTerrainRaycast(origin, dir, out position))
+                return true;
+            if (MathF.Abs(dir.Z) < 1e-5f) return false;
+            float tHit = -origin.Z / dir.Z;
+            if (tHit < 0.05f) return false;
+            position = origin + dir * tHit;
+            return true;
         }
         public bool TryPerformEntitySelectionRaycast(Vector2 normalizedMouse, float contentW, float contentH, out int entityId, out Vector3 hitPoint, bool cycle = false)
         {

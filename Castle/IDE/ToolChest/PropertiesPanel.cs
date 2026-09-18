@@ -210,6 +210,15 @@ namespace ToolChest
                     RebuildPropertiesUI();
                 }
             }
+            else if (e.Hook == "SkyboxSet")
+            {
+                var sky = ProjectSettings.Current?.CurrentLevel?.Skybox;
+                if (sky != null)
+                {
+                    _currentTarget = sky;
+                    RebuildPropertiesUI(force: true);
+                }
+            }
             else if (e.Hook == "SkyboxRotatePreview")
             {
                 Console.WriteLine("[PropertiesPanel] SkyboxRotatePreview event received - forwarding to live preview");
@@ -482,6 +491,7 @@ namespace ToolChest
             sb.Append("</details>");
             if (obj is Level level)
             {
+                sb.Append("<div class=\"property-row\" data-context=\"skybox-section\"><div class=\"property-name\" style=\"font-weight:bold;\">Skybox</div><button data-hook=\"RotateSkybox\">Rotate Skybox</button></div>");
                 string sceneName = level.Name ?? ProjectSettings.Current.CurrentSceneName ?? "Main";
                 _activeSceneSettingsName = sceneName;
                 var settings = ProjectSettings.Current.GetOrCreateSceneSettings(sceneName);
@@ -645,6 +655,7 @@ namespace ToolChest
             var type = obj.GetType();
             if (obj is SkyboxData skybox)
             {
+                sb.Append("<div class=\"property-row\" data-context=\"skybox-section\"><div class=\"property-name\" style=\"font-weight:bold;\">Skybox</div><button data-hook=\"RotateSkybox\">Rotate Skybox</button></div>");
                 AppendEditableProperties(sb, skybox, entityId);
                 if (skybox.Faces != null && skybox.Faces.Count > 0)
                 {

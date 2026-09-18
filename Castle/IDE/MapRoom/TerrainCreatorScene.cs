@@ -43,6 +43,7 @@ namespace MapRoom
         private const int ColorLayerResolution = 4096;
         private readonly bool _enableBrush;
         private float _stampYawOffsetDeg = 0f;
+        private Vector2 _lastNormMouse = new Vector2(0.5f, 0.5f);
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null, bool enableBrush = true)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
@@ -71,10 +72,9 @@ namespace MapRoom
         protected override Vector4 FrameClearColor => new Vector4(0.06f, 0.06f, 0.07f, 1.0f);
         protected override void RenderSkybox(Matrix4x4 view, Matrix4x4 projection)
         {
-            if (_liveState is LiveSceneState live && live.Skybox != null && _sceneData?.Skybox != live.Skybox)
+            if (_liveState is LiveSceneState live && live.Skybox != null)
             {
                 _sceneData.Skybox = live.Skybox;
-                ComposeSkybox(_sceneData.Skybox);
             }
             _skyboxData = _sceneData?.Skybox;
             base.RenderSkybox(view, projection);
@@ -212,10 +212,24 @@ namespace MapRoom
         }
         public bool TryPerformPlacementRaycast(out Vector3 hitPoint)
         {
+            return TryPerformPlacementRaycast(_lastNormMouse, out hitPoint);
+        }
+        public bool TryPerformPlacementRaycast(Vector2 normalizedMouse, out Vector3 hitPoint)
+        {
             hitPoint = Vector3.Zero;
-            Vector3 rayOrigin = _flyCamera.Position;
-            Vector3 rayDir = GetLookDirection();
-            return RayTerrainIntersect(rayOrigin, rayDir, out hitPoint);
+            Vector3 rayOrigin;
+            Vector3 rayDir;
+            if (!GetMouseRay(normalizedMouse, out rayOrigin, out rayDir))
+                return false;
+            if (RayTerrainIntersect(rayOrigin, rayDir, out hitPoint))
+                return true;
+            if (MathF.Abs(rayDir.Z) < 1e-5f)
+                return false;
+            float t = -rayOrigin.Z / rayDir.Z;
+            if (t < 0.05f)
+                return false;
+            hitPoint = rayOrigin + rayDir * t;
+            return true;
         }
         public Vector3 GetCameraPosition() => _flyCamera.Position;
         public Vector3 GetLookDirection()
@@ -865,13 +879,24 @@ namespace MapRoom
                 if (_controlContext.GetKey(_window, Key.Right) != InputAction.Release)
                     _stampYawOffsetDeg += rotateSpeed;
             }
+            if (_width > 0 && _height > 0)
+            {
+                _lastNormMouse = new Vector2(
+                    Math.Clamp(relMousePos.X / Math.Max(_width, 1), 0f, 1f),
+                    Math.Clamp(relMousePos.Y / Math.Max(_height, 1), 0f, 1f));
+            }
             if (_heightmap == null || _activeBrush == null)
             {
                 _ghostVisible = false;
                 return;
             }
-            Vector3 rayOrigin = _flyCamera.Position;
-            Vector3 rayDir = GetLookDirection();
+            Vector3 rayOrigin;
+            Vector3 rayDir;
+            if (!GetMouseRay(_lastNormMouse, out rayOrigin, out rayDir))
+            {
+                _ghostVisible = false;
+                return;
+            }
             if (RayTerrainIntersect(rayOrigin, rayDir, out var hit))
             {
                 _ghostPosition = hit;
@@ -1027,10 +1052,16 @@ namespace MapRoom
         {
             if (hook == "SkyboxRefresh")
             {
+                SkyboxData sky = null;
                 if (_liveState is LiveSceneState live && live.Skybox != null)
-                    ComposeSkybox(live.Skybox);
+                    sky = live.Skybox;
                 else if (_sceneData?.Skybox != null)
-                    ComposeSkybox(_sceneData.Skybox);
+                    sky = _sceneData.Skybox;
+                if (sky != null)
+                {
+                    if (_sceneData != null) _sceneData.Skybox = sky;
+                    _skyboxData = sky;
+                }
                 return;
             }
             if (hook == "OpenAddSkybox")

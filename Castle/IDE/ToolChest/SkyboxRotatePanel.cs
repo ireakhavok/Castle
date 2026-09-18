@@ -93,6 +93,7 @@ namespace ToolChest
             ResolveFacePaths();
             _previewScene.Initialize((int)Size.Y, (int)Size.X);
             LoadPreviewCubemap();
+            _workingSkybox.Orientation = SkyboxRenderer.Sanitize(_workingSkybox.Orientation);
             _previewScene.SetOrientation(_workingSkybox.Orientation);
             _previewScene.SetSelectedFace(_selectedFace);
             LoadUIFromFile();
@@ -496,26 +497,40 @@ namespace ToolChest
                 if (ok)
                 {
                     Vector3 localAxis = GetAxisVector(_activeRing);
-                    Vector3 worldAxis = Vector3.Transform(localAxis, Matrix4x4.CreateFromQuaternion(_dragStartOrient));
+                    Vector3 worldAxis = Vector3.Transform(localAxis, Matrix4x4.CreateFromQuaternion(SkyboxRenderer.Sanitize(_dragStartOrient)));
+                    if (worldAxis.LengthSquared() < 1e-8f) return;
+                    worldAxis = Vector3.Normalize(worldAxis);
                     Vector3 cur = ClosestPointOnPlane(o, d, Vector3.Zero, worldAxis);
-                    Vector3 v1 = Vector3.Normalize(_lastPlanePoint);
-                    Vector3 v2 = Vector3.Normalize(cur);
-                    float dot = Math.Clamp(Vector3.Dot(v1, v2), -1f, 1f);
-                    float ang = MathF.Acos(dot);
-                    if (Vector3.Dot(Vector3.Cross(v1, v2), worldAxis) < 0) ang = -ang;
-                    _accumAngle += ang;
-                    _lastPlanePoint = cur;
+                    if (_lastPlanePoint.LengthSquared() < 1e-8f || cur.LengthSquared() < 1e-8f)
+                    {
+                        _lastPlanePoint = cur;
+                    }
+                    else
+                    {
+                        Vector3 v1 = Vector3.Normalize(_lastPlanePoint);
+                        Vector3 v2 = Vector3.Normalize(cur);
+                        float dot = Math.Clamp(Vector3.Dot(v1, v2), -1f, 1f);
+                        float ang = MathF.Acos(dot);
+                        if (!float.IsFinite(ang)) ang = 0f;
+                        if (Vector3.Dot(Vector3.Cross(v1, v2), worldAxis) < 0) ang = -ang;
+                        _accumAngle += ang;
+                        _lastPlanePoint = cur;
+                    }
+                    if (!float.IsFinite(_accumAngle)) _accumAngle = 0f;
                     Quaternion delta = Quaternion.CreateFromAxisAngle(localAxis, _accumAngle);
-                    _workingSkybox.Orientation = Quaternion.Normalize(delta * _dragStartOrient);
+                    _workingSkybox.Orientation = SkyboxRenderer.Sanitize(delta * _dragStartOrient);
                     _previewScene.SetOrientation(_workingSkybox.Orientation);
                 }
             }
             if (_ringDragging && mouseReleased)
             {
-                float snap = MathF.Round(_accumAngle / (MathF.PI * 0.5f)) * (MathF.PI * 0.5f);
+                float snap = _accumAngle;
+                if (!float.IsFinite(snap)) snap = 0f;
+                // Keep the dragged angle. Do not force a 90-degree snap that can zero a small drag
+                // into a default quat write after a bad frame.
                 Vector3 localAxis = GetAxisVector(_activeRing);
                 Quaternion delta = Quaternion.CreateFromAxisAngle(localAxis, snap);
-                _workingSkybox.Orientation = Quaternion.Normalize(delta * _dragStartOrient);
+                _workingSkybox.Orientation = SkyboxRenderer.Sanitize(delta * _dragStartOrient);
                 _previewScene.SetOrientation(_workingSkybox.Orientation);
                 PushSkyboxLive();
                 _ringDragging = false;

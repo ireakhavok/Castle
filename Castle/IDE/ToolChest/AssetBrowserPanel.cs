@@ -1,4 +1,4 @@
-﻿// Folder: ToolChest
+// Folder: ToolChest
 // File: AssetBrowserPanel.cs
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -30,15 +30,15 @@ namespace ToolChest
             }
             public override bool HandleUIClick(HtmlElement elem)
             {
-                // Base must run first for proper IsActive / listener / state setup (fixes double-click registration)
                 base.HandleUIClick(elem);
                 _parent.HandleUIClick(elem);
                 return true;
             }
         }
 
-        private string _currentPath = AppDomain.CurrentDomain.BaseDirectory;
-        private string _searchTerm = "";
+        private string _currentPath;
+        private string _armedPath;
+        private int _viewMode; // 0 list, 1 icons, 2 details
 
         public AssetBrowserPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
@@ -48,11 +48,10 @@ namespace ToolChest
             AllowDragging = true;
             DockState = DockState.Floating;
             DockingMode = SiegeEngine.Core.Definitions.DockingMode.IDE;
-
-
-            // === ONLY CHANGE: Proper starting size (~1/8 of typical screen) ===
             BaseWidth = 420f;
-            BaseHeight = 340f;
+            BaseHeight = 420f;
+            string assets = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
+            _currentPath = Directory.Exists(assets) ? assets : AppDomain.CurrentDomain.BaseDirectory;
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -64,7 +63,6 @@ namespace ToolChest
         {
             base.Init();
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
-
             LoadBrowserUI();
         }
 
@@ -90,40 +88,186 @@ namespace ToolChest
             if (!File.Exists(htmlPath)) return;
             string template = File.ReadAllText(htmlPath);
             string itemsHtml = BuildItemsHtml();
-            string finalHtml = template.Replace("<!--ITEMS-->", itemsHtml);
+            string[] viewClass = { "view-list", "view-icons", "view-details" };
+            string[] viewLabel = { "View: List", "View: Icons", "View: Details" };
+            int mode = _viewMode % 3;
+            string finalHtml = template
+                .Replace("<!--ITEMS-->", itemsHtml)
+                .Replace("<!--PATH-->", _currentPath ?? "")
+                .Replace("<!--VIEWCLASS-->", viewClass[mode])
+                .Replace("<!--VIEWLABEL-->", viewLabel[mode]);
             _uiOverlay.LoadUI(finalHtml);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
 
+        private static bool IsHidden(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return true;
+            if (name.StartsWith(".")) return true;
+            string ext = Path.GetExtension(name).ToLowerInvariant();
+            return ext == ".meta" || ext == ".cs" || ext == ".dll" || ext == ".pdb";
+        }
+
+        private static bool IsImage(string ext)
+        {
+            return ext == ".png" || ext == ".jpg" || ext == ".jpeg";
+        }
+
+        private static bool IsPlaceable(string ext)
+        {
+            return ext == ".fbx" || ext == ".json" || ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga";
+        }
+
+        private static string FindFbxPreview(string fbxPath)
+        {
+            string dir = Path.GetDirectoryName(fbxPath);
+            string stem = Path.GetFileNameWithoutExtension(fbxPath);
+            if (string.IsNullOrEmpty(dir)) return null;
+            string fbm = Path.Combine(dir, stem + ".fbm");
+            string[] guesses =
+            {
+                Path.Combine(dir, stem + ".png"),
+                Path.Combine(dir, "T_" + stem + "_B.png"),
+                Path.Combine(dir, "..", "Textures", "T_" + stem + "_B.png"),
+                Path.Combine(dir, "..", "..", "Textures", "T_" + stem + "_B.png")
+            };
+            foreach (var g in guesses)
+            {
+                try
+                {
+                    string full = Path.GetFullPath(g);
+                    if (File.Exists(full)) return full;
+                }
+                catch { }
+            }
+            if (Directory.Exists(fbm))
+            {
+                var first = Directory.GetFiles(fbm)
+                    .FirstOrDefault(f =>
+                    {
+                        string e = Path.GetExtension(f).ToLowerInvariant();
+                        return e == ".png" || e == ".jpg" || e == ".jpeg";
+                    });
+                if (first != null) return first;
+            }
+            try
+            {
+                string textures = Path.GetFullPath(Path.Combine(dir, "..", "Textures"));
+                if (Directory.Exists(textures))
+                {
+                    var hit = Directory.GetFiles(textures, "*.png")
+                        .FirstOrDefault(f => Path.GetFileName(f).StartsWith("T_", StringComparison.OrdinalIgnoreCase)
+                                          && Path.GetFileName(f).IndexOf("_B", StringComparison.OrdinalIgnoreCase) >= 0);
+                    if (hit != null) return hit;
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private static string CssUrl(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return "";
+            return path.Replace("\\", "/").Replace("'", "%27");
+        }
+
         private string BuildItemsHtml()
+        {
+            int mode = _viewMode % 3;
+            if (mode == 1) return BuildIconItems();
+            if (mode == 2) return BuildDetailItems();
+            return BuildListItems();
+        }
+
+        private string BuildListItems()
         {
             var sb = new StringBuilder();
             try
             {
-                var dirs = Directory.GetDirectories(_currentPath);
-                var files = Directory.GetFiles(_currentPath);
-                foreach (var dir in dirs)
+                foreach (var dir in Directory.GetDirectories(_currentPath).OrderBy(d => d))
                 {
                     string name = Path.GetFileName(dir);
-                    sb.AppendLine($"<div class='item folder' data-hook='Enter:{dir}'>📁 {name}</div>");
+                    if (IsHidden(name)) continue;
+                    sb.AppendLine($"<div class='item folder' data-hook='Enter:{dir}'>DIR {name}</div>");
                 }
-                foreach (var file in files)
+                foreach (var file in Directory.GetFiles(_currentPath).OrderBy(f => f))
                 {
                     string name = Path.GetFileName(file);
-                    string ext = Path.GetExtension(file).ToLower();
-                    string icon = ext switch
-                    {
-                        ".fbx" => "📦",
-                        ".png" or ".jpg" => "🖼️",
-                        ".mp3" or ".wav" => "🎵",
-                        _ => "📄"
-                    };
+                    if (IsHidden(name)) continue;
+                    string ext = Path.GetExtension(file).ToLowerInvariant();
+                    string icon = ext == ".fbx" ? "FBX" : IsImage(ext) ? "IMG" : ext == ".wav" || ext == ".mp3" ? "SND" : "FILE";
                     sb.AppendLine($"<div class='item file' data-hook='Select:{file}'>{icon} {name}</div>");
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AssetBrowserPanel] list failed: {ex.Message}");
+            }
+            return sb.ToString();
+        }
+
+        private string BuildIconItems()
+        {
+            var sb = new StringBuilder();
+            try
+            {
+                foreach (var dir in Directory.GetDirectories(_currentPath).OrderBy(d => d))
+                {
+                    string name = Path.GetFileName(dir);
+                    if (IsHidden(name)) continue;
+                    sb.AppendLine($"<div class='tile folder' data-hook='Enter:{dir}'><div class='thumb'>DIR</div><div class='label'>{name}</div></div>");
+                }
+                foreach (var file in Directory.GetFiles(_currentPath).OrderBy(f => f))
+                {
+                    string name = Path.GetFileName(file);
+                    if (IsHidden(name)) continue;
+                    string ext = Path.GetExtension(file).ToLowerInvariant();
+                    string preview = "";
+                    string glyph = ext == ".fbx" ? "FBX" : ext == ".json" ? "PK" : ext == ".wav" || ext == ".mp3" ? "SND" : "FILE";
+                    if (IsImage(ext)) preview = CssUrl(file);
+                    else if (ext == ".fbx")
+                    {
+                        string img = FindFbxPreview(file);
+                        if (!string.IsNullOrEmpty(img)) preview = CssUrl(img);
+                    }
+                    string style = string.IsNullOrEmpty(preview) ? "" : $" style=\"background-image:url('{preview}')\"";
+                    string inner = string.IsNullOrEmpty(preview) ? glyph : "";
+                    sb.AppendLine($"<div class='tile file' data-hook='Select:{file}'><div class='thumb'{style}>{inner}</div><div class='label'>{name}</div></div>");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AssetBrowserPanel] icons failed: {ex.Message}");
+            }
+            return sb.ToString();
+        }
+
+        private string BuildDetailItems()
+        {
+            var sb = new StringBuilder();
+            try
+            {
+                foreach (var dir in Directory.GetDirectories(_currentPath).OrderBy(d => d))
+                {
+                    string name = Path.GetFileName(dir);
+                    if (IsHidden(name)) continue;
+                    sb.AppendLine($"<div class='row folder' data-hook='Enter:{dir}'><span>D</span><span>{name}</span><span class='col-type'>Folder</span><span class='col-path'>{dir}</span></div>");
+                }
+                foreach (var file in Directory.GetFiles(_currentPath).OrderBy(f => f))
+                {
+                    string name = Path.GetFileName(file);
+                    if (IsHidden(name)) continue;
+                    string ext = Path.GetExtension(file).ToLowerInvariant();
+                    string kind = ext == ".fbx" ? "Mesh" : IsImage(ext) ? "Texture" : ext == ".json" ? "Pack" : ext.Trim('.') ;
+                    sb.AppendLine($"<div class='row file' data-hook='Select:{file}'><span>F</span><span>{name}</span><span class='col-type'>{kind}</span><span class='col-path'>{file}</span></div>");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AssetBrowserPanel] details failed: {ex.Message}");
+            }
             return sb.ToString();
         }
 
@@ -141,7 +285,21 @@ namespace ToolChest
             else if (hook.StartsWith("Select:"))
             {
                 string path = hook.Substring(7);
+                string ext = Path.GetExtension(path).ToLowerInvariant();
+                if (IsPlaceable(ext))
+                {
+                    if (!string.IsNullOrEmpty(_armedPath) && _armedPath != path)
+                        _eventBus.Publish(new AssetDragEvent(_armedPath, AssetDragPhase.Cancel));
+                    _armedPath = path;
+                    _eventBus.Publish(new AssetDragEvent(path, AssetDragPhase.Begin));
+                    Console.WriteLine($"[AssetBrowserPanel] Armed '{nameOf(path)}' — click the Scene Editor viewport to place");
+                }
                 _eventBus.Publish(new FileSelectedEvent(path));
+            }
+            else if (hook == "CycleView")
+            {
+                _viewMode = (_viewMode + 1) % 3;
+                RefreshBrowser();
             }
             else if (hook == "Up")
             {
@@ -154,13 +312,16 @@ namespace ToolChest
             }
         }
 
+        static string nameOf(string path)
+        {
+            try { return Path.GetFileName(path); } catch { return path; }
+        }
+
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
             if (!string.IsNullOrEmpty(hook))
-            {
                 HandleDataHook(hook);
-            }
         }
 
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)

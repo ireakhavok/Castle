@@ -1,28 +1,17 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html {
             height: 100%;
             font-family: 'Segoe UI', Arial, sans-serif;
-            font-size: 13px;
+            font-size: 12px;
             background: #1e1e1e;
             color: #ddd;
             overflow: hidden;
         }
-
-        #browser {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-
+        #browser { display: flex; flex-direction: column; height: 100%; }
         #toolbar {
             background: #252526;
             padding: 6px 10px;
@@ -32,7 +21,6 @@
             border-bottom: 1px solid #444;
             flex-shrink: 0;
         }
-
         button {
             background: #3c3c3c;
             color: #ddd;
@@ -41,11 +29,7 @@
             cursor: pointer;
             border-radius: 3px;
         }
-
-            button:hover {
-                background: #4d4d4d;
-            }
-
+        button:hover { background: #4d4d4d; }
         #path {
             flex: 1;
             background: #333;
@@ -56,13 +40,22 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
-        #items {
-            flex: 1;
-            overflow: auto;
-            padding: 6px;
+        #hint {
+            padding: 4px 10px;
+            color: #8ad;
+            font-size: 11px;
+            border-bottom: 1px solid #333;
+            flex-shrink: 0;
         }
-
+        #items { flex: 1; overflow: auto; padding: 6px; }
+        #items.view-list { display: block; }
+        #items.view-icons {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+            align-content: start;
+            gap: 8px;
+        }
+        #items.view-details { display: block; }
         .item {
             padding: 4px 8px;
             margin: 1px 0;
@@ -72,27 +65,59 @@
             align-items: center;
             gap: 6px;
         }
-
-            .item:hover {
-                background: #2a2a2a;
-            }
-
-        .folder {
-            color: #7ca;
+        .item:hover { background: #2a2a2a; }
+        .folder { color: #7ca; }
+        .file { color: #ddd; }
+        .view-icons .tile {
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
         }
-
-        .file {
-            color: #ddd;
+        .view-icons .thumb {
+            width: 88px;
+            height: 88px;
+            border-radius: 4px;
+            background: #2a2a2a;
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ab;
+            font-size: 18px;
         }
+        .view-icons .tile:hover .thumb { outline: 1px solid #7cffcb; }
+        .view-icons .label {
+            width: 88px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .view-details .row {
+            display: grid;
+            grid-template-columns: 22px 1fr 70px 1.4fr;
+            gap: 8px;
+            padding: 4px 8px;
+            cursor: pointer;
+            align-items: center;
+        }
+        .view-details .row:hover { background: #2a2a2a; }
+        .view-details .col-type { color: #8ad; }
+        .view-details .col-path { color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     </style>
 </head>
 <body>
     <div id="browser">
         <div id="toolbar">
-            <button data-hook="Up">↑ Up</button>
+            <button data-hook="Up">Up</button>
+            <button data-hook="CycleView"><!--VIEWLABEL--></button>
             <div id="path">Current: <!--PATH--></div>
         </div>
-        <div id="items">
+        <div id="hint">Click a mesh or texture, then click the Scene Editor viewport to drop it under the cursor.</div>
+        <div id="items" class="<!--VIEWCLASS-->">
             <!--ITEMS-->
         </div>
     </div>

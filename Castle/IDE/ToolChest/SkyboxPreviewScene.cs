@@ -74,7 +74,7 @@ void main() {
         }
         public void SetOrientation(Quaternion orient)
         {
-            _orientation = orient;
+            _orientation = SkyboxRenderer.Sanitize(orient);
         }
         public void SetSelectedFace(int face)
         {
@@ -105,7 +105,7 @@ void main() {
         {
             if (_cubemapTex == 0 || _previewCube == null || _previewShader == null)
                 return;
-            Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(Quaternion.Inverse(_orientation));
+            Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(Quaternion.Inverse(SkyboxRenderer.Sanitize(_orientation)));
             Matrix4x4 mvp = orient * view * projection;
             bool clearDepth = _width != _lastClearedW || _height != _lastClearedH;
             if (clearDepth)
@@ -241,7 +241,7 @@ void main() {
         }
         public int PickRing(Vector2 relMouse, float contentW, float contentH, float header, float tolerance)
         {
-            Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(Quaternion.Inverse(_orientation));
+            Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(Quaternion.Inverse(SkyboxRenderer.Sanitize(_orientation)));
             float best = float.MaxValue;
             int bestRing = -1;
             for (int ring = 0; ring < 3; ring++)
