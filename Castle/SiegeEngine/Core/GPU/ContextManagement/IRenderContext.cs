@@ -121,6 +121,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         void Destroy(GpuHandle handle);
         void BindPipeline(GpuHandle pipeline);
         void BindUniformBlock(uint program, string blockName, int slot);
+        void BindUniformBlock(int slot);
+        void BindUniformBlocks(uint program);
         void BindVertexBuffer(GpuHandle buffer, int slot, int stride, int offset);
         void BindIndexBuffer(GpuHandle buffer);
         void BindTextureSlot(int slot, GpuHandle texture);

@@ -516,111 +516,14 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         public void ApplyTo(ShaderProgram shader, IRenderContext renderContext)
         {
-            if (shader == null) return;
-            shader.SetUniform("uAmbientColor", AmbientColor.X, AmbientColor.Y, AmbientColor.Z);
-            shader.SetUniform("uAmbientStrength", 0.16f);
-            shader.SetUniform("uLightDir", Sun.Direction.X, Sun.Direction.Y, Sun.Direction.Z);
-            shader.SetUniform("uLightColor", Sun.Color.X, Sun.Color.Y, Sun.Color.Z);
-            float sunPunch = Sun.Intensity <= 0f ? 0f : MathF.Min(Sun.Intensity * 1.5f, 4f);
-            shader.SetUniform("uLightIntensity", sunPunch);
-
-            shader.SetUniform("uPointCount", PointCount);
-            for (int i = 0; i < MaxPointLights; i++)
-            {
-                GpuPointLight p = i < PointCount ? Points[i] : default;
-                shader.SetUniform($"uPointPos[{i}]", p.Position.X, p.Position.Y, p.Position.Z);
-                shader.SetUniform($"uPointColor[{i}]", p.Color.X, p.Color.Y, p.Color.Z);
-                shader.SetUniform($"uPointIntensity[{i}]", p.Intensity);
-                shader.SetUniform($"uPointRange[{i}]", p.Range > 0f ? p.Range : 1f);
-            }
-
-            shader.SetUniform("uSpotCount", SpotCount);
-            for (int i = 0; i < MaxSpotLights; i++)
-            {
-                GpuSpotLight s = i < SpotCount ? Spots[i] : default;
-                shader.SetUniform($"uSpotPos[{i}]", s.Position.X, s.Position.Y, s.Position.Z);
-                shader.SetUniform($"uSpotDir[{i}]", s.Direction.X, s.Direction.Y, s.Direction.Z);
-                shader.SetUniform($"uSpotColor[{i}]", s.Color.X, s.Color.Y, s.Color.Z);
-                shader.SetUniform($"uSpotIntensity[{i}]", s.Intensity);
-                shader.SetUniform($"uSpotRange[{i}]", s.Range > 0f ? s.Range : 1f);
-                shader.SetUniform($"uSpotInner[{i}]", s.InnerConeCos);
-                shader.SetUniform($"uSpotOuter[{i}]", s.OuterConeCos);
-            }
-
-            int fogMode = Fog.Mode == FogMode.Off || Fog.Quality == FogQuality.Off ? 0 : (int)Fog.Mode;
-            shader.SetUniform("uFogMode", fogMode);
-            shader.SetUniform("uFogColor", Fog.Color.X, Fog.Color.Y, Fog.Color.Z);
-            shader.SetUniform("uFogDensity", Fog.Density);
-            shader.SetUniform("uFogStart", Fog.Start);
-            shader.SetUniform("uFogHeight", Fog.Height);
-            shader.SetUniform("uFogHeightFalloff", Fog.HeightFalloff);
-
-            LightingFrame ready = (ShadowsReady && ShadowAtlas != 0) ? this : LastReady;
-            uint atlas;
-            int cascadeCount;
-            Vector4 splits;
-            Matrix4x4[] cascades;
-            if (ShadowMapRenderer.WrittenSunAtlas != 0)
-            {
-                atlas = ShadowMapRenderer.WrittenSunAtlas;
-                cascadeCount = ShadowMapRenderer.WrittenCascadeCount;
-                splits = ShadowMapRenderer.WrittenCascadeSplits;
-                cascades = ShadowMapRenderer.WrittenCascadeVP;
-            }
-            else
-            {
-                atlas = ready != null ? ready.ShadowAtlas : 0;
-                cascadeCount = ready != null ? ready.CascadeCount : 0;
-                splits = ready != null ? ready.CascadeSplits : default;
-                cascades = ready != null ? ready.CascadeVP : CascadeVP;
-            }
-            bool shadows = atlas != 0 && ShadowQuality != ShadowQuality.Off && Sun.CastShadows && Sun.Technique == ShadowTechnique.ShadowMap;
-            shader.SetUniform("uReceiveShadows", 1);
-            shader.SetUniform("uShadowsEnabled", shadows ? 1 : 0);
-            shader.SetUniform("uCascadeCount", shadows ? cascadeCount : 0);
-            shader.SetUniform("uCascadeSplits", splits.X, splits.Y, splits.Z, splits.W);
-            Vector4 zRange = ShadowMapRenderer.WrittenCascadeZRange;
-            if (zRange == default && ready != null)
-                zRange = ready.CascadeZRange;
-            shader.SetUniform("uCascadeZRange", zRange.X, zRange.Y, zRange.Z, zRange.W);
-            shader.SetUniform("uShadowBias", ShadowMapRenderer.EsmExponent(ShadowQuality));
-            float atlasPx = ShadowMapRenderer.WrittenAtlasSize > 0
-                ? ShadowMapRenderer.WrittenAtlasSize
-                : ShadowMapRenderer.AtlasSize(ShadowQuality);
-            shader.SetUniform("uShadowAtlasSize", atlasPx);
-            shader.SetUniform("uShadowStrength", ShadowMapRenderer.ShadowStrength(ShadowQuality));
-            shader.SetUniform("uShadowSmooth", ShadowSmooth ? 1 : 0);
-            shader.SetUniform("uPointShadowStrength", 0.15f);
-
-            for (int i = 0; i < MaxCascades; i++)
-                shader.SetMatrix4($"uCascadeVP[{i}]", cascades != null && i < cascades.Length ? cascades[i] : Matrix4x4.Identity);
-
-            shader.SetMatrix4("uSpotVP", SpotVP);
-            // Point and spot maps are a separate pass from the sun atlas.
-            // Turning the sun off must not zero uPointShadowsEnabled.
-            bool pointShadows = ShadowQuality != ShadowQuality.Off && PointShadowCube != 0 && PointCount > 0 && Points[0].CastShadows;
-            bool spotShadows = ShadowQuality != ShadowQuality.Off && SpotShadowMap != 0 && SpotCount > 0 && Spots[0].CastShadows;
-            shader.SetUniform("uSpotShadowsEnabled", spotShadows ? 1 : 0);
-            shader.SetUniform("uPointShadowsEnabled", pointShadows ? 1 : 0);
-            shader.SetUniform("uPointShadowFar", PointCount > 0 && Points[0].Range > 0f ? Points[0].Range : 1f);
-
-            if (renderContext == null)
+            ApplyConstants(renderContext);
+            if (shader == null || renderContext == null)
                 return;
-
-            renderContext.ActiveTexture(renderContext.Enums.Texture0 + ShadowAtlasUnit);
-            renderContext.BindTexture(renderContext.Enums.Texture2D, shadows ? atlas : 0);
             shader.SetUniform("uShadowAtlas", ShadowAtlasUnit);
-
-            renderContext.ActiveTexture(renderContext.Enums.Texture0 + PointShadowUnit);
-            renderContext.BindTexture(renderContext.Enums.TextureCubeMap, PointShadowCube);
             shader.SetUniform("uPointShadowCube", PointShadowUnit);
-
-            renderContext.ActiveTexture(renderContext.Enums.Texture0 + SpotShadowUnit);
-            renderContext.BindTexture(renderContext.Enums.Texture2D, SpotShadowMap);
             shader.SetUniform("uSpotShadowMap", SpotShadowUnit);
-
-            renderContext.ActiveTexture(renderContext.Enums.Texture0);
-            UploadConstants(renderContext);
+            shader.SetUniform("uTexture", TextureSlot.Color);
+            shader.SetUniform("uAlbedoMap", TextureSlot.Albedo);
         }
 
         public void ApplyConstants(IRenderContext renderContext)

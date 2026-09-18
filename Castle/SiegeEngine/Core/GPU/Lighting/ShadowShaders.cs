@@ -81,6 +81,8 @@ layout(std140) uniform PostCB
     float PadPost0;
     float PadPost1;
     float PadPost2;
+    float PadPost3;
+    float PadPost4;
     vec4 LightPos;
 };
 layout(std140) uniform ShadowCB
@@ -90,16 +92,16 @@ layout(std140) uniform ShadowCB
     mat4 CascadeVP2;
     mat4 CascadeVP3;
     vec4 CascadeSplits;
-    vec4 AtlasSize;
-    vec4 PointAtlasSize;
+    vec4 CascadeZRange;
     int ShadowsEnabled;
     int ShadowReceiveShadows;
     int CascadeCount;
     int ShadowSmooth;
-    float ShadowStrength;
     float ShadowBias;
-    float ShadowNormalBias;
-    float PointShadowBias;
+    float ShadowAtlasSize;
+    float ShadowStrength;
+    int PointShadowsEnabled;
+    float PointShadowFar;
     float PointShadowStrength;
     float ShadowPad0;
     float ShadowPad1;
@@ -211,6 +213,8 @@ layout(std140) uniform PostCB
     float PadPost0;
     float PadPost1;
     float PadPost2;
+    float PadPost3;
+    float PadPost4;
     vec4 LightPos;
 };
 in vec3 vWorldPos;

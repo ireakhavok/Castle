@@ -491,10 +491,9 @@ namespace SiegeEngine.Core.GPU.Compute
             _renderContext.Disable(_renderContext.Enums.CullFace);
             Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI * 0.5f, 1.0f, 0.3f, 400.0f);
             _idProgram.Use();
-            _idProgram.SetMatrix4("uProjection", proj);
             Vector3 target = origin + CubeDirs[face] * 10.0f;
             Matrix4x4 view = Matrix4x4.CreateLookAt(origin, target, CubeUps[face]);
-            _idProgram.SetMatrix4("uView", view);
+            _renderContext.BindCamera(view, proj, Matrix4x4.Identity);
             uint clearVal = 0;
             _renderContext.ClearBufferuiv(_renderContext.Enums.Color, 0, &clearVal);
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);

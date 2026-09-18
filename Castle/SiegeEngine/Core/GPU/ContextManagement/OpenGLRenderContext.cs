@@ -349,14 +349,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             _pipelineState[program] = desc.State;
             uint vao = GenVertexArray();
             _pipelineVao[program] = vao;
-            BindBlock(program, "FrameCB", ConstantSlot.Frame);
-            BindBlock(program, "ObjectCB", ConstantSlot.Object);
-            BindBlock(program, "SkinCB", ConstantSlot.Skin);
-            BindBlock(program, "MaterialCB", ConstantSlot.Material);
-            BindBlock(program, "LightCB", ConstantSlot.Light);
-            BindBlock(program, "ShadowCB", ConstantSlot.Shadow);
-            BindBlock(program, "UiCB", ConstantSlot.Ui);
-            BindBlock(program, "PostCB", ConstantSlot.Post);
+            BindUniformBlocks(program);
+            BindSamplerUnits(program);
             return handle;
         }
 
@@ -431,6 +425,21 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             if (program == 0 || string.IsNullOrEmpty(blockName))
                 return;
             BindBlock(program, blockName, slot);
+        }
+
+        public void BindUniformBlock(int slot)
+        {
+            if (_boundPipeline.Id == 0)
+                return;
+            BindUniformBlock(_boundPipeline.Id, ConstantSlot.BlockName(slot), slot);
+        }
+
+        public void BindUniformBlocks(uint program)
+        {
+            if (program == 0)
+                return;
+            for (int slot = 0; slot < ConstantSlot.Count; slot++)
+                BindBlock(program, ConstantSlot.BlockName(slot), slot);
         }
 
         public void BindVertexBuffer(GpuHandle buffer, int slot, int stride, int offset)
@@ -697,10 +706,33 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         void BindBlock(uint program, string name, int binding)
         {
+            if (string.IsNullOrEmpty(name))
+                return;
             uint index = _gl.GetUniformBlockIndex(program, name);
             if (index == uint.MaxValue)
                 return;
             _gl.UniformBlockBinding(program, index, (uint)binding);
+        }
+
+        void BindSamplerUnits(uint program)
+        {
+            if (program == 0)
+                return;
+            UseProgram(program);
+            BindSampler(program, "uTexture", TextureSlot.Albedo);
+            BindSampler(program, "uAlbedoMap", TextureSlot.Albedo);
+            BindSampler(program, "uColor", TextureSlot.Albedo);
+            BindSampler(program, "uOpacityMap", TextureSlot.Opacity);
+            BindSampler(program, "uShadowAtlas", TextureSlot.ShadowAtlas);
+            BindSampler(program, "uPointShadowCube", TextureSlot.PointShadow);
+            BindSampler(program, "uSpotShadowMap", TextureSlot.SpotShadow);
+        }
+
+        void BindSampler(uint program, string name, int unit)
+        {
+            int loc = GetUniformLocation(program, name);
+            if (loc >= 0)
+                Uniform1(loc, unit);
         }
 
         void ApplyState(in GpuRenderState state)

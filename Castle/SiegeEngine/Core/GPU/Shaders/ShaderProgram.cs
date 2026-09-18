@@ -75,14 +75,22 @@ namespace SiegeEngine.Core.GPU.Shaders
 
         void BindConstantBlocks()
         {
-            _renderContext.BindUniformBlock(_program, "FrameCB", ConstantSlot.Frame);
-            _renderContext.BindUniformBlock(_program, "ObjectCB", ConstantSlot.Object);
-            _renderContext.BindUniformBlock(_program, "SkinCB", ConstantSlot.Skin);
-            _renderContext.BindUniformBlock(_program, "MaterialCB", ConstantSlot.Material);
-            _renderContext.BindUniformBlock(_program, "LightCB", ConstantSlot.Light);
-            _renderContext.BindUniformBlock(_program, "ShadowCB", ConstantSlot.Shadow);
-            _renderContext.BindUniformBlock(_program, "UiCB", ConstantSlot.Ui);
-            _renderContext.BindUniformBlock(_program, "PostCB", ConstantSlot.Post);
+            _renderContext.BindUniformBlocks(_program);
+            _renderContext.UseProgram(_program);
+            BindSampler("uTexture", TextureSlot.Albedo);
+            BindSampler("uAlbedoMap", TextureSlot.Albedo);
+            BindSampler("uColor", TextureSlot.Color);
+            BindSampler("uOpacityMap", TextureSlot.Opacity);
+            BindSampler("uShadowAtlas", TextureSlot.ShadowAtlas);
+            BindSampler("uPointShadowCube", TextureSlot.PointShadow);
+            BindSampler("uSpotShadowMap", TextureSlot.SpotShadow);
+        }
+
+        void BindSampler(string name, int unit)
+        {
+            int loc = _renderContext.GetUniformLocation(_program, name);
+            if (loc >= 0)
+                _renderContext.Uniform1(loc, unit);
         }
 
         public static ShaderProgram FromId(IRenderContext renderContext, ShaderId id)

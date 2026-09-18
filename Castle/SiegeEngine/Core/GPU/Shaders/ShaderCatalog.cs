@@ -3,6 +3,7 @@
 using System;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Lighting;
+using SiegeEngine.Core.GPU.PostProcess;
 
 namespace SiegeEngine.Core.GPU.Shaders
 {
@@ -49,6 +50,28 @@ namespace SiegeEngine.Core.GPU.Shaders
                     throw new NotSupportedException("ShaderId.AntiAliasing is multiple programs (Copy/FXAA/SMAA/TAA). Name the pass before cataloging it.");
                 case ShaderId.ColorCompose:
                     throw new NotSupportedException("ShaderId.ColorCompose is multiple programs (Extract/Downsample/Upsample/Compose/Luma/Adapt). Name the pass before cataloging it.");
+                case ShaderId.Terrain:
+                    return VsFs(TerrainShader.VertexShaderSource, TerrainShader.FragmentShaderSource);
+                case ShaderId.AaCopy:
+                    return VsFs(AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.CopyFragment);
+                case ShaderId.AaFxaa:
+                    return VsFs(AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.FxaaFragment);
+                case ShaderId.AaSmaa:
+                    return VsFs(AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.SmaaEdgeFragment);
+                case ShaderId.AaTaa:
+                    return VsFs(AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.TaaFragment);
+                case ShaderId.CcExtract:
+                    return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.ExtractFragment);
+                case ShaderId.CcDownsample:
+                    return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.DownsampleFragment);
+                case ShaderId.CcUpsample:
+                    return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.UpsampleFragment);
+                case ShaderId.CcCompose:
+                    return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.ComposeFragment);
+                case ShaderId.CcLuma:
+                    return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.LumaFragment);
+                case ShaderId.CcAdapt:
+                    return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.AdaptFragment);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(id), id, "Unknown ShaderId.");
             }

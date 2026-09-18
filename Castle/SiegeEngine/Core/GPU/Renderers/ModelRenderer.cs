@@ -285,17 +285,22 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(7 * sizeof(float)));
             shader.Use();
             _renderContext.BindCamera(view, projection, Matrix4x4.Identity);
+            LightingFrame.Current?.ApplyConstants(_renderContext);
             LightingFrame.Current?.ApplyTo(shader, _renderContext);
+            if (!_renderContext.TryGetConstants(ConstantSlot.Frame, out FrameCB frame))
+                frame = default;
             if (hasTexture && textureId != 0)
             {
-                _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
+                frame.HasTexture = 1;
+                _renderContext.SetConstants(ConstantSlot.Frame, frame);
+                _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + Shaders.TextureSlot.Color);
                 _renderContext.BindTexture(_renderContext.Enums.Texture2D, textureId);
-                shader.SetUniform("uHasTexture", 1);
-                shader.SetUniform("uTexture", 0);
+                shader.SetUniform("uTexture", Shaders.TextureSlot.Color);
             }
             else
             {
-                shader.SetUniform("uHasTexture", 0);
+                frame.HasTexture = 0;
+                _renderContext.SetConstants(ConstantSlot.Frame, frame);
             }
             uint idxCount = buffer.GetIndexCount();
             _renderContext.DrawElements(_renderContext.Enums.Triangles, idxCount, _renderContext.Enums.UnsignedInt, null);

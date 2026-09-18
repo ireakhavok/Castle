@@ -364,12 +364,12 @@ namespace SiegeEngine.Core.GPU.PostProcess
 
         void BindPost(int hasHistory = 0, int hasDepth = 0)
         {
-            _rc.SetConstants(ConstantSlot.Post, new PostCB
-            {
-                InvResolution = new Vector4(1f / Math.Max(_width, 1), 1f / Math.Max(_height, 1), 0f, 0f),
-                HasHistory = hasHistory,
-                HasDepth = hasDepth
-            });
+            if (!_rc.TryGetConstants(ConstantSlot.Post, out PostCB post))
+                post = default;
+            post.InvResolution = new Vector4(1f / Math.Max(_width, 1), 1f / Math.Max(_height, 1), 0f, 0f);
+            post.HasHistory = hasHistory;
+            post.HasDepth = hasDepth;
+            _rc.SetConstants(ConstantSlot.Post, post);
         }
 
         private void DrawSmaa()
@@ -421,15 +421,18 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _rc.BindTexture(_e.Texture2D, _historyColor);
             _rc.ActiveTexture(_e.Texture0 + 2);
             _rc.BindTexture(_e.Texture2D, _worldDepthIsTexture ? _worldDepthTex : 0);
-            _taa.SetUniform("uColor", 0);
-            _taa.SetUniform("uHistory", 1);
-            _taa.SetUniform("uDepth", 2);
-            _taa.SetMatrix4("uView", view);
-            _taa.SetMatrix4("uProjection", projection);
-            _taa.SetMatrix4("uPrevView", _prevView);
-            _taa.SetMatrix4("uPrevProjection", _prevProjection);
-            _taa.SetUniform("uInvResolution", 1f / _width, 1f / _height);
-            _taa.SetUniform("uHasHistory", _hasHistory ? 1 : 0);
+            _taa.SetUniform("uColor", TextureSlot.Color);
+            _taa.SetUniform("uHistory", TextureSlot.History);
+            _taa.SetUniform("uDepth", TextureSlot.Depth);
+            _rc.BindCamera(view, projection, Matrix4x4.Identity);
+            if (!_rc.TryGetConstants(ConstantSlot.Post, out PostCB taaPost))
+                taaPost = default;
+            taaPost.PrevView = _prevView;
+            taaPost.PrevProjection = _prevProjection;
+            taaPost.InvResolution = new Vector4(1f / Math.Max(_width, 1), 1f / Math.Max(_height, 1), 0f, 0f);
+            taaPost.HasHistory = _hasHistory ? 1 : 0;
+            taaPost.HasDepth = 1;
+            _rc.SetConstants(ConstantSlot.Post, taaPost);
             DrawFullscreen();
             _rc.ActiveTexture(_e.Texture0 + 2);
             _rc.BindTexture(_e.Texture2D, 0);

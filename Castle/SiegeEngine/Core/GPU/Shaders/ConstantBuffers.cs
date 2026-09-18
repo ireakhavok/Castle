@@ -16,6 +16,35 @@ namespace SiegeEngine.Core.GPU.Shaders
         public const int Shadow = 5;
         public const int Ui = 6;
         public const int Post = 7;
+        public const int Count = 8;
+
+        public static string BlockName(int slot)
+        {
+            switch (slot)
+            {
+                case Frame: return "FrameCB";
+                case Object: return "ObjectCB";
+                case Skin: return "SkinCB";
+                case Material: return "MaterialCB";
+                case Light: return "LightCB";
+                case Shadow: return "ShadowCB";
+                case Ui: return "UiCB";
+                case Post: return "PostCB";
+                default: return null;
+            }
+        }
+    }
+
+    public static class TextureSlot
+    {
+        public const int Albedo = 0;
+        public const int Color = 0;
+        public const int Opacity = 1;
+        public const int History = 1;
+        public const int Depth = 2;
+        public const int ShadowAtlas = 12;
+        public const int PointShadow = 13;
+        public const int SpotShadow = 14;
     }
 
     [StructLayout(LayoutKind.Sequential)]
