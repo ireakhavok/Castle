@@ -2,7 +2,59 @@
   <img src="main_banner.png" alt="Project Banner" width="100%">
 </p>
 
-# RealmFoundry Project (Repository: Castle) - README.md
+# RealmFoundry (repository: Castle)
+
+SiegeEngine is the runtime. Castle is the self-hosting IDE built on that same runtime. The editor is not a second product sitting beside the engine.
+
+## Documentation
+
+| Doc | What it covers |
+|---|---|
+| [Architecture](docs/ARCHITECTURE.md) | Layers, self-hosting, frame loop, examples repo |
+| [Rendering](docs/RENDERING.md) | `IRenderContext`, constant buffers, OpenGL-only backend |
+| [Scenes and projects](docs/SCENES_AND_PROJECTS.md) | `SceneRegistry`, `ScriptLoader`, hosted preview, Play / Export |
+| [IDE](docs/IDE.md) | Blades, docking, CastleBuilder / Keystone / ToolChest |
+| [Boundaries](docs/BOUNDARIES.md) | Core vs IDE vs Server vs project scripts |
+
+```mermaid
+%%{init: {'theme':'dark'}}%%
+flowchart TB
+  subgraph Projects["Project layer — Siege_Engine_Example_Projects"]
+    PJ["project.json + Scripts + Assets"]
+  end
+  subgraph IDE["IDE — Castle"]
+    CB[CastleBuilder]
+    TC[ToolChest]
+    MR[MapRoom]
+    RC[ReadingChamber]
+    KS[Keystone]
+  end
+  subgraph Core["Core — SiegeEngine"]
+    GPU["GPU / IRenderContext / CBs"]
+    EB[EventBus]
+    ENT[Entity + Components]
+    SYS[GameSystems]
+    SCN[Scenes + SceneRegistry]
+    UI[HTML/CSS/JS UI]
+  end
+  subgraph Server["Server — Citadel"]
+    GS[GameServer]
+    VAL[ServerValidationSystem]
+    NET[NetworkManager / Steam]
+  end
+  subgraph Boot["Bootstrap — Trebuchet + Foundation"]
+    L[Launcher]
+  end
+  L --> CB
+  L --> GS
+  CB --> SCN
+  CB --> UI
+  PJ -->|"ScriptLoader + public contracts only"| SCN
+  SCN --> GPU
+  SCN --> EB
+  GS --> EB
+  SYS --> GS
+```
 
 ## Project Overview
 
@@ -40,11 +92,11 @@ This approach ensures a secure environment for multiplayer games and collaborati
 RealmFoundry's architecture is highly modular to support extensibility and avoid monolithic code:
 
 * **DLL-Based Modules**: Specialized features (e.g., MapRoom.dll for level editing, ScriptChamber.dll for VS Code integration, QuestHall.dll for node-based quests) are loadable DLLs. ModManager.cs can be extended with Assembly.LoadFrom for dynamic resolution, allowing mods to add or override panels.
-* **Abstractions and Interfaces**: Core components use interfaces like IGameServer (for server logic), IRenderContext (for rendering pipelines, currently OpenGL), IControlContext (for inputs), and planned IPanel (for dockable IDE windows with Init/Update/Render/Dispose and DockState enum). This enables swapping backends (e.g., Vulkan) or extending without recompilation.
+* **Abstractions and interfaces**: `IGameServer`, `IRenderContext` (OpenGL implemented; DirectX/Vulkan are future backends against the same interface, not present), `IControlContext`, `IScene`, `IHostedContent`. Dockable windows are `BasePanel` with Init/Update/Render/Dispose and a dock state.
 * **Event-Driven Design**: EventBus.cs decouples systems via strongly-typed IEvents, supporting networked sync and mod injections (e.g., custom events from mods).
 * **UI Extensibility**: MenuSystem.cs parses HTML/CSS for menus/panels, with data-hooks invoking namespace-qualified methods (e.g., "SiegeEngine.AssetParsing.FBXParser.Load"). Mods can override HTML files (e.g., DevMenu.html) for custom layouts.
 * **Asset and Project Modularity**: ModManager scans for assets (FBX, textures, Unity prefabs) and projects (as JSON blueprints). Projects load as self-contained modules, rendering in panels using shared engine systems.
-* **Panel Management**: Future PanelManager.cs will handle docking, resizing, and layout saving, with panels popping out into new windows via additional ContextManager instances for independent rendering loops.
+* **Panel management**: `PanelManager` + `IDEDockingStrategy` handle docking, resizing, float, and per-context layout save (`layout.Scene Editor.json`). Panels pop out as extra host surfaces, not a second renderer.
 
 This modularity ensures the engine/IDE can evolve through community contributions, with clean separation to prevent circular dependencies.
 
@@ -54,89 +106,117 @@ While currently client-side focused, the engine is designed for P2P expansion: G
 
 ## Technical Structure
 
-### Core Engine (SiegeEngine)
+### Core engine (SiegeEngine)
 
-* **Events**: EventBus.cs manages pub/sub with networking; examples include MouseInputEvent, KeyInputEvent.
-* **Rendering**: OpenGL abstractions; ShaderProgram for custom shaders (e.g., model with PBR); VertexBuffer for entity data; TextRenderer/UIQuadRenderer for UI.
-* **Asset Parsing**: FBXParser.cs and helpers for models/animations; UnityAssetLoader for prefabs/GUIDs.
-* **Systems**: GameSystem base; includes Lighting (uniforms), Audio (raytracing), Physics, MenuSystem (HTML UI), ClientPrediction.
-* **Managers**: ModManager (mods/assets), UISettingsManager (resolutions/fullscreen).
+* **Events**: `EventBus` pub/sub with optional Steam networking. `[ProtectedEvent]` cannot be published by mods or clients. Subscribe in init, unsubscribe on dispose.
+* **Rendering**: `IRenderContext` (OpenGL backend only). World cameras and lighting upload **constant buffers** (`FrameCB`, `ObjectCB`, `LightCB`, `ShadowCB`, `PostCB`) via `SetConstants`. `ShaderProgram.SetMatrix4("uView")` remains as a fallback that patches the cached CB. Terrain editor GLSL is still named uniforms — that is an allowed floor. Settings may list DirectX 11/12; those backends are not implemented.
+* **Asset parsing**: FBX pipeline for meshes, skeletons, animations, materials, textures; `ModelManager` + `TextureLoader`.
+* **Entities**: `Entity` + components, parenting, delta tracking. `Level` is the in-memory source of truth.
+* **Systems**: `GameSystem` base — physics, audio (with GPU occlusion), animation, lighting pack, client prediction, project-registered systems.
+* **Managers**: `ModManager`, `ScriptLoader`, `SceneManager`, `PanelManager`, `ModelManager`, `UISettingsManager`, `WorkshopManager`.
+* **UI**: production HTML/CSS/JS with `data-hook` attributes. Same stack for main menu, IDE chrome, and game HUD.
 
 ### Server (Citadel)
 
-* **GameServer.cs**: Entity/system management, spatial optimization, validation, raytracing.
-* **NetworkManager.cs**: P2P messaging via Steam.
+* `GameServer` — entities, systems, spatial grid, occlusion, ray traces.
+* `ServerValidationSystem` — movement / inventory / combat checks.
+* `EntityDeltaTracker` + `NetworkManager` — Steam P2P or dedicated.
 
-### Launcher (Trebuchet)
+### Bootstrap (Trebuchet / Foundation / GameHost)
 
-* **Launcher.cs**: Initializes Steam/server, contexts, mods, menu; main loop.
+* `Trebuchet.Launcher` — Steam, window, local Citadel, IDE loop.
+* `Foundation` — isolated Play / Export process. Same `SceneContext` activation as in-process Play.
+* `GameHost` — additional host entry.
 
 ### Scenes
 
-* **SandboxScene.cs**: 3D demo with player, grid, lighting; renders models with multi-textures.
+* `Scene` (abstract) → `RuntimeGameplayScene`, `GameScene`, `ModelViewerScene`, `TerrainScene`, `EditorScene`.
+* Project assemblies add `[CustomSceneEntry]` types (`ChessScene`, `CheckersScene`, …) discovered by `ScriptLoader`.
+* `SandboxScene` in older diagrams is historical. It is not the primary path.
 
-### UI Elements
+### IDE (CastleBuilder + satellites)
 
-* HTML-parsed with CSS support; elements like ButtonElement, SelectElement handle interactions.
+* `CastleBuilder` — `EditorScene`, project load/save, Scene Editor, Script Editor, Play Host.
+* `Keystone` — `ProjectSettings`, layouts, outliner, undo.
+* `MapRoom` — terrain / 2D creators.
+* `ReadingChamber` — file picker, animation viewer.
+* `ToolChest` — browser, properties, tree, brushes, timeline, blend, console, lights, skybox, post-process.
 
-## Development Status and Roadmap
+Docking (`IDEDockingStrategy`) and `BasePanel` are implemented. They are not stubs.
 
-* Stable vertical slice: 3D sandbox, HTML menu, server validation.
-* Next: Dev menu template, DLL stubs (IPanel), dynamic loading, project modules, P2P IDE sync.
-* Dependencies: Silk.NET, Steam SDK; no internet/pip.
-## Folder Structure
-```mermaid
-graph LR
-    A[Castle Repository] --> B[Citadel]
-    A --> C[SiegeEngine]
-    A --> D[Foundation]
-    A --> E[Trebuchet]
-    A --> F[Specialized Modules - Stubs]
-    A --> G[Assets]
-    A --> H[Mods]
+### UI elements
 
-    subgraph Citadel Files
-    B --> B1[Network/NetworkManager.cs]
-    B --> B2[Server/GameServer.cs]
-    B --> B3[Server/ServerValidationSystem.cs]
-    B --> B4[Server/EntityDeltaTracker.cs]
-    B --> B5[Server/ServerProgram.cs]
-    end
+HTML/CSS/JS parsed into `HtmlElement` trees. Clicks with `data-hook` resolve to fully qualified methods and/or EventBus events.
 
-    subgraph SiegeEngine Files
-    C --> C1[Scenes/SandboxScene.cs]
-    C --> C2[Systems/MenuSystem.cs]
-    C --> C3[Events/EventBus.cs]
-    C --> C4[Managers/ModManager.cs]
-    C --> C5[ContextManagement/IRenderContext]
-    C --> C6[AssetParsing/FBXParser.cs]
-    C --> C7[Rendering/ShaderProgram.cs]
-    C --> C8[Rendering/VertexBuffer.cs]
-    C --> C9[Systems/LightingSystem.cs]
-    C --> C10[Systems/AudioSystem.cs]
-    C --> C11[UI/HtmlElement.cs]
-    end
+## Development status and roadmap
 
-    D --> D1[Program.cs]
+* **Floors** (do not reopen): point shadows, non-gray scene, model-viewer mesh + Play deformation, original viewer background, blend panel one node per add, OpenGL world path through `SetConstants`, chess/checkers board camera via `GetViewProjection` + CBs, volumetric fog fragment defines `CascadeVPAt`.
+* **Open**: leftover named-uniform writes on some engine paths (fallback still patches CBs); first-class 2D/iso camera mode so a project does not have to subclass `Scene`; DirectX backend against the existing `IRenderContext` — not started.
+* **Dependencies**: Silk.NET OpenGL, Steamworks. Windows is the production target.
 
-    E --> E1[Launcher.cs]
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the live map.
+## Folder structure
 
-    subgraph Stubs
-    F --> F1[MapRoom/Class1.cs - Stub]
-    F --> F2[QuestHall/Class1.cs - Stub]
-    F --> F3[ScriptChamber/Class1.cs - Stub]
-    F --> F4[ThroneRoom/Class1.cs - Stub]
-    F --> F5[GuildTower/Class1.cs - Stub]
-    F --> F6[ReadingChamber/Class1.cs - Stub]
-    end
+Git root is `Castle/`. The solution is `Castle/Castle.sln`. Example games live in the separate `Siege_Engine_Example_Projects` repo.
 
-    G --> G1[Models - FBX files]
-    G --> G2[Textures]
-    G --> G3[Configs/MainMenu.html]
-
-    H --> H1[mod.json - Example Mods]
+```text
+Castle/
+  README.md
+  docs/
+  Prompt.txt
+  BlenderScenes/
+  Libraries/                     Steam redistributables
+  Castle/
+    Castle.sln
+    Assets/                      shipped engine/IDE assets
+    SiegeEngine/
+      Core/                      GPU, Events, Managers, UI, AssetParsing, …
+      Scenes/                    Scene, SceneRegistry, RuntimeGameplay, ModelViewer, Terrain
+      Systems/                   GameSystem, Audio, Animation, Lighting, Prediction
+      PlayerSystem/              Player, PlayerMovement, FlyCamera, AngledOrthoCamera
+    IDE/
+      CastleBuilder/             EditorScene, BlueprintManager, Scene Editor
+      Keystone/                  ProjectSettings, layouts, outliner
+      MapRoom/                   Terrain + 2D creators
+      ReadingChamber/            file picker, animation viewer
+      ToolChest/                 browser, properties, brushes, timeline, console
+    Launcher/
+      Trebuchet/                 window + Steam + loop
+      Foundation/                isolated Play / Export
+      GameHost/
+    Server/Citadel/              authoritative GameServer
 ```
-## Core Class Diagram
+
+```mermaid
+%%{init: {'theme':'dark'}}%%
+flowchart TB
+  ROOT[Castle git root]
+  ROOT --> DOCS[docs]
+  ROOT --> SLN[Castle/Castle.sln]
+  SLN --> SE[SiegeEngine]
+  SLN --> IDE[IDE]
+  SLN --> LAU[Launcher]
+  SLN --> CIT[Server/Citadel]
+  SE --> CORE[Core/GPU Events Managers UI]
+  SE --> SCN[Scenes]
+  SE --> SYS[Systems]
+  SE --> PLY[PlayerSystem]
+  IDE --> CB[CastleBuilder]
+  IDE --> KS[Keystone]
+  IDE --> MR[MapRoom]
+  IDE --> RC[ReadingChamber]
+  IDE --> TC[ToolChest]
+  LAU --> TR[Trebuchet]
+  LAU --> FD[Foundation]
+  CIT --> GS[GameServer]
+```
+
+`MapRoom`, `ReadingChamber`, and `ToolChest` are real assemblies, not stubs. `QuestHall` / `ThroneRoom` / `GuildTower` / `ScriptChamber` names in older diagrams are product ideas, not current projects.
+
+## Core class diagram
+
+`SandboxScene` below is historical. Current gameplay types are `RuntimeGameplayScene`, `EditorScene`, and project `[CustomSceneEntry]` scenes. Interfaces are still accurate.
+
 
 ```mermaid
 classDiagram
@@ -242,7 +322,10 @@ classDiagram
     SandboxScene --> LightingSystem : adds
 
 ```
-## Startup Sequence
+## Startup sequence
+
+Current bootstrap still starts Steam → EventBus → mods → window → UI, but the first authored surface is the **IDE docking tree** (or Foundation Play), not only `SandboxScene`. See [ARCHITECTURE](docs/ARCHITECTURE.md#frame-loop).
+
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 sequenceDiagram
@@ -281,7 +364,10 @@ sequenceDiagram
         SandboxScene->>SandboxScene: Render(entities)
     end
 ```
-## Component Diagram for Modularity
+## Component diagram for modularity
+
+Still a valid EventBus / GameServer / Launcher picture. IDE chrome is `PanelManager` + `IDEDockingStrategy`, not MenuSystem alone. Specialized modules are real projects under `Castle/IDE/`.
+
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 graph LR
@@ -317,7 +403,10 @@ graph LR
     MM -. "Scans Loads" .-> AM[AssetsMods]
     GS -. "Networks Events" .-> NM
 ```
-## Rendering System Class Diagram
+## Rendering system class diagram
+
+Add `SetConstants<T>(ConstantSlot, T)` and `TryGetConstants<T>` to the mental model of `IRenderContext`. Named `SetMatrix4` still exists as a CB fallback. Full contract: [RENDERING](docs/RENDERING.md).
+
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 classDiagram
@@ -484,7 +573,10 @@ flowchart TD
     E
     end
 ```
-## Audio System (unproven)
+## Audio system
+
+Implemented: `AudioSystem` with a dedicated worker, bank load, AutoPlay entities, and GPU occlusion infrastructure. Ray-trace filtering is still the model; treat quality as evolving, not missing.
+
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 flowchart TD
@@ -532,6 +624,9 @@ sequenceDiagram
     end
 ```
 ## Lighting subsystem
+
+World path: `LightingFrame.ApplyConstants` → `LightCB` / `ShadowCB`. Terrain still calls `ApplyTo` named uniforms (floor). Fog modes: Off, Exponential, Height (forward), Volumetric (`FogPass`, fragment must define `CascadeVPAt`).
+
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 classDiagram
@@ -589,7 +684,10 @@ flowchart TD
     H -->|Valid & Not Protected| I[Invoke Subscribers]
     H -->|Invalid/Protected| J[Reject/Log]
 ```
-## Rendering Subsystem
+## Rendering subsystem
+
+Replace "Set View/Projection Matrices" in the flowchart with `SetConstants(FrameCB / ObjectCB)`. `SandboxScene.Render` in the diagram is any `Scene.Render`. OpenGL only.
+
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 classDiagram
