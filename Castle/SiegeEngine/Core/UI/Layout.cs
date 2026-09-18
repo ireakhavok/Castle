@@ -628,7 +628,10 @@ namespace SiegeEngine.Core.UI
             List<float> frValuesCol = new List<float>();
             if (!string.IsNullOrEmpty(columnsStr))
             {
-                List<string> colDefsList = ExpandGridTrackList(columnsStr, ComputedContentWidth, colGap);
+                float colAvail = ComputedContentWidth;
+                if (colAvail <= 1f) colAvail = viewportWidth;
+                if (colAvail <= 1f && Parent != null) colAvail = Parent.ComputedContentWidth;
+                List<string> colDefsList = ExpandGridTrackList(columnsStr, colAvail, colGap);
                 foreach (string def in colDefsList)
                 {
                     if (def == "auto")
@@ -1112,7 +1115,8 @@ namespace SiegeEngine.Core.UI
                     List<string> colDefsList = new List<string>();
                     if (!string.IsNullOrEmpty(columnsStr))
                     {
-                        colDefsList = ExpandGridTrackList(columnsStr, ComputedContentWidth, colGap);
+                        float colAvail = ComputedContentWidth > 1f ? ComputedContentWidth : viewportWidth;
+                        colDefsList = ExpandGridTrackList(columnsStr, colAvail, colGap);
                         foreach (string def in colDefsList)
                         {
                             if (def.EndsWith("fr"))

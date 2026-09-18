@@ -435,21 +435,9 @@ nav ul ul {
             {
                 match = true;
             }
-            else if (simple.StartsWith("#"))
-            {
-                string id = simple.Substring(1);
-                match = elem.Attributes.GetValueOrDefault("id", "") == id;
-            }
-            else if (simple.StartsWith("."))
-            {
-                string[] requiredClasses = simple.Substring(1).Split('.');
-                string classesStr = elem.Attributes.GetValueOrDefault("class", "");
-                var elemClasses = classesStr.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                match = requiredClasses.All(c => elemClasses.Contains(c));
-            }
             else
             {
-                match = string.Equals(elem.Tag, simple, StringComparison.OrdinalIgnoreCase);
+                match = MatchSimpleToken(elem, simple);
             }
             if (match && pseudo != null)
             {
@@ -457,6 +445,58 @@ nav ul ul {
             }
             return match;
         }
+
+        private static bool MatchSimpleToken(HtmlElement elem, string simple)
+        {
+            if (string.IsNullOrEmpty(simple) || simple == "*") return true;
+            string tag = null;
+            string id = null;
+            var classes = new List<string>();
+            int i = 0;
+            if (simple[0] != '#' && simple[0] != '.')
+            {
+                int n = 0;
+                while (n < simple.Length && simple[n] != '#' && simple[n] != '.') n++;
+                tag = simple.Substring(0, n);
+                i = n;
+            }
+            while (i < simple.Length)
+            {
+                if (simple[i] == '#')
+                {
+                    i++;
+                    int n = i;
+                    while (n < simple.Length && simple[n] != '.' && simple[n] != '#') n++;
+                    id = simple.Substring(i, n - i);
+                    i = n;
+                }
+                else if (simple[i] == '.')
+                {
+                    i++;
+                    int n = i;
+                    while (n < simple.Length && simple[n] != '.' && simple[n] != '#') n++;
+                    if (n > i) classes.Add(simple.Substring(i, n - i));
+                    i = n;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            if (!string.IsNullOrEmpty(tag) && !string.Equals(elem.Tag, tag, StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (!string.IsNullOrEmpty(id) && elem.Attributes.GetValueOrDefault("id", "") != id)
+                return false;
+            if (classes.Count > 0)
+            {
+                var have = elem.Attributes.GetValueOrDefault("class", "")
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var c in classes)
+                    if (!have.Contains(c)) return false;
+            }
+            return true;
+        }
+
         private bool CheckPseudo(HtmlElement elem, string pseudo)
         {
             switch (pseudo)
