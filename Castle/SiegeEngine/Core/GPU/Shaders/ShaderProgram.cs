@@ -165,7 +165,11 @@ namespace SiegeEngine.Core.GPU.Shaders
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
             int location = GetLocation(name);
-            if (location == -1) return;
+            if (location == -1)
+            {
+                WriteLegacyMatrix(name, matrix);
+                return;
+            }
             float[] matrixArray = _mat4Scratch;
             if (matrixArray.Length < 16)
             {
@@ -248,6 +252,45 @@ namespace SiegeEngine.Core.GPU.Shaders
             fixed (float* ptr = data)
             {
                 _renderContext.UniformMatrix3(location, (uint)matrices.Length, false, ptr);
+            }
+        }
+
+        void WriteLegacyMatrix(string name, Matrix4x4 matrix)
+        {
+            if (name == "uView" || name == "View")
+            {
+                FrameCB frame;
+                if (!_renderContext.TryGetConstants(ConstantSlot.Frame, out frame))
+                    frame = new FrameCB { View = Matrix4x4.Identity, Projection = Matrix4x4.Identity };
+                frame.View = matrix;
+                _renderContext.SetConstants(ConstantSlot.Frame, frame);
+                return;
+            }
+            if (name == "uProjection" || name == "Projection")
+            {
+                FrameCB frame;
+                if (!_renderContext.TryGetConstants(ConstantSlot.Frame, out frame))
+                    frame = new FrameCB { View = Matrix4x4.Identity, Projection = Matrix4x4.Identity };
+                frame.Projection = matrix;
+                _renderContext.SetConstants(ConstantSlot.Frame, frame);
+                return;
+            }
+            if (name == "uModel" || name == "Model")
+            {
+                ObjectCB obj;
+                if (!_renderContext.TryGetConstants(ConstantSlot.Object, out obj))
+                    obj = new ObjectCB { Model = Matrix4x4.Identity, NormalMatrix = Matrix4x4.Identity };
+                obj.Model = matrix;
+                _renderContext.SetConstants(ConstantSlot.Object, obj);
+                return;
+            }
+            if (name == "uNormalMatrix" || name == "NormalMatrix")
+            {
+                ObjectCB obj;
+                if (!_renderContext.TryGetConstants(ConstantSlot.Object, out obj))
+                    obj = new ObjectCB { Model = Matrix4x4.Identity, NormalMatrix = Matrix4x4.Identity };
+                obj.NormalMatrix = matrix;
+                _renderContext.SetConstants(ConstantSlot.Object, obj);
             }
         }
 

@@ -23,6 +23,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         private readonly Dictionary<uint, uint> _pipelineVao = new Dictionary<uint, uint>();
         private readonly Dictionary<uint, int> _textureTarget = new Dictionary<uint, int>();
         private readonly uint[] _uboSlots = new uint[8];
+        private FrameCB _cachedFrame = new FrameCB { View = System.Numerics.Matrix4x4.Identity, Projection = System.Numerics.Matrix4x4.Identity };
+        private ObjectCB _cachedObject = new ObjectCB { Model = System.Numerics.Matrix4x4.Identity, NormalMatrix = System.Numerics.Matrix4x4.Identity };
         private GpuHandle _boundPipeline;
 
         public AbstractRenderEnums Enums => _enums;
@@ -487,6 +489,34 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             BindBuffer(_enums.UniformBuffer, ubo);
             BufferData(_enums.UniformBuffer, size, &local, _enums.DynamicDraw);
             BindBufferBase(_enums.UniformBuffer, (uint)slot, ubo);
+            CacheConstants(slot, local);
+        }
+
+        public bool TryGetConstants<T>(int slot, out T data) where T : unmanaged
+        {
+            data = default;
+            if (slot == ConstantSlot.Frame && sizeof(T) == sizeof(FrameCB))
+            {
+                FrameCB cached = _cachedFrame;
+                data = *(T*)&cached;
+                return true;
+            }
+            if (slot == ConstantSlot.Object && sizeof(T) == sizeof(ObjectCB))
+            {
+                ObjectCB cached = _cachedObject;
+                data = *(T*)&cached;
+                return true;
+            }
+            return false;
+        }
+
+        void CacheConstants<T>(int slot, in T data) where T : unmanaged
+        {
+            T local = data;
+            if (slot == ConstantSlot.Frame && sizeof(T) == sizeof(FrameCB))
+                _cachedFrame = *(FrameCB*)&local;
+            else if (slot == ConstantSlot.Object && sizeof(T) == sizeof(ObjectCB))
+                _cachedObject = *(ObjectCB*)&local;
         }
 
         public void DrawIndexed(int indexCount)
