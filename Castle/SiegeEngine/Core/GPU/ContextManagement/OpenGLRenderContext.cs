@@ -382,6 +382,18 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             return handle;
         }
 
+        public GpuHandle ImportTexture(uint id, int target)
+        {
+            if (id == 0)
+                return default;
+            if (target != 0)
+                _textureTarget[id] = target;
+            ulong key = Pack(GpuResourceKind.Texture, id);
+            if (_live.TryGetValue(key, out uint gen))
+                return new GpuHandle(id, gen, GpuResourceKind.Texture);
+            return Track(GpuResourceKind.Texture, id);
+        }
+
         public void Destroy(GpuHandle handle)
         {
             if (!IsLive(handle))

@@ -295,7 +295,6 @@ namespace SiegeEngine.Core.GPU.Renderers
                 _renderContext.SetConstants(ConstantSlot.Frame, frame);
                 _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + Shaders.TextureSlot.Color);
                 _renderContext.BindTexture(_renderContext.Enums.Texture2D, textureId);
-                shader.SetUniform("uTexture", Shaders.TextureSlot.Color);
             }
             else
             {
@@ -367,15 +366,12 @@ namespace SiegeEngine.Core.GPU.Renderers
             int u0 = rc.Enums.Texture0;
             rc.ActiveTexture(u0 + LightingFrame.ShadowAtlasUnit);
             rc.BindTexture(rc.Enums.Texture2D, atlas);
-            shader.SetUniform("uShadowAtlas", LightingFrame.ShadowAtlasUnit);
             if (frame != null)
             {
                 rc.ActiveTexture(u0 + LightingFrame.PointShadowUnit);
                 rc.BindTexture(rc.Enums.TextureCubeMap, frame.PointShadowCube);
-                shader.SetUniform("uPointShadowCube", LightingFrame.PointShadowUnit);
                 rc.ActiveTexture(u0 + LightingFrame.SpotShadowUnit);
                 rc.BindTexture(rc.Enums.Texture2D, frame.SpotShadowMap);
-                shader.SetUniform("uSpotShadowMap", LightingFrame.SpotShadowUnit);
             }
             rc.ActiveTexture(u0);
         }

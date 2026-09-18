@@ -188,6 +188,7 @@ namespace SiegeEngine.Core.GPU
                     uint texture;
                     renderContext.GenTextures(1, out texture);
                     renderContext.BindTexture(renderContext.Enums.Texture2D, texture);
+                    renderContext.ImportTexture(texture, renderContext.Enums.Texture2D);
                     renderContext.PixelStore(renderContext.Enums.UnpackAlignment, 1);
                     Console.WriteLine($"[TextureLoader] Uploading TGA {width}x{height} to texture {texture}");
                     unsafe
@@ -250,6 +251,7 @@ namespace SiegeEngine.Core.GPU
                     renderContext.GenTextures(1, out texture);
                     Console.WriteLine($"[TextureLoader] Generated texture ID {texture}");
                     renderContext.BindTexture(renderContext.Enums.Texture2D, texture);
+                    renderContext.ImportTexture(texture, renderContext.Enums.Texture2D);
                     int error = renderContext.GetError();
                     if (error != renderContext.Enums.NoError)
                     {
@@ -333,6 +335,7 @@ namespace SiegeEngine.Core.GPU
             uint tex;
             renderContext.GenTextures(1, out tex);
             renderContext.BindTexture(renderContext.Enums.TextureCubeMap, tex);
+            renderContext.ImportTexture(tex, renderContext.Enums.TextureCubeMap);
             renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureMinFilter, renderContext.Enums.Linear);
             renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureMagFilter, renderContext.Enums.Linear);
             renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureWrapS, renderContext.Enums.ClampToEdge);
@@ -362,6 +365,7 @@ namespace SiegeEngine.Core.GPU
             uint tex;
             renderContext.GenTextures(1, out tex);
             renderContext.BindTexture(renderContext.Enums.TextureCubeMap, tex);
+            renderContext.ImportTexture(tex, renderContext.Enums.TextureCubeMap);
             renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureMinFilter, renderContext.Enums.Linear);
             renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureMagFilter, renderContext.Enums.Linear);
             renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureWrapS, renderContext.Enums.ClampToEdge);

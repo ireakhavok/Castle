@@ -66,6 +66,9 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private static ShadowMapRenderer _shared;
         public static uint WrittenSunAtlas { get; private set; }
+        public GpuHandle AtlasHandle { get; private set; }
+        public GpuHandle PointHandle { get; private set; }
+        public GpuHandle SpotHandle { get; private set; }
         public static int WrittenAtlasSize { get; private set; }
         public static int WrittenCascadeCount { get; private set; }
         public static readonly Matrix4x4[] WrittenCascadeVP = new Matrix4x4[LightingFrame.MaxCascades];
@@ -848,6 +851,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             DeleteTex(ref _atlasDepth);
             _atlasSize = size;
             _atlasDepth = CreateDepthTex(size, size, _e.Texture2D);
+            AtlasHandle = _rc.ImportTexture(_atlasDepth, _e.Texture2D);
             _rc.GenFramebuffers(1, out _atlasFbo);
             _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
             _rc.FramebufferTexture2D(_e.Framebuffer, _e.DepthAttachment, _e.Texture2D, _atlasDepth, 0);
@@ -866,6 +870,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             DeleteTex(ref _spotDepth);
             _spotSize = size;
             _spotDepth = CreateDepthTex(size, size, _e.Texture2D);
+            SpotHandle = _rc.ImportTexture(_spotDepth, _e.Texture2D);
             _rc.GenFramebuffers(1, out _spotFbo);
             _rc.BindFramebuffer(_e.Framebuffer, _spotFbo);
             _rc.FramebufferTexture2D(_e.Framebuffer, _e.DepthAttachment, _e.Texture2D, _spotDepth, 0);
@@ -890,6 +895,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             _rc.TexParameter(_e.TextureCubeMap, _e.TextureWrapS, _e.ClampToEdge);
             _rc.TexParameter(_e.TextureCubeMap, _e.TextureWrapT, _e.ClampToEdge);
             _rc.TexParameter(_e.TextureCubeMap, _e.TextureWrapR, _e.ClampToEdge);
+            PointHandle = _rc.ImportTexture(_pointDepth, _e.TextureCubeMap);
             _rc.GenFramebuffers(1, out _pointFbo);
         }
 
@@ -953,7 +959,15 @@ namespace SiegeEngine.Core.GPU.Lighting
         private void DeleteTex(ref uint tex)
         {
             if (tex == 0) return;
-            _rc.DeleteTexture(tex);
+            uint id = tex;
+            if (id == _atlasDepth) AtlasHandle = default;
+            if (id == _spotDepth) SpotHandle = default;
+            if (id == _pointDepth) PointHandle = default;
+            GpuHandle imported = _rc.ImportTexture(id, 0);
+            if (imported.IsValid)
+                _rc.Destroy(imported);
+            else
+                _rc.DeleteTexture(id);
             tex = 0;
         }
     }

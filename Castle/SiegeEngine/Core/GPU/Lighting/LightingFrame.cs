@@ -517,13 +517,6 @@ namespace SiegeEngine.Core.GPU.Lighting
         public void ApplyTo(ShaderProgram shader, IRenderContext renderContext)
         {
             ApplyConstants(renderContext);
-            if (shader == null || renderContext == null)
-                return;
-            shader.SetUniform("uShadowAtlas", ShadowAtlasUnit);
-            shader.SetUniform("uPointShadowCube", PointShadowUnit);
-            shader.SetUniform("uSpotShadowMap", SpotShadowUnit);
-            shader.SetUniform("uTexture", TextureSlot.Color);
-            shader.SetUniform("uAlbedoMap", TextureSlot.Albedo);
         }
 
         public void ApplyConstants(IRenderContext renderContext)
@@ -538,13 +531,35 @@ namespace SiegeEngine.Core.GPU.Lighting
             else
                 atlas = ready != null ? ready.ShadowAtlas : 0;
             shadows = atlas != 0 && ShadowQuality != ShadowQuality.Off && Sun.CastShadows && Sun.Technique == ShadowTechnique.ShadowMap;
-            renderContext.ActiveTexture(renderContext.Enums.Texture0 + ShadowAtlasUnit);
-            renderContext.BindTexture(renderContext.Enums.Texture2D, shadows ? atlas : 0);
-            renderContext.ActiveTexture(renderContext.Enums.Texture0 + PointShadowUnit);
-            renderContext.BindTexture(renderContext.Enums.TextureCubeMap, PointShadowCube);
-            renderContext.ActiveTexture(renderContext.Enums.Texture0 + SpotShadowUnit);
-            renderContext.BindTexture(renderContext.Enums.Texture2D, SpotShadowMap);
+            BindShadowTextures(renderContext, shadows ? atlas : 0, PointShadowCube, SpotShadowMap);
+        }
+
+        static void BindShadowTextures(IRenderContext renderContext, uint atlas, uint pointCube, uint spotMap)
+        {
+            int t2d = renderContext.Enums.Texture2D;
+            int cube = renderContext.Enums.TextureCubeMap;
+            BindSlot(renderContext, ShadowAtlasUnit, atlas, t2d);
+            BindSlot(renderContext, PointShadowUnit, pointCube, cube);
+            BindSlot(renderContext, SpotShadowUnit, spotMap, t2d);
             renderContext.ActiveTexture(renderContext.Enums.Texture0);
+        }
+
+        static void BindSlot(IRenderContext rc, int slot, uint id, int target)
+        {
+            if (id == 0)
+            {
+                rc.ActiveTexture(rc.Enums.Texture0 + slot);
+                rc.BindTexture(target, 0);
+                return;
+            }
+            GpuHandle handle = rc.ImportTexture(id, target);
+            if (handle.IsValid)
+                rc.BindTextureSlot(slot, handle);
+            else
+            {
+                rc.ActiveTexture(rc.Enums.Texture0 + slot);
+                rc.BindTexture(target, id);
+            }
         }
 
         void UploadConstants(IRenderContext renderContext)

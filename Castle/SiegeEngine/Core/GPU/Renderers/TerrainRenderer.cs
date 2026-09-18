@@ -64,9 +64,8 @@ namespace SiegeEngine.Core.GPU.Renderers
                 WriteFrameHasTexture(textured);
                 if (textured)
                 {
-                    _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + TextureSlot.Color);
-                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, terrainTextureId);
-                    _terrainShader.SetUniform("uTexture", TextureSlot.Color);
+                    GpuHandle color = _renderContext.ImportTexture(terrainTextureId, _renderContext.Enums.Texture2D);
+                    _renderContext.BindTextureSlot(TextureSlot.Color, color);
                 }
 
                 WritePost(unlit: 0f, polyFactor: 1f, polyUnits: 2f);
@@ -118,9 +117,8 @@ namespace SiegeEngine.Core.GPU.Renderers
             {
                 spriteShader.Use();
                 _renderContext.BindCamera(view, projection, ghostModel);
-                _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + TextureSlot.Color);
-                _renderContext.BindTexture(_renderContext.Enums.Texture2D, ghostTextureId);
-                spriteShader.SetUniform("uTexture", TextureSlot.Color);
+                GpuHandle ghost = _renderContext.ImportTexture(ghostTextureId, _renderContext.Enums.Texture2D);
+                _renderContext.BindTextureSlot(TextureSlot.Color, ghost);
                 ghostBuffer.Bind();
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }
