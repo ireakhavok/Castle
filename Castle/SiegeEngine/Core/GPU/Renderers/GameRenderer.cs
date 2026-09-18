@@ -128,15 +128,10 @@ namespace SiegeEngine.Core.GPU.Renderers
             Clear();
             Matrix4x4 view = _player.Camera?.ViewMatrix ?? Matrix4x4.Identity;
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)_width / _height, 0.1f, 100.0f);
+            _renderContext.BindCamera(view, projection, Matrix4x4.Identity);
             _gridShader.Use();
-            _gridShader.SetMatrix4("uView", view);
-            _gridShader.SetMatrix4("uProjection", projection);
             _waterShader.Use();
-            _waterShader.SetMatrix4("uView", view);
-            _waterShader.SetMatrix4("uProjection", projection);
             _modelShader.Use();
-            _modelShader.SetMatrix4("uView", view);
-            _modelShader.SetMatrix4("uProjection", projection);
             _renderContext.BindVertexArray(_vao);
             foreach (var entity in entities)
             {
@@ -174,7 +169,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                         Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
                         Matrix4x4 modelMatrix = rotation * Matrix4x4.CreateTranslation(physics.Position);
                         _modelShader.Use();
-                        _modelShader.SetMatrix4("uModel", modelMatrix);
+                        _renderContext.BindCamera(view, projection, modelMatrix);
                         bool hasBones = modelComp.Model.Skeleton != null && modelComp.Model.Skeleton.Bones.Count > 0;
                         _modelShader.SetUniform("uHasBones", hasBones ? 1 : 0);
                         if (hasBones)

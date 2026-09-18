@@ -99,6 +99,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             if (clearDepth)
                 renderContext.Clear(renderContext.Enums.DepthBufferBit);
             shader.Use();
+            renderContext.BindCamera(Matrix4x4.Identity, mvp, Matrix4x4.Identity);
             shader.SetMatrix4("uMVP", mvp);
             renderContext.ActiveTexture(0);
             renderContext.BindTexture(renderContext.Enums.TextureCubeMap, cubemapTex);

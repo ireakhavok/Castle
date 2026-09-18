@@ -5,6 +5,7 @@ using Silk.NET.OpenGL;
 using SiegeEngine.Core.GPU.Shaders;
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 
 namespace SiegeEngine.Core.GPU.ContextManagement
 {
@@ -36,6 +37,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         private bool _hasUi;
         private bool _hasPost;
         private GpuHandle _boundPipeline;
+        private static bool _layoutChecked;
 
         public AbstractRenderEnums Enums => _enums;
         public int ViewportWidth => _viewportWidth;
@@ -548,6 +550,32 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 return true;
             }
             return false;
+        }
+
+        public void BindCamera(in Matrix4x4 view, in Matrix4x4 projection, in Matrix4x4 model)
+        {
+            if (!_layoutChecked)
+            {
+                ConstantBufferLayout.Validate();
+                _layoutChecked = true;
+            }
+            FrameCB frame;
+            if (!TryGetConstants(ConstantSlot.Frame, out frame))
+                frame = new FrameCB { View = Matrix4x4.Identity, Projection = Matrix4x4.Identity };
+            frame.View = view;
+            frame.Projection = projection;
+            if (Matrix4x4.Invert(view, out Matrix4x4 invView))
+                frame.ViewPos = new Vector4(invView.Translation, 1f);
+            SetConstants(ConstantSlot.Frame, frame);
+            ObjectCB obj;
+            if (!TryGetConstants(ConstantSlot.Object, out obj))
+                obj = new ObjectCB { Model = Matrix4x4.Identity, NormalMatrix = Matrix4x4.Identity };
+            obj.Model = model;
+            if (Matrix4x4.Invert(model, out Matrix4x4 invModel))
+                obj.NormalMatrix = Matrix4x4.Transpose(invModel);
+            else
+                obj.NormalMatrix = Matrix4x4.Identity;
+            SetConstants(ConstantSlot.Object, obj);
         }
 
         void CacheConstants<T>(int slot, in T data) where T : unmanaged

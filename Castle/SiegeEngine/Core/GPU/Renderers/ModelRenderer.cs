@@ -284,9 +284,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.EnableVertexAttribArray(2);
             _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(7 * sizeof(float)));
             shader.Use();
-            shader.SetMatrix4("uView", view);
-            shader.SetMatrix4("uProjection", projection);
-            shader.SetMatrix4("uModel", Matrix4x4.Identity);
+            _renderContext.BindCamera(view, projection, Matrix4x4.Identity);
             LightingFrame.Current?.ApplyTo(shader, _renderContext);
             if (hasTexture && textureId != 0)
             {

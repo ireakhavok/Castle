@@ -558,6 +558,7 @@ namespace SiegeEngine.Scenes
         public override void Render(IReadOnlyList<Entity> entities)
         {
             GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection);
+            BindCamera(view, projection, Matrix4x4.Identity);
             LightingFrame prev = LightingFrame.Current;
             LightingFrame.Current = LightingFrame.Studio(_cameraPosition, _cameraTarget);
             PushViewerTextureRoot();

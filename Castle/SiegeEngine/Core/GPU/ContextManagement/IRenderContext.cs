@@ -1,6 +1,7 @@
 // Folder: SiegeEngine/Core/GPU/ContextManagement
 // File: IRenderContext.cs
 using System;
+using System.Numerics;
 
 namespace SiegeEngine.Core.GPU.ContextManagement
 {
@@ -126,6 +127,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         void UpdateBuffer(GpuHandle buffer, ReadOnlySpan<byte> data, int offset = 0);
         void SetConstants<T>(int slot, in T data) where T : unmanaged;
         bool TryGetConstants<T>(int slot, out T data) where T : unmanaged;
+        void BindCamera(in Matrix4x4 view, in Matrix4x4 projection, in Matrix4x4 model);
         void DrawIndexed(int indexCount);
         void Draw(int vertexCount);
         void Dispatch(uint groupsX, uint groupsY = 1, uint groupsZ = 1);

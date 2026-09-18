@@ -79,6 +79,8 @@ layout(std140) uniform PostCB
     float LinearDepth;
     float FarPlane;
     float PadPost0;
+    float PadPost1;
+    float PadPost2;
     vec4 LightPos;
 };
 layout(std140) uniform ShadowCB
@@ -207,6 +209,8 @@ layout(std140) uniform PostCB
     float LinearDepth;
     float FarPlane;
     float PadPost0;
+    float PadPost1;
+    float PadPost2;
     vec4 LightPos;
 };
 in vec3 vWorldPos;

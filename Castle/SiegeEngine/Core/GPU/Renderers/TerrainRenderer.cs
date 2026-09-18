@@ -21,14 +21,34 @@ out vec4 vColor;
 out vec2 vUV;
 out vec3 vWorldPos;
 out vec4 vViewPos;
-uniform mat4 uModel;
-uniform mat4 uView;
-uniform mat4 uProjection;
+layout(std140) uniform FrameCB
+{
+    mat4 View;
+    mat4 Projection;
+    vec4 ViewPos;
+    float Time;
+    int HasTexture;
+    float PadFrame0;
+    float PadFrame1;
+};
+layout(std140) uniform ObjectCB
+{
+    mat4 Model;
+    mat4 NormalMatrix;
+    int HasBones;
+    int ReceiveShadows;
+    int Pad0;
+    int Pad1;
+    float PointSize;
+    float VerticalOffset;
+    float Pad3;
+    float Pad4;
+};
 void main() {
-    vec4 world = uModel * vec4(aPosition, 1.0);
+    vec4 world = Model * vec4(aPosition, 1.0);
     vWorldPos = world.xyz;
-    vViewPos = uView * world;
-    gl_Position = uProjection * vViewPos;
+    vViewPos = View * world;
+    gl_Position = Projection * vViewPos;
     vColor = aColor;
     vUV = aUV;
 }";
@@ -285,9 +305,7 @@ void main() {
             _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
 
             _terrainShader.Use();
-            _terrainShader.SetMatrix4("uView", view);
-            _terrainShader.SetMatrix4("uProjection", projection);
-            _terrainShader.SetMatrix4("uModel", Matrix4x4.Identity);
+            _renderContext.BindCamera(view, projection, Matrix4x4.Identity);
             _terrainShader.SetUniform("uLightDir", LightingFrame.DefaultSunDirection.X, LightingFrame.DefaultSunDirection.Y, LightingFrame.DefaultSunDirection.Z);
             _terrainShader.SetUniform("uLightColor", 1f, 1f, 1f);
             _terrainShader.SetUniform("uLightIntensity", 0f);
@@ -367,9 +385,7 @@ void main() {
             if (isPaintMode && ghostTextureId != 0)
             {
                 spriteShader.Use();
-                spriteShader.SetMatrix4("uModel", ghostModel);
-                spriteShader.SetMatrix4("uView", view);
-                spriteShader.SetMatrix4("uProjection", projection);
+                _renderContext.BindCamera(view, projection, ghostModel);
                 _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
                 _renderContext.BindTexture(_renderContext.Enums.Texture2D, ghostTextureId);
                 spriteShader.SetUniform("uTexture", 0);
@@ -379,7 +395,7 @@ void main() {
             else
             {
                 _terrainShader.Use();
-                _terrainShader.SetMatrix4("uModel", ghostModel);
+                _renderContext.BindCamera(view, projection, ghostModel);
                 _terrainShader.SetUniform("uHasTexture", 0);
                 _terrainShader.SetUniform("uUnlit", 1);
                 _terrainShader.SetUniform("uPolyFactor", 0f);

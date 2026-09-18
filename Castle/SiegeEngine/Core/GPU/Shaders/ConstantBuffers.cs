@@ -1,5 +1,6 @@
 // Folder: SiegeEngine/Core/GPU/Shaders
 // File: ConstantBuffers.cs
+using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
 
@@ -196,6 +197,40 @@ namespace SiegeEngine.Core.GPU.Shaders
         public float LinearDepth;
         public float FarPlane;
         public float PadPost0;
+        public float PadPost1;
+        public float PadPost2;
+        public float PadPost3;
+        public float PadPost4;
         public Vector4 LightPos;
+    }
+
+    public static class ConstantBufferLayout
+    {
+        public const int Frame = 160;
+        public const int Object = 160;
+        public const int Skin = 8192;
+        public const int Material = 208;
+        public const int Light = 480;
+        public const int Shadow = 336;
+        public const int Ui = 192;
+        public const int Post = 400;
+
+        public static void Validate()
+        {
+            Check(nameof(FrameCB), Marshal.SizeOf<FrameCB>(), Frame);
+            Check(nameof(ObjectCB), Marshal.SizeOf<ObjectCB>(), Object);
+            Check(nameof(SkinCB), Marshal.SizeOf<SkinCB>(), Skin);
+            Check(nameof(MaterialCB), Marshal.SizeOf<MaterialCB>(), Material);
+            Check(nameof(LightCB), Marshal.SizeOf<LightCB>(), Light);
+            Check(nameof(ShadowCB), Marshal.SizeOf<ShadowCB>(), Shadow);
+            Check(nameof(UiCB), Marshal.SizeOf<UiCB>(), Ui);
+            Check(nameof(PostCB), Marshal.SizeOf<PostCB>(), Post);
+        }
+
+        static void Check(string name, int actual, int expected)
+        {
+            if (actual != expected)
+                throw new InvalidOperationException(name + " sizeof " + actual + " != std140 " + expected);
+        }
     }
 }
