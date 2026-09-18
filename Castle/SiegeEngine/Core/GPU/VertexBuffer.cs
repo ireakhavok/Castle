@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core/Rendering
+// Folder: SiegeEngine.Core/Rendering
 // File: VertexBuffer.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.GPU.ContextManagement;
@@ -10,23 +10,18 @@ namespace SiegeEngine.Core.GPU
     public unsafe class VertexBuffer : IDisposable
     {
         private readonly IRenderContext _renderContext;
-        private uint _vao;
-        private uint _vbo;
-        private uint _ebo;
         private uint _vertexCount;
         private uint _indexCount;
         private int _stride;
         private GpuHandle _vertexHandle;
         private GpuHandle _indexHandle;
         private bool _disposed;
-        public uint Vao => _vao;
         public int Stride => _stride;
         public GpuHandle VertexHandle => _vertexHandle;
         public GpuHandle IndexHandle => _indexHandle;
         public VertexBuffer(IRenderContext renderContext)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
-            _vao = _renderContext.GenVertexArray();
             _vertexHandle = _renderContext.CreateBuffer(new BufferDesc
             {
                 Target = _renderContext.Enums.ArrayBuffer,
@@ -37,9 +32,40 @@ namespace SiegeEngine.Core.GPU
                 Target = _renderContext.Enums.ElementArrayBuffer,
                 Usage = _renderContext.Enums.DynamicDraw
             });
-            _vbo = _vertexHandle.Id;
-            _ebo = _indexHandle.Id;
         }
+        public void Bind()
+        {
+            _renderContext.BindMesh(_vertexHandle, _indexHandle, _stride);
+        }
+        public uint GetVertexCount() => _vertexCount;
+        public uint GetIndexCount() => _indexCount;
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                if (_vertexHandle.IsValid)
+                    _renderContext.Destroy(_vertexHandle);
+                if (_indexHandle.IsValid)
+                    _renderContext.Destroy(_indexHandle);
+                _disposed = true;
+            }
+        }
+
+        void Upload(float[] vertexData, uint[] indices, int strideFloats)
+        {
+            _stride = strideFloats * sizeof(float);
+            if (vertexData != null && vertexData.Length > 0)
+            {
+                fixed (float* p = vertexData)
+                    _renderContext.UpdateBuffer(_vertexHandle, new ReadOnlySpan<byte>((byte*)p, vertexData.Length * sizeof(float)));
+            }
+            if (indices != null && indices.Length > 0)
+            {
+                fixed (uint* p = indices)
+                    _renderContext.UpdateBuffer(_indexHandle, new ReadOnlySpan<byte>((byte*)p, indices.Length * sizeof(uint)));
+            }
+        }
+
         public void Update(List<Entity> entities)
         {
             var vertices = new List<float>();
@@ -62,42 +88,9 @@ namespace SiegeEngine.Core.GPU
             for (uint i = 0; i < vertices.Count / 7; i++) indices.Add(i);
             _vertexCount = (uint)(vertices.Count / 7);
             _indexCount = (uint)indices.Count;
-            _renderContext.BindVertexArray(_vao);
-            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
-            fixed (float* vertexPtr = vertices.ToArray())
-            {
-                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertices.Count * sizeof(float)), vertexPtr, _renderContext.Enums.DynamicDraw);
-            }
-            _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
-            fixed (uint* indexPtr = indices.ToArray())
-            {
-                _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, _renderContext.Enums.DynamicDraw);
-            }
-            uint stride = 7 * sizeof(float);
-            _stride = (int)stride;
-            _renderContext.EnableVertexAttribArray(0);
-            _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
-            _renderContext.EnableVertexAttribArray(1);
-            _renderContext.VertexAttribPointer(1, 4, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
+            Upload(vertices.ToArray(), indices.ToArray(), 7);
         }
-        public void Bind()
-        {
-            _renderContext.BindVertexArray(_vao);
-        }
-        public uint GetVertexCount() => _vertexCount;
-        public uint GetIndexCount() => _indexCount;
-        public void Dispose()
-        {
-            if (!_disposed)
-            {
-                _renderContext.DeleteVertexArray(_vao);
-                if (_vertexHandle.IsValid)
-                    _renderContext.Destroy(_vertexHandle);
-                if (_indexHandle.IsValid)
-                    _renderContext.Destroy(_indexHandle);
-                _disposed = true;
-            }
-        }
+
         public void UpdateCustom(List<Vertex> vertices, List<uint> indices)
         {
             _vertexCount = (uint)vertices.Count;
@@ -113,74 +106,23 @@ namespace SiegeEngine.Core.GPU
                 vertexData[i * 7 + 5] = vertices[i].B;
                 vertexData[i * 7 + 6] = vertices[i].A;
             }
-            _renderContext.BindVertexArray(_vao);
-            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
-            fixed (float* vertexPtr = vertexData)
-            {
-                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertexData.Length * sizeof(float)), vertexPtr, _renderContext.Enums.DynamicDraw);
-            }
-            _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
-            fixed (uint* indexPtr = indices.ToArray())
-            {
-                _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, _renderContext.Enums.DynamicDraw);
-            }
-            uint stride = 7 * sizeof(float);
-            _stride = (int)stride;
-            _renderContext.EnableVertexAttribArray(0);
-            _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
-            _renderContext.EnableVertexAttribArray(1);
-            _renderContext.VertexAttribPointer(1, 4, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
+            Upload(vertexData, indices.ToArray(), 7);
         }
+
         public void UpdateCustomWithUV(List<float> vertices, List<uint> indices)
         {
             _vertexCount = (uint)(vertices.Count / 9);
             _indexCount = (uint)indices.Count;
-            _renderContext.BindVertexArray(_vao);
-            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
-            fixed (float* vertexPtr = vertices.ToArray())
-            {
-                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertices.Count * sizeof(float)), vertexPtr, _renderContext.Enums.DynamicDraw);
-            }
-            _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
-            fixed (uint* indexPtr = indices.ToArray())
-            {
-                _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, _renderContext.Enums.DynamicDraw);
-            }
-            uint stride = 9 * sizeof(float);
-            _stride = (int)stride;
-            _renderContext.EnableVertexAttribArray(0);
-            _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
-            _renderContext.EnableVertexAttribArray(1);
-            _renderContext.VertexAttribPointer(1, 4, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
-            _renderContext.EnableVertexAttribArray(2);
-            _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(7 * sizeof(float)));
+            Upload(vertices.ToArray(), indices.ToArray(), 9);
         }
+
         public void UpdateWithPositionNormalUV(List<float> vertices, List<uint> indices)
         {
             _vertexCount = (uint)(vertices.Count / 9);
             _indexCount = (uint)indices.Count;
-            _renderContext.BindVertexArray(_vao);
-            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
-            fixed (float* vertexPtr = vertices.ToArray())
-            {
-                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertices.Count * sizeof(float)), vertexPtr, _renderContext.Enums.DynamicDraw);
-            }
-            _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
-            fixed (uint* indexPtr = indices.ToArray())
-            {
-                _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, _renderContext.Enums.DynamicDraw);
-            }
-            uint stride = 9 * sizeof(float);
-            _stride = (int)stride;
-            _renderContext.EnableVertexAttribArray(0);
-            _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
-            _renderContext.EnableVertexAttribArray(3);
-            _renderContext.VertexAttribPointer(3, 3, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
-            _renderContext.EnableVertexAttribArray(2);
-            _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(6 * sizeof(float)));
-            _renderContext.EnableVertexAttribArray(4);
-            _renderContext.VertexAttribPointer(4, 1, _renderContext.Enums.Float, false, stride, (void*)(8 * sizeof(float)));
+            Upload(vertices.ToArray(), indices.ToArray(), 9);
         }
+
         public void UpdateVerticesPartial(List<float> vertices, int startVertexIndex, int vertexCount, int stride = 9)
         {
             if (vertexCount <= 0 || startVertexIndex < 0 || vertices == null) return;
@@ -188,17 +130,12 @@ namespace SiegeEngine.Core.GPU
             int elementCount = vertexCount * stride;
             if (startElement + elementCount > vertices.Count) return;
             int byteOffset = startElement * sizeof(float);
-            uint byteSize = (uint)(elementCount * sizeof(float));
             float[] tempSlice = new float[elementCount];
             for (int i = 0; i < elementCount; i++)
-            {
                 tempSlice[i] = vertices[startElement + i];
-            }
-            _renderContext.BindVertexArray(_vao);
-            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
             fixed (float* vertexPtr = tempSlice)
             {
-                _renderContext.BufferSubData(_renderContext.Enums.ArrayBuffer, byteOffset, byteSize, vertexPtr);
+                _renderContext.UpdateBuffer(_vertexHandle, new ReadOnlySpan<byte>((byte*)vertexPtr, elementCount * sizeof(float)), byteOffset);
             }
         }
     }

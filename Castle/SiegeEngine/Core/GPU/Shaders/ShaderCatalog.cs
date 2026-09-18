@@ -2,7 +2,7 @@
 // File: ShaderCatalog.cs
 using System;
 using SiegeEngine.Core.GPU.ContextManagement;
-using SiegeEngine.Core.GPU.Lighting;
+using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.Shaders
 {
@@ -27,6 +27,8 @@ namespace SiegeEngine.Core.GPU.Shaders
                     return VsFs(AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
                 case ShaderId.Skybox:
                     return VsFs(SkyboxShader.VertexShaderSource, SkyboxShader.FragmentShaderSource);
+                case ShaderId.SkyboxPreview:
+                    return VsFs(SkyboxPreviewShader.VertexShaderSource, SkyboxPreviewShader.FragmentShaderSource);
                 case ShaderId.Sprite:
                     return VsFs(SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
                 case ShaderId.Text:
@@ -49,6 +51,34 @@ namespace SiegeEngine.Core.GPU.Shaders
                     throw new NotSupportedException("ShaderId.AntiAliasing is multiple programs (Copy/FXAA/SMAA/TAA). Name the pass before cataloging it.");
                 case ShaderId.ColorCompose:
                     throw new NotSupportedException("ShaderId.ColorCompose is multiple programs (Extract/Downsample/Upsample/Compose/Luma/Adapt). Name the pass before cataloging it.");
+                case ShaderId.Terrain:
+                    return VsFs(TerrainShader.VertexShaderSource, TerrainShader.FragmentShaderSource);
+                case ShaderId.AaCopy:
+                    return VsFs(AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.CopyFragment);
+                case ShaderId.AaFxaa:
+                    return VsFs(AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.FxaaFragment);
+                case ShaderId.AaSmaa:
+                    return VsFs(AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.SmaaEdgeFragment);
+                case ShaderId.AaSmaaWeight:
+                    return VsFs(AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.SmaaWeightFragment);
+                case ShaderId.AaSmaaBlend:
+                    return VsFs(AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.SmaaBlendFragment);
+                case ShaderId.AaTaa:
+                    return VsFs(AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.TaaFragment);
+                case ShaderId.CcExtract:
+                    return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.ExtractFragment);
+                case ShaderId.CcDownsample:
+                    return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.DownsampleFragment);
+                case ShaderId.CcUpsample:
+                    return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.UpsampleFragment);
+                case ShaderId.CcCompose:
+                    return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.ComposeFragment);
+                case ShaderId.CcLuma:
+                    return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.LumaFragment);
+                case ShaderId.CcAdapt:
+                    return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.AdaptFragment);
+                case ShaderId.CcLumaDown:
+                    return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.LumaDownFragment);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(id), id, "Unknown ShaderId.");
             }
@@ -80,7 +110,7 @@ namespace SiegeEngine.Core.GPU.Shaders
                     new VertexAttribute(VertexSemantic.Color, enums.Float, 4, 12, 0)
                 });
             }
-            if (id == ShaderId.Skybox)
+            if (id == ShaderId.Skybox || id == ShaderId.SkyboxPreview)
             {
                 return new VertexLayout(36, new[]
                 {
@@ -105,11 +135,11 @@ namespace SiegeEngine.Core.GPU.Shaders
             }
             if (id == ShaderId.Model || id == ShaderId.Animation || id == ShaderId.Asset || id == ShaderId.ShadowDepth)
             {
-                return new VertexLayout(88, new[]
+                return new VertexLayout(80, new[]
                 {
                     new VertexAttribute(VertexSemantic.Position, enums.Float, 3, 0, 0),
-                    new VertexAttribute(VertexSemantic.TexCoord, enums.Float, 2, 12, 0),
-                    new VertexAttribute(VertexSemantic.Normal, enums.Float, 3, 20, 0),
+                    new VertexAttribute(VertexSemantic.Normal, enums.Float, 3, 12, 0),
+                    new VertexAttribute(VertexSemantic.TexCoord, enums.Float, 2, 24, 0),
                     new VertexAttribute(VertexSemantic.MaterialIndex, enums.Float, 1, 32, 0),
                     new VertexAttribute(VertexSemantic.Tangent, enums.Float, 3, 36, 0),
                     new VertexAttribute(VertexSemantic.BoneIds, enums.Float, 4, 48, 0),
@@ -139,6 +169,8 @@ namespace SiegeEngine.Core.GPU.Shaders
             {
                 case ShaderId.Skybox:
                     return new GpuRenderState { DepthTest = false, DepthWrite = false, CullMode = enums.None, Primitive = enums.Triangles };
+                case ShaderId.SkyboxPreview:
+                    return new GpuRenderState { DepthTest = true, DepthWrite = true, CullMode = enums.None, Primitive = enums.Triangles };
                 case ShaderId.Ui:
                 case ShaderId.Text:
                     return new GpuRenderState { DepthTest = false, DepthWrite = false, Blend = true, CullMode = enums.None, Primitive = enums.Triangles };

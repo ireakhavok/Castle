@@ -147,7 +147,7 @@ namespace SiegeEngine.Scenes
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
-            _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
+            _terrainShader = ShaderProgram.FromId(_renderContext, ShaderId.Grid);
             EnsureHeightProvider();
         }
         protected virtual void BuildWireframeMesh(float step)

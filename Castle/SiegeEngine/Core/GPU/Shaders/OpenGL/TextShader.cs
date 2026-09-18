@@ -1,6 +1,6 @@
-﻿// Folder: SiegeEngine
+// Folder: SiegeEngine/Core/GPU/Shaders/OpenGL
 // File: TextShader.cs
-namespace SiegeEngine.Core.GPU.Shaders
+namespace SiegeEngine.Core.GPU.Shaders.OpenGL
 {
     public static class TextShader
     {

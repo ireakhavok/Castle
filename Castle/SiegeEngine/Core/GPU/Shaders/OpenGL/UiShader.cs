@@ -1,6 +1,6 @@
-﻿// Folder: SiegeEngine.Rendering.Shaders
+// Folder: SiegeEngine/Core/GPU/Shaders/OpenGL
 // File: UiShader.cs
-namespace SiegeEngine.Core.GPU.Shaders
+namespace SiegeEngine.Core.GPU.Shaders.OpenGL
 {
     public static class UiShader
     {

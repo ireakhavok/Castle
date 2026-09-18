@@ -1,6 +1,6 @@
-﻿// Folder: SiegeEngine/Core/GPU/Shaders
+// Folder: SiegeEngine/Core/GPU/Shaders/OpenGL
 // File: AcousticCommon.cs
-namespace SiegeEngine.Core.GPU.Shaders
+namespace SiegeEngine.Core.GPU.Shaders.OpenGL
 {
     public static class AcousticCommon
     {

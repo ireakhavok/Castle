@@ -66,6 +66,9 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private static ShadowMapRenderer _shared;
         public static uint WrittenSunAtlas { get; private set; }
+        public GpuHandle AtlasHandle { get; private set; }
+        public GpuHandle PointHandle { get; private set; }
+        public GpuHandle SpotHandle { get; private set; }
         public static int WrittenAtlasSize { get; private set; }
         public static int WrittenCascadeCount { get; private set; }
         public static readonly Matrix4x4[] WrittenCascadeVP = new Matrix4x4[LightingFrame.MaxCascades];
@@ -99,7 +102,7 @@ namespace SiegeEngine.Core.GPU.Lighting
         {
             _rc = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _e = _rc.Enums;
-            _depthShader = new ShaderProgram(_rc, ShadowShaders.DepthVertex, ShadowShaders.DepthFragment);
+            _depthShader = ShaderProgram.FromId(_rc, ShaderId.ShadowDepth);
         }
 
         public void Render(LightingFrame frame, IReadOnlyList<ShadowCaster> casters, Matrix4x4 view, Matrix4x4 projection, Vector3 cameraPos)
@@ -170,7 +173,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                         _lastCascadeVP[i] = frame.CascadeVP[i];
 
                     int tile = atlasSize / 2;
-                    _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
+                    Gl.Of(_rc).BindFramebuffer(_e.Framebuffer, _atlasFbo);
                     BindDepthOnly();
                     // Clear must cover the whole atlas. The editor panel
                     // viewport is a window sliver; leaving it active wipes
@@ -218,7 +221,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                 EnsureSpot(size);
                 frame.SpotShadowMap = _spotDepth;
                 frame.SpotVP = BuildSpotVP(frame.Spots[0]);
-                _rc.BindFramebuffer(_e.Framebuffer, _spotFbo);
+                Gl.Of(_rc).BindFramebuffer(_e.Framebuffer, _spotFbo);
                 BindDepthOnly();
                 _rc.Viewport(0, 0, (uint)size, (uint)size);
                 _rc.Clear(_e.DepthBufferBit);
@@ -467,11 +470,11 @@ namespace SiegeEngine.Core.GPU.Lighting
                     if (IsHigherLodMesh(lodMeshes, meshIndex))
                         continue;
                     ModelRenderer.BindOpacityToShader(_rc, _depthShader, meshIndex, caster.MaterialOptions, caster.ModelKey, 0);
-                    _rc.BindVertexArray(mmr.Vao);
+                    _rc.BindMesh(mmr.VertexHandle, mmr.IndexHandle, 20 * sizeof(float));
                     _rc.DrawElements(_e.Triangles, mmr.IndexCount, _e.UnsignedInt, null);
                 }
             }
-            _rc.BindVertexArray(0);
+            
         }
 
         private void RenderPointFaces(GpuPointLight light, IReadOnlyList<ShadowCaster> casters, ShadowQuality quality, int size)
@@ -497,8 +500,8 @@ namespace SiegeEngine.Core.GPU.Lighting
             int face0 = _e.TextureCubeMapPositiveX;
             for (int face = 0; face < 6; face++)
             {
-                _rc.BindFramebuffer(_e.Framebuffer, _pointFbo);
-                _rc.FramebufferTexture2D(_e.Framebuffer, _e.DepthAttachment, face0 + face, _pointDepth, 0);
+                Gl.Of(_rc).BindFramebuffer(_e.Framebuffer, _pointFbo);
+                Gl.Of(_rc).FramebufferTexture2D(_e.Framebuffer, _e.DepthAttachment, face0 + face, _pointDepth, 0);
                 BindDepthOnly();
                 _rc.Viewport(0, 0, (uint)size, (uint)size);
                 _rc.Clear(_e.DepthBufferBit);
@@ -831,31 +834,32 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private void BindDepthOnly()
         {
-            _rc.DrawBuffer(_e.None);
-            _rc.ReadBuffer(_e.None);
+            Gl.Of(_rc).DrawBuffer(_e.None);
+            Gl.Of(_rc).ReadBuffer(_e.None);
         }
 
         private void EnsureAtlas(int size)
         {
             if (_atlasFbo != 0 && _atlasSize == size)
             {
-                _rc.BindTexture(_e.Texture2D, _atlasDepth);
-                _rc.TexParameter(_e.Texture2D, _e.TextureMinFilter, _e.Linear);
-                _rc.TexParameter(_e.Texture2D, _e.TextureMagFilter, _e.Linear);
+                Gl.Of(_rc).BindTexture(_e.Texture2D, _atlasDepth);
+                Gl.Of(_rc).TexParameter(_e.Texture2D, _e.TextureMinFilter, _e.Linear);
+                Gl.Of(_rc).TexParameter(_e.Texture2D, _e.TextureMagFilter, _e.Linear);
                 return;
             }
             DeleteFbo(ref _atlasFbo);
             DeleteTex(ref _atlasDepth);
             _atlasSize = size;
             _atlasDepth = CreateDepthTex(size, size, _e.Texture2D);
-            _rc.GenFramebuffers(1, out _atlasFbo);
-            _rc.BindFramebuffer(_e.Framebuffer, _atlasFbo);
-            _rc.FramebufferTexture2D(_e.Framebuffer, _e.DepthAttachment, _e.Texture2D, _atlasDepth, 0);
+            AtlasHandle = _rc.ImportTexture(_atlasDepth, _e.Texture2D);
+            Gl.Of(_rc).GenFramebuffers(1, out _atlasFbo);
+            Gl.Of(_rc).BindFramebuffer(_e.Framebuffer, _atlasFbo);
+            Gl.Of(_rc).FramebufferTexture2D(_e.Framebuffer, _e.DepthAttachment, _e.Texture2D, _atlasDepth, 0);
             BindDepthOnly();
             // ESM wants bilinear depth. Binary PCF does not.
-            _rc.BindTexture(_e.Texture2D, _atlasDepth);
-            _rc.TexParameter(_e.Texture2D, _e.TextureMinFilter, _e.Linear);
-            _rc.TexParameter(_e.Texture2D, _e.TextureMagFilter, _e.Linear);
+            Gl.Of(_rc).BindTexture(_e.Texture2D, _atlasDepth);
+            Gl.Of(_rc).TexParameter(_e.Texture2D, _e.TextureMinFilter, _e.Linear);
+            Gl.Of(_rc).TexParameter(_e.Texture2D, _e.TextureMagFilter, _e.Linear);
         }
 
         private void EnsureSpot(int size)
@@ -866,9 +870,10 @@ namespace SiegeEngine.Core.GPU.Lighting
             DeleteTex(ref _spotDepth);
             _spotSize = size;
             _spotDepth = CreateDepthTex(size, size, _e.Texture2D);
-            _rc.GenFramebuffers(1, out _spotFbo);
-            _rc.BindFramebuffer(_e.Framebuffer, _spotFbo);
-            _rc.FramebufferTexture2D(_e.Framebuffer, _e.DepthAttachment, _e.Texture2D, _spotDepth, 0);
+            SpotHandle = _rc.ImportTexture(_spotDepth, _e.Texture2D);
+            Gl.Of(_rc).GenFramebuffers(1, out _spotFbo);
+            Gl.Of(_rc).BindFramebuffer(_e.Framebuffer, _spotFbo);
+            Gl.Of(_rc).FramebufferTexture2D(_e.Framebuffer, _e.DepthAttachment, _e.Texture2D, _spotDepth, 0);
             BindDepthOnly();
         }
 
@@ -879,29 +884,30 @@ namespace SiegeEngine.Core.GPU.Lighting
             DeleteFbo(ref _pointFbo);
             DeleteTex(ref _pointDepth);
             _pointSize = size;
-            _rc.GenTextures(1, out _pointDepth);
-            _rc.BindTexture(_e.TextureCubeMap, _pointDepth);
+            Gl.Of(_rc).GenTextures(1, out _pointDepth);
+            Gl.Of(_rc).BindTexture(_e.TextureCubeMap, _pointDepth);
             for (int face = 0; face < 6; face++)
             {
-                _rc.TexImage2D(_e.TextureCubeMapPositiveX + face, 0, _e.DepthComponent24, (uint)size, (uint)size, 0, _e.DepthComponent, _e.UnsignedInt, null);
+                Gl.Of(_rc).TexImage2D(_e.TextureCubeMapPositiveX + face, 0, _e.DepthComponent24, (uint)size, (uint)size, 0, _e.DepthComponent, _e.UnsignedInt, null);
             }
-            _rc.TexParameter(_e.TextureCubeMap, _e.TextureMinFilter, _e.Nearest);
-            _rc.TexParameter(_e.TextureCubeMap, _e.TextureMagFilter, _e.Nearest);
-            _rc.TexParameter(_e.TextureCubeMap, _e.TextureWrapS, _e.ClampToEdge);
-            _rc.TexParameter(_e.TextureCubeMap, _e.TextureWrapT, _e.ClampToEdge);
-            _rc.TexParameter(_e.TextureCubeMap, _e.TextureWrapR, _e.ClampToEdge);
-            _rc.GenFramebuffers(1, out _pointFbo);
+            Gl.Of(_rc).TexParameter(_e.TextureCubeMap, _e.TextureMinFilter, _e.Nearest);
+            Gl.Of(_rc).TexParameter(_e.TextureCubeMap, _e.TextureMagFilter, _e.Nearest);
+            Gl.Of(_rc).TexParameter(_e.TextureCubeMap, _e.TextureWrapS, _e.ClampToEdge);
+            Gl.Of(_rc).TexParameter(_e.TextureCubeMap, _e.TextureWrapT, _e.ClampToEdge);
+            Gl.Of(_rc).TexParameter(_e.TextureCubeMap, _e.TextureWrapR, _e.ClampToEdge);
+            PointHandle = _rc.ImportTexture(_pointDepth, _e.TextureCubeMap);
+            Gl.Of(_rc).GenFramebuffers(1, out _pointFbo);
         }
 
         private uint CreateDepthTex(int width, int height, int target)
         {
-            _rc.GenTextures(1, out uint tex);
-            _rc.BindTexture(target, tex);
-            _rc.TexImage2D(target, 0, _e.DepthComponent24, (uint)width, (uint)height, 0, _e.DepthComponent, _e.UnsignedInt, null);
-            _rc.TexParameter(target, _e.TextureMinFilter, _e.Nearest);
-            _rc.TexParameter(target, _e.TextureMagFilter, _e.Nearest);
-            _rc.TexParameter(target, _e.TextureWrapS, _e.ClampToEdge);
-            _rc.TexParameter(target, _e.TextureWrapT, _e.ClampToEdge);
+            Gl.Of(_rc).GenTextures(1, out uint tex);
+            Gl.Of(_rc).BindTexture(target, tex);
+            Gl.Of(_rc).TexImage2D(target, 0, _e.DepthComponent24, (uint)width, (uint)height, 0, _e.DepthComponent, _e.UnsignedInt, null);
+            Gl.Of(_rc).TexParameter(target, _e.TextureMinFilter, _e.Nearest);
+            Gl.Of(_rc).TexParameter(target, _e.TextureMagFilter, _e.Nearest);
+            Gl.Of(_rc).TexParameter(target, _e.TextureWrapS, _e.ClampToEdge);
+            Gl.Of(_rc).TexParameter(target, _e.TextureWrapT, _e.ClampToEdge);
             return tex;
         }
 
@@ -926,11 +932,11 @@ namespace SiegeEngine.Core.GPU.Lighting
 
         private void Restore()
         {
-            _rc.BindFramebuffer(_e.Framebuffer, (uint)Math.Max(_savedFbo, 0));
+            Gl.Of(_rc).BindFramebuffer(_e.Framebuffer, (uint)Math.Max(_savedFbo, 0));
             if (_savedFbo <= 0)
             {
-                _rc.DrawBuffer(_e.Back);
-                _rc.ReadBuffer(_e.Back);
+                Gl.Of(_rc).DrawBuffer(_e.Back);
+                Gl.Of(_rc).ReadBuffer(_e.Back);
             }
             _rc.Viewport(_savedVpX, _savedVpY, (uint)Math.Max(_savedVpW, 1), (uint)Math.Max(_savedVpH, 1));
             _rc.Scissor(_savedScX, _savedScY, (uint)Math.Max(_savedScW, 1), (uint)Math.Max(_savedScH, 1));
@@ -946,14 +952,22 @@ namespace SiegeEngine.Core.GPU.Lighting
         {
             if (fbo == 0) return;
             uint id = fbo;
-            _rc.DeleteFramebuffers(1, &id);
+            Gl.Of(_rc).DeleteFramebuffers(1, &id);
             fbo = 0;
         }
 
         private void DeleteTex(ref uint tex)
         {
             if (tex == 0) return;
-            _rc.DeleteTexture(tex);
+            uint id = tex;
+            if (id == _atlasDepth) AtlasHandle = default;
+            if (id == _spotDepth) SpotHandle = default;
+            if (id == _pointDepth) PointHandle = default;
+            GpuHandle imported = _rc.ImportTexture(id, 0);
+            if (imported.IsValid)
+                _rc.Destroy(imported);
+            else
+                Gl.Of(_rc).DeleteTexture(id);
             tex = 0;
         }
     }

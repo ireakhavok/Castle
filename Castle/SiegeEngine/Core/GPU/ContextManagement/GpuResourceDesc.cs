@@ -16,4 +16,16 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public int Width;
         public int Height;
     }
+
+    public struct RenderTargetDesc
+    {
+        public int Width;
+        public int Height;
+        public int ColorFormat;
+        public int DepthFormat;
+        public bool DepthTexture;
+        public int ColorTarget;
+        public int DepthTarget;
+        public int Faces;
+    }
 }

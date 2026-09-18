@@ -183,12 +183,12 @@ namespace SiegeEngine.Core.GPU.Renderers
                 }
 
                 uint texture;
-                _renderContext.GenTextures(1, out texture);
-                _renderContext.BindTexture(_renderContext.Enums.Texture2D, texture);
-                _renderContext.PixelStore(_renderContext.Enums.UnpackAlignment, 1);
+                ((OpenGLRenderContext)_renderContext).GenTextures(1, out texture);
+                ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, texture);
+                ((OpenGLRenderContext)_renderContext).PixelStore(_renderContext.Enums.UnpackAlignment, 1);
                 fixed (byte* pixelPtr = pixelData)
                 {
-                    _renderContext.TexImage2D(
+                    ((OpenGLRenderContext)_renderContext).TexImage2D(
                         _renderContext.Enums.Texture2D, 0,
                         _renderContext.Enums.InternalRgba,
                         (uint)width, (uint)height, 0,
@@ -196,11 +196,11 @@ namespace SiegeEngine.Core.GPU.Renderers
                         _renderContext.Enums.UnsignedByte,
                         pixelPtr);
                 }
-                _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMinFilter, _renderContext.Enums.Linear);
-                _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMagFilter, _renderContext.Enums.Linear);
-                _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapS, _renderContext.Enums.ClampToEdge);
-                _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapT, _renderContext.Enums.ClampToEdge);
-                _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+                ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMinFilter, _renderContext.Enums.Linear);
+                ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMagFilter, _renderContext.Enums.Linear);
+                ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapS, _renderContext.Enums.ClampToEdge);
+                ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapT, _renderContext.Enums.ClampToEdge);
+                ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, 0);
 
                 _charTextures[glyph] = texture;
                 _characterData[glyph] = new CharacterData

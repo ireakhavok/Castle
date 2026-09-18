@@ -148,11 +148,13 @@ namespace SiegeEngine.Scenes
             // on that frame so we do not double-draw the atlas.
             if (LightingFrame.Current == null)
                 PrepareLightingFrame(entities, view, projection, runShadows: true);
+            BindCamera(view, projection, Matrix4x4.Identity);
             RenderContent(entities, view, projection);
         }
 
         public void RenderOverlaysOnly(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
+            BindCamera(view, projection, Matrix4x4.Identity);
             RenderOverlay(entities, view, projection);
         }
 
@@ -161,11 +163,17 @@ namespace SiegeEngine.Scenes
             GetViewProjection(out view, out projection);
         }
 
+        public void BindCamera(Matrix4x4 view, Matrix4x4 projection, Matrix4x4 model)
+        {
+            _renderContext.BindCamera(view, projection, model);
+        }
+
         protected void RenderPresentRoot(IReadOnlyList<Entity> entities, bool presentRoot)
         {
             if (_disposed) return;
 
             GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection);
+            BindCamera(view, projection, Matrix4x4.Identity);
             LightingFrame frame = PrepareLightingFrame(entities, view, projection, runShadows: presentRoot);
 
             bool wrapped = false;

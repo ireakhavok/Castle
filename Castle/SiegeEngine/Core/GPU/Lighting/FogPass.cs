@@ -30,8 +30,8 @@ namespace SiegeEngine.Core.GPU.Lighting
         {
             _rc = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _e = _rc.Enums;
-            _volumetric = new ShaderProgram(_rc, FogShaders.FullscreenVertex, FogShaders.VolumetricFragment);
-            _emptyVao = _rc.GenVertexArray();
+            _volumetric = ShaderProgram.FromId(_rc, ShaderId.Fog);
+            _emptyVao = ((OpenGLRenderContext)_rc).GenVertexArray();
         }
 
         public void Apply(LightingFrame frame, Matrix4x4 view, Matrix4x4 projection, uint colorTex, uint depthTex, bool depthIsTexture, int width, int height)
@@ -49,20 +49,20 @@ namespace SiegeEngine.Core.GPU.Lighting
             if (!Matrix4x4.Invert(projection, out Matrix4x4 invProj))
                 invProj = Matrix4x4.Identity;
 
-            _rc.BindFramebuffer(_e.Framebuffer, _resolveFbo);
+            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _resolveFbo);
             _rc.Viewport(0, 0, (uint)width, (uint)height);
             _rc.Disable(_e.DepthTest);
             _rc.DepthMask(false);
             _rc.Disable(_e.Blend);
             _volumetric.Use();
-            _rc.ActiveTexture(_e.Texture0);
-            _rc.BindTexture(_e.Texture2D, colorTex);
+            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0);
+            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, colorTex);
             _volumetric.SetUniform("uColor", 0);
-            _rc.ActiveTexture(_e.Texture0 + 1);
-            _rc.BindTexture(_e.Texture2D, depthIsTexture ? depthTex : 0);
+            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 1);
+            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, depthIsTexture ? depthTex : 0);
             _volumetric.SetUniform("uDepth", 1);
-            _rc.ActiveTexture(_e.Texture0 + 2);
-            _rc.BindTexture(_e.Texture2D, frame.ShadowAtlas);
+            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 2);
+            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, frame.ShadowAtlas);
             _volumetric.SetUniform("uShadowAtlas", 2);
 
             FrameCB frameCb;
@@ -84,9 +84,12 @@ namespace SiegeEngine.Core.GPU.Lighting
             post.HasDepth = depthIsTexture ? 1 : 0;
             _rc.SetConstants(ConstantSlot.Post, post);
 
-            _rc.BindVertexArray(_emptyVao);
-            _rc.DrawArrays(_e.Triangles, 0, 3);
-            _rc.ActiveTexture(_e.Texture0);
+            _rc.Disable(_e.DepthTest);
+            _rc.DepthMask(false);
+            _rc.Disable(_e.CullFace);
+            _rc.ColorMask(true, true, true, true);
+            _rc.DrawFullscreen();
+            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0);
         }
 
         public uint ResolveColor => _resolveColor;
@@ -99,18 +102,18 @@ namespace SiegeEngine.Core.GPU.Lighting
             _volumetric = null;
             if (_emptyVao != 0)
             {
-                _rc.DeleteVertexArray(_emptyVao);
+                ((OpenGLRenderContext)_rc).DeleteVertexArray(_emptyVao);
                 _emptyVao = 0;
             }
             if (_resolveFbo != 0)
             {
                 uint fbo = _resolveFbo;
-                _rc.DeleteFramebuffers(1, &fbo);
+                ((OpenGLRenderContext)_rc).DeleteFramebuffers(1, &fbo);
                 _resolveFbo = 0;
             }
             if (_resolveColor != 0)
             {
-                _rc.DeleteTexture(_resolveColor);
+                ((OpenGLRenderContext)_rc).DeleteTexture(_resolveColor);
                 _resolveColor = 0;
             }
         }
@@ -122,27 +125,27 @@ namespace SiegeEngine.Core.GPU.Lighting
             if (_resolveFbo != 0)
             {
                 uint fbo = _resolveFbo;
-                _rc.DeleteFramebuffers(1, &fbo);
+                ((OpenGLRenderContext)_rc).DeleteFramebuffers(1, &fbo);
                 _resolveFbo = 0;
             }
             if (_resolveColor != 0)
             {
-                _rc.DeleteTexture(_resolveColor);
+                ((OpenGLRenderContext)_rc).DeleteTexture(_resolveColor);
                 _resolveColor = 0;
             }
             _width = width;
             _height = height;
-            _rc.GenTextures(1, out _resolveColor);
-            _rc.BindTexture(_e.Texture2D, _resolveColor);
-            _rc.TexImage2D(_e.Texture2D, 0, _e.InternalRgba, (uint)width, (uint)height, 0, _e.PixelRgba, _e.UnsignedByte, null);
-            _rc.TexParameter(_e.Texture2D, _e.TextureMinFilter, _e.Linear);
-            _rc.TexParameter(_e.Texture2D, _e.TextureMagFilter, _e.Linear);
-            _rc.TexParameter(_e.Texture2D, _e.TextureWrapS, _e.ClampToEdge);
-            _rc.TexParameter(_e.Texture2D, _e.TextureWrapT, _e.ClampToEdge);
-            _rc.GenFramebuffers(1, out _resolveFbo);
-            _rc.BindFramebuffer(_e.Framebuffer, _resolveFbo);
-            _rc.FramebufferTexture2D(_e.Framebuffer, _e.ColorAttachment0, _e.Texture2D, _resolveColor, 0);
-            _rc.DrawBuffer(_e.ColorAttachment0);
+            ((OpenGLRenderContext)_rc).GenTextures(1, out _resolveColor);
+            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, _resolveColor);
+            ((OpenGLRenderContext)_rc).TexImage2D(_e.Texture2D, 0, _e.InternalRgba, (uint)width, (uint)height, 0, _e.PixelRgba, _e.UnsignedByte, null);
+            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureMinFilter, _e.Linear);
+            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureMagFilter, _e.Linear);
+            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureWrapS, _e.ClampToEdge);
+            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureWrapT, _e.ClampToEdge);
+            ((OpenGLRenderContext)_rc).GenFramebuffers(1, out _resolveFbo);
+            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _resolveFbo);
+            ((OpenGLRenderContext)_rc).FramebufferTexture2D(_e.Framebuffer, _e.ColorAttachment0, _e.Texture2D, _resolveColor, 0);
+            ((OpenGLRenderContext)_rc).DrawBuffer(_e.ColorAttachment0);
         }
     }
 }

@@ -93,7 +93,7 @@ namespace SiegeEngine.Scenes
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
-            _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
+            _terrainShader = ShaderProgram.FromId(_renderContext, ShaderId.Grid);
             _modelRenderer.Initialize();
             SetupPureRuntimeWorld();
             if (!_panelHosted)

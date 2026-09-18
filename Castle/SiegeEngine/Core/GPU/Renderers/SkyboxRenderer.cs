@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Rendering
+// Folder: SiegeEngine/Core/Rendering
 // File: SkyboxRenderer.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.GPU.ContextManagement;
@@ -24,7 +24,7 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void Initialize()
         {
-            _skyShader = new ShaderProgram(_renderContext, SkyboxShader.VertexShaderSource, SkyboxShader.FragmentShaderSource);
+            _skyShader = ShaderProgram.FromId(_renderContext, ShaderId.Skybox);
             _skyPipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Skybox, _renderContext));
             _cubeBuffer = new VertexBuffer(_renderContext);
             BuildCubeMesh();
@@ -82,26 +82,26 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.BindPipeline(_skyPipeline);
             _renderContext.SetConstants(ConstantSlot.Frame, frame);
             _renderContext.SetConstants(ConstantSlot.Object, obj);
-            _renderContext.ActiveTexture(0);
-            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTexture);
-            _renderContext.BindVertexBuffer(_cubeBuffer.VertexHandle, 0, _cubeBuffer.Stride, 0);
-            _renderContext.BindIndexBuffer(_cubeBuffer.IndexHandle);
-            _renderContext.DrawIndexed((int)_cubeBuffer.GetIndexCount());
+            _renderContext.BindTextureSlot(0, _renderContext.ImportTexture(_cubemapTexture, _renderContext.Enums.TextureCubeMap));
+            _cubeBuffer.Bind();
+            _renderContext.DrawElements(_renderContext.Enums.Triangles, _cubeBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.CullFace);
         }
 
-        public static void RenderPreviewCube(IRenderContext renderContext, uint cubemapTex, VertexBuffer cube, ShaderProgram shader, Matrix4x4 mvp, bool clearDepth)
+        public static void RenderPreviewCube(IRenderContext renderContext, uint cubemapTex, VertexBuffer cube, GpuHandle pipeline, Matrix4x4 view, Matrix4x4 projection, Matrix4x4 model, bool clearDepth)
         {
-            if (renderContext == null || cubemapTex == 0 || cube == null || shader == null) return;
+            if (renderContext == null || cubemapTex == 0 || cube == null || !pipeline.IsValid) return;
             renderContext.Enable(renderContext.Enums.DepthTest);
+            renderContext.DepthMask(true);
+            renderContext.DepthFunc(renderContext.Enums.Less);
             renderContext.Disable(renderContext.Enums.CullFace);
+            renderContext.Disable(renderContext.Enums.Blend);
             if (clearDepth)
                 renderContext.Clear(renderContext.Enums.DepthBufferBit);
-            shader.Use();
-            shader.SetMatrix4("uMVP", mvp);
-            renderContext.ActiveTexture(0);
-            renderContext.BindTexture(renderContext.Enums.TextureCubeMap, cubemapTex);
+            renderContext.BindPipeline(pipeline);
+            renderContext.BindCamera(view, projection, model);
+            renderContext.BindTextureSlot(0, renderContext.ImportTexture(cubemapTex, renderContext.Enums.TextureCubeMap));
             cube.Bind();
             renderContext.DrawElements(renderContext.Enums.Triangles, cube.GetIndexCount(), renderContext.Enums.UnsignedInt, null);
         }

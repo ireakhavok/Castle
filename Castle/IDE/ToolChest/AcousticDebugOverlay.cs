@@ -160,7 +160,7 @@ namespace ToolChest
             activeTracer.KickDebugBidirectional(listener, sources);
             activeTracer.FlushPendingRaster();
 
-            _renderContext.BindFramebuffer(_renderContext.Enums.Framebuffer, (uint)savedFbo);
+            Gl.Of(_renderContext).BindFramebuffer(_renderContext.Enums.Framebuffer, (uint)savedFbo);
             _renderContext.Viewport(savedVp[0], savedVp[1], (uint)savedVp[2], (uint)savedVp[3]);
             _renderContext.Scissor(savedSc[0], savedSc[1], (uint)savedSc[2], (uint)savedSc[3]);
 

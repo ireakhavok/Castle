@@ -11,6 +11,8 @@ namespace SiegeEngine.Core.GPU.Shaders
     public class ShaderProgram : IDisposable
     {
         private readonly IRenderContext _renderContext;
+        private readonly OpenGLRenderContext _gl;
+        private readonly GpuHandle _pipeline;
         private readonly uint _program;
         private bool _disposed;
         private readonly Dictionary<string, int> _uniformLocations = new Dictionary<string, int>();
@@ -27,62 +29,37 @@ namespace SiegeEngine.Core.GPU.Shaders
             if (string.IsNullOrEmpty(fragmentShaderSource))
                 throw new ArgumentNullException(nameof(fragmentShaderSource));
 
-            uint vertexShader = _renderContext.CreateShader(_renderContext.Enums.VertexShader);
-            _renderContext.ShaderSource(vertexShader, vertexShaderSource);
-            _renderContext.CompileShader(vertexShader);
-            _renderContext.GetShader(vertexShader, _renderContext.Enums.CompileStatus, out int vsStatus);
-            if (vsStatus != 1)
+            _gl = _renderContext as OpenGLRenderContext;
+            _pipeline = _renderContext.CreatePipeline(new PipelineDesc
             {
-                string infoLog = _renderContext.GetShaderInfoLog(vertexShader);
-                _renderContext.DeleteShader(vertexShader);
-                throw new Exception($"Vertex shader compilation failed: {infoLog}");
-            }
-
-            uint fragmentShader = _renderContext.CreateShader(_renderContext.Enums.FragmentShader);
-            _renderContext.ShaderSource(fragmentShader, fragmentShaderSource);
-            _renderContext.CompileShader(fragmentShader);
-            _renderContext.GetShader(fragmentShader, _renderContext.Enums.CompileStatus, out int fsStatus);
-            if (fsStatus != 1)
-            {
-                string infoLog = _renderContext.GetShaderInfoLog(fragmentShader);
-                _renderContext.DeleteShader(vertexShader);
-                _renderContext.DeleteShader(fragmentShader);
-                throw new Exception($"Fragment shader compilation failed: {infoLog}");
-            }
-
-            _program = _renderContext.CreateProgram();
-            _renderContext.AttachShader(_program, vertexShader);
-            _renderContext.AttachShader(_program, fragmentShader);
-            _renderContext.LinkProgram(_program);
-            _renderContext.GetProgram(_program, _renderContext.Enums.LinkStatus, out int linkStatus);
-            if (linkStatus != 1)
-            {
-                string infoLog = _renderContext.GetProgramInfoLog(_program);
-                _renderContext.DetachShader(_program, vertexShader);
-                _renderContext.DetachShader(_program, fragmentShader);
-                _renderContext.DeleteShader(vertexShader);
-                _renderContext.DeleteShader(fragmentShader);
-                _renderContext.DeleteProgram(_program);
-                throw new Exception($"Shader program linking failed: {infoLog}");
-            }
-
-            _renderContext.DetachShader(_program, vertexShader);
-            _renderContext.DetachShader(_program, fragmentShader);
-            _renderContext.DeleteShader(vertexShader);
-            _renderContext.DeleteShader(fragmentShader);
-            BindConstantBlocks();
+                VertexSource = vertexShaderSource,
+                FragmentSource = fragmentShaderSource,
+                State = new GpuRenderState { DepthTest = true, DepthWrite = true }
+            });
+            _program = _pipeline.Id;
+                        BindConstantBlocks();
         }
 
         void BindConstantBlocks()
         {
-            _renderContext.BindUniformBlock(_program, "FrameCB", ConstantSlot.Frame);
-            _renderContext.BindUniformBlock(_program, "ObjectCB", ConstantSlot.Object);
-            _renderContext.BindUniformBlock(_program, "SkinCB", ConstantSlot.Skin);
-            _renderContext.BindUniformBlock(_program, "MaterialCB", ConstantSlot.Material);
-            _renderContext.BindUniformBlock(_program, "LightCB", ConstantSlot.Light);
-            _renderContext.BindUniformBlock(_program, "ShadowCB", ConstantSlot.Shadow);
-            _renderContext.BindUniformBlock(_program, "UiCB", ConstantSlot.Ui);
-            _renderContext.BindUniformBlock(_program, "PostCB", ConstantSlot.Post);
+            _renderContext.BindUniformBlocks();
+            _renderContext.BindPipeline(_pipeline);
+            BindSampler("uTexture", TextureSlot.Albedo);
+            BindSampler("uAlbedoMap", TextureSlot.Albedo);
+            BindSampler("uColor", TextureSlot.Color);
+            BindSampler("uOpacityMap", TextureSlot.Opacity);
+            BindSampler("uShadowAtlas", TextureSlot.ShadowAtlas);
+            BindSampler("uPointShadowCube", TextureSlot.PointShadow);
+            BindSampler("uSpotShadowMap", TextureSlot.SpotShadow);
+            BindSampler("uSkybox", 0);
+        }
+
+        void BindSampler(string name, int unit)
+        {
+            if (_gl == null) return;
+            int loc = _gl.GetUniformLocation(_program, name);
+            if (loc >= 0)
+                _gl.Uniform1(loc, unit);
         }
 
         public static ShaderProgram FromId(IRenderContext renderContext, ShaderId id)
@@ -103,7 +80,7 @@ namespace SiegeEngine.Core.GPU.Shaders
         {
             if (_uniformLocations.TryGetValue(name, out int loc))
                 return loc;
-            loc = _renderContext.GetUniformLocation(_program, name);
+            loc = _gl != null ? _gl.GetUniformLocation(_program, name) : -1;
             _uniformLocations[name] = loc;
             return loc;
         }
@@ -112,7 +89,11 @@ namespace SiegeEngine.Core.GPU.Shaders
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ShaderProgram));
-            _renderContext.UseProgram(_program);
+            OpenGLRenderContext gl = _renderContext as OpenGLRenderContext;
+            if (gl != null)
+                gl.UseProgram(_program);
+            else
+                _renderContext.BindPipeline(_pipeline);
         }
 
         public void SetUniform(string name, float value)
@@ -121,7 +102,7 @@ namespace SiegeEngine.Core.GPU.Shaders
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
             int location = GetLocation(name);
             if (location == -1) return;
-            _renderContext.Uniform1(location, value);
+            _gl.Uniform1(location, value);
         }
 
         public void SetUniform(string name, int value)
@@ -130,7 +111,7 @@ namespace SiegeEngine.Core.GPU.Shaders
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
             int location = GetLocation(name);
             if (location == -1) return;
-            _renderContext.Uniform1(location, value);
+            _gl.Uniform1(location, value);
         }
 
         public void SetUniform(string name, float x, float y)
@@ -139,7 +120,7 @@ namespace SiegeEngine.Core.GPU.Shaders
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
             int location = GetLocation(name);
             if (location == -1) return;
-            _renderContext.Uniform2(location, x, y);
+            _gl.Uniform2(location, x, y);
         }
 
         public void SetUniform(string name, float x, float y, float z)
@@ -148,7 +129,7 @@ namespace SiegeEngine.Core.GPU.Shaders
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
             int location = GetLocation(name);
             if (location == -1) return;
-            _renderContext.Uniform3(location, x, y, z);
+            _gl.Uniform3(location, x, y, z);
         }
 
         public void SetUniform(string name, float x, float y, float z, float w)
@@ -157,7 +138,7 @@ namespace SiegeEngine.Core.GPU.Shaders
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
             int location = GetLocation(name);
             if (location == -1) return;
-            _renderContext.Uniform4(location, x, y, z, w);
+            _gl.Uniform4(location, x, y, z, w);
         }
 
         public unsafe void SetMatrix4(string name, Matrix4x4 matrix)
@@ -182,7 +163,7 @@ namespace SiegeEngine.Core.GPU.Shaders
             matrixArray[12] = matrix.M41; matrixArray[13] = matrix.M42; matrixArray[14] = matrix.M43; matrixArray[15] = matrix.M44;
             fixed (float* matrixPtr = matrixArray)
             {
-                _renderContext.UniformMatrix4(location, 1, false, matrixPtr);
+                _gl.UniformMatrix4(location, 1, false, matrixPtr);
             }
         }
 
@@ -220,7 +201,7 @@ namespace SiegeEngine.Core.GPU.Shaders
             }
             fixed (float* ptr = data)
             {
-                _renderContext.UniformMatrix4(location, (uint)matrices.Length, false, ptr);
+                _gl.UniformMatrix4(location, (uint)matrices.Length, false, ptr);
             }
         }
 
@@ -251,7 +232,7 @@ namespace SiegeEngine.Core.GPU.Shaders
             }
             fixed (float* ptr = data)
             {
-                _renderContext.UniformMatrix3(location, (uint)matrices.Length, false, ptr);
+                _gl.UniformMatrix3(location, (uint)matrices.Length, false, ptr);
             }
         }
 
@@ -345,7 +326,7 @@ namespace SiegeEngine.Core.GPU.Shaders
         {
             if (!_disposed)
             {
-                try { _renderContext.DeleteProgram(_program); }
+                try { if (_pipeline.IsValid) _renderContext.Destroy(_pipeline); }
                 catch (Exception ex) { Console.WriteLine($"Error deleting shader program: {ex.Message}"); }
                 _disposed = true;
             }

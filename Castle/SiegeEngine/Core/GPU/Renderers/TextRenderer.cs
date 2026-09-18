@@ -87,12 +87,12 @@ namespace SiegeEngine.Core.GPU.Renderers
                 RowHeight = 0,
                 Pixels = new byte[AtlasSize * AtlasSize * 4]
             };
-            _renderContext.GenTextures(1, out page.TextureId);
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, page.TextureId);
-            _renderContext.PixelStore(_renderContext.Enums.UnpackAlignment, 1);
+            ((OpenGLRenderContext)_renderContext).GenTextures(1, out page.TextureId);
+            ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, page.TextureId);
+            ((OpenGLRenderContext)_renderContext).PixelStore(_renderContext.Enums.UnpackAlignment, 1);
             fixed (byte* ptr = page.Pixels)
             {
-                _renderContext.TexImage2D(
+                ((OpenGLRenderContext)_renderContext).TexImage2D(
                     _renderContext.Enums.Texture2D, 0,
                     _renderContext.Enums.InternalRgba,
                     (uint)AtlasSize, (uint)AtlasSize, 0,
@@ -100,11 +100,11 @@ namespace SiegeEngine.Core.GPU.Renderers
                     _renderContext.Enums.UnsignedByte,
                     ptr);
             }
-            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMinFilter, _renderContext.Enums.Linear);
-            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMagFilter, _renderContext.Enums.Linear);
-            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapS, _renderContext.Enums.ClampToEdge);
-            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapT, _renderContext.Enums.ClampToEdge);
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+            ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMinFilter, _renderContext.Enums.Linear);
+            ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMagFilter, _renderContext.Enums.Linear);
+            ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapS, _renderContext.Enums.ClampToEdge);
+            ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapT, _renderContext.Enums.ClampToEdge);
+            ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, 0);
             _atlasPages.Add(page);
         }
 
@@ -163,8 +163,8 @@ namespace SiegeEngine.Core.GPU.Renderers
             }
 
             // Upload the dirty rectangle
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, page.TextureId);
-            _renderContext.PixelStore(_renderContext.Enums.UnpackAlignment, 1);
+            ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, page.TextureId);
+            ((OpenGLRenderContext)_renderContext).PixelStore(_renderContext.Enums.UnpackAlignment, 1);
             fixed (byte* ptr = &page.Pixels[(y * AtlasSize + x) * 4])
             {
                 // We upload row-by-row because the source is not contiguous for the full width
@@ -172,7 +172,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 {
                     fixed (byte* rowPtr = &page.Pixels[((y + row) * AtlasSize + x) * 4])
                     {
-                        _renderContext.TexImage2D(
+                        ((OpenGLRenderContext)_renderContext).TexImage2D(
                             _renderContext.Enums.Texture2D, 0,
                             _renderContext.Enums.InternalRgba,
                             (uint)AtlasSize, (uint)AtlasSize, 0,
@@ -186,7 +186,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             // Full-page re-upload (simple, correct, and still far cheaper than per-glyph draw calls)
             fixed (byte* fullPtr = page.Pixels)
             {
-                _renderContext.TexImage2D(
+                ((OpenGLRenderContext)_renderContext).TexImage2D(
                     _renderContext.Enums.Texture2D, 0,
                     _renderContext.Enums.InternalRgba,
                     (uint)AtlasSize, (uint)AtlasSize, 0,
@@ -194,7 +194,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                     _renderContext.Enums.UnsignedByte,
                     fullPtr);
             }
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+            ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, 0);
 
             page.CursorX += w + AtlasPadding;
             page.RowHeight = Math.Max(page.RowHeight, h);
@@ -218,18 +218,18 @@ namespace SiegeEngine.Core.GPU.Renderers
             _shaderProgram = shaderProgram;
             if (!_pipeline.IsValid)
                 _pipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Ui, _renderContext));
-            _renderContext.GenVertexArrays(1, out _textVao);
-            _renderContext.GenBuffers(1, out _textVbo);
-            _renderContext.BindVertexArray(_textVao);
-            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _textVbo);
+            ((OpenGLRenderContext)_renderContext).GenVertexArrays(1, out _textVao);
+            ((OpenGLRenderContext)_renderContext).GenBuffers(1, out _textVbo);
+            ((OpenGLRenderContext)_renderContext).BindVertexArray(_textVao);
+            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, _textVbo);
             // Allocate a reasonably large dynamic buffer up front
-            _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(_batchVerts.Length * sizeof(float)), null, _renderContext.Enums.DynamicDraw);
-            _renderContext.EnableVertexAttribArray(0);
-            _renderContext.VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)0);
-            _renderContext.EnableVertexAttribArray(1);
-            _renderContext.VertexAttribPointer(1, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, 0);
-            _renderContext.BindVertexArray(0);
+            ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ArrayBuffer, (uint)(_batchVerts.Length * sizeof(float)), null, _renderContext.Enums.DynamicDraw);
+            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(0);
+            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)0);
+            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(1);
+            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(1, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, 0);
+            ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
         }
@@ -365,29 +365,29 @@ namespace SiegeEngine.Core.GPU.Renderers
                 if (_batchVertCount == 0) return;
                 if (currentPage < 0 || currentPage >= _atlasPages.Count) return;
 
-                _renderContext.BindVertexArray(_textVao);
-                _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _textVbo);
+                ((OpenGLRenderContext)_renderContext).BindVertexArray(_textVao);
+                ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, _textVbo);
 
                 // Grow scratch buffer if needed
                 if (_batchVertCount > _batchVerts.Length)
                 {
                     int newSize = Math.Max(_batchVerts.Length * 2, _batchVertCount);
                     Array.Resize(ref _batchVerts, newSize);
-                    _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(newSize * sizeof(float)), null, _renderContext.Enums.DynamicDraw);
+                    ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ArrayBuffer, (uint)(newSize * sizeof(float)), null, _renderContext.Enums.DynamicDraw);
                 }
 
                 fixed (float* ptr = _batchVerts)
                 {
-                    _renderContext.BufferSubData(_renderContext.Enums.ArrayBuffer, 0, (uint)(_batchVertCount * sizeof(float)), ptr);
+                    ((OpenGLRenderContext)_renderContext).BufferSubData(_renderContext.Enums.ArrayBuffer, 0, (uint)(_batchVertCount * sizeof(float)), ptr);
                 }
 
-                _renderContext.EnableVertexAttribArray(0);
-                _renderContext.VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)0);
-                _renderContext.EnableVertexAttribArray(1);
-                _renderContext.VertexAttribPointer(1, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+                ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(0);
+                ((OpenGLRenderContext)_renderContext).VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)0);
+                ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(1);
+                ((OpenGLRenderContext)_renderContext).VertexAttribPointer(1, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
-                _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
-                _renderContext.BindTexture(_renderContext.Enums.Texture2D, _atlasPages[currentPage].TextureId);
+                ((OpenGLRenderContext)_renderContext).ActiveTexture(_renderContext.Enums.Texture0);
+                ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, _atlasPages[currentPage].TextureId);
 
                 // 6 vertices per quad (two triangles)
                 int quadCount = _batchVertCount / 24; // 6 verts * 4 floats
@@ -458,8 +458,8 @@ namespace SiegeEngine.Core.GPU.Renderers
 
             Flush();
 
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
-            _renderContext.BindVertexArray(0);
+            ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, 0);
+            ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
         }
 
         private SystemFontRenderer GetFontRenderer(string fontFamily)
@@ -478,13 +478,13 @@ namespace SiegeEngine.Core.GPU.Renderers
             foreach (var page in _atlasPages)
             {
                 if (page.TextureId != 0)
-                    _renderContext.DeleteTexture(page.TextureId);
+                    ((OpenGLRenderContext)_renderContext).DeleteTexture(page.TextureId);
             }
             _atlasPages.Clear();
             _atlasLookup.Clear();
             _fontRenderers.Clear();
-            _renderContext.DeleteVertexArray(_textVao);
-            _renderContext.DeleteBuffer(_textVbo);
+            ((OpenGLRenderContext)_renderContext).DeleteVertexArray(_textVao);
+            ((OpenGLRenderContext)_renderContext).DeleteBuffer(_textVbo);
         }
     }
 }

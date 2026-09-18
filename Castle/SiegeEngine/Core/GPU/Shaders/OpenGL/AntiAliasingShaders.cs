@@ -1,6 +1,6 @@
-// Folder: SiegeEngine/Core/GPU/PostProcess
+// Folder: SiegeEngine/Core/GPU/Shaders/OpenGL
 // File: AntiAliasingShaders.cs
-namespace SiegeEngine.Core.GPU.PostProcess
+namespace SiegeEngine.Core.GPU.Shaders.OpenGL
 {
     public static class AntiAliasingShaders
     {
