@@ -245,7 +245,9 @@ namespace MapRoom
         public Matrix4x4 GetViewMatrix() => _flyCamera.ViewMatrix;
         private float GetStampRotationRadians()
         {
-            float yawDeg = (_flyCamera != null ? _flyCamera.Yaw : 0f) + _stampYawOffsetDeg;
+            // FlyCamera yaw=0 looks +Y; heading = (sin yaw, cos yaw).
+            // R(+yaw)*(0,1) = (-sin, cos) which is the opposite heading, so negate yaw.
+            float yawDeg = -(_flyCamera != null ? _flyCamera.Yaw : 0f) + _stampYawOffsetDeg;
             return yawDeg * (MathF.PI / 180f);
         }
         public bool TryTerrainRaycast(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
