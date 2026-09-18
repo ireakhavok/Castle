@@ -5,50 +5,48 @@ Core does not know what a project is. It knows `Scene`, `SceneContext`, `SceneDa
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 flowchart TB
-  Disk["project.json + Scripts/ + Assets/"]
+  Disk["project.json + Scripts + Assets"]
   Disk --> BM[BlueprintManager / ProjectSettings]
   BM --> SD[SceneData + Level]
   SD --> CTX[SceneContext]
   CTX --> SR[SceneRegistry.ResolvePreferredSceneName]
   SR --> Create[SceneRegistry.Create]
-  Create --> Hosted["EditorScene hosts Scene<br/>IsHostedPreview = true"]
-  Create --> Play["Play / Foundation<br/>IsHostedPreview = false"]
+  Create --> Hosted[EditorScene hosted preview]
+  Create --> Play[Play / Foundation]
 ```
 
 ---
 
-## Scene types in Core
+## Scene types
 
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 classDiagram
   class Scene {
-    <<abstract>>
-    +Initialize(w,h)
+    +Initialize(w, h)
     +Update(dt)
     +Render(entities)
-    #GetViewProjection()
-    #RenderContent()
+    +GetViewProjection()
+    +RenderContent()
   }
   Scene <|-- GameScene
   Scene <|-- RuntimeGameplayScene
   Scene <|-- ModelViewerScene
   Scene <|-- TerrainScene
   Scene <|-- EditorScene
-  Scene <|-- CustomEntry["project [CustomSceneEntry]<br/>ChessScene / CheckersScene"]
+  Scene <|-- ChessScene
+  Scene <|-- CheckersScene
 ```
 
 | Type | Role |
 |---|---|
-| `Scene` | Abstract frame: camera, lighting pack, world, fog, AA, overlays |
-| `RuntimeGameplayScene` | Classic Play/Export — terrain + entities + player |
-| `GameScene` / `BasicGameScene` | Lightweight gameplay host used next to a hosted custom scene |
-| `ModelViewerScene` | Asset / animation viewer |
-| `TerrainScene` | Runtime terrain |
-| `EditorScene` | IDE wrapper. Can host a child custom scene for live preview |
-| Project `ChessScene`, `CheckersScene`, … | `[CustomSceneEntry]` types compiled by `ScriptLoader` |
-
-`SandboxScene` in older README diagrams is historical. It is not the primary path.
+| Scene | Frame: camera, lighting pack, world, fog, AA, overlays |
+| RuntimeGameplayScene | Play / Export for terrain and entity levels |
+| GameScene | Gameplay host used next to a hosted custom scene |
+| ModelViewerScene | Asset and animation viewer |
+| TerrainScene | Runtime terrain |
+| EditorScene | IDE wrapper; hosts a child scene for live preview |
+| ChessScene, CheckersScene | Project scenes registered by ScriptLoader |
 
 ---
 
@@ -56,29 +54,29 @@ classDiagram
 
 Core registers two names at startup:
 
-- `"Sandbox"`
-- `"RuntimeGameplay"` → `RuntimeGameplayScene`
+- `Sandbox`
+- `RuntimeGameplay` maps to `RuntimeGameplayScene`
 
-Project assemblies add more names at `ScriptLoader.ActivateProjectScripts`.
+Project assemblies add more names in `ScriptLoader.ActivateProjectScripts`.
 
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 flowchart TD
-  R[ResolvePreferredSceneName sceneName, SceneData]
-  R --> A{"SceneData.CustomSceneClass<br/>registered?"}
+  R[ResolvePreferredSceneName]
+  R --> A{CustomSceneClass registered?}
   A -->|yes| UseA[use that name]
-  A -->|no| B{"CustomData customSceneClass<br/>or implementingType?"}
+  A -->|no| B{CustomData name registered?}
   B -->|yes| UseB[use that name]
-  B -->|no| C{"sceneName itself registered?"}
+  B -->|no| C{sceneName registered?}
   C -->|yes| UseC[use sceneName]
-  C -->|no| D{"exactly one non-core factory?"}
+  C -->|no| D{exactly one custom factory?}
   D -->|yes| UseD[use that factory]
-  D -->|many| Warn["log: set CustomSceneClass"]
+  D -->|many| Warn[log set CustomSceneClass]
   D -->|none| FB[RuntimeGameplay]
   Warn --> FB
 ```
 
-`EditorScene` hosts a custom scene only when the resolved name is **not** `"RuntimeGameplay"`. That is why a board game that never registers `[CustomSceneEntry]` looks like an empty Scene Editor.
+`EditorScene` hosts a custom scene when the resolved name is not `RuntimeGameplay`.
 
 ---
 
@@ -89,61 +87,56 @@ flowchart TD
 sequenceDiagram
   participant IDE as EditorScene / Play
   participant SL as ScriptLoader
-  participant CS as project Scripts/
+  participant CS as project Scripts
   participant REG as SceneRegistry / GameServer
 
   IDE->>SL: copy SiegeEngine.dll into Scripts/Libs
   SL->>CS: write SiegeScripts.csproj HintPath
   SL->>CS: dotnet build
-  SL->>SL: Load SiegeScripts.dll
+  SL->>SL: load SiegeScripts.dll
   SL->>SL: reflect attributes
-  SL->>REG: Register type.Name for each [CustomSceneEntry]
-  SL->>REG: AddSystem for each [RegisterGameSystem]
-  SL->>REG: swap PlayerMovement if [CustomPlayerController]
-  Note over SL,REG: ActivateProjectScripts needs a SceneContext
+  SL->>REG: Register type.Name for each CustomSceneEntry
+  SL->>REG: AddSystem for each RegisterGameSystem
+  SL->>REG: swap PlayerMovement if CustomPlayerController
 ```
-
-Attributes (defined next to `ScriptLoader`):
 
 | Attribute | Meaning |
 |---|---|
-| `[CustomSceneEntry]` | `Scene` subclass. Registered under `type.Name` |
-| `[RegisterGameSystem]` | Constructed with `SceneContext` services, added to the server |
-| `[CustomPlayerController]` | Replaces `PlayerMovement` when no explicit `ControllerTypeName` |
-| `[RegisterHostedContent]` | HUD / content; host supplies chrome |
+| CustomSceneEntry | Scene subclass, registered under `type.Name` |
+| RegisterGameSystem | Constructed with SceneContext services, added to the server |
+| CustomPlayerController | Replaces PlayerMovement when ControllerTypeName is empty |
+| RegisterHostedContent | HUD / content; host supplies chrome |
 
-A `[RegisterGameSystem]` that remaps `"RuntimeGameplay"` (the chess/checkers `*RuntimeHook`) is the **Play compatibility** path. It is slightly blunt — it overwrites a core factory — but it is how a project takes over classic Play without the IDE hard-coding `ChessScene`. The cleaner long-term field is `SceneData.customSceneClass`.
+A `RegisterGameSystem` hook may remap `RuntimeGameplay` so Play constructs the project scene.
 
 ---
 
-## Hosted preview vs Play
+## Hosted preview and Play
 
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 flowchart LR
   subgraph Editor
     ES[EditorScene]
-    H[hosted CustomScene]
-    ES -->|"IsHostedPreview = true"| H
-    H -->|draw only| GPU[IRenderContext]
+    H[hosted custom scene]
+    ES -->|IsHostedPreview true| H
+    H -->|draw| GPU[IRenderContext]
   end
   subgraph PlayPath["Play"]
     P[SceneRegistry.Create]
-    G[CustomScene or RuntimeGameplay]
-    P -->|"IsHostedPreview = false"| G
-    G -->|input + AI + draw| GPU
+    G[custom scene or RuntimeGameplay]
+    P -->|IsHostedPreview false| G
+    G -->|input, AI, draw| GPU
   end
 ```
 
-Rules a custom scene must follow or the editor will not look like Play:
+A custom scene:
 
-1. `public Scene(SceneContext context) : base(context)` — not the five-argument ctor alone.
-2. Read `context.IsHostedPreview`. If true: rebuild meshes, draw, **do not** install window callbacks, **do not** run AI, **do not** consume clicks.
-3. Poll `IControlContext` on Play. The host owns the window.
-4. Override `GetViewProjection` and write `FrameCB` / `ObjectCB` via `SetConstants`.
-5. Unsubscribe EventBus handlers on dispose. Subscribe-without-unsubscribe is a blade-restore leak.
-
-Chess already does this. Checkers must match it or EditorScene logs `Failed to host custom scene` and falls back to an empty `BasicGameScene`.
+1. Uses `public SceneName(SceneContext context) : base(context)`.
+2. Reads `context.IsHostedPreview`. When true it rebuilds meshes and draws; it does not install window callbacks, run AI, or consume clicks.
+3. Polls `IControlContext` during Play. The host owns the window.
+4. Overrides `GetViewProjection` and writes `FrameCB` / `ObjectCB` via `SetConstants`.
+5. Unsubscribes EventBus handlers on dispose.
 
 ---
 
@@ -152,13 +145,13 @@ Chess already does this. Checkers must match it or EditorScene logs `Failed to h
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 flowchart TB
-  subgraph InProcess["Play Host — same process"]
+  subgraph InProcess["Play Host"]
     PH[PlayHostPanel] --> CTX1[SceneContext in Trebuchet]
-    CTX1 --> ACT1[ScriptLoader.ActivateProjectScripts]
+    CTX1 --> ACT1[ActivateProjectScripts]
     ACT1 --> SCN1[SceneRegistry.Create]
   end
-  subgraph Isolated["Isolated Play — Foundation process"]
-    FD[Foundation.Program] --> PAY[payload: SceneData + Level]
+  subgraph Isolated["Foundation process"]
+    FD[Foundation.Program] --> PAY[SceneData + Level payload]
     PAY --> CTX2[SceneContext]
     CTX2 --> ACT2[ActivateProjectScripts]
     ACT2 --> SCN2[SceneRegistry.Create]
@@ -169,7 +162,7 @@ flowchart TB
   end
 ```
 
-Those two Play paths are supposed to activate the **same** scripts, the **same** controller, and the **same** scene. Export is that path plus files. It is not a third command line.
+Play Host and Foundation activate the same scripts, controller, and scene. Export is that path plus files.
 
 ---
 
@@ -188,18 +181,18 @@ Those two Play paths are supposed to activate the **same** scripts, the **same**
       "sceneType": "Gameplay",
       "customSceneClass": "ChessScene",
       "settings": { "cameraMode": "Ortho" },
-      "environment": { },
+      "environment": {},
       "entities": []
     }
   }
 }
 ```
 
-Notes:
+`Type`, `CameraType`, and `cameraMode` describe the project. A board game also overrides `GetViewProjection`.
 
-- `Type` / `CameraType` / `cameraMode` describe intent. They do not currently swap an engine camera by themselves. A board game still overrides `GetViewProjection`.
-- `customSceneClass` is the explicit hosted-scene name. Fill it in. Do not rely on the single-factory heuristic once a project has more than one `[CustomSceneEntry]`.
-- `entities: []` is normal for a custom scene that draws its own board. The Scene Editor is not empty because of that list; it is empty only if hosting failed.
+`customSceneClass` is the hosted-scene name.
+
+`entities: []` is normal for a custom scene that draws its own board.
 
 ---
 
@@ -207,11 +200,9 @@ Notes:
 
 Repo: `ireakhavok/Siege_Engine_Example_Projects`.
 
-| Project | Scene class | Hook | Typical camera |
+| Project | Scene class | Runtime hook | Camera |
 |---|---|---|---|
-| `chess` | `ChessScene` | `ChessRuntimeHook` remaps RuntimeGameplay | Ortho look-at board |
-| `checkers` | `CheckersScene` | `CheckersRuntimeHook` | Same contract as chess |
-| `checkers_v2` | `CheckersScene` | same hook expected | Same contract as chess |
-| `save3` | none (classic) | inventory HUD + custom controller | RuntimeGameplay + terrain |
-
-After changing scripts, delete `Scripts/Libs/SiegeScripts.dll` and `RuntimeTemp/SiegeScripts.dll` so `ScriptLoader` rebuilds.
+| chess | ChessScene | ChessRuntimeHook remaps RuntimeGameplay | Ortho board look-at |
+| checkers | CheckersScene | CheckersRuntimeHook | Ortho board look-at |
+| checkers_v2 | CheckersScene | CheckersRuntimeHook | Ortho board look-at |
+| save3 | none | inventory HUD + custom controller | RuntimeGameplay + terrain |

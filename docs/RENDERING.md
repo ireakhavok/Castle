@@ -1,6 +1,6 @@
 # Rendering
 
-SiegeEngine draws through **`IRenderContext`**. The only implemented backend is **OpenGL** (`OpenGLRenderContext`). Settings may list DirectX 11/12 as names. Those backends are not written. Do not add HLSL or SPIR-V in a drive-by change.
+SiegeEngine draws through `IRenderContext`. The implemented backend is OpenGL (`OpenGLRenderContext`).
 
 ```mermaid
 %%{init: {'theme':'dark'}}%%
@@ -16,17 +16,15 @@ flowchart TB
   PP --> CTX
   UI --> CTX
   CTX --> GL[OpenGLRenderContext]
-  GL --> UBO["std140 UBOs = constant buffers"]
+  GL --> UBO[std140 uniform buffers]
   GL --> TEX[Textures / FBO / VAO]
 ```
 
 ---
 
-## Why constant buffers
+## Constant buffers
 
-A **constant buffer (CB)** is a std140 uniform block. DirectX uses the same idea under that name; OpenGL calls it a uniform buffer object. SiegeEngine uses the DX name because `IRenderContext` is meant to grow a second backend later against the **existing** interface.
-
-Shaders no longer declare `uniform mat4 uView`. They declare:
+A constant buffer (CB) is a std140 uniform block. Shaders declare blocks such as `FrameCB`. C# uploads a matching sequential struct with `SetConstants`.
 
 ```glsl
 layout(std140) uniform FrameCB {
@@ -40,8 +38,6 @@ layout(std140) uniform FrameCB {
 };
 ```
 
-C# uploads a matching sequential struct:
-
 ```csharp
 _renderContext.SetConstants(ConstantSlot.Frame, new FrameCB {
     View = view,
@@ -49,7 +45,7 @@ _renderContext.SetConstants(ConstantSlot.Frame, new FrameCB {
 });
 ```
 
-`OpenGLRenderContext` keeps a last-write cache per slot so a later writer can `TryGetConstants<T>` and merge instead of zeroing sibling fields (`ViewPos`, `HasBones`, `PrevView`, cascade matrices, …).
+`OpenGLRenderContext` keeps a last-write cache per slot. A later writer calls `TryGetConstants` and merges fields instead of zeroing siblings (`ViewPos`, bone flags, previous matrices, cascade matrices).
 
 ```mermaid
 %%{init: {'theme':'dark'}}%%
@@ -57,10 +53,10 @@ sequenceDiagram
   participant S as Scene / ModelRenderer
   participant C as OpenGLRenderContext
   participant G as GLSL block
-  S->>C: SetConstants(Frame, FrameCB)
-  C->>C: cache[Frame] = struct
+  S->>C: SetConstants Frame, FrameCB
+  C->>C: cache Frame = struct
   C->>G: glBufferSubData binding 0
-  S->>C: TryGetConstants(Frame) + patch one field
+  S->>C: TryGetConstants Frame and patch one field
   C->>G: upload merged struct
 ```
 
@@ -68,20 +64,20 @@ sequenceDiagram
 
 ## Slots
 
-Defined in `SiegeEngine/Core/GPU/Shaders/ConstantBuffers.cs`. Layout must match the GLSL `std140` block. Padding is load-bearing.
+Defined in `SiegeEngine/Core/GPU/Shaders/ConstantBuffers.cs`. C# layout matches the GLSL std140 block. Padding is part of the contract.
 
-| Slot | Typical writers | Contents |
+| Slot | Writers | Contents |
 |---|---|---|
-| `Frame` | Scene, ModelRenderer, custom scenes | View, Projection, ViewPos, Time |
-| `Object` | ModelRenderer, custom scenes | Model, NormalMatrix |
-| `Skin` | ModelRenderer | Bone matrices, HasBones |
-| `Material` | ModelRenderer | Colors, flags, UV |
-| `Light` | LightingFrame | Sun, ambient, points, spots, fog scalars |
-| `Shadow` | LightingFrame | CascadeVP0–3, splits, atlas size, point-shadow flags |
-| `Ui` | UI path | Ortho projection, color |
-| `Post` | FogPass, AntiAliasingPass | PrevView/PrevProjection, InvView/InvProjection, AA/bloom/exposure |
+| Frame | Scene, ModelRenderer, custom scenes | View, Projection, ViewPos, Time |
+| Object | ModelRenderer, custom scenes | Model, NormalMatrix |
+| Skin | ModelRenderer | Bone matrices, HasBones |
+| Material | ModelRenderer | Colors, flags, UV |
+| Light | LightingFrame | Sun, ambient, points, spots, fog scalars |
+| Shadow | LightingFrame | CascadeVP0-3, splits, atlas size, point-shadow flags |
+| Ui | UI path | Ortho projection, color |
+| Post | FogPass, AntiAliasingPass | PrevView, PrevProjection, InvView, InvProjection, AA / bloom / exposure |
 
-Samplers stay named uniforms (`uAlbedoMap`, `uShadowAtlas`, `uDepth`, `uColor`). Textures are not CBs.
+Samplers are named uniforms (`uAlbedoMap`, `uShadowAtlas`, `uDepth`, `uColor`). Textures are not constant buffers.
 
 ---
 
@@ -90,48 +86,42 @@ Samplers stay named uniforms (`uAlbedoMap`, `uShadowAtlas`, `uDepth`, `uColor`).
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 flowchart TD
-  A[Scene.Render] --> B[Pack LightingFrame from environment + lights]
-  B --> C[Shadow passes — directional cascades, point cubes, spots]
+  A[Scene.Render] --> B[Pack LightingFrame]
+  B --> C[Shadow passes]
   C --> D[Scene.GetViewProjection]
   D --> E[SetConstants FrameCB + ObjectCB]
   E --> F[LightingFrame.ApplyConstants LightCB + ShadowCB]
   F --> G[Skybox]
   G --> H[TerrainRenderer]
-  H --> I[ModelRenderer per entity]
+  H --> I[ModelRenderer]
   I --> J{Fog mode}
   J -->|Off / Exponential / Height| K[Forward fog in SceneShader]
-  J -->|Volumetric| L[FogPass fullscreen — ShadowCB + PostCB]
-  K --> M[AntiAliasingPass SMAA / TAA / FXAA]
+  J -->|Volumetric| L[FogPass fullscreen]
+  K --> M[AntiAliasingPass]
   L --> M
-  M --> N[Color compose + UI overlays]
+  M --> N[Color compose + UI]
 ```
 
-`EditorScene` used to pack a different frame and call `RenderWorldOnly`, which skipped gameplay prepare. It now calls the same `Scene.Render` Play uses when a custom scene is hosted.
+`EditorScene` calls `Scene.Render` on a hosted custom scene.
 
 ---
 
-## Custom scenes and cameras
+## Custom scene cameras
 
-A `[CustomSceneEntry]` scene that needs a board / isometric / ortho view **must**:
+A `CustomSceneEntry` scene that needs a board or orthographic view:
 
-1. Override `GetViewProjection` so AA / compose / shadows see the same matrices.
-2. Write those matrices with `SetConstants`, not `SetMatrix4("uView")`.
+1. Overrides `GetViewProjection` so AA, compose, and shadows use the same matrices.
+2. Writes those matrices with `SetConstants`.
 
-Chess and checkers:
+Chess and checkers use look-at `(4, 4, 12)` to `(4, 4, 0)`, up `(0, 1, 0)`, ortho half-extent `5.5`.
 
-```text
-look-at  (4, 4, 12) → (4, 4, 0)
-up       (0, 1, 0)
-ortho    half = 5.5, aspect-correct width
-```
-
-`ShaderProgram.SetMatrix4("uView", …)` still exists as a **fallback**. If the named uniform is gone it patches the cached `FrameCB.View`. That keeps old callers drawing. It is not the contract for new code. New code calls `SetConstants`.
+`ShaderProgram.SetMatrix4` patches the cached constant buffer when the named uniform is absent. New world and camera code calls `SetConstants`.
 
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 flowchart LR
-  New[New code] --> SC[SetConstants]
-  Old[Legacy SetMatrix4 uView] --> FB[ShaderProgram fallback]
+  New[Scene and renderer code] --> SC[SetConstants]
+  Named[SetMatrix4 name] --> FB[ShaderProgram patch]
   FB --> Cache[Context CB cache]
   SC --> Cache
   Cache --> UBO[FrameCB UBO]
@@ -139,27 +129,16 @@ flowchart LR
 
 ---
 
-## What is still named-uniform
+## Named uniforms that remain
 
-Allowed floors — do not "clean up" in the same change that touches a board scene:
-
-| Path | State |
+| Path | Uniforms |
 |---|---|
-| `TerrainRenderer` GLSL | `uView` / `uProjection` / `uModel` / `uCascadeVP[4]` / light uniforms. Terrain editor floor. |
-| `LightingFrame.ApplyTo(shader)` | Named light/shadow spray. Terrain still calls it. World path uses `ApplyConstants`. |
-| SMAA / FXAA / copy | Sampler + resolution uniforms. Correct. |
-| UI / text / sprite / line / debug | Own small shaders, named uniforms. Out of scope for the world CB pass. |
-| ModelRenderer leftover `SetMatrix4("uView")` after `SetConstants` | Harmless while the fallback lives; strip only after a Play pass confirms the world path. |
+| TerrainRenderer GLSL | `uView`, `uProjection`, `uModel`, `uCascadeVP`, light uniforms |
+| LightingFrame.ApplyTo | Named light and shadow uniforms used by terrain |
+| SMAA / FXAA / copy | Sampler and resolution uniforms |
+| UI / text / sprite / line / debug | Their own shaders |
 
-Volumetric fog: `CascadeVPAt` must be defined **in the fragment shader**. GLSL stages do not share functions. The vertex helper is invisible to `FogShaders.VolumetricFragment`. Switching fog type to Volumetric constructs `FogPass` and compiles that fragment — a missing helper is a hard launcher crash.
-
----
-
-## Interface surface for a future backend
-
-`IRenderContext` already has the portable calls a DirectX backend would implement: pipelines, buffers, `SetConstants<T>`, draw. A later chat can add that backend against the existing interface.
-
-Do **not** start it here. Do **not** write HLSL. Do **not** invent a second shader compiler. OpenGL-through-`IRenderContext` is the current production path.
+Volumetric fog: `CascadeVPAt` is defined in both the fullscreen vertex shader and the volumetric fragment shader. GLSL stages do not share functions. `FogPass` compiles that fragment when fog mode is Volumetric.
 
 ---
 
@@ -168,10 +147,10 @@ Do **not** start it here. Do **not** write HLSL. Do **not** invent a second shad
 ```text
 SiegeEngine/Core/GPU/
   ContextManagement/   IRenderContext, OpenGLRenderContext
-  Shaders/             ConstantBuffers, ShaderProgram, SceneShader, AnimationShader, …
-  Renderers/           ModelRenderer, TerrainRenderer, LayeredUIRenderer, …
-  Lighting/            LightingFrame, FogPass, FogShaders, shadow maps
-  PostProcess/         AntiAliasingPass, compose
+  Shaders/             ConstantBuffers, ShaderProgram, SceneShader, AnimationShader
+  Renderers/           ModelRenderer, TerrainRenderer, LayeredUIRenderer
+  Lighting/            LightingFrame, FogPass, FogShaders
+  PostProcess/         AntiAliasingPass
   TextureLoader.cs
   VertexBuffer.cs
 ```

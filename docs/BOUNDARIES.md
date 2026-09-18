@@ -1,29 +1,25 @@
 # Layer boundaries
 
-The boundary is the thing that must not drift. This page is the rule sheet that [ARCHITECTURE](ARCHITECTURE.md) assumes.
-
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 flowchart TB
-  subgraph Allowed["IDE may"]
+  subgraph Allowed["IDE"]
     A1[Read and write the project folder]
     A2[Save layout JSON]
-    A3[Build SceneData / Level payloads]
+    A3[Build SceneData and Level payloads]
     A4[Emit EventBus events]
   end
-  subgraph Forbidden["Core must not"]
-    F1[Reference CastleBuilder / Keystone types]
-    F2[Read ProjectSettings]
-    F3[Open project.json itself]
-    F4[Know what a project folder is]
+  subgraph CoreBox["Core"]
+    C1[SiegeEngine]
   end
-  Allowed -->|"payload / SceneContext"| Core[SiegeEngine]
-  Core --> Forbidden
+  Allowed -->|payload / SceneContext| CoreBox
 ```
+
+Core does not reference CastleBuilder or Keystone types, does not read `ProjectSettings`, and does not parse `project.json`.
 
 ---
 
-## Who may know whom
+## References
 
 ```mermaid
 %%{init: {'theme':'dark'}}%%
@@ -50,88 +46,77 @@ flowchart LR
   FD --> SE
   CIT --> SE
   PJ --> SE
-  SE -.->|"no"| CB
-  SE -.->|"no"| KS
-  PJ -.->|"no"| CB
 ```
 
-Solid arrows are allowed references. Dashed "no" arrows are the wall.
+IDE assemblies talk to SiegeEngine. SiegeEngine does not talk to CastleBuilder or Keystone. Project scripts talk to SiegeEngine only.
 
-IDE assemblies should not grow a web of references across the CastleBuilder wall when that wall already exists. Prefer a small contract in Core (`IHostedContent`, `SceneContext`, EventBus events) over panel A calling panel B's internals.
+Prefer a contract in Core (`IHostedContent`, `SceneContext`, EventBus events) over one panel calling another panel's internals.
 
 ---
 
-## Payloads, not paths
+## Payloads
 
 Core receives a game two ways:
 
-1. **`SceneContext`** composed inside Core by the host (Trebuchet Play Host, Foundation, EditorScene).
-2. **Serialized `Level` + `SceneData`** on that context.
+1. A `SceneContext` built by Trebuchet, Foundation, or EditorScene.
+2. Serialized `Level` and `SceneData` on that context.
 
-`Level` is the in-memory source of truth: entities, terrain, skybox, environment, custom data. The folder on disk is persistence and Export only.
+`Level` is the in-memory source of truth: entities, terrain, skybox, environment, custom data. The folder on disk is persistence and Export.
 
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 sequenceDiagram
   participant Disk
   participant IDE as BlueprintManager
-  participant Core as Scene / RuntimeGameplay
+  participant Core as Scene
   Disk->>IDE: project.json + Assets
   IDE->>IDE: Level + SceneData
-  IDE->>Core: SceneContext { SceneData, CurrentLevel, PlayProjectPath }
-  Note over Core: PlayProjectPath is a string for ScriptLoader / asset resolve<br/>Core still does not parse ProjectSettings
+  IDE->>Core: SceneContext
 ```
 
-`PlayProjectPath` exists so ScriptLoader can find `Scripts/` and so the runtime can resolve asset paths. It is not permission for Core to load `Keystone.ProjectSettings`.
+`PlayProjectPath` lets ScriptLoader find `Scripts/` and lets the runtime resolve asset paths. It is not permission for Core to load `Keystone.ProjectSettings`.
 
 ---
 
 ## Names
 
-| Use | Do not use |
+| Use | Avoid |
 |---|---|
-| `IHostedContent`, HUD, hosted view | A Core type named "ProjectPanel" |
-| `SceneData.CustomSceneClass` | Hard-coded `ChessScene` in EditorScene |
-| EventBus events | Static singletons that punch through layers |
-| `GameSystem` in the project assembly | IDE panel logic compiled into SiegeEngine |
+| IHostedContent, HUD, hosted view | A Core type named ProjectPanel |
+| SceneData.CustomSceneClass | Hard-coded ChessScene in EditorScene |
+| EventBus events | Static singletons across layers |
+| GameSystem in the project assembly | IDE panel logic compiled into SiegeEngine |
 
-A panel contract in Core, if one is added, is named for **what it does** (content, HUD, hosted view), never for "project." The host supplies chrome. Game assemblies supply content.
+A panel contract in Core is named for what it does (content, HUD, hosted view). The host supplies chrome. Game assemblies supply content.
 
 ---
 
 ## Cameras and movement
 
-- `FlyCameraController` / `AngledOrthoCamera` are Core runtime cameras. They may run in Play.
+- `FlyCameraController` and `AngledOrthoCamera` are Core runtime cameras. They run in Play.
 - They are not `PlayerMovement`.
-- Do not delete them from runtime to "keep editor cameras out."
-- Do not wire the fly camera as the walk implementation.
-- A custom controller (`[CustomPlayerController]`, `ControllerTypeName`) replaces movement only.
+- A custom controller (`CustomPlayerController`, `ControllerTypeName`) replaces movement only.
 
 ---
 
-## EventBus hygiene
+## EventBus
 
-Subscribe in `Init` without `Unsubscribe` on dispose is a recurring blade-restore bug. If you touch a panel, unsubscribe first. Do not hunt panels that are not broken.
-
-Protected events stay protected. Mods and clients do not publish them.
+Handlers that subscribe also unsubscribe on dispose. Events marked `ProtectedEvent` stay protected.
 
 ---
 
-## Play / Export are one activation path
+## Play and Export
 
 ```text
-Play Host  → SceneContext in-process → ActivateProjectScripts → SceneRegistry.Create
-Foundation → payload → same activation
-Export     → Foundation path + copy assets
+Play Host   SceneContext in-process  ActivateProjectScripts  SceneRegistry.Create
+Foundation  payload                  same activation
+Export      Foundation path + copy assets
 ```
 
-Do not invent a third command line. Do not activate scripts in the editor with a different constructor than Play.
+Scripts activate with the same constructors in the editor and in Play.
 
 ---
 
-## Rendering boundary
+## Rendering
 
-- New world/camera writes go through `IRenderContext.SetConstants`.
-- Do not add a DirectX or Vulkan backend from a docs or board-scene change.
-- Terrain named-uniform GLSL is a floor.
-- Custom scenes override `GetViewProjection` and write CBs. They do not call IDE camera types.
+World and camera writes go through `IRenderContext.SetConstants`. Custom scenes override `GetViewProjection` and write constant buffers. They do not call IDE camera types.
