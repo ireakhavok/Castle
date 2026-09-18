@@ -466,6 +466,11 @@ namespace SiegeEngine.Core.GPU.PostProcess
 
         private void DrawFullscreen()
         {
+            _rc.Disable(_e.DepthTest);
+            _rc.DepthMask(false);
+            _rc.Disable(_e.CullFace);
+            _rc.Disable(_e.Blend);
+            _rc.ColorMask(true, true, true, true);
             ((OpenGLRenderContext)_rc).BindVertexArray(_emptyVao);
             _rc.DrawArrays(_e.Triangles, 0, 3);
         }

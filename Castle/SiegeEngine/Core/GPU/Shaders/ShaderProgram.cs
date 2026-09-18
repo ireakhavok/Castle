@@ -88,7 +88,11 @@ namespace SiegeEngine.Core.GPU.Shaders
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ShaderProgram));
-            _renderContext.BindPipeline(_pipeline);
+            OpenGLRenderContext gl = _renderContext as OpenGLRenderContext;
+            if (gl != null)
+                gl.UseProgram(_program);
+            else
+                _renderContext.BindPipeline(_pipeline);
         }
 
         public void SetUniform(string name, float value)
