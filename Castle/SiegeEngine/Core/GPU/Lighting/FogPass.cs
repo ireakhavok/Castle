@@ -64,25 +64,26 @@ namespace SiegeEngine.Core.GPU.Lighting
             _rc.ActiveTexture(_e.Texture0 + 2);
             _rc.BindTexture(_e.Texture2D, frame.ShadowAtlas);
             _volumetric.SetUniform("uShadowAtlas", 2);
-            _volumetric.SetMatrix4("uView", view);
-            _volumetric.SetMatrix4("uInvView", invView);
-            _volumetric.SetMatrix4("uInvProjection", invProj);
-            for (int i = 0; i < LightingFrame.MaxCascades; i++)
-                _volumetric.SetMatrix4($"uCascadeVP[{i}]", frame.CascadeVP[i]);
-            _volumetric.SetUniform("uCascadeSplits", frame.CascadeSplits.X, frame.CascadeSplits.Y, frame.CascadeSplits.Z, frame.CascadeSplits.W);
-            _volumetric.SetUniform("uCascadeCount", frame.CascadeCount);
-            _volumetric.SetUniform("uLightDir", frame.Sun.Direction.X, frame.Sun.Direction.Y, frame.Sun.Direction.Z);
-            _volumetric.SetUniform("uLightColor", frame.Sun.Color.X, frame.Sun.Color.Y, frame.Sun.Color.Z);
-            _volumetric.SetUniform("uLightIntensity", frame.Sun.Intensity);
-            _volumetric.SetUniform("uFogColor", frame.Fog.Color.X, frame.Fog.Color.Y, frame.Fog.Color.Z);
-            _volumetric.SetUniform("uFogDensity", frame.Fog.Density);
-            _volumetric.SetUniform("uFogStart", frame.Fog.Start);
-            _volumetric.SetUniform("uFogHeight", frame.Fog.Height);
-            _volumetric.SetUniform("uFogHeightFalloff", frame.Fog.HeightFalloff);
-            _volumetric.SetUniform("uIntensity", frame.Fog.VolumetricIntensity);
-            _volumetric.SetUniform("uSteps", frame.Fog.RaySteps);
-            _volumetric.SetUniform("uInvResolution", 1f / width, 1f / height);
-            _volumetric.SetUniform("uHasDepth", depthIsTexture ? 1 : 0);
+
+            FrameCB frameCb;
+            if (!_rc.TryGetConstants(ConstantSlot.Frame, out frameCb))
+                frameCb = new FrameCB { View = Matrix4x4.Identity, Projection = Matrix4x4.Identity };
+            frameCb.View = view;
+            frameCb.Projection = projection;
+            _rc.SetConstants(ConstantSlot.Frame, frameCb);
+            frame.ApplyConstants(_rc);
+
+            PostCB post;
+            if (!_rc.TryGetConstants(ConstantSlot.Post, out post))
+                post = default;
+            post.InvView = invView;
+            post.InvProjection = invProj;
+            post.InvResolution = new Vector4(1f / width, 1f / height, 0f, 0f);
+            post.Intensity = frame.Fog.VolumetricIntensity;
+            post.Steps = frame.Fog.RaySteps;
+            post.HasDepth = depthIsTexture ? 1 : 0;
+            _rc.SetConstants(ConstantSlot.Post, post);
+
             _rc.BindVertexArray(_emptyVao);
             _rc.DrawArrays(_e.Triangles, 0, 3);
             _rc.ActiveTexture(_e.Texture0);

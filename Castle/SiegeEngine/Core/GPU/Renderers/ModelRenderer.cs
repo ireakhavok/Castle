@@ -194,28 +194,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 UploadSkin(boneMatrices);
             LightingFrame.Current?.ApplyConstants(_renderContext);
             shader.Use();
-            shader.SetMatrix4("uModel", modelMatrix);
-            shader.SetMatrix4("uNormalMatrix", BuildNormalMatrix(modelMatrix));
             BindViewLighting(shader, view, projection, viewPos);
-            shader.SetUniform("uReceiveShadows", receiveShadows ? 1 : 0);
-
-            if (hasBones)
-            {
-                shader.SetUniform("uHasBones", 1);
-                if (hasBones && shader == _animationShader)
-                {
-                    shader.SetMatrix4Array("uBoneMatrices", boneMatrices);
-                    if (normalMatrices != null) shader.SetMatrix3Array("uNormalMatrices", normalMatrices);
-                }
-                else
-                {
-                    shader.SetMatrix4Array("uBoneTransforms", boneMatrices);
-                }
-            }
-            else
-            {
-                shader.SetUniform("uHasBones", 0);
-            }
 
             // Own complete GL state so result is independent of prior TerrainRenderer / skybox / UI state.
             _renderContext.Enable(_renderContext.Enums.DepthTest);
@@ -286,9 +265,8 @@ namespace SiegeEngine.Core.GPU.Renderers
         public void RenderSkeletonDebug(VertexBuffer skeletonBuffer, ShaderProgram pointShader, Matrix4x4 view, Matrix4x4 projection)
         {
             pointShader.Use();
-            pointShader.SetMatrix4("uModel", Matrix4x4.Identity);
-            pointShader.SetMatrix4("uView", view);
-            pointShader.SetMatrix4("uProjection", projection);
+            _renderContext.SetConstants(ConstantSlot.Frame, new FrameCB { View = view, Projection = projection });
+            _renderContext.SetConstants(ConstantSlot.Object, new ObjectCB { Model = Matrix4x4.Identity, NormalMatrix = Matrix4x4.Identity });
             _renderContext.BindVertexArray(skeletonBuffer.Vao);
             _renderContext.DrawElements(_renderContext.Enums.Lines, skeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             _renderContext.BindVertexArray(0);
@@ -358,17 +336,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 && _viewLightingPos == viewPos)
                 return;
 
-            shader.SetMatrix4("uView", view);
-            shader.SetMatrix4("uProjection", projection);
-            shader.SetUniform("uViewPos", viewPos.X, viewPos.Y, viewPos.Z);
-            shader.SetUniform("uAmbientStrength", 0.3f);
-            shader.SetUniform("uSpecularStrength", 0.05f);
-            shader.SetUniform("uShininess", 4.0f);
-            shader.SetUniform("uLightDir", LightingFrame.DefaultSunDirection.X, LightingFrame.DefaultSunDirection.Y, LightingFrame.DefaultSunDirection.Z);
-            shader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
-            shader.SetUniform("uLightIntensity", 0.0f);
-            shader.SetUniform("uHasWorldAligned", 0);
-            LightingFrame.Current?.ApplyTo(shader, _renderContext);
+            LightingFrame.Current?.ApplyConstants(_renderContext);
             BindShadowMaps(shader);
 
             _viewLightingShader = shader;

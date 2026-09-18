@@ -25,6 +25,16 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         private readonly uint[] _uboSlots = new uint[8];
         private FrameCB _cachedFrame = new FrameCB { View = System.Numerics.Matrix4x4.Identity, Projection = System.Numerics.Matrix4x4.Identity };
         private ObjectCB _cachedObject = new ObjectCB { Model = System.Numerics.Matrix4x4.Identity, NormalMatrix = System.Numerics.Matrix4x4.Identity };
+        private MaterialCB _cachedMaterial;
+        private LightCB _cachedLight;
+        private ShadowCB _cachedShadow;
+        private UiCB _cachedUi;
+        private PostCB _cachedPost;
+        private bool _hasMaterial;
+        private bool _hasLight;
+        private bool _hasShadow;
+        private bool _hasUi;
+        private bool _hasPost;
         private GpuHandle _boundPipeline;
 
         public AbstractRenderEnums Enums => _enums;
@@ -507,6 +517,36 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 data = *(T*)&cached;
                 return true;
             }
+            if (slot == ConstantSlot.Material && _hasMaterial && sizeof(T) == sizeof(MaterialCB))
+            {
+                MaterialCB cached = _cachedMaterial;
+                data = *(T*)&cached;
+                return true;
+            }
+            if (slot == ConstantSlot.Light && _hasLight && sizeof(T) == sizeof(LightCB))
+            {
+                LightCB cached = _cachedLight;
+                data = *(T*)&cached;
+                return true;
+            }
+            if (slot == ConstantSlot.Shadow && _hasShadow && sizeof(T) == sizeof(ShadowCB))
+            {
+                ShadowCB cached = _cachedShadow;
+                data = *(T*)&cached;
+                return true;
+            }
+            if (slot == ConstantSlot.Ui && _hasUi && sizeof(T) == sizeof(UiCB))
+            {
+                UiCB cached = _cachedUi;
+                data = *(T*)&cached;
+                return true;
+            }
+            if (slot == ConstantSlot.Post && _hasPost && sizeof(T) == sizeof(PostCB))
+            {
+                PostCB cached = _cachedPost;
+                data = *(T*)&cached;
+                return true;
+            }
             return false;
         }
 
@@ -517,6 +557,31 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 _cachedFrame = *(FrameCB*)&local;
             else if (slot == ConstantSlot.Object && sizeof(T) == sizeof(ObjectCB))
                 _cachedObject = *(ObjectCB*)&local;
+            else if (slot == ConstantSlot.Material && sizeof(T) == sizeof(MaterialCB))
+            {
+                _cachedMaterial = *(MaterialCB*)&local;
+                _hasMaterial = true;
+            }
+            else if (slot == ConstantSlot.Light && sizeof(T) == sizeof(LightCB))
+            {
+                _cachedLight = *(LightCB*)&local;
+                _hasLight = true;
+            }
+            else if (slot == ConstantSlot.Shadow && sizeof(T) == sizeof(ShadowCB))
+            {
+                _cachedShadow = *(ShadowCB*)&local;
+                _hasShadow = true;
+            }
+            else if (slot == ConstantSlot.Ui && sizeof(T) == sizeof(UiCB))
+            {
+                _cachedUi = *(UiCB*)&local;
+                _hasUi = true;
+            }
+            else if (slot == ConstantSlot.Post && sizeof(T) == sizeof(PostCB))
+            {
+                _cachedPost = *(PostCB*)&local;
+                _hasPost = true;
+            }
         }
 
         public void DrawIndexed(int indexCount)

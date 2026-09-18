@@ -291,7 +291,54 @@ namespace SiegeEngine.Core.GPU.Shaders
                     obj = new ObjectCB { Model = Matrix4x4.Identity, NormalMatrix = Matrix4x4.Identity };
                 obj.NormalMatrix = matrix;
                 _renderContext.SetConstants(ConstantSlot.Object, obj);
+                return;
             }
+            if (name == "uTransform" || name == "Transform")
+            {
+                UiCB ui;
+                if (!_renderContext.TryGetConstants(ConstantSlot.Ui, out ui))
+                    ui = new UiCB { Transform = Matrix4x4.Identity, Color = Vector4.One };
+                ui.Transform = matrix;
+                _renderContext.SetConstants(ConstantSlot.Ui, ui);
+                return;
+            }
+            if (name == "uPrevView" || name == "PrevView")
+            {
+                PatchPost(p => { p.PrevView = matrix; return p; });
+                return;
+            }
+            if (name == "uPrevProjection" || name == "PrevProjection")
+            {
+                PatchPost(p => { p.PrevProjection = matrix; return p; });
+                return;
+            }
+            if (name == "uInvView" || name == "InvView")
+            {
+                PatchPost(p => { p.InvView = matrix; return p; });
+                return;
+            }
+            if (name == "uInvProjection" || name == "InvProjection")
+            {
+                PatchPost(p => { p.InvProjection = matrix; return p; });
+                return;
+            }
+            if (name == "uMVP")
+            {
+                FrameCB frame;
+                if (!_renderContext.TryGetConstants(ConstantSlot.Frame, out frame))
+                    frame = new FrameCB { View = Matrix4x4.Identity, Projection = Matrix4x4.Identity };
+                frame.View = Matrix4x4.Identity;
+                frame.Projection = matrix;
+                _renderContext.SetConstants(ConstantSlot.Frame, frame);
+            }
+        }
+
+        void PatchPost(Func<PostCB, PostCB> patch)
+        {
+            PostCB post;
+            if (!_renderContext.TryGetConstants(ConstantSlot.Post, out post))
+                post = default;
+            _renderContext.SetConstants(ConstantSlot.Post, patch(post));
         }
 
         public void Dispose()
