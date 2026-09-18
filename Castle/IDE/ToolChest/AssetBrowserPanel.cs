@@ -38,7 +38,7 @@ namespace ToolChest
 
         private string _currentPath;
         private string _armedPath;
-        private int _viewMode; // 0 list, 1 icons, 2 details
+        private int _viewMode = 1; // 0 list, 1 icons, 2 details
 
         public AssetBrowserPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
@@ -89,13 +89,15 @@ namespace ToolChest
             string template = File.ReadAllText(htmlPath);
             string itemsHtml = BuildItemsHtml();
             string[] viewClass = { "view-list", "view-icons", "view-details" };
-            string[] viewLabel = { "View: List", "View: Icons", "View: Details" };
             int mode = _viewMode % 3;
+            string on = "active";
             string finalHtml = template
                 .Replace("<!--ITEMS-->", itemsHtml)
                 .Replace("<!--PATH-->", _currentPath ?? "")
                 .Replace("<!--VIEWCLASS-->", viewClass[mode])
-                .Replace("<!--VIEWLABEL-->", viewLabel[mode]);
+                .Replace("<!--LISTACTIVE-->", mode == 0 ? on : "")
+                .Replace("<!--ICONSACTIVE-->", mode == 1 ? on : "")
+                .Replace("<!--DETAILSACTIVE-->", mode == 2 ? on : "");
             _uiOverlay.LoadUI(finalHtml);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
@@ -190,14 +192,14 @@ namespace ToolChest
                 {
                     string name = Path.GetFileName(dir);
                     if (IsHidden(name)) continue;
-                    sb.AppendLine($"<div class='item folder' data-hook='Enter:{dir}'>DIR {name}</div>");
+                    sb.AppendLine($"<div class='item folder' data-hook='Enter:{dir}'>📁 {name}</div>");
                 }
                 foreach (var file in Directory.GetFiles(_currentPath).OrderBy(f => f))
                 {
                     string name = Path.GetFileName(file);
                     if (IsHidden(name)) continue;
                     string ext = Path.GetExtension(file).ToLowerInvariant();
-                    string icon = ext == ".fbx" ? "FBX" : IsImage(ext) ? "IMG" : ext == ".wav" || ext == ".mp3" ? "SND" : "FILE";
+                    string icon = ext == ".fbx" ? "📦" : IsImage(ext) ? "🖼️" : ext == ".wav" || ext == ".mp3" || ext == ".ogg" ? "🎵" : "📄";
                     sb.AppendLine($"<div class='item file' data-hook='Select:{file}'>{icon} {name}</div>");
                 }
             }
@@ -217,7 +219,7 @@ namespace ToolChest
                 {
                     string name = Path.GetFileName(dir);
                     if (IsHidden(name)) continue;
-                    sb.AppendLine($"<div class='tile folder' data-hook='Enter:{dir}'><div class='thumb'>DIR</div><div class='label'>{name}</div></div>");
+                    sb.AppendLine($"<div class='tile folder' data-hook='Enter:{dir}'><div class='thumb'>📁</div><div class='label'>{name}</div></div>");
                 }
                 foreach (var file in Directory.GetFiles(_currentPath).OrderBy(f => f))
                 {
@@ -225,7 +227,6 @@ namespace ToolChest
                     if (IsHidden(name)) continue;
                     string ext = Path.GetExtension(file).ToLowerInvariant();
                     string preview = "";
-                    string glyph = ext == ".fbx" ? "FBX" : ext == ".json" ? "PK" : ext == ".wav" || ext == ".mp3" ? "SND" : "FILE";
                     if (IsImage(ext)) preview = CssUrl(file);
                     else if (ext == ".fbx")
                     {
@@ -233,7 +234,9 @@ namespace ToolChest
                         if (!string.IsNullOrEmpty(img)) preview = CssUrl(img);
                     }
                     string style = string.IsNullOrEmpty(preview) ? "" : $" style=\"background-image:url('{preview}')\"";
-                    string inner = string.IsNullOrEmpty(preview) ? glyph : "";
+                    string inner = "";
+                    if (string.IsNullOrEmpty(preview))
+                        inner = ext == ".fbx" ? "📦" : ext == ".wav" || ext == ".mp3" || ext == ".ogg" ? "🎵" : ext == ".json" ? "📦" : "📄";
                     sb.AppendLine($"<div class='tile file' data-hook='Select:{file}'><div class='thumb'{style}>{inner}</div><div class='label'>{name}</div></div>");
                 }
             }
@@ -253,15 +256,15 @@ namespace ToolChest
                 {
                     string name = Path.GetFileName(dir);
                     if (IsHidden(name)) continue;
-                    sb.AppendLine($"<div class='row folder' data-hook='Enter:{dir}'><span>D</span><span>{name}</span><span class='col-type'>Folder</span><span class='col-path'>{dir}</span></div>");
+                    sb.AppendLine($"<div class='detail folder' data-hook='Enter:{dir}'><span>{name}</span><span class='kind'>Folder</span><span class='fullpath'>{dir}</span></div>");
                 }
                 foreach (var file in Directory.GetFiles(_currentPath).OrderBy(f => f))
                 {
                     string name = Path.GetFileName(file);
                     if (IsHidden(name)) continue;
                     string ext = Path.GetExtension(file).ToLowerInvariant();
-                    string kind = ext == ".fbx" ? "Mesh" : IsImage(ext) ? "Texture" : ext == ".json" ? "Pack" : ext.Trim('.') ;
-                    sb.AppendLine($"<div class='row file' data-hook='Select:{file}'><span>F</span><span>{name}</span><span class='col-type'>{kind}</span><span class='col-path'>{file}</span></div>");
+                    string kind = ext == ".fbx" ? "Mesh" : IsImage(ext) ? "Texture" : ext == ".json" ? "Pack" : ext.Trim('.');
+                    sb.AppendLine($"<div class='detail file' data-hook='Select:{file}'><span>{name}</span><span class='kind'>{kind}</span><span class='fullpath'>{file}</span></div>");
                 }
             }
             catch (Exception ex)
@@ -296,9 +299,19 @@ namespace ToolChest
                 }
                 _eventBus.Publish(new FileSelectedEvent(path));
             }
-            else if (hook == "CycleView")
+            else if (hook == "ViewList")
             {
-                _viewMode = (_viewMode + 1) % 3;
+                _viewMode = 0;
+                RefreshBrowser();
+            }
+            else if (hook == "ViewIcons")
+            {
+                _viewMode = 1;
+                RefreshBrowser();
+            }
+            else if (hook == "ViewDetails")
+            {
+                _viewMode = 2;
                 RefreshBrowser();
             }
             else if (hook == "Up")
