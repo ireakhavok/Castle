@@ -513,7 +513,7 @@ namespace ToolChest
                         float ang = MathF.Acos(dot);
                         if (!float.IsFinite(ang)) ang = 0f;
                         if (Vector3.Dot(Vector3.Cross(v1, v2), worldAxis) < 0) ang = -ang;
-                        _accumAngle += ang;
+                        _accumAngle -= ang;
                         _lastPlanePoint = cur;
                     }
                     if (!float.IsFinite(_accumAngle)) _accumAngle = 0f;
@@ -539,7 +539,7 @@ namespace ToolChest
             if (_orbitDragging && mouseDown)
             {
                 Vector2 delta = rel - _lastMouse;
-                _previewScene.PreviewYaw += delta.X * 0.012f;
+                _previewScene.PreviewYaw -= delta.X * 0.012f;
                 _previewScene.PreviewPitch = Math.Clamp(_previewScene.PreviewPitch + delta.Y * 0.012f, -1.4f, 1.4f);
                 _lastMouse = rel;
             }

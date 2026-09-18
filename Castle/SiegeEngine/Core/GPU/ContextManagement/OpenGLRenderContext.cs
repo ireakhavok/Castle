@@ -921,6 +921,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             BindSampler(program, "uShadowAtlas", TextureSlot.ShadowAtlas);
             BindSampler(program, "uPointShadowCube", TextureSlot.PointShadow);
             BindSampler(program, "uSpotShadowMap", TextureSlot.SpotShadow);
+            BindSampler(program, "uSkybox", 0);
         }
 
         void BindSampler(uint program, string name, int unit)

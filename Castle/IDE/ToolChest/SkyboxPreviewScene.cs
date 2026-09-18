@@ -107,13 +107,7 @@ void main() {
                 return;
             Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(Quaternion.Inverse(SkyboxRenderer.Sanitize(_orientation)));
             Matrix4x4 mvp = orient * view * projection;
-            bool clearDepth = _width != _lastClearedW || _height != _lastClearedH;
-            if (clearDepth)
-            {
-                _lastClearedW = _width;
-                _lastClearedH = _height;
-            }
-            SkyboxRenderer.RenderPreviewCube(_renderContext, _cubemapTex, _previewCube, _previewShader, mvp, clearDepth);
+            SkyboxRenderer.RenderPreviewCube(_renderContext, _cubemapTex, _previewCube, _previewShader, mvp, true);
             // Lines through the shared LineRenderer (owns its own Depth/LineWidth state)
             Matrix4x4 lineModel = orient;
             if (_axisBuffer != null)

@@ -93,11 +93,14 @@ namespace SiegeEngine.Core.GPU.Renderers
         {
             if (renderContext == null || cubemapTex == 0 || cube == null || shader == null) return;
             renderContext.Enable(renderContext.Enums.DepthTest);
+            renderContext.DepthMask(true);
+            renderContext.DepthFunc(renderContext.Enums.Less);
             renderContext.Disable(renderContext.Enums.CullFace);
-            if (clearDepth)
-                renderContext.Clear(renderContext.Enums.DepthBufferBit);
+            renderContext.Disable(renderContext.Enums.Blend);
+            renderContext.Clear(renderContext.Enums.DepthBufferBit);
             shader.Use();
-            renderContext.BindCamera(Matrix4x4.Identity, mvp, Matrix4x4.Identity);
+            shader.SetMatrix4("uMVP", mvp);
+            shader.SetUniform("uSkybox", 0);
             renderContext.BindTextureSlot(0, renderContext.ImportTexture(cubemapTex, renderContext.Enums.TextureCubeMap));
             cube.Bind();
             renderContext.DrawElements(renderContext.Enums.Triangles, cube.GetIndexCount(), renderContext.Enums.UnsignedInt, null);

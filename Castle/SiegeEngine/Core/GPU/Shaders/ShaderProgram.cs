@@ -51,6 +51,7 @@ namespace SiegeEngine.Core.GPU.Shaders
             BindSampler("uShadowAtlas", TextureSlot.ShadowAtlas);
             BindSampler("uPointShadowCube", TextureSlot.PointShadow);
             BindSampler("uSpotShadowMap", TextureSlot.SpotShadow);
+            BindSampler("uSkybox", 0);
         }
 
         void BindSampler(string name, int unit)
