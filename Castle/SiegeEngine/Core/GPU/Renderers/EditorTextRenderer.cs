@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine
+// Folder: SiegeEngine
 // File: EditorTextRenderer.cs
 using System;
 using System.Collections.Generic;
@@ -11,7 +11,8 @@ namespace SiegeEngine.Core.GPU.Renderers
     {
         private readonly IRenderContext _renderContext;
         private readonly nint _window;
-        private uint _textVao, _textVbo;
+        private GpuHandle _textVbo;
+        private GpuHandle _pipeline;
         private ShaderProgram _shaderProgram;
         private Dictionary<char, uint> _charTextures;
         private SystemFontRenderer _fontRenderer;
@@ -26,10 +27,8 @@ namespace SiegeEngine.Core.GPU.Renderers
         {
             //Console.WriteLine("EditorTextRenderer: Initializing with font 'Arial', size 12.0f");
             _shaderProgram = shaderProgram;
-            ((OpenGLRenderContext)_renderContext).GenVertexArrays(1, out _textVao);
-            ((OpenGLRenderContext)_renderContext).GenBuffers(1, out _textVbo);
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(_textVao);
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, _textVbo);
+            if (!_pipeline.IsValid)
+                _pipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Text, _renderContext));
             float[] textVertices = new float[]
             {
                 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
@@ -37,19 +36,16 @@ namespace SiegeEngine.Core.GPU.Renderers
                 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
                 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f
             };
+            _textVbo = _renderContext.CreateBuffer(new BufferDesc
+            {
+                Target = _renderContext.Enums.ArrayBuffer,
+                Usage = _renderContext.Enums.DynamicDraw,
+                ByteSize = textVertices.Length * sizeof(float)
+            });
             fixed (float* ptr = textVertices)
             {
-                ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ArrayBuffer, (uint)(textVertices.Length * sizeof(float)), ptr, _renderContext.Enums.DynamicDraw);
+                _renderContext.UpdateBuffer(_textVbo, new ReadOnlySpan<byte>((byte*)ptr, textVertices.Length * sizeof(float)));
             }
-            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(0);
-            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 8 * sizeof(float), (void*)0);
-            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(1);
-            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(1, 4, _renderContext.Enums.Float, false, 8 * sizeof(float), (void*)(2 * sizeof(float)));
-            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(2);
-            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, 0);
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
-            //Console.WriteLine($"EditorTextRenderer: Text VAO {_textVao} and VBO {_textVbo} initialized.");
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
             string characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 :.,!?-+()[]{}x";
@@ -61,24 +57,22 @@ namespace SiegeEngine.Core.GPU.Renderers
                     //Console.WriteLine($"EditorTextRenderer: Failed to load character '{c}' - charData is null or PixelData empty.");
                     continue;
                 }
-                uint texture;
-                ((OpenGLRenderContext)_renderContext).GenTextures(1, out texture);
-                ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, texture);
-                ((OpenGLRenderContext)_renderContext).PixelStore(_renderContext.Enums.UnpackAlignment, 1);
+                GpuHandle allocated = _renderContext.CreateTexture(new TextureDesc
+                {
+                    Target = _renderContext.Enums.Texture2D,
+                    InternalFormat = _renderContext.Enums.InternalRgba,
+                    Width = charData.Width,
+                    Height = charData.Height
+                });
+                uint texture = allocated.Id;
                 fixed (byte* pixelPtr = charData.PixelData)
                 {
-                    ((OpenGLRenderContext)_renderContext).TexImage2D(_renderContext.Enums.Texture2D, 0, _renderContext.Enums.InternalRgba, (uint)charData.Width, (uint)charData.Height, 0, _renderContext.Enums.PixelBgra, _renderContext.Enums.UnsignedByte, pixelPtr);
+                    _renderContext.UpdateTexture(allocated, charData.Width, charData.Height,
+                        _renderContext.Enums.PixelBgra, _renderContext.Enums.UnsignedByte, pixelPtr);
                 }
-                int error = _renderContext.GetError();
-                if (error != _renderContext.Enums.NoError)
-                {
-                    //Console.WriteLine($"EditorTextRenderer: OpenGL error after loading texture for '{c}': {error}");
-                }
-                ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMinFilter, _renderContext.Enums.Linear);
-                ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMagFilter, _renderContext.Enums.Linear);
-                ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapS, _renderContext.Enums.ClampToEdge);
-                ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapT, _renderContext.Enums.ClampToEdge);
-                ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, 0);
+                _renderContext.SetTextureParams(allocated,
+                    _renderContext.Enums.Linear, _renderContext.Enums.Linear,
+                    _renderContext.Enums.ClampToEdge, _renderContext.Enums.ClampToEdge);
                 _charTextures[c] = texture;
                 //Console.WriteLine($"EditorTextRenderer: Loaded texture for character '{c}': {texture}, Width: {charData.Width}, Height: {charData.Height}, PixelData Length: {charData.PixelData.Length}");
                 if (charData.PixelData.Length >= 4)
@@ -98,10 +92,10 @@ namespace SiegeEngine.Core.GPU.Renderers
                 height = 720;
             }
             float adjustedStartY = text == "Grid" ? startY : startY - 10;
-            ((OpenGLRenderContext)_renderContext).UseProgram(0);
-            _shaderProgram.Use();
-            //Console.WriteLine($"EditorTextRenderer: Rebound shader program {_shaderProgram.GetHashCode()} for text '{text}'");
-            ((OpenGLRenderContext)_renderContext).ActiveTexture(_renderContext.Enums.Texture0);
+            if (_pipeline.IsValid)
+                _renderContext.BindPipeline(_pipeline);
+            else
+                _shaderProgram.Use();
             _renderContext.ColorMask(true, true, true, true);
             _renderContext.DepthMask(false);
             _renderContext.SetConstants(ConstantSlot.Ui, new UiCB
@@ -112,12 +106,6 @@ namespace SiegeEngine.Core.GPU.Renderers
             });
             _renderContext.Viewport(0, 0, (uint)width, (uint)height);
             _renderContext.Disable(_renderContext.Enums.ScissorTest);
-            //Console.WriteLine($"EditorTextRenderer: Reset viewport to {width}x{height}, disabled scissor test for text '{text}'");
-            bool isVao = ((OpenGLRenderContext)_renderContext).IsVertexArray(_textVao);
-            bool isVbo = ((OpenGLRenderContext)_renderContext).IsBuffer(_textVbo);
-            //Console.WriteLine($"EditorTextRenderer: VAO {_textVao} IsValid: {isVao}, VBO {_textVbo} IsValid: {isVbo} for text '{text}'");
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(_textVao);
-            //Console.WriteLine($"EditorTextRenderer: Rebound VAO {_textVao} for text '{text}'");
             RenderTextPass(text, startX, adjustedStartY, width, height, fontSize, textColor ?? new Vector4(1.0f, 1.0f, 1.0f, 1.0f));
         }
         private void RenderTextPass(string text, float startX, float startY, int width, int height, float fontSize, Vector4 color, bool useTexture = true)
@@ -125,23 +113,18 @@ namespace SiegeEngine.Core.GPU.Renderers
             float currentX = startX;
             float spacing = -2.0f;
             Matrix4x4 transform = Matrix4x4.Identity;
-            ((OpenGLRenderContext)_renderContext).UseProgram(0);
-            _shaderProgram.Use();
-            //Console.WriteLine($"EditorTextRenderer: Bound shader program {_shaderProgram.GetHashCode()} for text '{text}'");
+            if (_pipeline.IsValid)
+                _renderContext.BindPipeline(_pipeline);
+            else
+                _shaderProgram.Use();
             for (int i = 0; i < text.Length; i++)
             {
                 char c = text[i];
                 if (!_charTextures.ContainsKey(c))
-                {
-                    //Console.WriteLine($"EditorTextRenderer: Character '{c}' not found, using space as fallback.");
                     c = ' ';
-                }
                 var charData = _fontRenderer.GetCharacterData(c);
                 if (charData == null)
-                {
-                    //Console.WriteLine($"EditorTextRenderer: Character data for '{c}' is null.");
                     continue;
-                }
                 float charWidth = charData.Width * (fontSize / 12.0f);
                 float charHeight = charData.Height * (fontSize / 12.0f);
                 float charLeft = currentX;
@@ -155,40 +138,15 @@ namespace SiegeEngine.Core.GPU.Renderers
                     charRight, charTop, color.X, color.Y, color.Z, color.W, 1.0f, 0.0f,
                     charLeft, charTop, color.X, color.Y, color.Z, color.W, 0.0f, 0.0f
                 };
-                ((OpenGLRenderContext)_renderContext).BindVertexArray(_textVao);
-                ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, _textVbo);
-                //Console.WriteLine($"EditorTextRenderer: Bound VAO {_textVao}, VBO {_textVbo} for char '{c}'");
-                for (uint j = 0; j < 16; j++)
-                {
-                    ((OpenGLRenderContext)_renderContext).DisableVertexAttribArray(j);
-                }
-                ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(0);
-                ((OpenGLRenderContext)_renderContext).VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 8 * sizeof(float), (void*)0);
-                ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(1);
-                ((OpenGLRenderContext)_renderContext).VertexAttribPointer(1, 4, _renderContext.Enums.Float, false, 8 * sizeof(float), (void*)(2 * sizeof(float)));
-                ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(2);
-                ((OpenGLRenderContext)_renderContext).VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-                //Console.WriteLine($"EditorTextRenderer: Reinitialized vertex attribs for char '{c}', VAO {_textVao}, VBO {_textVbo}");
                 fixed (float* ptr = textVertices)
                 {
-                    ((OpenGLRenderContext)_renderContext).BufferSubData(_renderContext.Enums.ArrayBuffer, 0, (uint)(textVertices.Length * sizeof(float)), ptr);
+                    _renderContext.UpdateBuffer(_textVbo, new ReadOnlySpan<byte>((byte*)ptr, textVertices.Length * sizeof(float)));
                 }
-                //Console.WriteLine($"EditorTextRenderer: Updated VBO data for char '{c}', Size: {textVertices.Length * sizeof(float)} bytes");
+                _renderContext.BindVertexBuffer(_textVbo, 0, 8 * sizeof(float), 0);
                 if (useTexture)
                 {
                     uint textureId = _charTextures[c];
-                    bool isTextureValid = ((OpenGLRenderContext)_renderContext).IsTexture(textureId);
-                    if (!isTextureValid)
-                    {
-                        //Console.WriteLine($"EditorTextRenderer: Invalid texture {textureId} for char '{c}'");
-                        ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, 0);
-                    }
-                    else
-                    {
-                        ((OpenGLRenderContext)_renderContext).ActiveTexture(_renderContext.Enums.Texture0);
-                        ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, textureId);
-                        //Console.WriteLine($"EditorTextRenderer: Bound texture {textureId} for char '{c}'");
-                    }
+                    _renderContext.BindTextureSlot(TextureSlot.Color, textureId != 0 ? _renderContext.ImportTexture(textureId, _renderContext.Enums.Texture2D) : default);
                     _renderContext.SetConstants(ConstantSlot.Ui, new UiCB
                     {
                         Transform = transform,
@@ -198,7 +156,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 }
                 else
                 {
-                    ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, 0);
+                    _renderContext.BindTextureSlot(TextureSlot.Color, default);
                     _renderContext.SetConstants(ConstantSlot.Ui, new UiCB
                     {
                         Transform = transform,
@@ -206,27 +164,20 @@ namespace SiegeEngine.Core.GPU.Renderers
                         UseTexture = 0f
                     });
                 }
-                //Console.WriteLine($"EditorTextRenderer: Set uniforms for char '{c}', uColor: ({color.X}, {color.Y}, {color.Z}, {color.W})");
                 _renderContext.DrawArrays(_renderContext.Enums.TriangleFan, 0, 4);
-                int error = _renderContext.GetError();
-                if (error != _renderContext.Enums.NoError)
-                {
-                    //Console.WriteLine($"EditorTextRenderer: OpenGL error after drawing char '{c}': {error}");
-                }
-                ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, 0);
-                ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
-                ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, 0);
                 currentX += charWidth + spacing;
-                //Console.WriteLine($"EditorTextRenderer: Rendered char '{c}' at ({charLeft:F3}, {charTop:F3}) to ({charRight:F3}, {charBottom:F3}), Texture: {(_charTextures.ContainsKey(c) ? _charTextures[c] : 0)}, Unit: Texture0, UseTexture: {useTexture}, Shader: {_shaderProgram.GetHashCode()}");
             }
         }
         public void Dispose()
         {
-            ((OpenGLRenderContext)_renderContext).DeleteVertexArray(_textVao);
-            ((OpenGLRenderContext)_renderContext).DeleteBuffer(_textVbo);
+            if (_textVbo.IsValid)
+                _renderContext.Destroy(_textVbo);
+            if (_pipeline.IsValid)
+                _renderContext.Destroy(_pipeline);
             foreach (var texture in _charTextures.Values)
             {
-                ((OpenGLRenderContext)_renderContext).DeleteTexture(texture);
+                if (texture != 0)
+                    _renderContext.Destroy(_renderContext.ImportTexture(texture, _renderContext.Enums.Texture2D));
             }
         }
     }

@@ -26,6 +26,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public abstract int Texture0 { get; }
         public abstract int InternalRgb { get; }
         public abstract int InternalRgba { get; }
+        public abstract int InternalRgba16f { get; }
         public abstract int PixelRgb { get; }
         public abstract int PixelRgba { get; }
         public abstract int PixelBgr { get; }

@@ -15,41 +15,32 @@ namespace SiegeEngine.Core.GPU.PostProcess
     public unsafe class ColorComposePass : IDisposable
     {
         private const int MipCount = 4;
-        private const int GL_RGBA16F = 0x881A;
 
         private readonly IRenderContext _rc;
         private readonly AbstractRenderEnums _e;
 
-        private ShaderProgram _extract;
-        private ShaderProgram _down;
-        private ShaderProgram _up;
-        private ShaderProgram _compose;
-        private ShaderProgram _luma;
-        private ShaderProgram _lumaDown;
-        private ShaderProgram _adapt;
-        private uint _emptyVao;
+        private GpuHandle _extractPipe;
+        private GpuHandle _downPipe;
+        private GpuHandle _upPipe;
+        private GpuHandle _composePipe;
+        private GpuHandle _lumaPipe;
+        private GpuHandle _lumaDownPipe;
+        private GpuHandle _adaptPipe;
         private long _lastAdaptStamp;
         private bool _hasAdapted;
 
         private int _width;
         private int _height;
 
-        private uint _extractFbo;
-        private uint _extractColor;
-        private readonly uint[] _mipFbo = new uint[MipCount];
-        private readonly uint[] _mipColor = new uint[MipCount];
+        private GpuHandle _extract;
+        private readonly GpuHandle[] _mip = new GpuHandle[MipCount];
         private readonly int[] _mipW = new int[MipCount];
         private readonly int[] _mipH = new int[MipCount];
-        private uint _composeFbo;
-        private uint _composeColor;
-        private uint _lumaFbo;
-        private uint _lumaColor;
-        private uint _lumaDownFbo;
-        private uint _lumaDownColor;
-        private uint _adaptFboA;
-        private uint _adaptColorA;
-        private uint _adaptFboB;
-        private uint _adaptColorB;
+        private GpuHandle _compose;
+        private GpuHandle _luma;
+        private GpuHandle _lumaDown;
+        private GpuHandle _adaptA;
+        private GpuHandle _adaptB;
         private bool _adaptPing;
 
         private bool _disposed;
@@ -58,17 +49,15 @@ namespace SiegeEngine.Core.GPU.PostProcess
         {
             _rc = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _e = _rc.Enums;
-            _extract = ShaderProgram.FromId(_rc, ShaderId.CcExtract);
-            _down = ShaderProgram.FromId(_rc, ShaderId.CcDownsample);
-            _up = ShaderProgram.FromId(_rc, ShaderId.CcUpsample);
-            _compose = ShaderProgram.FromId(_rc, ShaderId.CcCompose);
-            _luma = ShaderProgram.FromId(_rc, ShaderId.CcLuma);
-            _lumaDown = ShaderProgram.FromId(_rc, ShaderId.CcLumaDown);
-            _adapt = ShaderProgram.FromId(_rc, ShaderId.CcAdapt);
-            _emptyVao = ((OpenGLRenderContext)_rc).GenVertexArray();
+            _extractPipe = _rc.CreatePipeline(ShaderCatalog.Describe(ShaderId.CcExtract, _rc));
+            _downPipe = _rc.CreatePipeline(ShaderCatalog.Describe(ShaderId.CcDownsample, _rc));
+            _upPipe = _rc.CreatePipeline(ShaderCatalog.Describe(ShaderId.CcUpsample, _rc));
+            _composePipe = _rc.CreatePipeline(ShaderCatalog.Describe(ShaderId.CcCompose, _rc));
+            _lumaPipe = _rc.CreatePipeline(ShaderCatalog.Describe(ShaderId.CcLuma, _rc));
+            _lumaDownPipe = _rc.CreatePipeline(ShaderCatalog.Describe(ShaderId.CcLumaDown, _rc));
+            _adaptPipe = _rc.CreatePipeline(ShaderCatalog.Describe(ShaderId.CcAdapt, _rc));
             _lastAdaptStamp = Stopwatch.GetTimestamp();
         }
-
 
         void BindPost(in ColorComposeState state, float invW = 1f, float invH = 1f, float intensity = 1f, int hasBloom = 0, int hasPrev = 0, float adapt = 0f)
         {
@@ -92,7 +81,7 @@ namespace SiegeEngine.Core.GPU.PostProcess
             });
         }
 
-        public uint ResolveColor => _composeColor;
+        public uint ResolveColor => _compose.Id;
 
         public void Apply(uint sourceColor, int width, int height, ColorComposeState state)
         {
@@ -112,81 +101,58 @@ namespace SiegeEngine.Core.GPU.PostProcess
             uint bloomTex = 0;
             if (state.BloomEnabled && state.BloomIntensity > 0.001f)
             {
-                ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _extractFbo);
+                _rc.BindRenderTarget(_extract);
                 _rc.Viewport(0, 0, (uint)_width, (uint)_height);
-                _extract.Use();
+                _rc.BindPipeline(_extractPipe);
                 BindPost(state, 1f / Math.Max(_width, 1), 1f / Math.Max(_height, 1));
-                Bind0(sourceColor);
-                _extract.SetUniform("uColor", 0);
+                _rc.BindTextureSlot(0, _rc.ImportTexture(sourceColor, _e.Texture2D), "uColor");
                 DrawFullscreen();
 
-                uint src = _extractColor;
+                uint src = _extract.Id;
                 int srcW = _width;
                 int srcH = _height;
                 for (int i = 0; i < MipCount; i++)
                 {
-                    ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _mipFbo[i]);
+                    _rc.BindRenderTarget(_mip[i]);
                     _rc.Viewport(0, 0, (uint)_mipW[i], (uint)_mipH[i]);
-                    _down.Use();
+                    _rc.BindPipeline(_downPipe);
                     BindPost(state, 1f / Math.Max(srcW, 1), 1f / Math.Max(srcH, 1));
-                    Bind0(src);
-                    _down.SetUniform("uColor", 0);
+                    _rc.BindTextureSlot(0, _rc.ImportTexture(src, _e.Texture2D), "uColor");
                     DrawFullscreen();
-                    src = _mipColor[i];
+                    src = _mip[i].Id;
                     srcW = _mipW[i];
                     srcH = _mipH[i];
                 }
 
                 for (int i = MipCount - 2; i >= 0; i--)
                 {
-                    ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _mipFbo[i]);
+                    _rc.BindRenderTarget(_mip[i]);
                     _rc.Viewport(0, 0, (uint)_mipW[i], (uint)_mipH[i]);
-                    _up.Use();
-                    Bind0(_mipColor[i + 1]);
-                    ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 1);
-                    ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, _mipColor[i]);
-                    _up.SetUniform("uLow", 0);
-                    _up.SetUniform("uHigh", 1);
+                    _rc.BindPipeline(_upPipe);
+                    _rc.BindTextureSlot(0, _mip[i + 1], "uLow");
+                    _rc.BindTextureSlot(1, _mip[i], "uHigh");
                     BindPost(state, 1f / Math.Max(_mipW[i + 1], 1), 1f / Math.Max(_mipH[i + 1], 1), 1f);
                     DrawFullscreen();
-                    ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 1);
-                    ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, 0);
+                    _rc.BindTextureSlot(1, default);
                 }
 
-                bloomTex = _mipColor[0];
+                bloomTex = _mip[0].Id;
             }
 
             uint adaptedTex = 0;
             if (state.AutoExposure)
                 adaptedTex = MeterView(sourceColor, state);
 
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _composeFbo);
+            _rc.BindRenderTarget(_compose);
             _rc.Viewport(0, 0, (uint)_width, (uint)_height);
-            _compose.Use();
+            _rc.BindPipeline(_composePipe);
             BindPost(state, 1f / Math.Max(_width, 1), 1f / Math.Max(_height, 1), hasBloom: bloomTex != 0 ? 1 : 0);
-            Bind0(sourceColor);
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 1);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, bloomTex);
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 2);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, adaptedTex);
-            _compose.SetUniform("uColor", 0);
-            _compose.SetUniform("uBloom", 1);
-            _compose.SetUniform("uAdaptedLuma", 2);
-            _compose.SetUniform("uHasBloom", bloomTex != 0 ? 1 : 0);
-            _compose.SetUniform("uBloomIntensity", state.BloomIntensity);
-            _compose.SetUniform("uExposure", state.Exposure);
-            _compose.SetUniform("uTonemap", (int)state.Tonemap);
-            _compose.SetUniform("uContrast", state.Contrast);
-            _compose.SetUniform("uSaturation", state.Saturation);
-            _compose.SetUniform("uTemperature", state.Temperature);
-            _compose.SetUniform("uAutoExposure", state.AutoExposure ? 1 : 0);
-            _compose.SetUniform("uTargetLuma", state.TargetLuma);
+            _rc.BindTextureSlot(0, _rc.ImportTexture(sourceColor, _e.Texture2D), "uColor");
+            _rc.BindTextureSlot(1, bloomTex != 0 ? _rc.ImportTexture(bloomTex, _e.Texture2D) : default, "uBloom");
+            _rc.BindTextureSlot(2, adaptedTex != 0 ? _rc.ImportTexture(adaptedTex, _e.Texture2D) : default, "uAdaptedLuma");
             DrawFullscreen();
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 2);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, 0);
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 1);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, 0);
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0);
+            _rc.BindTextureSlot(2, default);
+            _rc.BindTextureSlot(1, default);
         }
 
         public void Dispose()
@@ -194,46 +160,37 @@ namespace SiegeEngine.Core.GPU.PostProcess
             if (_disposed) return;
             _disposed = true;
             DestroyTargets();
-            _extract?.Dispose();
-            _down?.Dispose();
-            _up?.Dispose();
-            _compose?.Dispose();
-            _luma?.Dispose();
-            _lumaDown?.Dispose();
-            _adapt?.Dispose();
-            _extract = null;
-            _down = null;
-            _up = null;
-            _compose = null;
-            _luma = null;
-            _lumaDown = null;
-            _adapt = null;
-            if (_emptyVao != 0)
-            {
-                ((OpenGLRenderContext)_rc).DeleteVertexArray(_emptyVao);
-                _emptyVao = 0;
-            }
+            DestroyPipe(ref _extractPipe);
+            DestroyPipe(ref _downPipe);
+            DestroyPipe(ref _upPipe);
+            DestroyPipe(ref _composePipe);
+            DestroyPipe(ref _lumaPipe);
+            DestroyPipe(ref _lumaDownPipe);
+            DestroyPipe(ref _adaptPipe);
         }
 
+        private void DestroyPipe(ref GpuHandle pipe)
+        {
+            if (!pipe.IsValid) return;
+            _rc.Destroy(pipe);
+            pipe = default;
+        }
 
         private uint MeterView(uint sourceColor, ColorComposeState state)
         {
             int lumaW = Math.Max(_width / 8, 8);
             int lumaH = Math.Max(_height / 8, 8);
 
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _lumaFbo);
+            _rc.BindRenderTarget(_luma);
             _rc.Viewport(0, 0, (uint)lumaW, (uint)lumaH);
-            _luma.Use();
-            Bind0(sourceColor);
-            _luma.SetUniform("uColor", 0);
+            _rc.BindPipeline(_lumaPipe);
+            _rc.BindTextureSlot(0, _rc.ImportTexture(sourceColor, _e.Texture2D), "uColor");
             DrawFullscreen();
 
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _lumaDownFbo);
+            _rc.BindRenderTarget(_lumaDown);
             _rc.Viewport(0, 0, 8, 8);
-            _lumaDown.Use();
-            Bind0(_lumaColor);
-            _lumaDown.SetUniform("uColor", 0);
-            _lumaDown.SetUniform("uInvResolution", 1f / lumaW, 1f / lumaH);
+            _rc.BindPipeline(_lumaDownPipe);
+            _rc.BindTextureSlot(0, _luma, "uColor");
             DrawFullscreen();
 
             long now = Stopwatch.GetTimestamp();
@@ -243,43 +200,37 @@ namespace SiegeEngine.Core.GPU.PostProcess
             float tau = MathF.Max(state.AdaptSeconds, 0.05f);
             float k = 1f - MathF.Exp(-dt / tau);
 
-            uint prevTex = _adaptPing ? _adaptColorB : _adaptColorA;
-            uint destFbo = _adaptPing ? _adaptFboA : _adaptFboB;
-            uint destTex = _adaptPing ? _adaptColorA : _adaptColorB;
+            GpuHandle prev = _adaptPing ? _adaptB : _adaptA;
+            GpuHandle dest = _adaptPing ? _adaptA : _adaptB;
 
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, destFbo);
+            _rc.BindRenderTarget(dest);
             _rc.Viewport(0, 0, 1, 1);
-            _adapt.Use();
+            _rc.BindPipeline(_adaptPipe);
             _rc.SetConstants(ConstantSlot.Post, new PostCB
             {
                 Adapt = k,
                 HasPrev = _hasAdapted ? 1 : 0
             });
-            Bind0(_lumaDownColor);
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 1);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, _hasAdapted ? prevTex : destTex);
-            _adapt.SetUniform("uCurrent", 0);
-            _adapt.SetUniform("uPrevious", 1);
+            _rc.BindTextureSlot(0, _lumaDown, "uCurrent");
+            _rc.BindTextureSlot(1, _hasAdapted ? prev : dest, "uPrevious");
             DrawFullscreen();
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 1);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, 0);
+            _rc.BindTextureSlot(1, default);
 
             _adaptPing = !_adaptPing;
             _hasAdapted = true;
-            return destTex;
+            return dest.Id;
         }
 
         private void EnsureTargets(int width, int height)
         {
-            if (_composeFbo != 0 && _width == width && _height == height)
+            if (_compose.IsValid && _width == width && _height == height)
                 return;
 
             DestroyTargets();
             _width = width;
             _height = height;
 
-            _extractColor = CreateColor(width, height, preferHdr: true);
-            _extractFbo = CreateFbo(_extractColor);
+            _extract = ColorRt(width, height, true);
 
             int w = Math.Max(width / 2, 1);
             int h = Math.Max(height / 2, 1);
@@ -287,58 +238,29 @@ namespace SiegeEngine.Core.GPU.PostProcess
             {
                 _mipW[i] = w;
                 _mipH[i] = h;
-                _mipColor[i] = CreateColor(w, h, preferHdr: true);
-                _mipFbo[i] = CreateFbo(_mipColor[i]);
+                _mip[i] = ColorRt(w, h, true);
                 w = Math.Max(w / 2, 1);
                 h = Math.Max(h / 2, 1);
             }
 
-            _composeColor = CreateColor(width, height, preferHdr: false);
-            _composeFbo = CreateFbo(_composeColor);
-
-            _lumaColor = CreateColor(Math.Max(width / 8, 8), Math.Max(height / 8, 8), preferHdr: true);
-            _lumaFbo = CreateFbo(_lumaColor);
-            _lumaDownColor = CreateColor(8, 8, preferHdr: true);
-            _lumaDownFbo = CreateFbo(_lumaDownColor);
-            _adaptColorA = CreateColor(1, 1, preferHdr: true);
-            _adaptFboA = CreateFbo(_adaptColorA);
-            _adaptColorB = CreateColor(1, 1, preferHdr: true);
-            _adaptFboB = CreateFbo(_adaptColorB);
+            _compose = ColorRt(width, height, false);
+            _luma = ColorRt(Math.Max(width / 8, 8), Math.Max(height / 8, 8), true);
+            _lumaDown = ColorRt(8, 8, true);
+            _adaptA = ColorRt(1, 1, true);
+            _adaptB = ColorRt(1, 1, true);
             _hasAdapted = false;
         }
 
-        private uint CreateColor(int width, int height, bool preferHdr)
+        private GpuHandle ColorRt(int width, int height, bool hdr)
         {
-            ((OpenGLRenderContext)_rc).GenTextures(1, out uint tex);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, tex);
-            if (preferHdr)
+            GpuHandle rt = _rc.CreateRenderTarget(new RenderTargetDesc
             {
-                ((OpenGLRenderContext)_rc).TexImage2D(_e.Texture2D, 0, GL_RGBA16F, (uint)width, (uint)height, 0, _e.PixelRgba, _e.Float, null);
-            }
-            else
-            {
-                ((OpenGLRenderContext)_rc).TexImage2D(_e.Texture2D, 0, _e.InternalRgba, (uint)width, (uint)height, 0, _e.PixelRgba, _e.UnsignedByte, null);
-            }
-            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureMinFilter, _e.Linear);
-            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureMagFilter, _e.Linear);
-            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureWrapS, _e.ClampToEdge);
-            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureWrapT, _e.ClampToEdge);
-            return tex;
-        }
-
-        private uint CreateFbo(uint color)
-        {
-            ((OpenGLRenderContext)_rc).GenFramebuffers(1, out uint fbo);
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, fbo);
-            ((OpenGLRenderContext)_rc).FramebufferTexture2D(_e.Framebuffer, _e.ColorAttachment0, _e.Texture2D, color, 0);
-            ((OpenGLRenderContext)_rc).DrawBuffer(_e.ColorAttachment0);
-            return fbo;
-        }
-
-        private void Bind0(uint tex)
-        {
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, tex);
+                Width = width,
+                Height = height,
+                ColorFormat = hdr ? _e.InternalRgba16f : _e.InternalRgba
+            });
+            _rc.SetTextureParams(rt, _e.Linear, _e.Linear, _e.ClampToEdge, _e.ClampToEdge);
+            return rt;
         }
 
         private void DrawFullscreen()
@@ -352,43 +274,28 @@ namespace SiegeEngine.Core.GPU.PostProcess
 
         private void DestroyTargets()
         {
-            DeleteFbo(ref _extractFbo);
-            DeleteTex(ref _extractColor);
+            DestroyRt(ref _extract);
             for (int i = 0; i < MipCount; i++)
             {
-                DeleteFbo(ref _mipFbo[i]);
-                DeleteTex(ref _mipColor[i]);
+                DestroyRt(ref _mip[i]);
                 _mipW[i] = 0;
                 _mipH[i] = 0;
             }
-            DeleteFbo(ref _composeFbo);
-            DeleteTex(ref _composeColor);
-            DeleteFbo(ref _lumaFbo);
-            DeleteTex(ref _lumaColor);
-            DeleteFbo(ref _lumaDownFbo);
-            DeleteTex(ref _lumaDownColor);
-            DeleteFbo(ref _adaptFboA);
-            DeleteTex(ref _adaptColorA);
-            DeleteFbo(ref _adaptFboB);
-            DeleteTex(ref _adaptColorB);
+            DestroyRt(ref _compose);
+            DestroyRt(ref _luma);
+            DestroyRt(ref _lumaDown);
+            DestroyRt(ref _adaptA);
+            DestroyRt(ref _adaptB);
             _width = 0;
             _height = 0;
             _hasAdapted = false;
         }
 
-        private void DeleteFbo(ref uint fbo)
+        private void DestroyRt(ref GpuHandle rt)
         {
-            if (fbo == 0) return;
-            uint id = fbo;
-            ((OpenGLRenderContext)_rc).DeleteFramebuffers(1, &id);
-            fbo = 0;
-        }
-
-        private void DeleteTex(ref uint tex)
-        {
-            if (tex == 0) return;
-            ((OpenGLRenderContext)_rc).DeleteTexture(tex);
-            tex = 0;
+            if (!rt.IsValid) return;
+            _rc.Destroy(rt);
+            rt = default;
         }
     }
 }

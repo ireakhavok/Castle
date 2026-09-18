@@ -18,31 +18,21 @@ namespace SiegeEngine.Core.GPU.PostProcess
         private readonly IRenderContext _rc;
         private readonly AbstractRenderEnums _e;
 
-        private ShaderProgram _copy;
-        private ShaderProgram _fxaa;
-        private ShaderProgram _smaaEdge;
-        private ShaderProgram _smaaWeight;
-        private ShaderProgram _smaaBlend;
-        private ShaderProgram _taa;
-        private uint _emptyVao;
+        private GpuHandle _copyPipe;
+        private GpuHandle _fxaaPipe;
+        private GpuHandle _smaaEdgePipe;
+        private GpuHandle _smaaWeightPipe;
+        private GpuHandle _smaaBlendPipe;
+        private GpuHandle _taaPipe;
 
         private int _width;
         private int _height;
 
-        private uint _worldFbo;
-        private uint _worldColor;
-        private uint _worldDepthTex;
-        private uint _worldDepthRb;
-        private bool _worldDepthIsTexture;
-
-        private uint _edgeFbo;
-        private uint _edgeColor;
-        private uint _weightFbo;
-        private uint _weightColor;
-        private uint _historyFbo;
-        private uint _historyColor;
-        private uint _resolveFbo;
-        private uint _resolveColor;
+        private GpuHandle _world;
+        private GpuHandle _edge;
+        private GpuHandle _weight;
+        private GpuHandle _history;
+        private GpuHandle _resolve;
 
         private int _savedFbo;
         private int _savedVpX;
@@ -67,13 +57,12 @@ namespace SiegeEngine.Core.GPU.PostProcess
         {
             _rc = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _e = _rc.Enums;
-            _copy = ShaderProgram.FromId(_rc, ShaderId.AaCopy);
-            _fxaa = ShaderProgram.FromId(_rc, ShaderId.AaFxaa);
-            _smaaEdge = ShaderProgram.FromId(_rc, ShaderId.AaSmaa);
-            _smaaWeight = ShaderProgram.FromId(_rc, ShaderId.AaSmaaWeight);
-            _smaaBlend = ShaderProgram.FromId(_rc, ShaderId.AaSmaaBlend);
-            _taa = ShaderProgram.FromId(_rc, ShaderId.AaTaa);
-            _emptyVao = ((OpenGLRenderContext)_rc).GenVertexArray();
+            _copyPipe = _rc.CreatePipeline(ShaderCatalog.Describe(ShaderId.AaCopy, _rc));
+            _fxaaPipe = _rc.CreatePipeline(ShaderCatalog.Describe(ShaderId.AaFxaa, _rc));
+            _smaaEdgePipe = _rc.CreatePipeline(ShaderCatalog.Describe(ShaderId.AaSmaa, _rc));
+            _smaaWeightPipe = _rc.CreatePipeline(ShaderCatalog.Describe(ShaderId.AaSmaaWeight, _rc));
+            _smaaBlendPipe = _rc.CreatePipeline(ShaderCatalog.Describe(ShaderId.AaSmaaBlend, _rc));
+            _taaPipe = _rc.CreatePipeline(ShaderCatalog.Describe(ShaderId.AaTaa, _rc));
         }
 
         public void DiscardHistory()
@@ -81,18 +70,18 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _hasHistory = false;
         }
 
-        public uint WorldColor => _worldColor;
-        public uint WorldDepth => _worldDepthTex;
-        public bool WorldDepthIsTexture => _worldDepthIsTexture;
+        public uint WorldColor => _world.Id;
+        public uint WorldDepth => _rc.GetRenderTargetDepth(_world).Id;
+        public bool WorldDepthIsTexture => _rc.GetRenderTargetDepth(_world).IsValid;
         public int TargetWidth => _width;
         public int TargetHeight => _height;
         public bool IsWrappingWorld => _insideWorld;
 
         public void ReplaceWorldColor(uint sourceColor)
         {
-            if (_disposed || _worldFbo == 0 || sourceColor == 0 || _width <= 0 || _height <= 0)
+            if (_disposed || !_world.IsValid || sourceColor == 0 || _width <= 0 || _height <= 0)
                 return;
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _worldFbo);
+            _rc.BindRenderTarget(_world);
             _rc.Viewport(0, 0, (uint)_width, (uint)_height);
             _rc.Disable(_e.DepthTest);
             _rc.DepthMask(false);
@@ -120,10 +109,9 @@ namespace SiegeEngine.Core.GPU.PostProcess
                 Console.WriteLine($"[AntiAliasing] {mode} world={tw}x{th} present=({_savedVpX},{_savedVpY},{_savedVpW}x{_savedVpH}) fbo={_savedFbo}");
             }
 
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _worldFbo);
+            _rc.BindRenderTarget(_world);
             _rc.Viewport(0, 0, (uint)tw, (uint)th);
             _rc.Disable(_e.ScissorTest);
-            ((OpenGLRenderContext)_rc).DrawBuffer(_e.ColorAttachment0);
             _rc.Enable(_e.DepthTest);
             _rc.DepthMask(true);
             _rc.DepthFunc(_e.Less);
@@ -152,34 +140,34 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _rc.ColorMask(true, true, true, true);
             _rc.Viewport(0, 0, (uint)_width, (uint)_height);
 
-            if (mode == AntiAliasingMode.TAA && !_worldDepthIsTexture)
+            if (mode == AntiAliasingMode.TAA && !WorldDepthIsTexture)
                 mode = AntiAliasingMode.FXAA;
 
             switch (mode)
             {
                 case AntiAliasingMode.FXAA:
                     BindPresent();
-                    DrawFxaa(_worldColor);
+                    DrawFxaa(_world.Id);
                     break;
                 case AntiAliasingMode.SMAA:
                     DrawSmaa();
                     BindPresent();
-                    DrawCopy(_resolveColor);
+                    DrawCopy(_resolve.Id);
                     break;
                 case AntiAliasingMode.TAA:
                     DrawTaa(view, projection);
-                    ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _historyFbo);
+                    _rc.BindRenderTarget(_history);
                     _rc.Viewport(0, 0, (uint)_width, (uint)_height);
-                    DrawCopy(_resolveColor);
+                    DrawCopy(_resolve.Id);
                     BindPresent();
-                    DrawCopy(_resolveColor);
+                    DrawCopy(_resolve.Id);
                     _prevView = view;
                     _prevProjection = projection;
                     _hasHistory = true;
                     break;
                 default:
                     BindPresent();
-                    DrawCopy(_worldColor);
+                    DrawCopy(_world.Id);
                     break;
             }
 
@@ -191,23 +179,19 @@ namespace SiegeEngine.Core.GPU.PostProcess
             if (_disposed) return;
             _disposed = true;
             DestroyTargets();
-            _copy?.Dispose();
-            _fxaa?.Dispose();
-            _smaaEdge?.Dispose();
-            _smaaWeight?.Dispose();
-            _smaaBlend?.Dispose();
-            _taa?.Dispose();
-            _copy = null;
-            _fxaa = null;
-            _smaaEdge = null;
-            _smaaWeight = null;
-            _smaaBlend = null;
-            _taa = null;
-            if (_emptyVao != 0)
-            {
-                ((OpenGLRenderContext)_rc).DeleteVertexArray(_emptyVao);
-                _emptyVao = 0;
-            }
+            DestroyPipe(ref _copyPipe);
+            DestroyPipe(ref _fxaaPipe);
+            DestroyPipe(ref _smaaEdgePipe);
+            DestroyPipe(ref _smaaWeightPipe);
+            DestroyPipe(ref _smaaBlendPipe);
+            DestroyPipe(ref _taaPipe);
+        }
+
+        private void DestroyPipe(ref GpuHandle pipe)
+        {
+            if (!pipe.IsValid) return;
+            _rc.Destroy(pipe);
+            pipe = default;
         }
 
         private void CapturePresentTarget()
@@ -241,14 +225,16 @@ namespace SiegeEngine.Core.GPU.PostProcess
 
         private void BindPresent()
         {
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, (uint)Math.Max(_savedFbo, 0));
+            if (_savedFbo <= 0)
+                _rc.BindDefaultRenderTarget();
+            else
+                _rc.BindRenderTarget(new GpuHandle((uint)_savedFbo, 1, GpuResourceKind.Texture));
             _rc.Viewport(_savedVpX, _savedVpY, (uint)Math.Max(_savedVpW, 1), (uint)Math.Max(_savedVpH, 1));
         }
 
         private void RestorePresentState()
         {
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, (uint)Math.Max(_savedFbo, 0));
-            _rc.Viewport(_savedVpX, _savedVpY, (uint)Math.Max(_savedVpW, 1), (uint)Math.Max(_savedVpH, 1));
+            BindPresent();
             _rc.Scissor(_savedScX, _savedScY, (uint)Math.Max(_savedScW, 1), (uint)Math.Max(_savedScH, 1));
             if (_savedScissor) _rc.Enable(_e.ScissorTest);
             else _rc.Disable(_e.ScissorTest);
@@ -265,12 +251,12 @@ namespace SiegeEngine.Core.GPU.PostProcess
                 _rc.Disable(_e.Blend);
             }
             _rc.ColorMask(true, true, true, true);
-                        ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0);
+            _rc.BindTextureSlot(0, default);
         }
 
         private void EnsureTargets(int width, int height)
         {
-            if (_worldFbo != 0 && _width == width && _height == height)
+            if (_world.IsValid && _width == width && _height == height)
                 return;
 
             DestroyTargets();
@@ -278,88 +264,42 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _height = height;
             _hasHistory = false;
 
-            _worldColor = CreateColorTex(width, height, _e.Linear);
-            _worldFbo = CreateFbo(_worldColor);
-            _worldDepthIsTexture = TryAttachDepthTexture(_worldFbo, width, height, out _worldDepthTex);
-            if (!_worldDepthIsTexture)
+            _world = ColorDepth(width, height, _e.Linear);
+            _edge = ColorOnly(width, height, _e.Nearest);
+            _weight = ColorOnly(width, height, _e.Nearest);
+            _resolve = ColorOnly(width, height, _e.Linear);
+            _history = ColorOnly(width, height, _e.Linear);
+            _rc.BindDefaultRenderTarget();
+        }
+
+        private GpuHandle ColorDepth(int width, int height, int filter)
+        {
+            GpuHandle rt = _rc.CreateRenderTarget(new RenderTargetDesc
             {
-                ((OpenGLRenderContext)_rc).GenRenderbuffers(1, out _worldDepthRb);
-                ((OpenGLRenderContext)_rc).BindRenderbuffer(_e.Renderbuffer, _worldDepthRb);
-                ((OpenGLRenderContext)_rc).RenderbufferStorage(_e.Renderbuffer, _e.DepthComponent24, (uint)width, (uint)height);
-                ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _worldFbo);
-                ((OpenGLRenderContext)_rc).FramebufferRenderbuffer(_e.Framebuffer, _e.DepthAttachment, _e.Renderbuffer, _worldDepthRb);
-            }
-            CheckFbo("world");
-
-            _edgeColor = CreateColorTex(width, height, _e.Nearest);
-            _edgeFbo = CreateFbo(_edgeColor);
-            CheckFbo("smaa-edge");
-
-            _weightColor = CreateColorTex(width, height, _e.Nearest);
-            _weightFbo = CreateFbo(_weightColor);
-            CheckFbo("smaa-weight");
-
-            _resolveColor = CreateColorTex(width, height, _e.Linear);
-            _resolveFbo = CreateFbo(_resolveColor);
-            CheckFbo("resolve");
-
-            _historyColor = CreateColorTex(width, height, _e.Linear);
-            _historyFbo = CreateFbo(_historyColor);
-            CheckFbo("history");
-
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, 0);
+                Width = width,
+                Height = height,
+                ColorFormat = _e.InternalRgba,
+                DepthTexture = true,
+                DepthFormat = _e.DepthComponent24
+            });
+            _rc.SetTextureParams(rt, filter, filter, _e.ClampToEdge, _e.ClampToEdge);
+            GpuHandle depth = _rc.GetRenderTargetDepth(rt);
+            if (depth.IsValid)
+                _rc.SetTextureParams(depth, _e.Nearest, _e.Nearest, _e.ClampToEdge, _e.ClampToEdge);
+            return rt;
         }
 
-        private uint CreateColorTex(int width, int height, int filter)
+        private GpuHandle ColorOnly(int width, int height, int filter)
         {
-            ((OpenGLRenderContext)_rc).GenTextures(1, out uint tex);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, tex);
-            ((OpenGLRenderContext)_rc).TexImage2D(_e.Texture2D, 0, _e.InternalRgba, (uint)width, (uint)height, 0, _e.PixelRgba, _e.UnsignedByte, null);
-            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureMinFilter, filter);
-            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureMagFilter, filter);
-            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureWrapS, _e.ClampToEdge);
-            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureWrapT, _e.ClampToEdge);
-            return tex;
-        }
-
-        private uint CreateFbo(uint color)
-        {
-            ((OpenGLRenderContext)_rc).GenFramebuffers(1, out uint fbo);
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, fbo);
-            ((OpenGLRenderContext)_rc).FramebufferTexture2D(_e.Framebuffer, _e.ColorAttachment0, _e.Texture2D, color, 0);
-            ((OpenGLRenderContext)_rc).DrawBuffer(_e.ColorAttachment0);
-            return fbo;
-        }
-
-        private bool TryAttachDepthTexture(uint fbo, int width, int height, out uint depthTex)
-        {
-            depthTex = 0;
-            ((OpenGLRenderContext)_rc).GenTextures(1, out uint tex);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, tex);
-            ((OpenGLRenderContext)_rc).TexImage2D(_e.Texture2D, 0, _e.DepthComponent24, (uint)width, (uint)height, 0, _e.DepthComponent, _e.UnsignedInt, null);
-            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureMinFilter, _e.Nearest);
-            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureMagFilter, _e.Nearest);
-            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureWrapS, _e.ClampToEdge);
-            ((OpenGLRenderContext)_rc).TexParameter(_e.Texture2D, _e.TextureWrapT, _e.ClampToEdge);
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, fbo);
-            ((OpenGLRenderContext)_rc).FramebufferTexture2D(_e.Framebuffer, _e.DepthAttachment, _e.Texture2D, tex, 0);
-            int status = ((OpenGLRenderContext)_rc).CheckFramebufferStatus(_e.Framebuffer);
-            if (status == _e.FramebufferComplete)
+            GpuHandle rt = _rc.CreateRenderTarget(new RenderTargetDesc
             {
-                depthTex = tex;
-                return true;
-            }
-            ((OpenGLRenderContext)_rc).DeleteTexture(tex);
-            return false;
+                Width = width,
+                Height = height,
+                ColorFormat = _e.InternalRgba
+            });
+            _rc.SetTextureParams(rt, filter, filter, _e.ClampToEdge, _e.ClampToEdge);
+            return rt;
         }
-
-        private void CheckFbo(string name)
-        {
-            int status = ((OpenGLRenderContext)_rc).CheckFramebufferStatus(_e.Framebuffer);
-            if (status != _e.FramebufferComplete)
-                Console.WriteLine($"[AntiAliasingPass] {name} FBO incomplete, status={status}");
-        }
-
 
         void BindPost(int hasHistory = 0, int hasDepth = 0)
         {
@@ -373,56 +313,42 @@ namespace SiegeEngine.Core.GPU.PostProcess
 
         private void DrawSmaa()
         {
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _edgeFbo);
+            _rc.BindRenderTarget(_edge);
             _rc.Viewport(0, 0, (uint)_width, (uint)_height);
             _rc.ClearColor(0f, 0f, 0f, 0f);
             _rc.Clear(_e.ColorBufferBit);
-            _smaaEdge.Use();
+            _rc.BindPipeline(_smaaEdgePipe);
             BindPost();
-            BindColor0(_worldColor);
-            _smaaEdge.SetUniform("uColor", 0);
-            _smaaEdge.SetUniform("uInvResolution", 1f / _width, 1f / _height);
-            DrawFullscreen();
+            _rc.BindTextureSlot(0, _world, "uColor");
+            _rc.DrawFullscreen();
 
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _weightFbo);
+            _rc.BindRenderTarget(_weight);
             _rc.ClearColor(0f, 0f, 0f, 0f);
             _rc.Clear(_e.ColorBufferBit);
-            _smaaWeight.Use();
+            _rc.BindPipeline(_smaaWeightPipe);
             BindPost();
-            BindColor0(_edgeColor);
-            _smaaWeight.SetUniform("uEdges", 0);
-            _smaaWeight.SetUniform("uInvResolution", 1f / _width, 1f / _height);
-            DrawFullscreen();
+            _rc.BindTextureSlot(0, _edge, "uEdges");
+            _rc.DrawFullscreen();
 
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _resolveFbo);
-            _smaaBlend.Use();
+            _rc.BindRenderTarget(_resolve);
+            _rc.BindPipeline(_smaaBlendPipe);
             BindPost();
-            BindColor0(_worldColor);
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 1);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, _weightColor);
-            _smaaBlend.SetUniform("uColor", 0);
-            _smaaBlend.SetUniform("uWeights", 1);
-            _smaaBlend.SetUniform("uInvResolution", 1f / _width, 1f / _height);
-            DrawFullscreen();
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 1);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, 0);
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0);
+            _rc.BindTextureSlot(0, _world, "uColor");
+            _rc.BindTextureSlot(1, _weight, "uWeights");
+            _rc.DrawFullscreen();
+            _rc.BindTextureSlot(1, default);
         }
 
         private void DrawTaa(Matrix4x4 view, Matrix4x4 projection)
         {
-            ((OpenGLRenderContext)_rc).BindFramebuffer(_e.Framebuffer, _resolveFbo);
+            _rc.BindRenderTarget(_resolve);
             _rc.Viewport(0, 0, (uint)_width, (uint)_height);
-            _taa.Use();
+            _rc.BindPipeline(_taaPipe);
             BindPost(_hasHistory ? 1 : 0, 1);
-            BindColor0(_worldColor);
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 1);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, _historyColor);
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 2);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, _worldDepthIsTexture ? _worldDepthTex : 0);
-            _taa.SetUniform("uColor", TextureSlot.Color);
-            _taa.SetUniform("uHistory", TextureSlot.History);
-            _taa.SetUniform("uDepth", TextureSlot.Depth);
+            _rc.BindTextureSlot(0, _world, "uColor");
+            _rc.BindTextureSlot(1, _history, "uHistory");
+            GpuHandle depth = _rc.GetRenderTargetDepth(_world);
+            _rc.BindTextureSlot(2, depth, "uDepth");
             _rc.BindCamera(view, projection, Matrix4x4.Identity);
             if (!_rc.TryGetConstants(ConstantSlot.Post, out PostCB taaPost))
                 taaPost = default;
@@ -432,80 +358,42 @@ namespace SiegeEngine.Core.GPU.PostProcess
             taaPost.HasHistory = _hasHistory ? 1 : 0;
             taaPost.HasDepth = 1;
             _rc.SetConstants(ConstantSlot.Post, taaPost);
-            DrawFullscreen();
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 2);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, 0);
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0 + 1);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, 0);
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0);
+            _rc.DrawFullscreen();
+            _rc.BindTextureSlot(2, default);
+            _rc.BindTextureSlot(1, default);
         }
 
         private void DrawFxaa(uint color)
         {
-            _fxaa.Use();
+            _rc.BindPipeline(_fxaaPipe);
             BindPost();
-            BindColor0(color);
-            _fxaa.SetUniform("uColor", 0);
-            _fxaa.SetUniform("uInvResolution", 1f / Math.Max(_width, 1), 1f / Math.Max(_height, 1));
-            DrawFullscreen();
+            _rc.BindTextureSlot(0, _rc.ImportTexture(color, _e.Texture2D), "uColor");
+            _rc.DrawFullscreen();
         }
 
         private void DrawCopy(uint color)
         {
-            _copy.Use();
-            BindColor0(color);
-            _copy.SetUniform("uColor", 0);
-            DrawFullscreen();
-        }
-
-        private void BindColor0(uint tex)
-        {
-            ((OpenGLRenderContext)_rc).ActiveTexture(_e.Texture0);
-            ((OpenGLRenderContext)_rc).BindTexture(_e.Texture2D, tex);
-        }
-
-        private void DrawFullscreen()
-        {
+            _rc.BindPipeline(_copyPipe);
+            _rc.BindTextureSlot(0, _rc.ImportTexture(color, _e.Texture2D), "uColor");
             _rc.DrawFullscreen();
         }
 
         private void DestroyTargets()
         {
-            DeleteFbo(ref _worldFbo);
-            DeleteFbo(ref _edgeFbo);
-            DeleteFbo(ref _weightFbo);
-            DeleteFbo(ref _historyFbo);
-            DeleteFbo(ref _resolveFbo);
-            DeleteTex(ref _worldColor);
-            DeleteTex(ref _worldDepthTex);
-            DeleteTex(ref _edgeColor);
-            DeleteTex(ref _weightColor);
-            DeleteTex(ref _historyColor);
-            DeleteTex(ref _resolveColor);
-            if (_worldDepthRb != 0)
-            {
-                uint rb = _worldDepthRb;
-                ((OpenGLRenderContext)_rc).DeleteRenderbuffers(1, &rb);
-                _worldDepthRb = 0;
-            }
-            _worldDepthIsTexture = false;
+            DestroyRt(ref _world);
+            DestroyRt(ref _edge);
+            DestroyRt(ref _weight);
+            DestroyRt(ref _history);
+            DestroyRt(ref _resolve);
             _width = 0;
             _height = 0;
         }
 
-        private void DeleteFbo(ref uint fbo)
+        private void DestroyRt(ref GpuHandle rt)
         {
-            if (fbo == 0) return;
-            uint id = fbo;
-            ((OpenGLRenderContext)_rc).DeleteFramebuffers(1, &id);
-            fbo = 0;
-        }
-
-        private void DeleteTex(ref uint tex)
-        {
-            if (tex == 0) return;
-            ((OpenGLRenderContext)_rc).DeleteTexture(tex);
-            tex = 0;
+            if (!rt.IsValid) return;
+            _rc.Destroy(rt);
+            rt = default;
         }
     }
 }

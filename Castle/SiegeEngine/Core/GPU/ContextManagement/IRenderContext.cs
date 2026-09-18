@@ -51,6 +51,9 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         GpuHandle CreateTexture(in TextureDesc desc);
         GpuHandle ImportTexture(uint id, int target);
         GpuHandle CreateRenderTarget(in RenderTargetDesc desc);
+        GpuHandle GetRenderTargetColor(GpuHandle target);
+        GpuHandle GetRenderTargetDepth(GpuHandle target);
+        void BindRenderTargetFace(GpuHandle target, int face);
         void Destroy(GpuHandle handle);
         void BindPipeline(GpuHandle pipeline);
         void BindUniformBlock(int slot);
@@ -59,6 +62,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         void BindIndexBuffer(GpuHandle buffer);
         void BindMesh(GpuHandle vertex, GpuHandle index, int stride);
         void BindTextureSlot(int slot, GpuHandle texture);
+        void BindTextureSlot(int slot, GpuHandle texture, string samplerName);
         void BindRenderTarget(GpuHandle target);
         void BindDefaultRenderTarget();
         void UpdateBuffer(GpuHandle buffer, ReadOnlySpan<byte> data, int offset = 0);

@@ -26,6 +26,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public override int Texture0 => (int)GLEnum.Texture0;
         public override int InternalRgb => (int)GLEnum.Rgb;
         public override int InternalRgba => (int)GLEnum.Rgba;
+        public override int InternalRgba16f => (int)GLEnum.Rgba16f;
         public override int PixelRgb => (int)GLEnum.Rgb;
         public override int PixelRgba => (int)GLEnum.Rgba;
         public override int PixelBgr => (int)GLEnum.Bgr;
@@ -82,7 +83,6 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public override int TextureCubeMapNegativeZ => (int)GLEnum.TextureCubeMapNegativeZ;
         public override int TextureWrapR => (int)GLEnum.TextureWrapR;
 
-        // Compute / SSBO support
         public override int ComputeShader => (int)GLEnum.ComputeShader;
         public override int ShaderStorageBuffer => (int)GLEnum.ShaderStorageBuffer;
         public override int UniformBuffer => (int)GLEnum.UniformBuffer;
@@ -97,11 +97,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public override int MapReadBit => (int)GLEnum.MapReadBit;
         public override int MapWriteBit => (int)GLEnum.MapWriteBit;
         public override int MapInvalidateBufferBit => (int)GLEnum.MapInvalidateBufferBit;
-
-        // ClearBuffer target (glClearBufferuiv / glClearBufferfv)
         public override int Color => (int)GLEnum.Color;
-
-        // Pixel-pack / fence support for async free-surface ID readback
         public override int PixelPackBuffer => (int)GLEnum.PixelPackBuffer;
         public override int SyncFence => (int)GLEnum.SyncFence;
         public override int SyncGpuCommandsComplete => (int)GLEnum.SyncGpuCommandsComplete;
