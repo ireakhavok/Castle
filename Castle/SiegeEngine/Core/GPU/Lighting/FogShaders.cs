@@ -247,6 +247,12 @@ float hash12(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
 
+mat4 CascadeVPAt(int c) {
+    if (c == 1) return CascadeVP1;
+    if (c == 2) return CascadeVP2;
+    if (c == 3) return CascadeVP3;
+    return CascadeVP0;
+}
 float cascadeShadow(vec3 worldPos) {
     if (CascadeCount <= 0)
         return 1.0;
