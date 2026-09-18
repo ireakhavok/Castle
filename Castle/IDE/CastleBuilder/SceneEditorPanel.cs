@@ -780,7 +780,18 @@ namespace CastleBuilder
             {
                 string dropPath = _pendingPlacePath;
                 _pendingPlacePath = null;
-                PlaceAssetAtCursor(dropPath);
+                string ext = Path.GetExtension(dropPath).ToLowerInvariant();
+                if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga")
+                {
+                    if (_editorScene.TryStampAlbedoAt(_contentNormMouse, dropPath))
+                        Console.WriteLine($"[SceneEditorPanel] Stamped texture '{Path.GetFileName(dropPath)}' at cursor");
+                    else
+                        Console.WriteLine($"[SceneEditorPanel] Texture stamp missed terrain under the cursor");
+                }
+                else
+                {
+                    PlaceAssetAtCursor(dropPath);
+                }
             }
             bool rightPressedThisFrame = _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press;
             if (isTopmost && rightPressedThisFrame && !_wasRightPressedLastFrame)

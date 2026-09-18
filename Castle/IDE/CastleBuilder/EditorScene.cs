@@ -156,7 +156,13 @@ namespace CastleBuilder
                 tcs.TryPerformPlacementRaycast(normalizedMouse, out _);
         }
 
-        public bool TryGetPlacementPosition(out Vector3 position)
+        public bool TryStampAlbedoAt(Vector2 normalizedMouse, string materialPath)
+        {
+            if (_activeGameScene is TerrainCreatorScene tcs)
+                return tcs.TryStampAlbedoAt(normalizedMouse, materialPath);
+            return false;
+        }
+                public bool TryGetPlacementPosition(out Vector3 position)
         {
             return TryGetPlacementPosition(_placeNorm, _placeW, _placeH, out position);
         }

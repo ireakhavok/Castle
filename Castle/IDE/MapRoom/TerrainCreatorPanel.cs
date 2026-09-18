@@ -368,7 +368,12 @@ namespace MapRoom
             if (_cameraMode) _controlContext.PushViewport(new Viewport((int)contentX, (int)contentY, (int)contentW, (int)contentH));
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - HeaderHeight);
-            _terrainScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
+            bool inView = isTopmost
+                && sceneMouse.X >= 0f && sceneMouse.Y >= 0f
+                && sceneMouse.X <= contentW
+                && sceneMouse.Y <= contentH - 56f;
+            bool paintClick = inView;
+            _terrainScene.Update(deltaTime, sceneMouse, mouseDown && paintClick, mousePressed && paintClick, mouseReleased && paintClick, _cameraMode);
             if (_cameraMode) _controlContext.PopViewport();
         }
         private void SwitchToNewSceneData()

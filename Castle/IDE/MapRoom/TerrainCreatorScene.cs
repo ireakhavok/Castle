@@ -231,7 +231,32 @@ namespace MapRoom
             hitPoint = rayOrigin + rayDir * t;
             return true;
         }
-        public Vector3 GetCameraPosition() => _flyCamera.Position;
+        public bool TryStampAlbedoAt(Vector2 normalizedMouse, string materialPath)
+        {
+            if (string.IsNullOrEmpty(materialPath))
+                return false;
+            materialPath = ResolveFullPath(materialPath);
+            if (!File.Exists(materialPath))
+                return false;
+            if (!TryPerformPlacementRaycast(normalizedMouse, out Vector3 hit))
+                return false;
+            SetActiveMaterial(materialPath);
+            if (_activeBrush == null || _activeBrush.Mode != ToolChest.BrushMode.Paint)
+            {
+                _activeBrush = new ToolChest.Brush
+                {
+                    Mode = ToolChest.BrushMode.Paint,
+                    Shape = ToolChest.BrushShape.Circle,
+                    Falloff = ToolChest.BrushFalloff.Linear,
+                    Size = 8f,
+                    Intensity = 1f
+                };
+            }
+            _activeMaterialPath = materialPath;
+            PaintAlbedo(hit);
+            return true;
+        }
+                public Vector3 GetCameraPosition() => _flyCamera.Position;
         public Vector3 GetLookDirection()
         {
             float yawRad = _flyCamera.Yaw * (MathF.PI / 180f);
