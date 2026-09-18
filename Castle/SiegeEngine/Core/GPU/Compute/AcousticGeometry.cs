@@ -57,9 +57,9 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _ssbo = new ShaderStorageBuffer(_renderContext);
-            _drawVao = _renderContext.GenVertexArray();
-            _drawVbo = _renderContext.GenBuffer();
-            _drawIbo = _renderContext.GenBuffer();
+            _drawVao = ((OpenGLRenderContext)_renderContext).GenVertexArray();
+            _drawVbo = ((OpenGLRenderContext)_renderContext).GenBuffer();
+            _drawIbo = ((OpenGLRenderContext)_renderContext).GenBuffer();
         }
 
         public void Rebuild(IReadOnlyList<Entity> entities, IHeightProvider heightProvider = null)
@@ -335,35 +335,35 @@ namespace SiegeEngine.Core.GPU.Compute
             _drawIndexCount = _drawIndices.Count;
             if (_drawIndexCount == 0) return;
 
-            _renderContext.BindVertexArray(_drawVao);
+            ((OpenGLRenderContext)_renderContext).BindVertexArray(_drawVao);
             fixed (DrawVertex* vptr = _drawVerts.ToArray())
             {
-                _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _drawVbo);
-                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer,
+                ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, _drawVbo);
+                ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ArrayBuffer,
                     (uint)(_drawVerts.Count * sizeof(DrawVertex)), vptr, _renderContext.Enums.DynamicDraw);
             }
             fixed (uint* iptr = _drawIndices.ToArray())
             {
-                _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _drawIbo);
-                _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer,
+                ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ElementArrayBuffer, _drawIbo);
+                ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ElementArrayBuffer,
                     (uint)(_drawIndices.Count * sizeof(uint)), iptr, _renderContext.Enums.DynamicDraw);
             }
-            _renderContext.EnableVertexAttribArray(0);
-            _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false,
+            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(0);
+            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(0, 3, _renderContext.Enums.Float, false,
                 (uint)sizeof(DrawVertex), (void*)0);
-            _renderContext.EnableVertexAttribArray(1);
-            _renderContext.VertexAttribIPointer(1, 1, _renderContext.Enums.Int,
+            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(1);
+            ((OpenGLRenderContext)_renderContext).VertexAttribIPointer(1, 1, _renderContext.Enums.Int,
                 (uint)sizeof(DrawVertex), (void*)(3 * sizeof(float)));
-            _renderContext.BindVertexArray(0);
+            ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
         }
 
         public void Draw()
         {
             if (_drawIndexCount == 0) return;
-            _renderContext.BindVertexArray(_drawVao);
+            ((OpenGLRenderContext)_renderContext).BindVertexArray(_drawVao);
             _renderContext.DrawElements(_renderContext.Enums.Triangles, (uint)_drawIndexCount,
                 _renderContext.Enums.UnsignedInt, null);
-            _renderContext.BindVertexArray(0);
+            ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
         }
 
         public bool TryClosestHit(Vector3 origin, Vector3 dir, out float tHit, out Vector3 nHit, out float dens)
@@ -435,9 +435,9 @@ namespace SiegeEngine.Core.GPU.Compute
             if (!_disposed)
             {
                 _ssbo?.Dispose();
-                if (_drawVao != 0) _renderContext.DeleteVertexArray(_drawVao);
-                if (_drawVbo != 0) _renderContext.DeleteBuffer(_drawVbo);
-                if (_drawIbo != 0) _renderContext.DeleteBuffer(_drawIbo);
+                if (_drawVao != 0) ((OpenGLRenderContext)_renderContext).DeleteVertexArray(_drawVao);
+                if (_drawVbo != 0) ((OpenGLRenderContext)_renderContext).DeleteBuffer(_drawVbo);
+                if (_drawIbo != 0) ((OpenGLRenderContext)_renderContext).DeleteBuffer(_drawIbo);
                 _proxyCache.Clear();
                 _disposed = true;
             }

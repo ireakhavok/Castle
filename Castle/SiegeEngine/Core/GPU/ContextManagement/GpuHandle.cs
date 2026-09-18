@@ -7,7 +7,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         None = 0,
         Pipeline = 1,
         Buffer = 2,
-        Texture = 3
+        Texture = 3,
+        RenderTarget = 4
     }
 
     public readonly struct GpuHandle

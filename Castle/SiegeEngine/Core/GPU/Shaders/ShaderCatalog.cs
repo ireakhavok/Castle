@@ -128,11 +128,11 @@ namespace SiegeEngine.Core.GPU.Shaders
             }
             if (id == ShaderId.Model || id == ShaderId.Animation || id == ShaderId.Asset || id == ShaderId.ShadowDepth)
             {
-                return new VertexLayout(88, new[]
+                return new VertexLayout(80, new[]
                 {
                     new VertexAttribute(VertexSemantic.Position, enums.Float, 3, 0, 0),
-                    new VertexAttribute(VertexSemantic.TexCoord, enums.Float, 2, 12, 0),
-                    new VertexAttribute(VertexSemantic.Normal, enums.Float, 3, 20, 0),
+                    new VertexAttribute(VertexSemantic.Normal, enums.Float, 3, 12, 0),
+                    new VertexAttribute(VertexSemantic.TexCoord, enums.Float, 2, 24, 0),
                     new VertexAttribute(VertexSemantic.MaterialIndex, enums.Float, 1, 32, 0),
                     new VertexAttribute(VertexSemantic.Tangent, enums.Float, 3, 36, 0),
                     new VertexAttribute(VertexSemantic.BoneIds, enums.Float, 4, 48, 0),

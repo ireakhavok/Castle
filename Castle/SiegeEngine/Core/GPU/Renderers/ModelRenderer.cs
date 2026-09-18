@@ -222,20 +222,17 @@ namespace SiegeEngine.Core.GPU.Renderers
                 {
                     for (int i = 0; i < Math.Min(mmr.AlbedoTextures.Length, 4); i++)
                     {
-                        _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + i);
-                        _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[i]);
+                        _renderContext.BindTextureSlot(i, _renderContext.ImportTexture(mmr.AlbedoTextures[i], _renderContext.Enums.Texture2D));
                         shader.SetUniform($"uAlbedoMap[{i}]", i);
                     }
                     for (int i = 0; i < Math.Min(mmr.NormalTextures.Length, 4); i++)
                     {
-                        _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 4 + i);
-                        _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.NormalTextures[i]);
+                        _renderContext.BindTextureSlot(4 + i, _renderContext.ImportTexture(mmr.NormalTextures[i], _renderContext.Enums.Texture2D));
                         shader.SetUniform($"uNormalMap[{i}]", 4 + i);
                     }
                     for (int i = 0; i < Math.Min(mmr.MetallicTextures.Length, 4); i++)
                     {
-                        _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 8 + i);
-                        _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.MetallicTextures[i]);
+                        _renderContext.BindTextureSlot(8 + i, _renderContext.ImportTexture(mmr.MetallicTextures[i], _renderContext.Enums.Texture2D));
                         shader.SetUniform($"uMetallicMap[{i}]", 8 + i);
                     }
                 }
@@ -243,17 +240,15 @@ namespace SiegeEngine.Core.GPU.Renderers
                 {
                     if (mmr.AlbedoTextures.Length > 0)
                     {
-                        _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
-                        _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[0]);
+                        _renderContext.BindTextureSlot(0, _renderContext.ImportTexture(mmr.AlbedoTextures[0], _renderContext.Enums.Texture2D));
                         shader.SetUniform("uAlbedoMap[0]", 0);
                     }
                 }
 
                 BindOpacityOption(shader, gpuIndex);
 
-                _renderContext.BindVertexArray(mmr.Vao);
+                Gl.Of(_renderContext).BindVertexArray(mmr.Vao);
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
-                _renderContext.BindVertexArray(0);
             }
 
             _renderContext.Disable(_renderContext.Enums.DepthTest);
@@ -267,23 +262,15 @@ namespace SiegeEngine.Core.GPU.Renderers
             pointShader.Use();
             _renderContext.SetConstants(ConstantSlot.Frame, new FrameCB { View = view, Projection = projection });
             _renderContext.SetConstants(ConstantSlot.Object, new ObjectCB { Model = Matrix4x4.Identity, NormalMatrix = Matrix4x4.Identity });
-            _renderContext.BindVertexArray(skeletonBuffer.Vao);
+            skeletonBuffer.Bind();
             _renderContext.DrawElements(_renderContext.Enums.Lines, skeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-            _renderContext.BindVertexArray(0);
         }
 
         public void RenderTerrain(VertexBuffer buffer, ShaderProgram shader, Matrix4x4 view, Matrix4x4 projection, bool hasTexture, uint textureId)
         {
             if (buffer == null) return;
-            buffer.Bind();
-            uint stride = 9 * sizeof(float);
-            _renderContext.EnableVertexAttribArray(0);
-            _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
-            _renderContext.EnableVertexAttribArray(1);
-            _renderContext.VertexAttribPointer(1, 4, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
-            _renderContext.EnableVertexAttribArray(2);
-            _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(7 * sizeof(float)));
             shader.Use();
+            buffer.Bind();
             _renderContext.BindCamera(view, projection, Matrix4x4.Identity);
             LightingFrame.Current?.ApplyConstants(_renderContext);
             LightingFrame.Current?.ApplyTo(shader, _renderContext);
@@ -293,8 +280,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             {
                 frame.HasTexture = 1;
                 _renderContext.SetConstants(ConstantSlot.Frame, frame);
-                _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + Shaders.TextureSlot.Color);
-                _renderContext.BindTexture(_renderContext.Enums.Texture2D, textureId);
+                _renderContext.BindTextureSlot(Shaders.TextureSlot.Color, _renderContext.ImportTexture(textureId, _renderContext.Enums.Texture2D));
             }
             else
             {
@@ -362,18 +348,9 @@ namespace SiegeEngine.Core.GPU.Renderers
                 : (frame != null ? frame.ShadowAtlas : 0);
             if (atlas == 0 && (frame == null || frame.PointShadowCube == 0 && frame.SpotShadowMap == 0))
                 return;
-            IRenderContext rc = _renderContext;
-            int u0 = rc.Enums.Texture0;
-            rc.ActiveTexture(u0 + LightingFrame.ShadowAtlasUnit);
-            rc.BindTexture(rc.Enums.Texture2D, atlas);
-            if (frame != null)
-            {
-                rc.ActiveTexture(u0 + LightingFrame.PointShadowUnit);
-                rc.BindTexture(rc.Enums.TextureCubeMap, frame.PointShadowCube);
-                rc.ActiveTexture(u0 + LightingFrame.SpotShadowUnit);
-                rc.BindTexture(rc.Enums.Texture2D, frame.SpotShadowMap);
-            }
-            rc.ActiveTexture(u0);
+            LightingFrame.BindShadowTextures(_renderContext, atlas,
+                frame != null ? frame.PointShadowCube : 0,
+                frame != null ? frame.SpotShadowMap : 0);
         }
 
         private void BindOpacityOption(ShaderProgram shader, int meshIndex)
@@ -425,12 +402,10 @@ namespace SiegeEngine.Core.GPU.Renderers
             uint tex = LoadOpacityTexture(rc, path, modelKey);
             if (tex == 0)
                 return;
-            rc.ActiveTexture(rc.Enums.Texture0 + unit);
-            rc.BindTexture(rc.Enums.Texture2D, tex);
+            rc.BindTextureSlot(unit, rc.ImportTexture(tex, rc.Enums.Texture2D));
             shader.SetUniform("uOpacityMap", unit);
             shader.SetUniform("uOpacitySlots", slots);
             shader.SetUniform("uHasOpacity", 1);
-            rc.ActiveTexture(rc.Enums.Texture0);
         }
 
         private uint GetOrLoadOpacityTexture(string stored, string modelKey = null)

@@ -12,21 +12,6 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         int ViewportHeight { get; }
         RenderBackend Backend { get; }
 
-        uint GenVertexArray();
-        void GenVertexArrays(uint n, out uint arrays);
-        uint GenBuffer();
-        void GenBuffers(uint n, out uint buffers);
-        void BindVertexArray(uint array);
-        void BindBuffer(int target, uint buffer);
-        void BufferData(int target, uint size, void* data, int usage);
-        void BufferSubData(int target, int offset, uint size, void* data);
-        void EnableVertexAttribArray(uint index);
-        void DisableVertexAttribArray(uint index);
-        void VertexAttribPointer(uint index, int size, int type, bool normalized, uint stride, void* pointer);
-        void VertexAttribIPointer(uint index, int size, int type, uint stride, void* pointer);
-        void DeleteVertexArray(uint array);
-        void DeleteBuffer(uint buffer);
-        void DeleteBuffers(uint n, uint* buffers);
         void DrawArrays(int mode, int first, uint count);
         void DrawElements(int mode, uint count, int type, void* indices);
         void Clear(int mask);
@@ -38,66 +23,18 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         void DepthMask(bool mask);
         void DepthFunc(int func);
         void ColorMask(bool r, bool g, bool b, bool a);
-        void ActiveTexture(int unit);
-        void BindFramebuffer(int target, uint framebuffer);
-        int CheckFramebufferStatus(int target);
-        void DrawBuffer(int mode);
-        void ReadBuffer(int mode);
-        void GenTextures(uint n, out uint textures);
-        void BindTexture(int target, uint texture);
-        void TexImage2D(int target, int level, int internalformat, uint width, uint height, int border, int format, int type, void* pixels);
-        void TexParameter(int target, int pname, int param);
-        void TexParameterf(int target, int pname, float param);
-        void PixelStore(int pname, int param);
-        void DeleteTexture(uint texture);
-        void DeleteTextures(uint n, uint* textures);
-        uint CreateProgram();
-        uint CreateShader(int type);
-        void ShaderSource(uint shader, string source);
-        void CompileShader(uint shader);
-        void GetShader(uint shader, int param, out int value);
-        string GetShaderInfoLog(uint shader);
-        void AttachShader(uint program, uint shader);
-        void DetachShader(uint program, uint shader);
-        void LinkProgram(uint program);
-        void GetProgram(uint program, int prop, out int value);
-        string GetProgramInfoLog(uint program);
-        void DeleteShader(uint shader);
-        void DeleteProgram(uint program);
-        void UseProgram(uint program);
-        int GetUniformLocation(uint program, string name);
-        void Uniform1(int location, float value);
-        void Uniform1(int location, int value);
-        void Uniform2(int location, float x, float y);
-        void Uniform3(int location, float x, float y, float z);
-        void Uniform4(int location, float x, float y, float z, float w);
-        void UniformMatrix4(int location, uint count, bool transpose, float* value);
-        void UniformMatrix3(int location, uint count, bool transpose, float* value);
-        int GetError();
-        bool IsVertexArray(uint array);
-        bool IsBuffer(uint buffer);
-        bool IsTexture(uint texture);
-        void GenerateMipmap(int target);
-        bool IsExtensionPresent(string extension);
-        void GetFloat(int pname, out float param);
         void Scissor(int x, int y, uint width, uint height);
         void CullFace(int mode);
         void FrontFace(int mode);
         void LineWidth(float width);
+        int GetError();
+        bool IsExtensionPresent(string extension);
+        void GetFloat(int pname, out float param);
+        void GetInteger(int pname, out int data);
+        void GetInteger(int pname, int* data);
 
-        // Framebuffer / Renderbuffer (required for continuous acoustic visibility)
-        void GenFramebuffers(uint n, out uint framebuffers);
-        void DeleteFramebuffers(uint n, uint* framebuffers);
-        void FramebufferTexture2D(int target, int attachment, int textarget, uint texture, int level);
-        void GenRenderbuffers(uint n, out uint renderbuffers);
-        void DeleteRenderbuffers(uint n, uint* renderbuffers);
-        void BindRenderbuffer(int target, uint renderbuffer);
-        void RenderbufferStorage(int target, int internalformat, uint width, uint height);
-        void FramebufferRenderbuffer(int target, int attachment, int renderbuffertarget, uint renderbuffer);
         void ReadPixels(int x, int y, uint width, uint height, int format, int type, void* data);
         void ClearBufferuiv(int buffer, int drawbuffer, uint* value);
-
-        // Compute / SSBO support
         void DispatchCompute(uint numGroupsX, uint numGroupsY, uint numGroupsZ);
         void MemoryBarrier(int barriers);
         void BindBufferBase(int target, uint index, uint buffer);
@@ -105,12 +42,6 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         void* MapBuffer(int target, int access);
         void* MapBufferRange(int target, int offset, uint length, int access);
         bool UnmapBuffer(int target);
-        void GetInteger(int pname, out int data);
-        void GetInteger(int pname, int* data);
-        void GetProgramInterface(uint program, int programInterface, int pname, out int param);
-        int GetProgramResourceLocation(uint program, int programInterface, string name);
-
-        // Pixel-pack / fence support for async free-surface ID readback
         uint FenceSync(int condition, uint flags);
         int ClientWaitSync(uint sync, uint flags, ulong timeout);
         void DeleteSync(uint sync);
@@ -119,15 +50,20 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         GpuHandle CreateBuffer(in BufferDesc desc);
         GpuHandle CreateTexture(in TextureDesc desc);
         GpuHandle ImportTexture(uint id, int target);
+        GpuHandle CreateRenderTarget(in RenderTargetDesc desc);
         void Destroy(GpuHandle handle);
         void BindPipeline(GpuHandle pipeline);
-        void BindUniformBlock(uint program, string blockName, int slot);
         void BindUniformBlock(int slot);
-        void BindUniformBlocks(uint program);
+        void BindUniformBlocks();
         void BindVertexBuffer(GpuHandle buffer, int slot, int stride, int offset);
         void BindIndexBuffer(GpuHandle buffer);
+        void BindMesh(GpuHandle vertex, GpuHandle index, int stride);
         void BindTextureSlot(int slot, GpuHandle texture);
+        void BindRenderTarget(GpuHandle target);
+        void BindDefaultRenderTarget();
         void UpdateBuffer(GpuHandle buffer, ReadOnlySpan<byte> data, int offset = 0);
+        void UpdateTexture(GpuHandle texture, int width, int height, int format, int type, void* pixels);
+        void SetTextureParams(GpuHandle texture, int minFilter, int magFilter, int wrapS, int wrapT);
         void SetConstants<T>(int slot, in T data) where T : unmanaged;
         bool TryGetConstants<T>(int slot, out T data) where T : unmanaged;
         void BindCamera(in Matrix4x4 view, in Matrix4x4 projection, in Matrix4x4 model);

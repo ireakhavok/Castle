@@ -147,23 +147,23 @@ namespace ToolChest
             uint old = _previewScene.CubemapTexture;
             if (old != 0)
             {
-                _renderContext.DeleteTexture(old);
+                Gl.Of(_renderContext).DeleteTexture(old);
                 _previewScene.SetCubemapTexture(0);
             }
             if (_workingSkybox == null || !_workingSkybox.Enabled)
                 return;
             uint tex;
-            _renderContext.GenTextures(1, out tex);
-            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, tex);
-            _renderContext.TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureMinFilter, _renderContext.Enums.Linear);
-            _renderContext.TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureMagFilter, _renderContext.Enums.Linear);
-            _renderContext.TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureWrapS, _renderContext.Enums.ClampToEdge);
-            _renderContext.TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureWrapT, _renderContext.Enums.ClampToEdge);
-            _renderContext.TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureWrapR, _renderContext.Enums.ClampToEdge);
+            Gl.Of(_renderContext).GenTextures(1, out tex);
+            Gl.Of(_renderContext).BindTexture(_renderContext.Enums.TextureCubeMap, tex);
+            Gl.Of(_renderContext).TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureMinFilter, _renderContext.Enums.Linear);
+            Gl.Of(_renderContext).TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureMagFilter, _renderContext.Enums.Linear);
+            Gl.Of(_renderContext).TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureWrapS, _renderContext.Enums.ClampToEdge);
+            Gl.Of(_renderContext).TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureWrapT, _renderContext.Enums.ClampToEdge);
+            Gl.Of(_renderContext).TexParameter(_renderContext.Enums.TextureCubeMap, _renderContext.Enums.TextureWrapR, _renderContext.Enums.ClampToEdge);
             for (int i = 0; i < 6; i++)
                 UploadFace(tex, i);
-            _renderContext.GenerateMipmap(_renderContext.Enums.TextureCubeMap);
-            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
+            Gl.Of(_renderContext).GenerateMipmap(_renderContext.Enums.TextureCubeMap);
+            Gl.Of(_renderContext).BindTexture(_renderContext.Enums.TextureCubeMap, 0);
             _previewScene.SetCubemapTexture(tex);
         }
         private void ApplyOrientationToBitmap(Bitmap bmp, int step, bool flipH, bool flipV)
@@ -196,8 +196,8 @@ namespace ToolChest
                 bmp.UnlockBits(data);
                 fixed (byte* ptr = pixelData)
                 {
-                    _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, tex);
-                    _renderContext.TexImage2D((int)(_renderContext.Enums.TextureCubeMapPositiveX + faceIndex), 0,
+                    Gl.Of(_renderContext).BindTexture(_renderContext.Enums.TextureCubeMap, tex);
+                    Gl.Of(_renderContext).TexImage2D((int)(_renderContext.Enums.TextureCubeMapPositiveX + faceIndex), 0,
                         _renderContext.Enums.InternalRgba, (uint)bmp.Width, (uint)bmp.Height, 0,
                         _renderContext.Enums.PixelBgra, _renderContext.Enums.UnsignedByte, ptr);
                 }
@@ -212,9 +212,9 @@ namespace ToolChest
             uint tex = _previewScene.CubemapTexture;
             if (tex == 0) return;
             UploadFace(tex, _selectedFace);
-            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, tex);
-            _renderContext.GenerateMipmap(_renderContext.Enums.TextureCubeMap);
-            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
+            Gl.Of(_renderContext).BindTexture(_renderContext.Enums.TextureCubeMap, tex);
+            Gl.Of(_renderContext).GenerateMipmap(_renderContext.Enums.TextureCubeMap);
+            Gl.Of(_renderContext).BindTexture(_renderContext.Enums.TextureCubeMap, 0);
         }
         private void MirrorSelectedFace(bool horizontal)
         {
@@ -226,9 +226,9 @@ namespace ToolChest
             uint tex = _previewScene.CubemapTexture;
             if (tex == 0) return;
             UploadFace(tex, _selectedFace);
-            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, tex);
-            _renderContext.GenerateMipmap(_renderContext.Enums.TextureCubeMap);
-            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
+            Gl.Of(_renderContext).BindTexture(_renderContext.Enums.TextureCubeMap, tex);
+            Gl.Of(_renderContext).GenerateMipmap(_renderContext.Enums.TextureCubeMap);
+            Gl.Of(_renderContext).BindTexture(_renderContext.Enums.TextureCubeMap, 0);
             UpdateSelectionUI();
         }
         private void SwapFaces(int a, int b)
@@ -255,9 +255,9 @@ namespace ToolChest
             {
                 UploadFace(tex, a);
                 UploadFace(tex, b);
-                _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, tex);
-                _renderContext.GenerateMipmap(_renderContext.Enums.TextureCubeMap);
-                _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, 0);
+                Gl.Of(_renderContext).BindTexture(_renderContext.Enums.TextureCubeMap, tex);
+                Gl.Of(_renderContext).GenerateMipmap(_renderContext.Enums.TextureCubeMap);
+                Gl.Of(_renderContext).BindTexture(_renderContext.Enums.TextureCubeMap, 0);
             }
         }
         private static void AtomicWriteBitmap(string targetPath, Bitmap bmp)

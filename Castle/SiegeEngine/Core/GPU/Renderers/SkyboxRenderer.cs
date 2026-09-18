@@ -82,11 +82,9 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.BindPipeline(_skyPipeline);
             _renderContext.SetConstants(ConstantSlot.Frame, frame);
             _renderContext.SetConstants(ConstantSlot.Object, obj);
-            _renderContext.ActiveTexture(0);
-            _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTexture);
-            _renderContext.BindVertexBuffer(_cubeBuffer.VertexHandle, 0, _cubeBuffer.Stride, 0);
-            _renderContext.BindIndexBuffer(_cubeBuffer.IndexHandle);
-            _renderContext.DrawIndexed((int)_cubeBuffer.GetIndexCount());
+            _renderContext.BindTextureSlot(0, _renderContext.ImportTexture(_cubemapTexture, _renderContext.Enums.TextureCubeMap));
+            _cubeBuffer.Bind();
+            _renderContext.DrawElements(_renderContext.Enums.Triangles, _cubeBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.CullFace);
         }
@@ -100,8 +98,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 renderContext.Clear(renderContext.Enums.DepthBufferBit);
             shader.Use();
             renderContext.BindCamera(Matrix4x4.Identity, mvp, Matrix4x4.Identity);
-            renderContext.ActiveTexture(0);
-            renderContext.BindTexture(renderContext.Enums.TextureCubeMap, cubemapTex);
+            renderContext.BindTextureSlot(0, renderContext.ImportTexture(cubemapTex, renderContext.Enums.TextureCubeMap));
             cube.Bind();
             renderContext.DrawElements(renderContext.Enums.Triangles, cube.GetIndexCount(), renderContext.Enums.UnsignedInt, null);
         }

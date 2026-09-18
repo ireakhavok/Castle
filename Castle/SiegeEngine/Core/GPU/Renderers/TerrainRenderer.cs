@@ -64,8 +64,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 WriteFrameHasTexture(textured);
                 if (textured)
                 {
-                    GpuHandle color = _renderContext.ImportTexture(terrainTextureId, _renderContext.Enums.Texture2D);
-                    _renderContext.BindTextureSlot(TextureSlot.Color, color);
+                    _renderContext.BindTextureSlot(TextureSlot.Color, _renderContext.ImportTexture(terrainTextureId, _renderContext.Enums.Texture2D));
                 }
 
                 WritePost(unlit: 0f, polyFactor: 1f, polyUnits: 2f);
@@ -100,8 +99,6 @@ namespace SiegeEngine.Core.GPU.Renderers
                 }
             }
 
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
-            _renderContext.BindVertexArray(0);
         }
 
         public void RenderGhost(ShaderProgram spriteShader, Matrix4x4 view, Matrix4x4 projection, Matrix4x4 ghostModel, uint ghostTextureId, VertexBuffer ghostBuffer, bool isPaintMode)
@@ -117,8 +114,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             {
                 spriteShader.Use();
                 _renderContext.BindCamera(view, projection, ghostModel);
-                GpuHandle ghost = _renderContext.ImportTexture(ghostTextureId, _renderContext.Enums.Texture2D);
-                _renderContext.BindTextureSlot(TextureSlot.Color, ghost);
+                _renderContext.BindTextureSlot(TextureSlot.Color, _renderContext.ImportTexture(ghostTextureId, _renderContext.Enums.Texture2D));
                 ghostBuffer.Bind();
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }
@@ -137,8 +133,6 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.DepthMask(true);
             _renderContext.Disable(_renderContext.Enums.Blend);
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
-            _renderContext.BindVertexArray(0);
         }
 
         public void Dispose()

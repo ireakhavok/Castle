@@ -21,7 +21,7 @@ namespace SiegeEngine.Core.GPU.Compute
         public ShaderStorageBuffer(IRenderContext renderContext)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
-            _buffer = _renderContext.GenBuffer();
+            _buffer = ((OpenGLRenderContext)_renderContext).GenBuffer();
         }
 
         /// <summary>
@@ -31,8 +31,8 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderStorageBuffer));
             _sizeInBytes = sizeInBytes;
-            _renderContext.BindBuffer(_renderContext.Enums.ShaderStorageBuffer, _buffer);
-            _renderContext.BufferData(_renderContext.Enums.ShaderStorageBuffer, sizeInBytes, data, usage);
+            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ShaderStorageBuffer, _buffer);
+            ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ShaderStorageBuffer, sizeInBytes, data, usage);
         }
 
         /// <summary>
@@ -41,8 +41,8 @@ namespace SiegeEngine.Core.GPU.Compute
         public void SetSubData(int offset, uint size, void* data)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderStorageBuffer));
-            _renderContext.BindBuffer(_renderContext.Enums.ShaderStorageBuffer, _buffer);
-            _renderContext.BufferSubData(_renderContext.Enums.ShaderStorageBuffer, offset, size, data);
+            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ShaderStorageBuffer, _buffer);
+            ((OpenGLRenderContext)_renderContext).BufferSubData(_renderContext.Enums.ShaderStorageBuffer, offset, size, data);
         }
 
         /// <summary>
@@ -61,21 +61,21 @@ namespace SiegeEngine.Core.GPU.Compute
         public void* Map(int access)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderStorageBuffer));
-            _renderContext.BindBuffer(_renderContext.Enums.ShaderStorageBuffer, _buffer);
+            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ShaderStorageBuffer, _buffer);
             return _renderContext.MapBuffer(_renderContext.Enums.ShaderStorageBuffer, access);
         }
 
         public void* MapRange(int offset, uint length, int access)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderStorageBuffer));
-            _renderContext.BindBuffer(_renderContext.Enums.ShaderStorageBuffer, _buffer);
+            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ShaderStorageBuffer, _buffer);
             return _renderContext.MapBufferRange(_renderContext.Enums.ShaderStorageBuffer, offset, length, access);
         }
 
         public bool Unmap()
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderStorageBuffer));
-            _renderContext.BindBuffer(_renderContext.Enums.ShaderStorageBuffer, _buffer);
+            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ShaderStorageBuffer, _buffer);
             return _renderContext.UnmapBuffer(_renderContext.Enums.ShaderStorageBuffer);
         }
 
@@ -83,7 +83,7 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             if (!_disposed)
             {
-                try { _renderContext.DeleteBuffer(_buffer); }
+                try { ((OpenGLRenderContext)_renderContext).DeleteBuffer(_buffer); }
                 catch (Exception ex) { Console.WriteLine($"Error deleting SSBO: {ex.Message}"); }
                 _disposed = true;
             }

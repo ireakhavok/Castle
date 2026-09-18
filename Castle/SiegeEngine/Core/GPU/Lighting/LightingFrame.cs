@@ -534,32 +534,23 @@ namespace SiegeEngine.Core.GPU.Lighting
             BindShadowTextures(renderContext, shadows ? atlas : 0, PointShadowCube, SpotShadowMap);
         }
 
-        static void BindShadowTextures(IRenderContext renderContext, uint atlas, uint pointCube, uint spotMap)
+        public static void BindShadowTextures(IRenderContext renderContext, uint atlas, uint pointCube, uint spotMap)
         {
             int t2d = renderContext.Enums.Texture2D;
             int cube = renderContext.Enums.TextureCubeMap;
             BindSlot(renderContext, ShadowAtlasUnit, atlas, t2d);
             BindSlot(renderContext, PointShadowUnit, pointCube, cube);
             BindSlot(renderContext, SpotShadowUnit, spotMap, t2d);
-            renderContext.ActiveTexture(renderContext.Enums.Texture0);
         }
 
         static void BindSlot(IRenderContext rc, int slot, uint id, int target)
         {
             if (id == 0)
             {
-                rc.ActiveTexture(rc.Enums.Texture0 + slot);
-                rc.BindTexture(target, 0);
+                rc.BindTextureSlot(slot, default);
                 return;
             }
-            GpuHandle handle = rc.ImportTexture(id, target);
-            if (handle.IsValid)
-                rc.BindTextureSlot(slot, handle);
-            else
-            {
-                rc.ActiveTexture(rc.Enums.Texture0 + slot);
-                rc.BindTexture(target, id);
-            }
+            rc.BindTextureSlot(slot, rc.ImportTexture(id, target));
         }
 
         void UploadConstants(IRenderContext renderContext)

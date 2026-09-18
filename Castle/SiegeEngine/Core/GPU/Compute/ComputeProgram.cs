@@ -26,39 +26,39 @@ namespace SiegeEngine.Core.GPU.Compute
             if (string.IsNullOrEmpty(computeShaderSource))
                 throw new ArgumentNullException(nameof(computeShaderSource));
 
-            uint computeShader = _renderContext.CreateShader(_renderContext.Enums.ComputeShader);
-            _renderContext.ShaderSource(computeShader, computeShaderSource);
-            _renderContext.CompileShader(computeShader);
-            _renderContext.GetShader(computeShader, _renderContext.Enums.CompileStatus, out int compileStatus);
+            uint computeShader = ((OpenGLRenderContext)_renderContext).CreateShader(_renderContext.Enums.ComputeShader);
+            ((OpenGLRenderContext)_renderContext).ShaderSource(computeShader, computeShaderSource);
+            ((OpenGLRenderContext)_renderContext).CompileShader(computeShader);
+            ((OpenGLRenderContext)_renderContext).GetShader(computeShader, _renderContext.Enums.CompileStatus, out int compileStatus);
             if (compileStatus != 1)
             {
-                string infoLog = _renderContext.GetShaderInfoLog(computeShader);
-                _renderContext.DeleteShader(computeShader);
+                string infoLog = ((OpenGLRenderContext)_renderContext).GetShaderInfoLog(computeShader);
+                ((OpenGLRenderContext)_renderContext).DeleteShader(computeShader);
                 throw new Exception($"Compute shader compilation failed: {infoLog}");
             }
 
-            _program = _renderContext.CreateProgram();
-            _renderContext.AttachShader(_program, computeShader);
-            _renderContext.LinkProgram(_program);
-            _renderContext.GetProgram(_program, _renderContext.Enums.LinkStatus, out int linkStatus);
+            _program = ((OpenGLRenderContext)_renderContext).CreateProgram();
+            ((OpenGLRenderContext)_renderContext).AttachShader(_program, computeShader);
+            ((OpenGLRenderContext)_renderContext).LinkProgram(_program);
+            ((OpenGLRenderContext)_renderContext).GetProgram(_program, _renderContext.Enums.LinkStatus, out int linkStatus);
             if (linkStatus != 1)
             {
-                string infoLog = _renderContext.GetProgramInfoLog(_program);
-                _renderContext.DetachShader(_program, computeShader);
-                _renderContext.DeleteShader(computeShader);
-                _renderContext.DeleteProgram(_program);
+                string infoLog = ((OpenGLRenderContext)_renderContext).GetProgramInfoLog(_program);
+                ((OpenGLRenderContext)_renderContext).DetachShader(_program, computeShader);
+                ((OpenGLRenderContext)_renderContext).DeleteShader(computeShader);
+                ((OpenGLRenderContext)_renderContext).DeleteProgram(_program);
                 throw new Exception($"Compute program linking failed: {infoLog}");
             }
 
-            _renderContext.DetachShader(_program, computeShader);
-            _renderContext.DeleteShader(computeShader);
+            ((OpenGLRenderContext)_renderContext).DetachShader(_program, computeShader);
+            ((OpenGLRenderContext)_renderContext).DeleteShader(computeShader);
         }
 
         private int GetLocation(string name)
         {
             if (_uniformLocations.TryGetValue(name, out int loc))
                 return loc;
-            loc = _renderContext.GetUniformLocation(_program, name);
+            loc = ((OpenGLRenderContext)_renderContext).GetUniformLocation(_program, name);
             _uniformLocations[name] = loc;
             return loc;
         }
@@ -67,7 +67,7 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ComputeProgram));
-            _renderContext.UseProgram(_program);
+            ((OpenGLRenderContext)_renderContext).UseProgram(_program);
         }
 
         public void SetUniform(string name, float value)
@@ -75,7 +75,7 @@ namespace SiegeEngine.Core.GPU.Compute
             if (_disposed) throw new ObjectDisposedException(nameof(ComputeProgram));
             int location = GetLocation(name);
             if (location == -1) return;
-            _renderContext.Uniform1(location, value);
+            ((OpenGLRenderContext)_renderContext).Uniform1(location, value);
         }
 
         public void SetUniform(string name, int value)
@@ -83,7 +83,7 @@ namespace SiegeEngine.Core.GPU.Compute
             if (_disposed) throw new ObjectDisposedException(nameof(ComputeProgram));
             int location = GetLocation(name);
             if (location == -1) return;
-            _renderContext.Uniform1(location, value);
+            ((OpenGLRenderContext)_renderContext).Uniform1(location, value);
         }
 
         public void SetUniform(string name, float x, float y)
@@ -91,7 +91,7 @@ namespace SiegeEngine.Core.GPU.Compute
             if (_disposed) throw new ObjectDisposedException(nameof(ComputeProgram));
             int location = GetLocation(name);
             if (location == -1) return;
-            _renderContext.Uniform2(location, x, y);
+            ((OpenGLRenderContext)_renderContext).Uniform2(location, x, y);
         }
 
         public void SetUniform(string name, float x, float y, float z)
@@ -99,7 +99,7 @@ namespace SiegeEngine.Core.GPU.Compute
             if (_disposed) throw new ObjectDisposedException(nameof(ComputeProgram));
             int location = GetLocation(name);
             if (location == -1) return;
-            _renderContext.Uniform3(location, x, y, z);
+            ((OpenGLRenderContext)_renderContext).Uniform3(location, x, y, z);
         }
 
         public void SetUniform(string name, float x, float y, float z, float w)
@@ -107,7 +107,7 @@ namespace SiegeEngine.Core.GPU.Compute
             if (_disposed) throw new ObjectDisposedException(nameof(ComputeProgram));
             int location = GetLocation(name);
             if (location == -1) return;
-            _renderContext.Uniform4(location, x, y, z, w);
+            ((OpenGLRenderContext)_renderContext).Uniform4(location, x, y, z, w);
         }
 
         public unsafe void SetMatrix4(string name, Matrix4x4 matrix)
@@ -124,7 +124,7 @@ namespace SiegeEngine.Core.GPU.Compute
             };
             fixed (float* matrixPtr = matrixArray)
             {
-                _renderContext.UniformMatrix4(location, 1, false, matrixPtr);
+                ((OpenGLRenderContext)_renderContext).UniformMatrix4(location, 1, false, matrixPtr);
             }
         }
 
@@ -150,7 +150,7 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             if (!_disposed)
             {
-                try { _renderContext.DeleteProgram(_program); }
+                try { ((OpenGLRenderContext)_renderContext).DeleteProgram(_program); }
                 catch (Exception ex) { Console.WriteLine($"Error deleting compute program: {ex.Message}"); }
                 _disposed = true;
             }

@@ -42,8 +42,8 @@ namespace SiegeEngine.Core.GPU.Renderers
             if (!_batchOpen || buffer == null || textureId == 0) return;
             ObjectCB obj = new ObjectCB { Model = model };
             _renderContext.SetConstants(ConstantSlot.Object, obj);
-            _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, textureId);
+            ((OpenGLRenderContext)_renderContext).ActiveTexture(_renderContext.Enums.Texture0);
+            ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, textureId);
             _renderContext.BindVertexBuffer(buffer.VertexHandle, 0, buffer.Stride, 0);
             uint indexCount = buffer.GetIndexCount();
             if (indexCount == 0) indexCount = 6;
@@ -61,7 +61,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             if (!_batchOpen) return;
             _renderContext.Disable(_renderContext.Enums.Blend);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+            ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, 0);
             _batchOpen = false;
         }
 

@@ -50,18 +50,18 @@ namespace SiegeEngine.Core.GPU.Renderers
             _waterShader = shaders.waterShader;
             _gridShader = shaders.gridShader;
             _modelShader = shaders.modelShader;
-            _vao = _renderContext.GenVertexArray();
-            _pointBuffer = _renderContext.GenBuffer();
-            _waterBuffer = _renderContext.GenBuffer();
+            _vao = ((OpenGLRenderContext)_renderContext).GenVertexArray();
+            _pointBuffer = ((OpenGLRenderContext)_renderContext).GenBuffer();
+            _waterBuffer = ((OpenGLRenderContext)_renderContext).GenBuffer();
             float[] pointVertices = new float[] { 0.0f, 0.0f, 0.0f };
-            _renderContext.BindVertexArray(_vao);
-            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _pointBuffer);
+            ((OpenGLRenderContext)_renderContext).BindVertexArray(_vao);
+            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, _pointBuffer);
             fixed (float* ptr = pointVertices)
             {
-                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(pointVertices.Length * sizeof(float)), ptr, _renderContext.Enums.StaticDraw);
+                ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ArrayBuffer, (uint)(pointVertices.Length * sizeof(float)), ptr, _renderContext.Enums.StaticDraw);
             }
-            _renderContext.EnableVertexAttribArray(0);
-            _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, 3 * sizeof(float), (void*)0);
+            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(0);
+            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, 3 * sizeof(float), (void*)0);
             PipelineDesc pointDesc = ShaderCatalog.Describe(ShaderId.Point, _renderContext);
             pointDesc.Layout = new VertexLayout(3 * sizeof(float), new[]
             {
@@ -85,13 +85,13 @@ namespace SiegeEngine.Core.GPU.Renderers
                 0.5f, 0.5f, 0.0f,
                 -0.5f, 0.5f, 0.0f
             };
-            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _waterBuffer);
+            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, _waterBuffer);
             fixed (float* ptr = waterVertices)
             {
-                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(waterVertices.Length * sizeof(float)), ptr, _renderContext.Enums.StaticDraw);
+                ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ArrayBuffer, (uint)(waterVertices.Length * sizeof(float)), ptr, _renderContext.Enums.StaticDraw);
             }
-            _renderContext.EnableVertexAttribArray(0);
-            _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, 3 * sizeof(float), (void*)0);
+            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(0);
+            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, 3 * sizeof(float), (void*)0);
             _waterPipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Water, _renderContext));
             _waterGpuBuffer = _renderContext.CreateBuffer(new BufferDesc
             {
@@ -103,8 +103,8 @@ namespace SiegeEngine.Core.GPU.Renderers
             {
                 _renderContext.UpdateBuffer(_waterGpuBuffer, new ReadOnlySpan<byte>((byte*)ptr, 4 * 3 * sizeof(float)));
             }
-            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, 0);
-            _renderContext.BindVertexArray(0);
+            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, 0);
+            ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
@@ -132,7 +132,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             _gridShader.Use();
             _waterShader.Use();
             _modelShader.Use();
-            _renderContext.BindVertexArray(_vao);
+            ((OpenGLRenderContext)_renderContext).BindVertexArray(_vao);
             foreach (var entity in entities)
             {
                 var physics = entity.GetComponent<PhysicsComponent>();
@@ -201,37 +201,37 @@ namespace SiegeEngine.Core.GPU.Renderers
                             {
                                 for (int i = 0; i < mmr.AlbedoTextures.Length; i++)
                                 {
-                                    _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + i);
-                                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[i]);
+                                    ((OpenGLRenderContext)_renderContext).ActiveTexture(_renderContext.Enums.Texture0 + i);
+                                    ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[i]);
                                     _modelShader.SetUniform($"uAlbedoMap[{i}]", i);
                                 }
                                 for (int i = 0; i < mmr.NormalTextures.Length; i++)
                                 {
-                                    _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 4 + i);
-                                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.NormalTextures[i]);
+                                    ((OpenGLRenderContext)_renderContext).ActiveTexture(_renderContext.Enums.Texture0 + 4 + i);
+                                    ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, mmr.NormalTextures[i]);
                                     _modelShader.SetUniform($"uNormalMap[{i}]", 4 + i);
                                 }
                                 for (int i = 0; i < mmr.MetallicTextures.Length; i++)
                                 {
-                                    _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 8 + i);
-                                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.MetallicTextures[i]);
+                                    ((OpenGLRenderContext)_renderContext).ActiveTexture(_renderContext.Enums.Texture0 + 8 + i);
+                                    ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, mmr.MetallicTextures[i]);
                                     _modelShader.SetUniform($"uMetallicMap[{i}]", 8 + i);
                                 }
                             }
                             catch (ArgumentException ex)
                             {
                                 Console.WriteLine($"GameRenderer: Shader uniform error: {ex.Message}. Falling back to single texture.");
-                                _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
-                                _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures.FirstOrDefault());
+                                ((OpenGLRenderContext)_renderContext).ActiveTexture(_renderContext.Enums.Texture0);
+                                ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures.FirstOrDefault());
                                 _modelShader.SetUniform("uAlbedoMap[0]", 0); // Fallback
                             }
                             // Debug texture-only pass
                             _modelShader.SetUniform("uDebugTextureOnly", 1);
-                            _renderContext.BindVertexArray(mmr.Vao);
+                            _renderContext.BindMesh(mmr.VertexHandle, mmr.IndexHandle, mmr.Stride != 0 ? mmr.Stride : 20 * sizeof(float));
                             _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                             _modelShader.SetUniform("uDebugTextureOnly", 0);
                             // Normal rendering pass
-                            _renderContext.BindVertexArray(mmr.Vao);
+                            _renderContext.BindMesh(mmr.VertexHandle, mmr.IndexHandle, mmr.Stride != 0 ? mmr.Stride : 20 * sizeof(float));
                             _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                         }
                     }
@@ -241,8 +241,8 @@ namespace SiegeEngine.Core.GPU.Renderers
                     }
                 }
             }
-            _renderContext.BindVertexArray(0);
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+            ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
+            ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, 0);
         }
         public override void Resize(int width, int height)
         {
@@ -251,9 +251,9 @@ namespace SiegeEngine.Core.GPU.Renderers
         public override void Dispose()
         {
             if (_disposed) return;
-            _renderContext.DeleteVertexArray(_vao);
-            _renderContext.DeleteBuffer(_pointBuffer);
-            _renderContext.DeleteBuffer(_waterBuffer);
+            ((OpenGLRenderContext)_renderContext).DeleteVertexArray(_vao);
+            ((OpenGLRenderContext)_renderContext).DeleteBuffer(_pointBuffer);
+            ((OpenGLRenderContext)_renderContext).DeleteBuffer(_waterBuffer);
             if (_pointPipeline.IsValid)
                 _renderContext.Destroy(_pointPipeline);
             if (_pointGpuBuffer.IsValid)
