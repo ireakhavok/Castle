@@ -83,6 +83,11 @@ namespace CastleBuilder
         private bool _fileSelectedSubscribed = false;
         private bool _genericSubscribed = false;
         private bool _entitySelectedSubscribed = false;
+        private bool _assetDragSubscribed = false;
+        private string _pendingPlacePath;
+        private Vector2 _contentNormMouse = new Vector2(0.5f, 0.5f);
+        private float _contentW = 1f;
+        private float _contentH = 1f;
         private long _lastLightPlaceTick;
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
@@ -236,6 +241,30 @@ namespace CastleBuilder
                 _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
                 _genericSubscribed = true;
             }
+            if (!_assetDragSubscribed)
+            {
+                _eventBus.Subscribe<AssetDragEvent>(OnAssetDrag);
+                _assetDragSubscribed = true;
+            }
+        }
+
+        private void OnAssetDrag(AssetDragEvent e)
+        {
+            if (e == null) return;
+            if (e.Phase == AssetDragPhase.Cancel)
+            {
+                _pendingPlacePath = null;
+                return;
+            }
+            if (e.Phase == AssetDragPhase.Begin && !string.IsNullOrEmpty(e.Path))
+            {
+                string ext = Path.GetExtension(e.Path).ToLowerInvariant();
+                if (ext == ".fbx" || ext == ".json" || ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga")
+                {
+                    _pendingPlacePath = e.Path;
+                    Console.WriteLine($"[SceneEditorPanel] Armed drop '{Path.GetFileName(e.Path)}' — click the viewport to place under the cursor");
+                }
+            }
         }
         private void OnGenericEvent(GenericEvent e)
         {
@@ -253,6 +282,9 @@ namespace CastleBuilder
                             active.SetSkybox(sky);
                             Console.WriteLine("[SceneEditorPanel] SkyboxSet payload applied to active TerrainCreatorScene");
                         }
+                        NotifyHierarchyChanged();
+                        OutlinerCoordinator.Instance.NotifySelectionChanged("skybox");
+                        SkyboxRotatePanel.Open(_renderContext, _controlContext, _window, _eventBus);
                     }
                 }
                 catch { }
@@ -648,23 +680,33 @@ namespace CastleBuilder
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
         {
             if (e.UserData?.ToString() != "PlaceEntity" || string.IsNullOrEmpty(e.Path)) return;
-            string ext = Path.GetExtension(e.Path).ToLowerInvariant();
-            string originalKey = Path.GetFileNameWithoutExtension(e.Path).ToLower();
+            PlaceAssetAtCursor(e.Path);
+        }
+
+        private void PlaceAssetAtCursor(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return;
+            string ext = Path.GetExtension(path).ToLowerInvariant();
+            string originalKey = Path.GetFileNameWithoutExtension(path).ToLower();
             string packId = originalKey + "_pack";
             string placeType = "FBX";
             if (ext == ".json")
             {
                 placeType = "AssetPack";
                 packId = originalKey;
-                _modelManager.LoadAnimationPack(e.Path);
+                _modelManager.LoadAnimationPack(path);
             }
             else if (ext == ".fbx")
             {
-                packId = _modelManager.RegisterFBXAsPackInMemory(e.Path);
+                packId = _modelManager.RegisterFBXAsPackInMemory(path);
             }
-            if (!_editorScene.TryGetPlacementPosition(out var hitPoint))
+            else if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga")
             {
-                Console.WriteLine("[SceneEditorPanel.OnFileSelectedForPlacement] Raycast failed - no valid placement position (aborting to prevent erroneous default entity)");
+                placeType = "Sprite";
+            }
+            if (!_editorScene.TryGetPlacementPosition(_contentNormMouse, _contentW, _contentH, out var hitPoint))
+            {
+                Console.WriteLine("[SceneEditorPanel] Raycast missed terrain and ground plane under the cursor");
                 return;
             }
             Vector3 placePos = hitPoint + new Vector3(0, 0, 0.1f);
@@ -695,7 +737,7 @@ namespace CastleBuilder
                 var modelComp = new ModelComponent { Key = packId };
                 entity.AddComponent(modelComp);
             }
-            Console.WriteLine($"[SceneEditorPanel.OnFileSelectedForPlacement] Placed entity ID={entity.Id} AssetPackKey='{packId}' at {placePos}");
+            Console.WriteLine($"[SceneEditorPanel] Placed entity ID={entity.Id} AssetPackKey='{packId}' at {placePos}");
             _editorScene.SyncCurrentLevelToRuntimeServer();
             RecordPlacedEntity(entity, "Place entity");
             NotifyHierarchyChanged();
@@ -721,9 +763,36 @@ namespace CastleBuilder
                 _pendingSceneSelectorUpdate = false;
                 UpdateSceneSelectorUI();
             }
+            float headerHeight = HasTitleBar ? HeaderHeight : 0f;
+            Vector2 contentMouse = new Vector2(absMousePos.X - Position.X, absMousePos.Y - Position.Y - headerHeight);
+            _contentW = Math.Max(Size.X, 1f);
+            _contentH = Math.Max(Size.Y - headerHeight, 1f);
+            _contentNormMouse = new Vector2(
+                Math.Clamp(contentMouse.X / _contentW, 0f, 1f),
+                Math.Clamp(contentMouse.Y / _contentH, 0f, 1f));
+            _editorScene.SetPlacementCursor(_contentNormMouse, _contentW, _contentH);
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
             bool ctrlPressed = _controlContext.GetKey(_window, Key.LeftControl) == InputAction.Press ||
                                _controlContext.GetKey(_window, Key.RightControl) == InputAction.Press;
+            if (!_cameraMode && isTopmost && mouseReleased && !string.IsNullOrEmpty(_pendingPlacePath)
+                && contentMouse.X >= 0 && contentMouse.Y >= 0
+                && contentMouse.X <= _contentW && contentMouse.Y <= _contentH - 72f)
+            {
+                string dropPath = _pendingPlacePath;
+                _pendingPlacePath = null;
+                string ext = Path.GetExtension(dropPath).ToLowerInvariant();
+                if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga")
+                {
+                    if (_editorScene.TryStampAlbedoAt(_contentNormMouse, dropPath))
+                        Console.WriteLine($"[SceneEditorPanel] Stamped texture '{Path.GetFileName(dropPath)}' at cursor");
+                    else
+                        Console.WriteLine($"[SceneEditorPanel] Texture stamp missed terrain under the cursor");
+                }
+                else
+                {
+                    PlaceAssetAtCursor(dropPath);
+                }
+            }
             bool rightPressedThisFrame = _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press;
             if (isTopmost && rightPressedThisFrame && !_wasRightPressedLastFrame)
             {
@@ -747,8 +816,6 @@ namespace CastleBuilder
                 }
                 else
                 {
-                    float headerHeight = HasTitleBar ? HeaderHeight : 0f;
-                    Vector2 contentMouse = new Vector2(absMousePos.X - Position.X, absMousePos.Y - Position.Y - headerHeight);
                     float contentW = Size.X;
                     float contentH = Size.Y - headerHeight;
                     Vector2 normalizedMouse = new Vector2(
@@ -776,8 +843,6 @@ namespace CastleBuilder
             _transformGizmo.UpdateMatrices(view, projection);
             if (!_cameraMode && isTopmost)
             {
-                float headerHeight = HasTitleBar ? HeaderHeight : 0f;
-                Vector2 contentMouse = new Vector2(absMousePos.X - Position.X, absMousePos.Y - Position.Y - headerHeight);
                 float contentW = Size.X;
                 float contentH = Size.Y - headerHeight;
                 _transformGizmo.HandleMouseInput(contentMouse, contentW, contentH, mouseDown, mousePressed, mouseReleased);
@@ -870,11 +935,8 @@ namespace CastleBuilder
                 }
             }
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
-            if (_cameraMode)
-            {
-                Vector2 sceneMouse = absMousePos - Position - new Vector2(0, TitleHeight);
-                _editorScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
-            }
+            Vector2 sceneMouse = absMousePos - Position - new Vector2(0, TitleHeight);
+            _editorScene.Update(deltaTime, sceneMouse, mouseDown, mousePressed, mouseReleased, _cameraMode);
         }
         private void PerformBoxSelection(bool additive)
         {
@@ -924,6 +986,11 @@ namespace CastleBuilder
                 _eventBus.Unsubscribe<FileSelectedEvent>(OnFileSelectedForPlacement);
                 _fileSelectedSubscribed = false;
             }
+            if (_assetDragSubscribed)
+            {
+                _eventBus.Unsubscribe<AssetDragEvent>(OnAssetDrag);
+                _assetDragSubscribed = false;
+            }
             if (_entitySelectedSubscribed)
             {
                 _eventBus.Unsubscribe<EntitySelectedEvent>(OnEntitySelected);
@@ -969,7 +1036,7 @@ namespace CastleBuilder
                 Id = "root",
                 Label = $"Scene: {level?.Name ?? _editorScene.CurrentGameScene ?? "Untitled"}",
                 Icon = "📐",
-                Children = { "level-info", "entities" },
+                Children = { "level-info", "skybox", "entities" },
                 IsExpanded = true
             };
             nodes.Add(root);
@@ -981,6 +1048,8 @@ namespace CastleBuilder
                 ParentId = "root"
             };
             nodes.Add(levelInfo);
+            string skyLabel = level?.Skybox != null && level.Skybox.Enabled ? "Skybox" : "Skybox (none)";
+            nodes.Add(new OutlinerNode { Id = "skybox", Label = skyLabel, Icon = "🌌", ParentId = "root", AssociatedObject = level?.Skybox });
             var entitiesParent = new OutlinerNode { Id = "entities", Label = "Entities", Icon = "🧱", ParentId = "root", IsExpanded = true };
             nodes.Add(entitiesParent);
             var entities = GetLiveEntities();
@@ -1047,6 +1116,10 @@ namespace CastleBuilder
             if (nodeId == "level-info" || nodeId == "root")
             {
                 return ProjectSettings.Current.CurrentLevel;
+            }
+            if (nodeId == "skybox")
+            {
+                return ProjectSettings.Current.CurrentLevel?.Skybox;
             }
             return null;
         }

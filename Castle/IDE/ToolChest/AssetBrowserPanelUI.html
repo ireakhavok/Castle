@@ -1,13 +1,8 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html {
             height: 100%;
             font-family: 'Segoe UI', Arial, sans-serif;
@@ -16,13 +11,7 @@
             color: #ddd;
             overflow: hidden;
         }
-
-        #browser {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-
+        #browser { display: flex; flex-direction: column; height: 100%; }
         #toolbar {
             background: #252526;
             padding: 6px 10px;
@@ -32,7 +21,6 @@
             border-bottom: 1px solid #444;
             flex-shrink: 0;
         }
-
         button {
             background: #3c3c3c;
             color: #ddd;
@@ -41,11 +29,12 @@
             cursor: pointer;
             border-radius: 3px;
         }
-
-            button:hover {
-                background: #4d4d4d;
-            }
-
+        button:hover { background: #4d4d4d; }
+        button.active {
+            background: #2a4a3c;
+            border-color: #7cffcb;
+            color: #7cffcb;
+        }
         #path {
             flex: 1;
             background: #333;
@@ -56,13 +45,17 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
-        #items {
-            flex: 1;
-            overflow: auto;
-            padding: 6px;
+        #items { flex: 1; overflow: auto; padding: 6px; }
+        #items.view-list, #items.view-details { display: block; }
+        #items.view-icons,
+        .view-icons {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+            justify-content: start;
+            align-content: start;
+            gap: 10px;
+            padding: 10px;
         }
-
         .item {
             padding: 4px 8px;
             margin: 1px 0;
@@ -72,27 +65,72 @@
             align-items: center;
             gap: 6px;
         }
-
-            .item:hover {
-                background: #2a2a2a;
-            }
-
-        .folder {
-            color: #7ca;
+        .item:hover { background: #2a2a2a; }
+        .folder { color: #7ca; }
+        .file { color: #ddd; }
+        .tile {
+            width: 96px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
         }
-
-        .file {
+        .thumb {
+            width: 88px;
+            height: 88px;
+            border-radius: 4px;
+            background: #2a2a2a;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+        .tile:hover .thumb { outline: 1px solid #7cffcb; }
+        .tile .label {
+            width: 96px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
             color: #ddd;
+            font-size: 11px;
+        }
+        .tile.folder .label { color: #7ca; }
+        .detail {
+            display: grid;
+            grid-template-columns: 1fr 80px 1.6fr;
+            gap: 8px;
+            padding: 4px 8px;
+            cursor: pointer;
+            border-radius: 3px;
+            align-items: center;
+        }
+        .detail:hover { background: #2a2a2a; }
+        .detail .kind { color: #888; }
+        .detail .fullpath {
+            color: #666;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: Consolas, monospace;
+            font-size: 11px;
         }
     </style>
 </head>
 <body>
     <div id="browser">
         <div id="toolbar">
-            <button data-hook="Up">↑ Up</button>
+            <button data-hook="Up">Up</button>
+            <button data-hook="ViewList" class="<!--LISTACTIVE-->">List</button>
+            <button data-hook="ViewIcons" class="<!--ICONSACTIVE-->">Icons</button>
+            <button data-hook="ViewDetails" class="<!--DETAILSACTIVE-->">Details</button>
             <div id="path">Current: <!--PATH--></div>
         </div>
-        <div id="items">
+        <div id="items" class="<!--VIEWCLASS-->">
             <!--ITEMS-->
         </div>
     </div>

@@ -128,6 +128,11 @@ namespace CastleBuilder
             AddSkyboxPanel.Open(renderContext, controlContext, window, eventBus);
             Console.WriteLine("[MenuCommands] Opened AddSkyboxPanel");
         }
+        public static void OpenSkyboxRotate(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            SkyboxRotatePanel.Open(renderContext, controlContext, window, eventBus);
+            Console.WriteLine("[MenuCommands] Opened SkyboxRotatePanel");
+        }
         public static void OpenAddLight(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             AddLightPanel.Open(renderContext, controlContext, window, eventBus);

@@ -285,6 +285,14 @@ namespace MapRoom
             {
                 AddSkyboxPanel.Open(_renderContext, _controlContext, _window, _eventBus);
             }
+            else if (hook == "OpenSkyboxRotate")
+            {
+                SkyboxRotatePanel.Open(_renderContext, _controlContext, _window, _eventBus);
+            }
+            else if (hook == "OpenAssetBrowser")
+            {
+                AssetBrowserPanel.Open(_renderContext, _controlContext, _window, _eventBus);
+            }
             else if (hook == "Export2D")
             {
                 if (!string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject))
@@ -360,7 +368,12 @@ namespace MapRoom
             if (_cameraMode) _controlContext.PushViewport(new Viewport((int)contentX, (int)contentY, (int)contentW, (int)contentH));
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - HeaderHeight);
-            _terrainScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
+            bool inView = isTopmost
+                && sceneMouse.X >= 0f && sceneMouse.Y >= 0f
+                && sceneMouse.X <= contentW
+                && sceneMouse.Y <= contentH - 56f;
+            bool paintClick = inView;
+            _terrainScene.Update(deltaTime, sceneMouse, mouseDown && paintClick, mousePressed && paintClick, mouseReleased && paintClick, _cameraMode);
             if (_cameraMode) _controlContext.PopViewport();
         }
         private void SwitchToNewSceneData()
@@ -427,14 +440,21 @@ namespace MapRoom
         public List<OutlinerNode> GetCurrentHierarchy()
         {
             var nodes = new List<OutlinerNode>();
-            nodes.Add(new OutlinerNode { Id = "terrain-root", Label = "Terrain", Icon = "🌲", Children = { "heightmap", "brush", "settings" } });
+            nodes.Add(new OutlinerNode { Id = "terrain-root", Label = "Terrain", Icon = "🌲", Children = { "heightmap", "skybox", "brush", "settings" } });
             nodes.Add(new OutlinerNode { Id = "heightmap", Label = "Heightmap", Icon = "📏", ParentId = "terrain-root" });
+            var sky = ProjectSettings.Current?.CurrentLevel?.Skybox;
+            string skyLabel = sky != null && sky.Enabled ? "Skybox" : "Skybox (none)";
+            nodes.Add(new OutlinerNode { Id = "skybox", Label = skyLabel, Icon = "🌌", ParentId = "terrain-root", AssociatedObject = sky });
             nodes.Add(new OutlinerNode { Id = "brush", Label = "Active Brush", Icon = "🖌️", ParentId = "terrain-root" });
             nodes.Add(new OutlinerNode { Id = "settings", Label = "Terrain Settings", Icon = "⚙️", ParentId = "terrain-root" });
             return nodes;
         }
         public object GetObjectForNode(string nodeId)
         {
+            if (nodeId == "skybox")
+                return ProjectSettings.Current?.CurrentLevel?.Skybox;
+            if (nodeId == "terrain-root" || nodeId == "settings")
+                return ProjectSettings.Current?.CurrentLevel;
             return null;
         }
         public void NotifyHierarchyChanged()

@@ -566,6 +566,46 @@ namespace SiegeEngine.Core.UI
                 child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs);
             }
         }
+
+        private List<string> ExpandGridTrackList(string template, float available, float gap)
+        {
+            var list = new List<string>();
+            if (string.IsNullOrWhiteSpace(template)) return list;
+            Match auto = Regex.Match(template, @"repeat\s*\(\s*auto-(?:fill|fit)\s*,\s*(.+)\s*\)", RegexOptions.IgnoreCase);
+            if (auto.Success)
+            {
+                string unit = auto.Groups[1].Value.Trim();
+                float minPx = 96f;
+                Match mm = Regex.Match(unit, @"minmax\s*\(\s*([0-9.]+)\s*px", RegexOptions.IgnoreCase);
+                if (mm.Success)
+                    minPx = float.Parse(mm.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+                else
+                {
+                    Match px = Regex.Match(unit, @"([0-9.]+)\s*px", RegexOptions.IgnoreCase);
+                    if (px.Success)
+                        minPx = float.Parse(px.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+                }
+                if (minPx < 8f) minPx = 8f;
+                int n = 1;
+                if (available > 0f)
+                    n = Math.Max(1, (int)Math.Floor((available + gap) / (minPx + Math.Max(gap, 0f))));
+                if (n > 64) n = 64;
+                for (int k = 0; k < n; k++)
+                    list.Add(minPx.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "px");
+                return list;
+            }
+            Match repeatMatch = Regex.Match(template, @"repeat\s*\(\s*(\d+)\s*,\s*(.+)\s*\)", RegexOptions.IgnoreCase);
+            if (repeatMatch.Success)
+            {
+                int repeatNum = int.Parse(repeatMatch.Groups[1].Value);
+                string repeatUnit = repeatMatch.Groups[2].Value.Trim();
+                for (int k = 0; k < repeatNum; k++)
+                    list.Add(repeatUnit);
+                return list;
+            }
+            return template.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+        }
+
         private void LayoutGridChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
@@ -588,21 +628,10 @@ namespace SiegeEngine.Core.UI
             List<float> frValuesCol = new List<float>();
             if (!string.IsNullOrEmpty(columnsStr))
             {
-                Match repeatMatch = Regex.Match(columnsStr, @"\s*repeat\s*\(\s*(\d+)\s*,\s*(.*?)\s*\)");
-                List<string> colDefsList = new List<string>();
-                if (repeatMatch.Success)
-                {
-                    int repeatNum = int.Parse(repeatMatch.Groups[1].Value);
-                    string repeatUnit = repeatMatch.Groups[2].Value;
-                    for (int k = 0; k < repeatNum; k++)
-                    {
-                        colDefsList.Add(repeatUnit);
-                    }
-                }
-                else
-                {
-                    colDefsList = columnsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToList();
-                }
+                float colAvail = ComputedContentWidth;
+                if (colAvail <= 1f) colAvail = viewportWidth;
+                if (colAvail <= 1f && Parent != null) colAvail = Parent.ComputedContentWidth;
+                List<string> colDefsList = ExpandGridTrackList(columnsStr, colAvail, colGap);
                 foreach (string def in colDefsList)
                 {
                     if (def == "auto")
@@ -1086,20 +1115,8 @@ namespace SiegeEngine.Core.UI
                     List<string> colDefsList = new List<string>();
                     if (!string.IsNullOrEmpty(columnsStr))
                     {
-                        Match repeatMatch = Regex.Match(columnsStr, @"\s*repeat\s*\(\s*(\d+)\s*,\s*(.*?)\s*\)");
-                        if (repeatMatch.Success)
-                        {
-                            int repeatNum = int.Parse(repeatMatch.Groups[1].Value);
-                            string repeatUnit = repeatMatch.Groups[2].Value;
-                            for (int k = 0; k < repeatNum; k++)
-                            {
-                                colDefsList.Add(repeatUnit);
-                            }
-                        }
-                        else
-                        {
-                            colDefsList = columnsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToList();
-                        }
+                        float colAvail = ComputedContentWidth > 1f ? ComputedContentWidth : viewportWidth;
+                        colDefsList = ExpandGridTrackList(columnsStr, colAvail, colGap);
                         foreach (string def in colDefsList)
                         {
                             if (def.EndsWith("fr"))

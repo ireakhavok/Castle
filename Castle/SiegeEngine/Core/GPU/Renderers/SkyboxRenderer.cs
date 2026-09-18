@@ -76,7 +76,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             FrameCB frame = new FrameCB { View = viewNoTranslation, Projection = projection };
             ObjectCB obj = new ObjectCB
             {
-                Model = Matrix4x4.CreateFromQuaternion(skybox.Orientation),
+                Model = Matrix4x4.CreateFromQuaternion(Sanitize(skybox.Orientation)),
                 VerticalOffset = skybox.VerticalOffset
             };
             _renderContext.BindPipeline(_skyPipeline);
@@ -104,6 +104,14 @@ namespace SiegeEngine.Core.GPU.Renderers
             renderContext.BindTexture(renderContext.Enums.TextureCubeMap, cubemapTex);
             cube.Bind();
             renderContext.DrawElements(renderContext.Enums.Triangles, cube.GetIndexCount(), renderContext.Enums.UnsignedInt, null);
+        }
+
+        public static Quaternion Sanitize(Quaternion q)
+        {
+            if (!float.IsFinite(q.X) || !float.IsFinite(q.Y) || !float.IsFinite(q.Z) || !float.IsFinite(q.W)
+                || q.LengthSquared() < 1e-8f)
+                return Quaternion.Identity;
+            return Quaternion.Normalize(q);
         }
 
         public void Dispose()
