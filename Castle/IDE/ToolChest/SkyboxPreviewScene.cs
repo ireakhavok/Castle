@@ -26,6 +26,7 @@ namespace ToolChest
         private VertexBuffer _ringBuffer;
         private VertexBuffer _faceOutlineBuffer;
         private ShaderProgram _previewShader;
+        private GpuHandle _previewPipeline;
         private LineRenderer _lineRenderer;
         public float PreviewYaw = 0.6f;
         public float PreviewPitch = 0.35f;
@@ -51,24 +52,8 @@ namespace ToolChest
             _faceOutlineBuffer = new VertexBuffer(_renderContext);
             RebuildAxesAndRings();
             BuildFaceOutline(-1);
-            string vs = @"
-#version 330 core
-layout(location = 0) in vec3 aPosition;
-uniform mat4 uMVP;
-out vec3 vDir;
-void main() {
-    vDir = aPosition;
-    gl_Position = uMVP * vec4(aPosition, 1.0);
-}";
-            string fs = @"
-#version 330 core
-in vec3 vDir;
-uniform samplerCube uSkybox;
-out vec4 FragColor;
-void main() {
-    FragColor = texture(uSkybox, normalize(vDir));
-}";
-            _previewShader = new ShaderProgram(_renderContext, vs, fs);
+            _previewShader = ShaderProgram.FromId(_renderContext, ShaderId.SkyboxPreview);
+            _previewPipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.SkyboxPreview, _renderContext));
             _lastClearedW = width;
             _lastClearedH = height;
         }
@@ -103,11 +88,10 @@ void main() {
         }
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            if (_cubemapTex == 0 || _previewCube == null || _previewShader == null)
+            if (_cubemapTex == 0 || _previewCube == null || !_previewPipeline.IsValid)
                 return;
             Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(Quaternion.Inverse(SkyboxRenderer.Sanitize(_orientation)));
-            Matrix4x4 mvp = orient * view * projection;
-            SkyboxRenderer.RenderPreviewCube(_renderContext, _cubemapTex, _previewCube, _previewShader, mvp, true);
+            SkyboxRenderer.RenderPreviewCube(_renderContext, _cubemapTex, _previewCube, _previewPipeline, view, projection, orient, true);
             // Lines through the shared LineRenderer (owns its own Depth/LineWidth state)
             Matrix4x4 lineModel = orient;
             if (_axisBuffer != null)
@@ -296,6 +280,8 @@ void main() {
             _ringBuffer?.Dispose();
             _faceOutlineBuffer?.Dispose();
             _previewShader?.Dispose();
+            if (_previewPipeline.IsValid)
+                _renderContext.Destroy(_previewPipeline);
             _lineRenderer?.Dispose();
             base.Dispose();
         }

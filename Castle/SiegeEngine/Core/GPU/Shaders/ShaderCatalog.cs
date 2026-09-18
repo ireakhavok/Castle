@@ -27,6 +27,8 @@ namespace SiegeEngine.Core.GPU.Shaders
                     return VsFs(AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
                 case ShaderId.Skybox:
                     return VsFs(SkyboxShader.VertexShaderSource, SkyboxShader.FragmentShaderSource);
+                case ShaderId.SkyboxPreview:
+                    return VsFs(SkyboxPreviewShader.VertexShaderSource, SkyboxPreviewShader.FragmentShaderSource);
                 case ShaderId.Sprite:
                     return VsFs(SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
                 case ShaderId.Text:
@@ -108,7 +110,7 @@ namespace SiegeEngine.Core.GPU.Shaders
                     new VertexAttribute(VertexSemantic.Color, enums.Float, 4, 12, 0)
                 });
             }
-            if (id == ShaderId.Skybox)
+            if (id == ShaderId.Skybox || id == ShaderId.SkyboxPreview)
             {
                 return new VertexLayout(36, new[]
                 {
@@ -167,6 +169,8 @@ namespace SiegeEngine.Core.GPU.Shaders
             {
                 case ShaderId.Skybox:
                     return new GpuRenderState { DepthTest = false, DepthWrite = false, CullMode = enums.None, Primitive = enums.Triangles };
+                case ShaderId.SkyboxPreview:
+                    return new GpuRenderState { DepthTest = true, DepthWrite = true, CullMode = enums.None, Primitive = enums.Triangles };
                 case ShaderId.Ui:
                 case ShaderId.Text:
                     return new GpuRenderState { DepthTest = false, DepthWrite = false, Blend = true, CullMode = enums.None, Primitive = enums.Triangles };

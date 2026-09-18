@@ -34,6 +34,7 @@ namespace SiegeEngine.Core.GPU.Shaders
         CcAdapt = 27,
         AaSmaaWeight = 28,
         AaSmaaBlend = 29,
-        CcLumaDown = 30
+        CcLumaDown = 30,
+        SkyboxPreview = 31
     }
 }
