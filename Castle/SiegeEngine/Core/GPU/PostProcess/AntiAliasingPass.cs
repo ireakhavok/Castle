@@ -361,6 +361,17 @@ namespace SiegeEngine.Core.GPU.PostProcess
                 Console.WriteLine($"[AntiAliasingPass] {name} FBO incomplete, status={status}");
         }
 
+
+        void BindPost(int hasHistory = 0, int hasDepth = 0)
+        {
+            _rc.SetConstants(ConstantSlot.Post, new PostCB
+            {
+                InvResolution = new Vector4(1f / Math.Max(_width, 1), 1f / Math.Max(_height, 1), 0f, 0f),
+                HasHistory = hasHistory,
+                HasDepth = hasDepth
+            });
+        }
+
         private void DrawSmaa()
         {
             _rc.BindFramebuffer(_e.Framebuffer, _edgeFbo);
@@ -368,6 +379,7 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _rc.ClearColor(0f, 0f, 0f, 0f);
             _rc.Clear(_e.ColorBufferBit);
             _smaaEdge.Use();
+            BindPost();
             BindColor0(_worldColor);
             _smaaEdge.SetUniform("uColor", 0);
             _smaaEdge.SetUniform("uInvResolution", 1f / _width, 1f / _height);
@@ -377,6 +389,7 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _rc.ClearColor(0f, 0f, 0f, 0f);
             _rc.Clear(_e.ColorBufferBit);
             _smaaWeight.Use();
+            BindPost();
             BindColor0(_edgeColor);
             _smaaWeight.SetUniform("uEdges", 0);
             _smaaWeight.SetUniform("uInvResolution", 1f / _width, 1f / _height);
@@ -384,6 +397,7 @@ namespace SiegeEngine.Core.GPU.PostProcess
 
             _rc.BindFramebuffer(_e.Framebuffer, _resolveFbo);
             _smaaBlend.Use();
+            BindPost();
             BindColor0(_worldColor);
             _rc.ActiveTexture(_e.Texture0 + 1);
             _rc.BindTexture(_e.Texture2D, _weightColor);
@@ -401,6 +415,7 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _rc.BindFramebuffer(_e.Framebuffer, _resolveFbo);
             _rc.Viewport(0, 0, (uint)_width, (uint)_height);
             _taa.Use();
+            BindPost(_hasHistory ? 1 : 0, 1);
             BindColor0(_worldColor);
             _rc.ActiveTexture(_e.Texture0 + 1);
             _rc.BindTexture(_e.Texture2D, _historyColor);
@@ -426,6 +441,7 @@ namespace SiegeEngine.Core.GPU.PostProcess
         private void DrawFxaa(uint color)
         {
             _fxaa.Use();
+            BindPost();
             BindColor0(color);
             _fxaa.SetUniform("uColor", 0);
             _fxaa.SetUniform("uInvResolution", 1f / Math.Max(_width, 1), 1f / Math.Max(_height, 1));

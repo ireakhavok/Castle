@@ -410,10 +410,13 @@ namespace SiegeEngine.Core.GPU.Lighting
         {
             if (casters == null) return;
             _depthShader.Use();
-            _depthShader.SetMatrix4("uLightVP", lightVp);
-            _depthShader.SetUniform("uLinearDepth", linearDepth ? 1 : 0);
-            _depthShader.SetUniform("uLightPos", lightPos.X, lightPos.Y, lightPos.Z);
-            _depthShader.SetUniform("uFarPlane", farPlane > 0f ? farPlane : 1f);
+            _rc.SetConstants(ConstantSlot.Shadow, new ShadowCB { CascadeVP0 = lightVp });
+            _rc.SetConstants(ConstantSlot.Post, new PostCB
+            {
+                LinearDepth = linearDepth ? 1f : 0f,
+                FarPlane = farPlane > 0f ? farPlane : 1f,
+                LightPos = new Vector4(lightPos.X, lightPos.Y, lightPos.Z, 1f)
+            });
             foreach (var caster in casters)
             {
                 if (caster.TerrainMesh != null && caster.TerrainMesh.GetIndexCount() > 0)
@@ -422,23 +425,37 @@ namespace SiegeEngine.Core.GPU.Lighting
                     // farther Z that GL_LESS already discards.
                     _rc.Enable(_e.CullFace);
                     _rc.CullFace(_e.Back);
-                    _depthShader.SetMatrix4("uModel", caster.ModelMatrix);
-                    _depthShader.SetUniform("uHasBones", 0);
-                    _depthShader.SetUniform("uHasOpacity", 0);
-                    _depthShader.SetUniform("uOpacitySlots", 0);
+                    _rc.SetConstants(ConstantSlot.Object, new ObjectCB { Model = caster.ModelMatrix, HasBones = 0 });
+                    _rc.SetConstants(ConstantSlot.Material, new MaterialCB { HasOpacity = 0, OpacitySlots = 0 });
                     caster.TerrainMesh.Bind();
                     _rc.DrawElements(_e.Triangles, caster.TerrainMesh.GetIndexCount(), _e.UnsignedInt, null);
                     _rc.Disable(_e.CullFace);
                     continue;
                 }
                 if (caster.ModelData?.MeshRenders == null) continue;
-                _depthShader.SetMatrix4("uModel", caster.ModelMatrix);
-                _depthShader.SetUniform("uHasBones", caster.HasBones ? 1 : 0);
+                _rc.SetConstants(ConstantSlot.Object, new ObjectCB
+                {
+                    Model = caster.ModelMatrix,
+                    HasBones = caster.HasBones ? 1 : 0
+                });
                 if (caster.HasBones && caster.BoneMatrices != null)
                 {
-                    // Depth shader only reads uBoneTransforms. The second
-                    // upload was a no-op copy of the same 128 matrices.
-                    _depthShader.SetMatrix4Array("uBoneTransforms", caster.BoneMatrices);
+                    SkinCB skin = default;
+                    unsafe
+                    {
+                        int n = caster.BoneMatrices.Length;
+                        if (n > 128) n = 128;
+                        for (int i = 0; i < n; i++)
+                        {
+                            Matrix4x4 m = caster.BoneMatrices[i];
+                            int o = i * 16;
+                            skin.BoneTransforms[o] = m.M11; skin.BoneTransforms[o + 1] = m.M12; skin.BoneTransforms[o + 2] = m.M13; skin.BoneTransforms[o + 3] = m.M14;
+                            skin.BoneTransforms[o + 4] = m.M21; skin.BoneTransforms[o + 5] = m.M22; skin.BoneTransforms[o + 6] = m.M23; skin.BoneTransforms[o + 7] = m.M24;
+                            skin.BoneTransforms[o + 8] = m.M31; skin.BoneTransforms[o + 9] = m.M32; skin.BoneTransforms[o + 10] = m.M33; skin.BoneTransforms[o + 11] = m.M34;
+                            skin.BoneTransforms[o + 12] = m.M41; skin.BoneTransforms[o + 13] = m.M42; skin.BoneTransforms[o + 14] = m.M43; skin.BoneTransforms[o + 15] = m.M44;
+                        }
+                    }
+                    _rc.SetConstants(ConstantSlot.Skin, skin);
                 }
                 IList<MeshData> lodMeshes = caster.LodMeshes;
                 int gpuIndex = 0;

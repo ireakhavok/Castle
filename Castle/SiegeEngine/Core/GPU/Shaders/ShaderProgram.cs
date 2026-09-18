@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.GPU
+// Folder: SiegeEngine.Core.GPU
 // File: ShaderProgram.cs
 using System;
 using System.Collections.Generic;
@@ -16,6 +16,8 @@ namespace SiegeEngine.Core.GPU.Shaders
         private readonly Dictionary<string, int> _uniformLocations = new Dictionary<string, int>();
         private float[] _mat4Scratch = new float[16];
         private float[] _mat3Scratch = new float[9];
+
+        public ShaderId ShaderId { get; private set; }
 
         public ShaderProgram(IRenderContext renderContext, string vertexShaderSource, string fragmentShaderSource)
         {
@@ -68,6 +70,31 @@ namespace SiegeEngine.Core.GPU.Shaders
             _renderContext.DetachShader(_program, fragmentShader);
             _renderContext.DeleteShader(vertexShader);
             _renderContext.DeleteShader(fragmentShader);
+            BindConstantBlocks();
+        }
+
+        void BindConstantBlocks()
+        {
+            _renderContext.BindUniformBlock(_program, "FrameCB", ConstantSlot.Frame);
+            _renderContext.BindUniformBlock(_program, "ObjectCB", ConstantSlot.Object);
+            _renderContext.BindUniformBlock(_program, "SkinCB", ConstantSlot.Skin);
+            _renderContext.BindUniformBlock(_program, "MaterialCB", ConstantSlot.Material);
+            _renderContext.BindUniformBlock(_program, "LightCB", ConstantSlot.Light);
+            _renderContext.BindUniformBlock(_program, "ShadowCB", ConstantSlot.Shadow);
+            _renderContext.BindUniformBlock(_program, "UiCB", ConstantSlot.Ui);
+            _renderContext.BindUniformBlock(_program, "PostCB", ConstantSlot.Post);
+        }
+
+        public static ShaderProgram FromId(IRenderContext renderContext, ShaderId id)
+        {
+            if (renderContext == null)
+                throw new ArgumentNullException(nameof(renderContext));
+            ShaderSourceSet src = ShaderCatalog.Get(id, renderContext.Backend);
+            if (src.IsCompute)
+                throw new InvalidOperationException($"ShaderId '{id}' is compute.");
+            var program = new ShaderProgram(renderContext, src.Vertex, src.Fragment);
+            program.ShaderId = id;
+            return program;
         }
 
         public int FindUniform(string name) => GetLocation(name);
@@ -138,7 +165,11 @@ namespace SiegeEngine.Core.GPU.Shaders
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
             int location = GetLocation(name);
-            if (location == -1) return;
+            if (location == -1)
+            {
+                WriteLegacyMatrix(name, matrix);
+                return;
+            }
             float[] matrixArray = _mat4Scratch;
             if (matrixArray.Length < 16)
             {
@@ -222,6 +253,92 @@ namespace SiegeEngine.Core.GPU.Shaders
             {
                 _renderContext.UniformMatrix3(location, (uint)matrices.Length, false, ptr);
             }
+        }
+
+        void WriteLegacyMatrix(string name, Matrix4x4 matrix)
+        {
+            if (name == "uView" || name == "View")
+            {
+                FrameCB frame;
+                if (!_renderContext.TryGetConstants(ConstantSlot.Frame, out frame))
+                    frame = new FrameCB { View = Matrix4x4.Identity, Projection = Matrix4x4.Identity };
+                frame.View = matrix;
+                _renderContext.SetConstants(ConstantSlot.Frame, frame);
+                return;
+            }
+            if (name == "uProjection" || name == "Projection")
+            {
+                FrameCB frame;
+                if (!_renderContext.TryGetConstants(ConstantSlot.Frame, out frame))
+                    frame = new FrameCB { View = Matrix4x4.Identity, Projection = Matrix4x4.Identity };
+                frame.Projection = matrix;
+                _renderContext.SetConstants(ConstantSlot.Frame, frame);
+                return;
+            }
+            if (name == "uModel" || name == "Model")
+            {
+                ObjectCB obj;
+                if (!_renderContext.TryGetConstants(ConstantSlot.Object, out obj))
+                    obj = new ObjectCB { Model = Matrix4x4.Identity, NormalMatrix = Matrix4x4.Identity };
+                obj.Model = matrix;
+                _renderContext.SetConstants(ConstantSlot.Object, obj);
+                return;
+            }
+            if (name == "uNormalMatrix" || name == "NormalMatrix")
+            {
+                ObjectCB obj;
+                if (!_renderContext.TryGetConstants(ConstantSlot.Object, out obj))
+                    obj = new ObjectCB { Model = Matrix4x4.Identity, NormalMatrix = Matrix4x4.Identity };
+                obj.NormalMatrix = matrix;
+                _renderContext.SetConstants(ConstantSlot.Object, obj);
+                return;
+            }
+            if (name == "uTransform" || name == "Transform")
+            {
+                UiCB ui;
+                if (!_renderContext.TryGetConstants(ConstantSlot.Ui, out ui))
+                    ui = new UiCB { Transform = Matrix4x4.Identity, Color = Vector4.One };
+                ui.Transform = matrix;
+                _renderContext.SetConstants(ConstantSlot.Ui, ui);
+                return;
+            }
+            if (name == "uPrevView" || name == "PrevView")
+            {
+                PatchPost(p => { p.PrevView = matrix; return p; });
+                return;
+            }
+            if (name == "uPrevProjection" || name == "PrevProjection")
+            {
+                PatchPost(p => { p.PrevProjection = matrix; return p; });
+                return;
+            }
+            if (name == "uInvView" || name == "InvView")
+            {
+                PatchPost(p => { p.InvView = matrix; return p; });
+                return;
+            }
+            if (name == "uInvProjection" || name == "InvProjection")
+            {
+                PatchPost(p => { p.InvProjection = matrix; return p; });
+                return;
+            }
+            if (name == "uMVP")
+            {
+                FrameCB frame;
+                if (!_renderContext.TryGetConstants(ConstantSlot.Frame, out frame))
+                    frame = new FrameCB { View = Matrix4x4.Identity, Projection = Matrix4x4.Identity };
+                frame.View = Matrix4x4.Identity;
+                frame.Projection = matrix;
+                _renderContext.SetConstants(ConstantSlot.Frame, frame);
+            }
+        }
+
+        void PatchPost(Func<PostCB, PostCB> patch)
+        {
+            PostCB post;
+            if (!_renderContext.TryGetConstants(ConstantSlot.Post, out post))
+                post = default;
+            _renderContext.SetConstants(ConstantSlot.Post, patch(post));
         }
 
         public void Dispose()

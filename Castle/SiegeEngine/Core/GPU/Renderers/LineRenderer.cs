@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/GPU/Renderers
+// Folder: SiegeEngine/Core/GPU/Renderers
 // File: LineRenderer.cs
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
@@ -9,14 +9,14 @@ namespace SiegeEngine.Core.GPU.Renderers
 {
     /// <summary>
     /// Generic line / gizmo / debug-line renderer.
-    /// Owns the PointShader and all GL state (DepthTest, LineWidth, Blend, LineSmooth).
+    /// Owns the Point shader pipeline and all GL state (DepthTest, LineWidth, Blend, LineSmooth).
     /// All continuous 3-D line drawing (gizmos, physics debug, acoustic rays, skybox rings/axes)
     /// must go through this class so the cancer is not duplicated in every overlay or scene.
     /// </summary>
     public unsafe sealed class LineRenderer : IDisposable
     {
         private readonly IRenderContext _renderContext;
-        private ShaderProgram _shader;
+        private GpuHandle _pipeline;
 
         public LineRenderer(IRenderContext renderContext)
         {
@@ -25,13 +25,18 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void Initialize()
         {
-            if (_shader == null)
-                _shader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
+            if (_pipeline.IsValid)
+                return;
+            PipelineDesc desc = ShaderCatalog.Describe(ShaderId.Point, _renderContext);
+            desc.State.Primitive = _renderContext.Enums.Lines;
+            desc.State.DepthTest = false;
+            desc.State.DepthWrite = false;
+            _pipeline = _renderContext.CreatePipeline(desc);
         }
 
         /// <summary>
         /// Draw a line VertexBuffer with the supplied model/view/projection.
-        /// Uses DrawElements when the buffer has indices, DrawArrays otherwise.
+        /// Uses DrawIndexed when the buffer has indices, Draw otherwise.
         /// Handles all GL state; caller must not touch DepthTest / LineWidth / Blend / LineSmooth.
         /// </summary>
         public void DrawLines(VertexBuffer buffer, Matrix4x4 model, Matrix4x4 view, Matrix4x4 projection, float lineWidth = 1f, bool lineSmooth = false)
@@ -40,7 +45,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             uint indexCount = buffer.GetIndexCount();
             uint vertexCount = buffer.GetVertexCount();
             if (indexCount == 0 && vertexCount == 0) return;
-            if (_shader == null) Initialize();
+            if (!_pipeline.IsValid) Initialize();
 
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             if (lineSmooth)
@@ -48,17 +53,20 @@ namespace SiegeEngine.Core.GPU.Renderers
             if (lineWidth != 1f)
                 _renderContext.LineWidth(lineWidth);
 
-            _shader.Use();
-            _shader.SetMatrix4("uModel", model);
-            _shader.SetMatrix4("uView", view);
-            _shader.SetMatrix4("uProjection", projection);
-            _shader.SetUniform("uPointSize", 6f);
+            FrameCB frame = new FrameCB { View = view, Projection = projection };
+            ObjectCB obj = new ObjectCB { Model = model, PointSize = 6f };
+            _renderContext.BindPipeline(_pipeline);
+            _renderContext.SetConstants(ConstantSlot.Frame, frame);
+            _renderContext.SetConstants(ConstantSlot.Object, obj);
 
-            buffer.Bind();
+            _renderContext.BindVertexBuffer(buffer.VertexHandle, 0, buffer.Stride, 0);
             if (indexCount > 0)
-                _renderContext.DrawElements(_renderContext.Enums.Lines, indexCount, _renderContext.Enums.UnsignedInt, null);
+            {
+                _renderContext.BindIndexBuffer(buffer.IndexHandle);
+                _renderContext.DrawIndexed((int)indexCount);
+            }
             else
-                _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, vertexCount);
+                _renderContext.Draw((int)vertexCount);
 
             if (lineWidth != 1f)
                 _renderContext.LineWidth(1f);
@@ -82,8 +90,11 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void Dispose()
         {
-            _shader?.Dispose();
-            _shader = null;
+            if (_pipeline.IsValid)
+            {
+                _renderContext.Destroy(_pipeline);
+                _pipeline = GpuHandle.Invalid;
+            }
         }
     }
 }

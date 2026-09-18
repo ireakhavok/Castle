@@ -18,6 +18,8 @@ namespace SiegeEngine.Core.GPU.Renderers
         private readonly IRenderContext _renderContext;
         private ShaderProgram _modelShader;
         private ShaderProgram _animationShader;
+        private GpuHandle _modelPipeline;
+        private GpuHandle _animationPipeline;
         private List<int> _hiddenMeshIndices;
         private List<MeshMaterialOption> _materialOptions;
         private FBXModel _opacityModel;
@@ -72,6 +74,8 @@ namespace SiegeEngine.Core.GPU.Renderers
         {
             _modelShader = new ShaderProgram(_renderContext, ModelShader.VertexShaderSource, ModelShader.FragmentShaderSource);
             _animationShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
+            _modelPipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Model, _renderContext));
+            _animationPipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Animation, _renderContext));
         }
 
         // === SINGLE CANONICAL PATH — all scenes and panels now call this ===
@@ -167,7 +171,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices, receiveShadows: true);
         }
 
-        public void RenderModel(FBXModel fbxModel, ModelManager.ModelData modelData, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, Matrix4x4 modelMatrix, Matrix4x4[] boneMatrices, Matrix3x3[] normalMatrices, bool receiveShadows, ICollection<int> hiddenMeshIndices = null, IList<MeshMaterialOption> materialOptions = null)
+        public void RenderModel(FBXModel fbxModel, ModelManager.ModelData modelData, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, Matrix4x4 modelMatrix, Matrix4x4[] boneMatrices, Matrix3x3[] normalMatrices, bool receiveShadows, ICollection<int> hiddenMeshIndices = null, IList<MeshMaterialOption> materialOptions = null, bool applyLod = true)
         {
             if (modelData == null) return;
             if (modelMatrix == default) modelMatrix = Matrix4x4.Identity;
@@ -182,29 +186,15 @@ namespace SiegeEngine.Core.GPU.Renderers
 
             bool hasBones = boneMatrices != null && boneMatrices.Length > 0 && fbxModel != null && fbxModel.HasSkin;
             ShaderProgram shader = hasBones ? _animationShader : _modelShader;
-            shader.Use();
-            shader.SetMatrix4("uModel", modelMatrix);
-            shader.SetMatrix4("uNormalMatrix", BuildNormalMatrix(modelMatrix));
-            BindViewLighting(shader, view, projection, viewPos);
-            shader.SetUniform("uReceiveShadows", receiveShadows ? 1 : 0);
-
+            FrameCB frame = new FrameCB { View = view, Projection = projection, ViewPos = new Vector4(viewPos, 1f) };
+            ObjectCB obj = new ObjectCB { Model = modelMatrix, NormalMatrix = BuildNormalMatrix(modelMatrix), HasBones = hasBones ? 1 : 0, ReceiveShadows = receiveShadows ? 1 : 0 };
+            _renderContext.SetConstants(ConstantSlot.Frame, frame);
+            _renderContext.SetConstants(ConstantSlot.Object, obj);
             if (hasBones)
-            {
-                shader.SetUniform("uHasBones", 1);
-                if (hasBones && shader == _animationShader)
-                {
-                    shader.SetMatrix4Array("uBoneMatrices", boneMatrices);
-                    if (normalMatrices != null) shader.SetMatrix3Array("uNormalMatrices", normalMatrices);
-                }
-                else
-                {
-                    shader.SetMatrix4Array("uBoneTransforms", boneMatrices);
-                }
-            }
-            else
-            {
-                shader.SetUniform("uHasBones", 0);
-            }
+                UploadSkin(boneMatrices);
+            LightingFrame.Current?.ApplyConstants(_renderContext);
+            shader.Use();
+            BindViewLighting(shader, view, projection, viewPos);
 
             // Own complete GL state so result is independent of prior TerrainRenderer / skybox / UI state.
             _renderContext.Enable(_renderContext.Enums.DepthTest);
@@ -218,9 +208,14 @@ namespace SiegeEngine.Core.GPU.Renderers
             {
                 int gpuIndex = renderIndex;
                 renderIndex++;
-                float lodDist = Vector3.Distance(viewPos, modelMatrix.Translation);
-                float lodSize = EstimateRadius(fbxModel, modelData, Vector3.One) * 2f;
-                if (IsMeshSkipped(_hiddenMeshIndices, fbxModel?.Meshes, gpuIndex, lodDist, lodSize))
+                if (applyLod)
+                {
+                    float lodDist = Vector3.Distance(viewPos, modelMatrix.Translation);
+                    float lodSize = EstimateRadius(fbxModel, modelData, Vector3.One) * 2f;
+                    if (IsMeshSkipped(_hiddenMeshIndices, fbxModel?.Meshes, gpuIndex, lodDist, lodSize))
+                        continue;
+                }
+                else if (_hiddenMeshIndices != null && _hiddenMeshIndices.Contains(gpuIndex))
                     continue;
 
                 try
@@ -270,9 +265,8 @@ namespace SiegeEngine.Core.GPU.Renderers
         public void RenderSkeletonDebug(VertexBuffer skeletonBuffer, ShaderProgram pointShader, Matrix4x4 view, Matrix4x4 projection)
         {
             pointShader.Use();
-            pointShader.SetMatrix4("uModel", Matrix4x4.Identity);
-            pointShader.SetMatrix4("uView", view);
-            pointShader.SetMatrix4("uProjection", projection);
+            _renderContext.SetConstants(ConstantSlot.Frame, new FrameCB { View = view, Projection = projection });
+            _renderContext.SetConstants(ConstantSlot.Object, new ObjectCB { Model = Matrix4x4.Identity, NormalMatrix = Matrix4x4.Identity });
             _renderContext.BindVertexArray(skeletonBuffer.Vao);
             _renderContext.DrawElements(_renderContext.Enums.Lines, skeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             _renderContext.BindVertexArray(0);
@@ -342,17 +336,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 && _viewLightingPos == viewPos)
                 return;
 
-            shader.SetMatrix4("uView", view);
-            shader.SetMatrix4("uProjection", projection);
-            shader.SetUniform("uViewPos", viewPos.X, viewPos.Y, viewPos.Z);
-            shader.SetUniform("uAmbientStrength", 0.3f);
-            shader.SetUniform("uSpecularStrength", 0.05f);
-            shader.SetUniform("uShininess", 4.0f);
-            shader.SetUniform("uLightDir", LightingFrame.DefaultSunDirection.X, LightingFrame.DefaultSunDirection.Y, LightingFrame.DefaultSunDirection.Z);
-            shader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
-            shader.SetUniform("uLightIntensity", 0.0f);
-            shader.SetUniform("uHasWorldAligned", 0);
-            LightingFrame.Current?.ApplyTo(shader, _renderContext);
+            LightingFrame.Current?.ApplyConstants(_renderContext);
             BindShadowMaps(shader);
 
             _viewLightingShader = shader;
@@ -694,8 +678,39 @@ namespace SiegeEngine.Core.GPU.Renderers
             return 0.5f * s;
         }
 
+
+        unsafe void UploadSkin(Matrix4x4[] bones)
+        {
+            SkinCB skin = default;
+            int n = bones == null ? 0 : System.Math.Min(bones.Length, 128);
+            for (int i = 0; i < n; i++)
+            {
+                Matrix4x4 m = bones[i];
+                int o = i * 16;
+                skin.BoneTransforms[o + 0] = m.M11;
+                skin.BoneTransforms[o + 1] = m.M12;
+                skin.BoneTransforms[o + 2] = m.M13;
+                skin.BoneTransforms[o + 3] = m.M14;
+                skin.BoneTransforms[o + 4] = m.M21;
+                skin.BoneTransforms[o + 5] = m.M22;
+                skin.BoneTransforms[o + 6] = m.M23;
+                skin.BoneTransforms[o + 7] = m.M24;
+                skin.BoneTransforms[o + 8] = m.M31;
+                skin.BoneTransforms[o + 9] = m.M32;
+                skin.BoneTransforms[o + 10] = m.M33;
+                skin.BoneTransforms[o + 11] = m.M34;
+                skin.BoneTransforms[o + 12] = m.M41;
+                skin.BoneTransforms[o + 13] = m.M42;
+                skin.BoneTransforms[o + 14] = m.M43;
+                skin.BoneTransforms[o + 15] = m.M44;
+            }
+            _renderContext.SetConstants(ConstantSlot.Skin, skin);
+        }
+
         public void Dispose()
         {
+            if (_modelPipeline.IsValid) _renderContext.Destroy(_modelPipeline);
+            if (_animationPipeline.IsValid) _renderContext.Destroy(_animationPipeline);
             _modelShader?.Dispose();
             _animationShader?.Dispose();
         }

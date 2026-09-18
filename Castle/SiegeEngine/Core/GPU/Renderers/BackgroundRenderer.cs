@@ -14,6 +14,7 @@ namespace SiegeEngine.Core.GPU.Renderers
         private readonly IRenderContext _renderContext;
         private uint _bgVao, _bgVbo, _bgTexture;
         private ShaderProgram _shaderProgram;
+        private GpuHandle _pipeline;
         private int _textureWidth;
         private int _textureHeight;
         public BackgroundRenderer(IControlContext controlContext, nint window, IRenderContext renderContext)
@@ -23,6 +24,8 @@ namespace SiegeEngine.Core.GPU.Renderers
         public void Initialize(string backgroundPath, ShaderProgram shaderProgram)
         {
             _shaderProgram = shaderProgram;
+            if (!_pipeline.IsValid)
+                _pipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Ui, _renderContext));
             // Background VAO/VBO/Texture
             _renderContext.GenVertexArrays(1, out _bgVao);
             _renderContext.GenBuffers(1, out _bgVbo);
@@ -127,10 +130,15 @@ namespace SiegeEngine.Core.GPU.Renderers
             }
             _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
             _renderContext.BindTexture(_renderContext.Enums.Texture2D, _bgTexture);
-            _shaderProgram.Use();
-            _shaderProgram.SetUniform("uUseTexture", 1.0f);
-            _shaderProgram.SetMatrix4("uTransform", Matrix4x4.Identity);
-            _shaderProgram.SetUniform("uColor", 1.0f, 1.0f, 1.0f, 1.0f);
+            _renderContext.BindPipeline(_pipeline);
+            _renderContext.SetConstants(ConstantSlot.Ui, new UiCB
+            {
+                Transform = Matrix4x4.Identity,
+                Color = Vector4.One,
+                UseTexture = 1f
+            });
+            _renderContext.BindVertexArray(_bgVao);
+            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _bgVbo);
             _renderContext.DrawArrays(_renderContext.Enums.TriangleFan, 0, 4);
             _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
             _renderContext.BindVertexArray(0);
@@ -140,6 +148,8 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.DeleteVertexArray(_bgVao);
             _renderContext.DeleteBuffer(_bgVbo);
             _renderContext.DeleteTexture(_bgTexture);
+            if (_pipeline.IsValid)
+                _renderContext.Destroy(_pipeline);
         }
     }
 }

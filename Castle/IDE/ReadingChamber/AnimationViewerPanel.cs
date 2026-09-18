@@ -87,6 +87,8 @@ namespace ReadingChamber
             _animationFiles = _viewerScene.GetAnimationFiles();
             UpdateUIControls();
 
+            _eventBus.Unsubscribe<GenericEvent>(OnGenericEvent);
+            _eventBus.Unsubscribe<FileSelectedEvent>(OnFileSelected);
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
 
@@ -191,6 +193,8 @@ namespace ReadingChamber
 
         public override void Dispose()
         {
+            _eventBus.Unsubscribe<GenericEvent>(OnGenericEvent);
+            _eventBus.Unsubscribe<FileSelectedEvent>(OnFileSelected);
             _viewerScene.Dispose();
             _textRenderer.Dispose();
             _textShader.Dispose();

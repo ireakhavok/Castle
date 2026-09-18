@@ -13,6 +13,7 @@ namespace SiegeEngine.Core.GPU.Renderers
     {
         private readonly IRenderContext _renderContext;
         private ShaderProgram _skyShader;
+        private GpuHandle _skyPipeline;
         private VertexBuffer _cubeBuffer;
         private uint _cubemapTexture = 0;
 
@@ -24,6 +25,7 @@ namespace SiegeEngine.Core.GPU.Renderers
         public void Initialize()
         {
             _skyShader = new ShaderProgram(_renderContext, SkyboxShader.VertexShaderSource, SkyboxShader.FragmentShaderSource);
+            _skyPipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Skybox, _renderContext));
             _cubeBuffer = new VertexBuffer(_renderContext);
             BuildCubeMesh();
         }
@@ -69,18 +71,22 @@ namespace SiegeEngine.Core.GPU.Renderers
             if (skybox == null || !skybox.Enabled || _cubemapTexture == 0) return;
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
-            _skyShader.Use();
             Matrix4x4 viewNoTranslation = view;
             viewNoTranslation.M41 = 0; viewNoTranslation.M42 = 0; viewNoTranslation.M43 = 0;
-            _skyShader.SetMatrix4("uView", viewNoTranslation);
-            _skyShader.SetMatrix4("uProjection", projection);
-            Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(skybox.Orientation);
-            _skyShader.SetMatrix4("uOrientation", orient);
-            _skyShader.SetUniform("uVerticalOffset", skybox.VerticalOffset);
+            FrameCB frame = new FrameCB { View = viewNoTranslation, Projection = projection };
+            ObjectCB obj = new ObjectCB
+            {
+                Model = Matrix4x4.CreateFromQuaternion(skybox.Orientation),
+                VerticalOffset = skybox.VerticalOffset
+            };
+            _renderContext.BindPipeline(_skyPipeline);
+            _renderContext.SetConstants(ConstantSlot.Frame, frame);
+            _renderContext.SetConstants(ConstantSlot.Object, obj);
             _renderContext.ActiveTexture(0);
             _renderContext.BindTexture(_renderContext.Enums.TextureCubeMap, _cubemapTexture);
-            _cubeBuffer.Bind();
-            _renderContext.DrawElements(_renderContext.Enums.Triangles, _cubeBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            _renderContext.BindVertexBuffer(_cubeBuffer.VertexHandle, 0, _cubeBuffer.Stride, 0);
+            _renderContext.BindIndexBuffer(_cubeBuffer.IndexHandle);
+            _renderContext.DrawIndexed((int)_cubeBuffer.GetIndexCount());
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.CullFace);
         }
@@ -103,6 +109,8 @@ namespace SiegeEngine.Core.GPU.Renderers
         public void Dispose()
         {
             _skyShader?.Dispose();
+            if (_skyPipeline.IsValid)
+                _renderContext.Destroy(_skyPipeline);
             _cubeBuffer?.Dispose();
             TextureLoader.DeleteTexture(_renderContext, ref _cubemapTexture);
         }

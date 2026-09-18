@@ -1,29 +1,46 @@
-﻿// Folder: SiegeEngine/Core/Rendering/Shaders
+// Folder: SiegeEngine/Core/Rendering/Shaders
 // File: SkyboxShader.cs
-using System;
-
 namespace SiegeEngine.Core.GPU.Shaders
 {
     public static class SkyboxShader
     {
-        public const string VertexShaderSource = @"
-#version 330 core
+        public const string VertexShaderSource = @"#version 330 core
+
 layout(location = 0) in vec3 aPosition;
 out vec3 vTexCoord;
-uniform mat4 uView;
-uniform mat4 uProjection;
-uniform mat4 uOrientation;
-uniform float uVerticalOffset;
+layout(std140) uniform FrameCB
+{
+    mat4 View;
+    mat4 Projection;
+    vec4 ViewPos;
+    float Time;
+    int HasTexture;
+    float PadFrame0;
+    float PadFrame1;
+};
+layout(std140) uniform ObjectCB
+{
+    mat4 Model;
+    mat4 NormalMatrix;
+    int HasBones;
+    int ReceiveShadows;
+    int Pad0;
+    int Pad1;
+    float PointSize;
+    float VerticalOffset;
+    float Pad3;
+    float Pad4;
+};
 void main() {
     vec3 pos = aPosition;
-    pos.z += uVerticalOffset;
-    vec4 clip = uProjection * uView * vec4(pos, 1.0);
+    pos.z += VerticalOffset;
+    vec4 clip = Projection * View * vec4(pos, 1.0);
     gl_Position = clip.xyww;
-    vTexCoord = mat3(uOrientation) * aPosition;
+    vTexCoord = mat3(Model) * aPosition;
 }";
 
-        public const string FragmentShaderSource = @"
-#version 330 core
+        public const string FragmentShaderSource = @"#version 330 core
+
 in vec3 vTexCoord;
 out vec4 FragColor;
 uniform samplerCube uSkybox;

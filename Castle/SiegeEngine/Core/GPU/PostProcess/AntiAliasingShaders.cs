@@ -4,8 +4,53 @@ namespace SiegeEngine.Core.GPU.PostProcess
 {
     public static class AntiAliasingShaders
     {
-        public const string FullscreenVertex = @"
-            #version 330 core
+        public const string FullscreenVertex = @"            #version 330 core
+layout(std140) uniform FrameCB
+{
+    mat4 View;
+    mat4 Projection;
+    vec4 ViewPos;
+    float Time;
+    int HasTexture;
+    float PadFrame0;
+    float PadFrame1;
+};
+layout(std140) uniform PostCB
+{
+    mat4 PrevView;
+    mat4 PrevProjection;
+    mat4 InvView;
+    mat4 InvProjection;
+    vec4 InvResolution;
+    float Threshold;
+    float Knee;
+    float Exposure;
+    float BloomIntensity;
+    float Contrast;
+    float Saturation;
+    float Temperature;
+    float TargetLuma;
+    float Adapt;
+    float AdaptedLuma;
+    int HasHistory;
+    int HasBloom;
+    int HasPrev;
+    int AutoExposure;
+    int Tonemap;
+    int Steps;
+    float Intensity;
+    int HasDepth;
+    float Unlit;
+    float PolyFactor;
+    float PolyUnits;
+    float LinearDepth;
+    float FarPlane;
+    float PadPost0;
+    float PadPost1;
+    float PadPost2;
+    vec4 LightPos;
+};
+
             out vec2 vUv;
             void main()
             {
@@ -15,22 +60,111 @@ namespace SiegeEngine.Core.GPU.PostProcess
                 gl_Position = vec4(x, y, 0.0, 1.0);
             }";
 
-        public const string CopyFragment = @"
-            #version 330 core
+        public const string CopyFragment = @"            #version 330 core
+layout(std140) uniform FrameCB
+{
+    mat4 View;
+    mat4 Projection;
+    vec4 ViewPos;
+    float Time;
+    int HasTexture;
+    float PadFrame0;
+    float PadFrame1;
+};
+layout(std140) uniform PostCB
+{
+    mat4 PrevView;
+    mat4 PrevProjection;
+    mat4 InvView;
+    mat4 InvProjection;
+    vec4 InvResolution;
+    float Threshold;
+    float Knee;
+    float Exposure;
+    float BloomIntensity;
+    float Contrast;
+    float Saturation;
+    float Temperature;
+    float TargetLuma;
+    float Adapt;
+    float AdaptedLuma;
+    int HasHistory;
+    int HasBloom;
+    int HasPrev;
+    int AutoExposure;
+    int Tonemap;
+    int Steps;
+    float Intensity;
+    int HasDepth;
+    float Unlit;
+    float PolyFactor;
+    float PolyUnits;
+    float LinearDepth;
+    float FarPlane;
+    float PadPost0;
+    float PadPost1;
+    float PadPost2;
+    vec4 LightPos;
+};
+
             in vec2 vUv;
             out vec4 FragColor;
-            uniform sampler2D uColor;
+            uniform sampler2D Color;
             void main()
             {
-                FragColor = texture(uColor, vUv);
+                FragColor = texture(Color, vUv);
             }";
 
-        public const string FxaaFragment = @"
-            #version 330 core
+        public const string FxaaFragment = @"            #version 330 core
+layout(std140) uniform FrameCB
+{
+    mat4 View;
+    mat4 Projection;
+    vec4 ViewPos;
+    float Time;
+    int HasTexture;
+    float PadFrame0;
+    float PadFrame1;
+};
+layout(std140) uniform PostCB
+{
+    mat4 PrevView;
+    mat4 PrevProjection;
+    mat4 InvView;
+    mat4 InvProjection;
+    vec4 InvResolution;
+    float Threshold;
+    float Knee;
+    float Exposure;
+    float BloomIntensity;
+    float Contrast;
+    float Saturation;
+    float Temperature;
+    float TargetLuma;
+    float Adapt;
+    float AdaptedLuma;
+    int HasHistory;
+    int HasBloom;
+    int HasPrev;
+    int AutoExposure;
+    int Tonemap;
+    int Steps;
+    float Intensity;
+    int HasDepth;
+    float Unlit;
+    float PolyFactor;
+    float PolyUnits;
+    float LinearDepth;
+    float FarPlane;
+    float PadPost0;
+    float PadPost1;
+    float PadPost2;
+    vec4 LightPos;
+};
+
             in vec2 vUv;
             out vec4 FragColor;
-            uniform sampler2D uColor;
-            uniform vec2 uInvResolution;
+            uniform sampler2D Color;
 
             float Luma(vec3 c)
             {
@@ -39,13 +173,13 @@ namespace SiegeEngine.Core.GPU.PostProcess
 
             void main()
             {
-                vec2 rcp = uInvResolution;
-                vec3 rgbM = texture(uColor, vUv).rgb;
+                vec2 rcp = InvResolution.xy;
+                vec3 rgbM = texture(Color, vUv).rgb;
                 float lumaM = Luma(rgbM);
-                float lumaN = Luma(texture(uColor, vUv + vec2(0.0, -rcp.y)).rgb);
-                float lumaS = Luma(texture(uColor, vUv + vec2(0.0,  rcp.y)).rgb);
-                float lumaW = Luma(texture(uColor, vUv + vec2(-rcp.x, 0.0)).rgb);
-                float lumaE = Luma(texture(uColor, vUv + vec2( rcp.x, 0.0)).rgb);
+                float lumaN = Luma(texture(Color, vUv + vec2(0.0, -rcp.y)).rgb);
+                float lumaS = Luma(texture(Color, vUv + vec2(0.0,  rcp.y)).rgb);
+                float lumaW = Luma(texture(Color, vUv + vec2(-rcp.x, 0.0)).rgb);
+                float lumaE = Luma(texture(Color, vUv + vec2( rcp.x, 0.0)).rgb);
 
                 float lumaMin = min(lumaM, min(min(lumaN, lumaS), min(lumaW, lumaE)));
                 float lumaMax = max(lumaM, max(max(lumaN, lumaS), max(lumaW, lumaE)));
@@ -56,10 +190,10 @@ namespace SiegeEngine.Core.GPU.PostProcess
                     return;
                 }
 
-                float lumaNW = Luma(texture(uColor, vUv + vec2(-rcp.x, -rcp.y)).rgb);
-                float lumaNE = Luma(texture(uColor, vUv + vec2( rcp.x, -rcp.y)).rgb);
-                float lumaSW = Luma(texture(uColor, vUv + vec2(-rcp.x,  rcp.y)).rgb);
-                float lumaSE = Luma(texture(uColor, vUv + vec2( rcp.x,  rcp.y)).rgb);
+                float lumaNW = Luma(texture(Color, vUv + vec2(-rcp.x, -rcp.y)).rgb);
+                float lumaNE = Luma(texture(Color, vUv + vec2( rcp.x, -rcp.y)).rgb);
+                float lumaSW = Luma(texture(Color, vUv + vec2(-rcp.x,  rcp.y)).rgb);
+                float lumaSE = Luma(texture(Color, vUv + vec2( rcp.x,  rcp.y)).rgb);
 
                 vec2 dir;
                 dir.x = -((lumaN + lumaS) - (lumaE + lumaW));
@@ -69,11 +203,11 @@ namespace SiegeEngine.Core.GPU.PostProcess
                 dir = clamp(dir * rcpDir, vec2(-8.0), vec2(8.0)) * rcp;
 
                 vec3 rgbA = 0.5 * (
-                    texture(uColor, vUv + dir * (1.0 / 3.0 - 0.5)).rgb +
-                    texture(uColor, vUv + dir * (2.0 / 3.0 - 0.5)).rgb);
+                    texture(Color, vUv + dir * (1.0 / 3.0 - 0.5)).rgb +
+                    texture(Color, vUv + dir * (2.0 / 3.0 - 0.5)).rgb);
                 vec3 rgbB = rgbA * 0.5 + 0.25 * (
-                    texture(uColor, vUv + dir * -0.5).rgb +
-                    texture(uColor, vUv + dir *  0.5).rgb);
+                    texture(Color, vUv + dir * -0.5).rgb +
+                    texture(Color, vUv + dir *  0.5).rgb);
 
                 float lumaB = Luma(rgbB);
                 vec3 filtered = (lumaB < lumaMin || lumaB > lumaMax) ? rgbA : rgbB;
@@ -81,19 +215,63 @@ namespace SiegeEngine.Core.GPU.PostProcess
 
                 // 1px lattice: both sides agree with each other, disagree with center.
                 if (abs(lumaW - lumaE) < 0.06 && min(abs(lumaM - lumaW), abs(lumaM - lumaE)) > 0.22)
-                    outC = mix(outC, 0.5 * (texture(uColor, vUv + vec2(-rcp.x, 0.0)).rgb + texture(uColor, vUv + vec2(rcp.x, 0.0)).rgb), 0.45);
+                    outC = mix(outC, 0.5 * (texture(Color, vUv + vec2(-rcp.x, 0.0)).rgb + texture(Color, vUv + vec2(rcp.x, 0.0)).rgb), 0.45);
                 if (abs(lumaN - lumaS) < 0.06 && min(abs(lumaM - lumaN), abs(lumaM - lumaS)) > 0.22)
-                    outC = mix(outC, 0.5 * (texture(uColor, vUv + vec2(0.0, -rcp.y)).rgb + texture(uColor, vUv + vec2(0.0, rcp.y)).rgb), 0.45);
+                    outC = mix(outC, 0.5 * (texture(Color, vUv + vec2(0.0, -rcp.y)).rgb + texture(Color, vUv + vec2(0.0, rcp.y)).rgb), 0.45);
 
                 FragColor = vec4(outC, 1.0);
             }";
 
-        public const string SmaaEdgeFragment = @"
-            #version 330 core
+        public const string SmaaEdgeFragment = @"            #version 330 core
+layout(std140) uniform FrameCB
+{
+    mat4 View;
+    mat4 Projection;
+    vec4 ViewPos;
+    float Time;
+    int HasTexture;
+    float PadFrame0;
+    float PadFrame1;
+};
+layout(std140) uniform PostCB
+{
+    mat4 PrevView;
+    mat4 PrevProjection;
+    mat4 InvView;
+    mat4 InvProjection;
+    vec4 InvResolution;
+    float Threshold;
+    float Knee;
+    float Exposure;
+    float BloomIntensity;
+    float Contrast;
+    float Saturation;
+    float Temperature;
+    float TargetLuma;
+    float Adapt;
+    float AdaptedLuma;
+    int HasHistory;
+    int HasBloom;
+    int HasPrev;
+    int AutoExposure;
+    int Tonemap;
+    int Steps;
+    float Intensity;
+    int HasDepth;
+    float Unlit;
+    float PolyFactor;
+    float PolyUnits;
+    float LinearDepth;
+    float FarPlane;
+    float PadPost0;
+    float PadPost1;
+    float PadPost2;
+    vec4 LightPos;
+};
+
             in vec2 vUv;
             out vec4 FragColor;
-            uniform sampler2D uColor;
-            uniform vec2 uInvResolution;
+            uniform sampler2D Color;
 
             float Luma(vec3 c)
             {
@@ -102,10 +280,10 @@ namespace SiegeEngine.Core.GPU.PostProcess
 
             void main()
             {
-                vec2 rcp = uInvResolution;
-                float l = Luma(texture(uColor, vUv).rgb);
-                float lLeft = Luma(texture(uColor, vUv + vec2(-rcp.x, 0.0)).rgb);
-                float lTop  = Luma(texture(uColor, vUv + vec2(0.0, -rcp.y)).rgb);
+                vec2 rcp = InvResolution.xy;
+                float l = Luma(texture(Color, vUv).rgb);
+                float lLeft = Luma(texture(Color, vUv + vec2(-rcp.x, 0.0)).rgb);
+                float lTop  = Luma(texture(Color, vUv + vec2(0.0, -rcp.y)).rgb);
                 vec2 delta = abs(vec2(l - lLeft, l - lTop));
 
                 // High threshold so faceted / missing-texture models do not crayon.
@@ -119,16 +297,60 @@ namespace SiegeEngine.Core.GPU.PostProcess
                 FragColor = vec4(edges, 0.0, 1.0);
             }";
 
-        public const string SmaaWeightFragment = @"
-            #version 330 core
+        public const string SmaaWeightFragment = @"            #version 330 core
+layout(std140) uniform FrameCB
+{
+    mat4 View;
+    mat4 Projection;
+    vec4 ViewPos;
+    float Time;
+    int HasTexture;
+    float PadFrame0;
+    float PadFrame1;
+};
+layout(std140) uniform PostCB
+{
+    mat4 PrevView;
+    mat4 PrevProjection;
+    mat4 InvView;
+    mat4 InvProjection;
+    vec4 InvResolution;
+    float Threshold;
+    float Knee;
+    float Exposure;
+    float BloomIntensity;
+    float Contrast;
+    float Saturation;
+    float Temperature;
+    float TargetLuma;
+    float Adapt;
+    float AdaptedLuma;
+    int HasHistory;
+    int HasBloom;
+    int HasPrev;
+    int AutoExposure;
+    int Tonemap;
+    int Steps;
+    float Intensity;
+    int HasDepth;
+    float Unlit;
+    float PolyFactor;
+    float PolyUnits;
+    float LinearDepth;
+    float FarPlane;
+    float PadPost0;
+    float PadPost1;
+    float PadPost2;
+    vec4 LightPos;
+};
+
             in vec2 vUv;
             out vec4 FragColor;
             uniform sampler2D uEdges;
-            uniform vec2 uInvResolution;
 
             float Search(vec2 uv, vec2 dir, float maxSteps)
             {
-                vec2 rcp = uInvResolution;
+                vec2 rcp = InvResolution.xy;
                 float dist = 0.0;
                 float e = 1.0;
                 for (int i = 0; i < 8; i++)
@@ -172,20 +394,64 @@ namespace SiegeEngine.Core.GPU.PostProcess
                 FragColor = weights;
             }";
 
-        public const string SmaaBlendFragment = @"
-            #version 330 core
+        public const string SmaaBlendFragment = @"            #version 330 core
+layout(std140) uniform FrameCB
+{
+    mat4 View;
+    mat4 Projection;
+    vec4 ViewPos;
+    float Time;
+    int HasTexture;
+    float PadFrame0;
+    float PadFrame1;
+};
+layout(std140) uniform PostCB
+{
+    mat4 PrevView;
+    mat4 PrevProjection;
+    mat4 InvView;
+    mat4 InvProjection;
+    vec4 InvResolution;
+    float Threshold;
+    float Knee;
+    float Exposure;
+    float BloomIntensity;
+    float Contrast;
+    float Saturation;
+    float Temperature;
+    float TargetLuma;
+    float Adapt;
+    float AdaptedLuma;
+    int HasHistory;
+    int HasBloom;
+    int HasPrev;
+    int AutoExposure;
+    int Tonemap;
+    int Steps;
+    float Intensity;
+    int HasDepth;
+    float Unlit;
+    float PolyFactor;
+    float PolyUnits;
+    float LinearDepth;
+    float FarPlane;
+    float PadPost0;
+    float PadPost1;
+    float PadPost2;
+    vec4 LightPos;
+};
+
             in vec2 vUv;
             out vec4 FragColor;
-            uniform sampler2D uColor;
+            uniform sampler2D Color;
             uniform sampler2D uWeights;
-            uniform vec2 uInvResolution;
 
             vec3 RefineThinLines(vec3 center, vec2 uv, vec2 rcp)
             {
-                vec3 rgbW = texture(uColor, uv + vec2(-rcp.x, 0.0)).rgb;
-                vec3 rgbE = texture(uColor, uv + vec2( rcp.x, 0.0)).rgb;
-                vec3 rgbN = texture(uColor, uv + vec2(0.0, -rcp.y)).rgb;
-                vec3 rgbS = texture(uColor, uv + vec2(0.0,  rcp.y)).rgb;
+                vec3 rgbW = texture(Color, uv + vec2(-rcp.x, 0.0)).rgb;
+                vec3 rgbE = texture(Color, uv + vec2( rcp.x, 0.0)).rgb;
+                vec3 rgbN = texture(Color, uv + vec2(0.0, -rcp.y)).rgb;
+                vec3 rgbS = texture(Color, uv + vec2(0.0,  rcp.y)).rgb;
                 float lC = dot(center, vec3(0.2126, 0.7152, 0.0722));
                 float lW = dot(rgbW, vec3(0.2126, 0.7152, 0.0722));
                 float lE = dot(rgbE, vec3(0.2126, 0.7152, 0.0722));
@@ -201,8 +467,8 @@ namespace SiegeEngine.Core.GPU.PostProcess
 
             void main()
             {
-                vec3 center = texture(uColor, vUv).rgb;
-                vec2 rcp = uInvResolution;
+                vec3 center = texture(Color, vUv).rgb;
+                vec2 rcp = InvResolution.xy;
                 vec4 w = texture(uWeights, vUv);
                 float left = w.r;
                 float right = w.g;
@@ -213,29 +479,68 @@ namespace SiegeEngine.Core.GPU.PostProcess
                 if (sum >= 1e-4)
                 {
                     vec3 acc = center;
-                    acc += texture(uColor, vUv + vec2(-rcp.x, 0.0)).rgb * left;
-                    acc += texture(uColor, vUv + vec2( rcp.x, 0.0)).rgb * right;
-                    acc += texture(uColor, vUv + vec2(0.0, -rcp.y)).rgb * top;
-                    acc += texture(uColor, vUv + vec2(0.0,  rcp.y)).rgb * bottom;
+                    acc += texture(Color, vUv + vec2(-rcp.x, 0.0)).rgb * left;
+                    acc += texture(Color, vUv + vec2( rcp.x, 0.0)).rgb * right;
+                    acc += texture(Color, vUv + vec2(0.0, -rcp.y)).rgb * top;
+                    acc += texture(Color, vUv + vec2(0.0,  rcp.y)).rgb * bottom;
                     outC = mix(center, acc / (1.0 + sum), 0.40);
                 }
                 outC = RefineThinLines(outC, vUv, rcp);
                 FragColor = vec4(outC, 1.0);
             }";
 
-        public const string TaaFragment = @"
-            #version 330 core
+        public const string TaaFragment = @"            #version 330 core
+layout(std140) uniform FrameCB
+{
+    mat4 View;
+    mat4 Projection;
+    vec4 ViewPos;
+    float Time;
+    int HasTexture;
+    float PadFrame0;
+    float PadFrame1;
+};
+layout(std140) uniform PostCB
+{
+    mat4 PrevView;
+    mat4 PrevProjection;
+    mat4 InvView;
+    mat4 InvProjection;
+    vec4 InvResolution;
+    float Threshold;
+    float Knee;
+    float Exposure;
+    float BloomIntensity;
+    float Contrast;
+    float Saturation;
+    float Temperature;
+    float TargetLuma;
+    float Adapt;
+    float AdaptedLuma;
+    int HasHistory;
+    int HasBloom;
+    int HasPrev;
+    int AutoExposure;
+    int Tonemap;
+    int Steps;
+    float Intensity;
+    int HasDepth;
+    float Unlit;
+    float PolyFactor;
+    float PolyUnits;
+    float LinearDepth;
+    float FarPlane;
+    float PadPost0;
+    float PadPost1;
+    float PadPost2;
+    vec4 LightPos;
+};
+
             in vec2 vUv;
             out vec4 FragColor;
-            uniform sampler2D uColor;
+            uniform sampler2D Color;
             uniform sampler2D uHistory;
             uniform sampler2D uDepth;
-            uniform mat4 uView;
-            uniform mat4 uProjection;
-            uniform mat4 uPrevView;
-            uniform mat4 uPrevProjection;
-            uniform vec2 uInvResolution;
-            uniform int uHasHistory;
 
             float Luma(vec3 c)
             {
@@ -244,8 +549,8 @@ namespace SiegeEngine.Core.GPU.PostProcess
 
             void main()
             {
-                vec3 current = texture(uColor, vUv).rgb;
-                if (uHasHistory == 0)
+                vec3 current = texture(Color, vUv).rgb;
+                if (HasHistory == 0)
                 {
                     FragColor = vec4(current, 1.0);
                     return;
@@ -253,11 +558,11 @@ namespace SiegeEngine.Core.GPU.PostProcess
 
                 float depth = texture(uDepth, vUv).r;
                 vec4 ndc = vec4(vUv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
-                mat4 invViewProj = inverse(uProjection * uView);
+                mat4 invViewProj = inverse(Projection * View);
                 vec4 world = invViewProj * ndc;
                 world /= max(world.w, 1e-6);
 
-                vec4 prevClip = (uPrevProjection * uPrevView) * world;
+                vec4 prevClip = (PrevProjection * PrevView) * world;
                 prevClip /= max(prevClip.w, 1e-6);
                 vec2 prevUv = prevClip.xy * 0.5 + 0.5;
 
@@ -266,14 +571,14 @@ namespace SiegeEngine.Core.GPU.PostProcess
                 if (!offscreen)
                     history = texture(uHistory, prevUv).rgb;
 
-                vec3 n00 = texture(uColor, vUv + vec2(-uInvResolution.x, -uInvResolution.y)).rgb;
-                vec3 n10 = texture(uColor, vUv + vec2( 0.0,               -uInvResolution.y)).rgb;
-                vec3 n20 = texture(uColor, vUv + vec2( uInvResolution.x, -uInvResolution.y)).rgb;
-                vec3 n01 = texture(uColor, vUv + vec2(-uInvResolution.x,  0.0)).rgb;
-                vec3 n21 = texture(uColor, vUv + vec2( uInvResolution.x,  0.0)).rgb;
-                vec3 n02 = texture(uColor, vUv + vec2(-uInvResolution.x,  uInvResolution.y)).rgb;
-                vec3 n12 = texture(uColor, vUv + vec2( 0.0,                uInvResolution.y)).rgb;
-                vec3 n22 = texture(uColor, vUv + vec2( uInvResolution.x,  uInvResolution.y)).rgb;
+                vec3 n00 = texture(Color, vUv + vec2(-InvResolution.xy.x, -InvResolution.xy.y)).rgb;
+                vec3 n10 = texture(Color, vUv + vec2( 0.0,               -InvResolution.xy.y)).rgb;
+                vec3 n20 = texture(Color, vUv + vec2( InvResolution.xy.x, -InvResolution.xy.y)).rgb;
+                vec3 n01 = texture(Color, vUv + vec2(-InvResolution.xy.x,  0.0)).rgb;
+                vec3 n21 = texture(Color, vUv + vec2( InvResolution.xy.x,  0.0)).rgb;
+                vec3 n02 = texture(Color, vUv + vec2(-InvResolution.xy.x,  InvResolution.xy.y)).rgb;
+                vec3 n12 = texture(Color, vUv + vec2( 0.0,                InvResolution.xy.y)).rgb;
+                vec3 n22 = texture(Color, vUv + vec2( InvResolution.xy.x,  InvResolution.xy.y)).rgb;
 
                 vec3 cmin = min(current, min(min(min(n00, n10), min(n20, n01)), min(min(n21, n02), min(n12, n22))));
                 vec3 cmax = max(current, max(max(max(n00, n10), max(n20, n01)), max(max(n21, n02), max(n12, n22))));
