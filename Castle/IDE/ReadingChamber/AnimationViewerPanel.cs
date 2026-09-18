@@ -79,7 +79,7 @@ namespace ReadingChamber
         {
             base.Init();
 
-            _textShader = new ShaderProgram(_renderContext, TextShader.VertexShaderSource, TextShader.FragmentShaderSource);
+            _textShader = ShaderProgram.FromId(_renderContext, ShaderId.Text);
             _textRenderer = new EditorTextRenderer(_renderContext, _window);
             _textRenderer.Initialize(_textShader);
 

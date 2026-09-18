@@ -10,7 +10,6 @@ using SiegeEngine.Core.GPU.Shaders;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.Renderers
 {
@@ -73,8 +72,8 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void Initialize()
         {
-            _modelShader = new ShaderProgram(_renderContext, ModelShader.VertexShaderSource, ModelShader.FragmentShaderSource);
-            _animationShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
+            _modelShader = ShaderProgram.FromId(_renderContext, ShaderId.Model);
+            _animationShader = ShaderProgram.FromId(_renderContext, ShaderId.Animation);
             _modelPipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Model, _renderContext));
             _animationPipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Animation, _renderContext));
         }

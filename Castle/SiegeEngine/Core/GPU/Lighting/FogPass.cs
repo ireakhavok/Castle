@@ -5,7 +5,6 @@ using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
 using System;
 using System.Numerics;
-using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.Lighting
 {
@@ -31,7 +30,7 @@ namespace SiegeEngine.Core.GPU.Lighting
         {
             _rc = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _e = _rc.Enums;
-            _volumetric = new ShaderProgram(_rc, FogShaders.FullscreenVertex, FogShaders.VolumetricFragment);
+            _volumetric = ShaderProgram.FromId(_rc, ShaderId.Fog);
             _emptyVao = ((OpenGLRenderContext)_rc).GenVertexArray();
         }
 

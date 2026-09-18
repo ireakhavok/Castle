@@ -10,7 +10,6 @@ using SiegeEngine.Core.Managers;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.Lighting
 {
@@ -103,7 +102,7 @@ namespace SiegeEngine.Core.GPU.Lighting
         {
             _rc = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _e = _rc.Enums;
-            _depthShader = new ShaderProgram(_rc, ShadowShaders.DepthVertex, ShadowShaders.DepthFragment);
+            _depthShader = ShaderProgram.FromId(_rc, ShaderId.ShadowDepth);
         }
 
         public void Render(LightingFrame frame, IReadOnlyList<ShadowCaster> casters, Matrix4x4 view, Matrix4x4 projection, Vector3 cameraPos)

@@ -7,7 +7,6 @@ using System.Runtime.InteropServices;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
-using SiegeEngine.Core.GPU.Shaders.OpenGL;
 namespace SiegeEngine.Core.GPU.Compute
 {
     public unsafe class AcousticRayTracer : IDisposable
@@ -136,7 +135,7 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _geometry = geometry ?? throw new ArgumentNullException(nameof(geometry));
-            _idProgram = new ShaderProgram(_renderContext, AcousticIdShader.VertexSource, AcousticIdShader.FragmentSource);
+            _idProgram = ShaderProgram.FromId(_renderContext, ShaderId.AcousticId);
             _idReadback = new uint[IdBufferSize * IdBufferSize];
             CreateIdFbo();
         }

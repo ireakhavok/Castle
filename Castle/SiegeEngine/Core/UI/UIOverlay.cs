@@ -65,7 +65,7 @@ namespace SiegeEngine.Core.UI
         }
         public virtual void Init()
         {
-            _uiShader = new ShaderProgram(_renderContext, UiShader.VertexSource, UiShader.FragmentSource);
+            _uiShader = ShaderProgram.FromId(_renderContext, ShaderId.Ui);
             _textRenderer = new TextRenderer(_renderContext, _window);
             _textRenderer.Initialize(_uiShader);
             _quadRenderer = new UIQuadRenderer(_renderContext);

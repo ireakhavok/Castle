@@ -5,7 +5,6 @@ using SiegeEngine.Core.GPU.Shaders;
 using System;
 using System.Numerics;
 using System.Diagnostics;
-using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.PostProcess
 {
@@ -59,13 +58,13 @@ namespace SiegeEngine.Core.GPU.PostProcess
         {
             _rc = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _e = _rc.Enums;
-            _extract = new ShaderProgram(_rc, ColorComposeShaders.FullscreenVertex, ColorComposeShaders.ExtractFragment);
-            _down = new ShaderProgram(_rc, ColorComposeShaders.FullscreenVertex, ColorComposeShaders.DownsampleFragment);
-            _up = new ShaderProgram(_rc, ColorComposeShaders.FullscreenVertex, ColorComposeShaders.UpsampleFragment);
-            _compose = new ShaderProgram(_rc, ColorComposeShaders.FullscreenVertex, ColorComposeShaders.ComposeFragment);
-            _luma = new ShaderProgram(_rc, ColorComposeShaders.FullscreenVertex, ColorComposeShaders.LumaFragment);
-            _lumaDown = new ShaderProgram(_rc, ColorComposeShaders.FullscreenVertex, ColorComposeShaders.LumaDownFragment);
-            _adapt = new ShaderProgram(_rc, ColorComposeShaders.FullscreenVertex, ColorComposeShaders.AdaptFragment);
+            _extract = ShaderProgram.FromId(_rc, ShaderId.CcExtract);
+            _down = ShaderProgram.FromId(_rc, ShaderId.CcDownsample);
+            _up = ShaderProgram.FromId(_rc, ShaderId.CcUpsample);
+            _compose = ShaderProgram.FromId(_rc, ShaderId.CcCompose);
+            _luma = ShaderProgram.FromId(_rc, ShaderId.CcLuma);
+            _lumaDown = ShaderProgram.FromId(_rc, ShaderId.CcLumaDown);
+            _adapt = ShaderProgram.FromId(_rc, ShaderId.CcAdapt);
             _emptyVao = ((OpenGLRenderContext)_rc).GenVertexArray();
             _lastAdaptStamp = Stopwatch.GetTimestamp();
         }

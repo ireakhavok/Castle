@@ -8,7 +8,6 @@ using SiegeEngine.Core.Terrain;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.Renderers
 {
@@ -25,8 +24,8 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void Initialize()
         {
-            _terrainShader = new ShaderProgram(_renderContext, TerrainShader.VertexShaderSource, TerrainShader.FragmentShaderSource);
-            _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
+            _terrainShader = ShaderProgram.FromId(_renderContext, ShaderId.Terrain);
+            _spriteShader = ShaderProgram.FromId(_renderContext, ShaderId.Sprite);
         }
 
         public void RenderTerrain(Matrix4x4 view, Matrix4x4 projection, bool hasColorTexture, uint terrainTextureId, VertexBuffer terrainBuffer, float[,] heightmap = null, bool drawWireframe = true)

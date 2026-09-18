@@ -6,7 +6,6 @@ using SiegeEngine.Core.GPU.Shaders;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.Renderers
 {
@@ -25,7 +24,7 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void Initialize()
         {
-            _skyShader = new ShaderProgram(_renderContext, SkyboxShader.VertexShaderSource, SkyboxShader.FragmentShaderSource);
+            _skyShader = ShaderProgram.FromId(_renderContext, ShaderId.Skybox);
             _skyPipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Skybox, _renderContext));
             _cubeBuffer = new VertexBuffer(_renderContext);
             BuildCubeMesh();

@@ -90,7 +90,7 @@ namespace SiegeEngine.Scenes
             _bindSkeletonBuffer = new VertexBuffer(_renderContext);
             _lineRenderer = new LineRenderer(_renderContext);
             _lineRenderer.Initialize();
-            _textShader = new ShaderProgram(_renderContext, TextShader.VertexShaderSource, TextShader.FragmentShaderSource);
+            _textShader = ShaderProgram.FromId(_renderContext, ShaderId.Text);
             LoadMesh(_meshPath);
             DiscoverAnimationFiles();
         }

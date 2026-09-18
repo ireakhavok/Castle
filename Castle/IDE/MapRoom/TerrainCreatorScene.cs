@@ -55,7 +55,7 @@ namespace MapRoom
             {
                 _eventBus.Subscribe<SelectBrushEvent>(OnSelectBrushEvent);
             }
-            _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
+            _spriteShader = ShaderProgram.FromId(_renderContext, ShaderId.Sprite);
             _skyboxHook = e =>
             {
                 if (e.Hook == "SkyboxSet" || e.Hook == "OpenAddSkybox" || e.Hook == "SkyboxRefresh")

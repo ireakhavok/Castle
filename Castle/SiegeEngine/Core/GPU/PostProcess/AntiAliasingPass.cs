@@ -5,7 +5,6 @@ using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
 using System;
 using System.Numerics;
-using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.PostProcess
 {
@@ -68,12 +67,12 @@ namespace SiegeEngine.Core.GPU.PostProcess
         {
             _rc = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _e = _rc.Enums;
-            _copy = new ShaderProgram(_rc, AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.CopyFragment);
-            _fxaa = new ShaderProgram(_rc, AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.FxaaFragment);
-            _smaaEdge = new ShaderProgram(_rc, AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.SmaaEdgeFragment);
-            _smaaWeight = new ShaderProgram(_rc, AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.SmaaWeightFragment);
-            _smaaBlend = new ShaderProgram(_rc, AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.SmaaBlendFragment);
-            _taa = new ShaderProgram(_rc, AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.TaaFragment);
+            _copy = ShaderProgram.FromId(_rc, ShaderId.AaCopy);
+            _fxaa = ShaderProgram.FromId(_rc, ShaderId.AaFxaa);
+            _smaaEdge = ShaderProgram.FromId(_rc, ShaderId.AaSmaa);
+            _smaaWeight = ShaderProgram.FromId(_rc, ShaderId.AaSmaaWeight);
+            _smaaBlend = ShaderProgram.FromId(_rc, ShaderId.AaSmaaBlend);
+            _taa = ShaderProgram.FromId(_rc, ShaderId.AaTaa);
             _emptyVao = ((OpenGLRenderContext)_rc).GenVertexArray();
         }
 

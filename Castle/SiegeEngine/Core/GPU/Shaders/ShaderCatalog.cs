@@ -57,6 +57,10 @@ namespace SiegeEngine.Core.GPU.Shaders
                     return VsFs(AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.FxaaFragment);
                 case ShaderId.AaSmaa:
                     return VsFs(AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.SmaaEdgeFragment);
+                case ShaderId.AaSmaaWeight:
+                    return VsFs(AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.SmaaWeightFragment);
+                case ShaderId.AaSmaaBlend:
+                    return VsFs(AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.SmaaBlendFragment);
                 case ShaderId.AaTaa:
                     return VsFs(AntiAliasingShaders.FullscreenVertex, AntiAliasingShaders.TaaFragment);
                 case ShaderId.CcExtract:
@@ -71,6 +75,8 @@ namespace SiegeEngine.Core.GPU.Shaders
                     return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.LumaFragment);
                 case ShaderId.CcAdapt:
                     return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.AdaptFragment);
+                case ShaderId.CcLumaDown:
+                    return VsFs(ColorComposeShaders.FullscreenVertex, ColorComposeShaders.LumaDownFragment);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(id), id, "Unknown ShaderId.");
             }

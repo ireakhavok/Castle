@@ -6,7 +6,6 @@ using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using SiegeEngine.Core.GPU.Shaders.OpenGL;
 
 namespace SiegeEngine.Core.GPU.Renderers
 {
@@ -31,7 +30,7 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         private void Initialize()
         {
-            _shader = new ShaderProgram(_renderContext, UiShader.VertexSource, UiShader.FragmentSource);
+            _shader = ShaderProgram.FromId(_renderContext, ShaderId.Ui);
             _pipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Ui, _renderContext));
             ((OpenGLRenderContext)_renderContext).GenVertexArrays(1, out _vao);
             ((OpenGLRenderContext)_renderContext).BindVertexArray(_vao);
