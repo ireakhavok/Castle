@@ -69,7 +69,14 @@ namespace CastleBuilder
         }
 
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
-            : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus) { }
+            : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus)
+        {
+            // Scene Editor shows authored poses. Stepping dynamics here is
+            // what launched greenball 4/5 on load (variable first-frame dt
+            // + triangle-mesh vs terrain, no correction cap).
+            if (_server is ClientGameServerProxy editorProxy)
+                editorProxy.SimulateDynamics = false;
+        }
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
@@ -77,6 +84,29 @@ namespace CastleBuilder
             RegisterCoreSystems();
             EditorHistory.TransformApplied = ApplyLiveTransform;
             LoadProjectData();
+        }
+        public bool ToggleSimulateDynamics()
+        {
+            if (!(_server is ClientGameServerProxy proxy))
+                return false;
+            proxy.SimulateDynamics = !proxy.SimulateDynamics;
+            var live = GetEntities();
+            for (int i = 0; i < live.Count; i++)
+            {
+                var physics = live[i]?.GetComponent<PhysicsComponent>();
+                if (physics == null || physics.BodyType != BodyType.Dynamic)
+                    continue;
+                physics.IsSleeping = false;
+                physics.SleepTimer = 0f;
+                if (!proxy.SimulateDynamics)
+                {
+                    physics.Velocity = Vector3.Zero;
+                    physics.AngularVelocity = Vector3.Zero;
+                    physics.RenderPosition = physics.Position;
+                }
+            }
+            Console.WriteLine("[EditorScene] SimulateDynamics=" + proxy.SimulateDynamics);
+            return proxy.SimulateDynamics;
         }
         private void ApplyLiveTransform(int entityId, Vector3 pos, System.Numerics.Quaternion rot)
         {
@@ -164,7 +194,30 @@ namespace CastleBuilder
         }
                 public bool TryGetPlacementPosition(out Vector3 position)
         {
-            return TryGetPlacementPosition(_placeNorm, _placeW, _placeH, out position);
+            position = Vector3.Zero;
+            if (_activeGameScene is TerrainCreatorScene tcs)
+            {
+                if (tcs.TryPerformPlacementRaycast(out position))
+                    return true;
+            }
+            GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection);
+            if (!Matrix4x4.Invert(projection, out Matrix4x4 invProj)) return false;
+            if (!Matrix4x4.Invert(view, out Matrix4x4 invView)) return false;
+            Vector4 ndcNear = new Vector4(0f, 0f, -1f, 1f);
+            Vector4 ndcFar = new Vector4(0f, 0f, 1f, 1f);
+            Vector4 eyeNearH = Vector4.Transform(ndcNear, invProj);
+            Vector4 eyeFarH = Vector4.Transform(ndcFar, invProj);
+            Vector3 eyeNear = new Vector3(eyeNearH.X / eyeNearH.W, eyeNearH.Y / eyeNearH.W, eyeNearH.Z / eyeNearH.W);
+            Vector3 eyeFar = new Vector3(eyeFarH.X / eyeFarH.W, eyeFarH.Y / eyeFarH.W, eyeFarH.Z / eyeFarH.W);
+            Vector3 origin = Vector3.Transform(eyeNear, invView);
+            Vector3 dir = Vector3.Normalize(Vector3.Transform(eyeFar, invView) - origin);
+            if (_activeGameScene is TerrainCreatorScene tcs2 && tcs2.TryTerrainRaycast(origin, dir, out position))
+                return true;
+            if (MathF.Abs(dir.Z) < 1e-5f) return false;
+            float tHit = -origin.Z / dir.Z;
+            if (tHit < 0.05f) return false;
+            position = origin + dir * tHit;
+            return true;
         }
 
         public bool TryGetPlacementPosition(Vector2 normalizedMouse, float contentW, float contentH, out Vector3 position)

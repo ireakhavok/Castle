@@ -73,15 +73,13 @@ namespace SiegeEngine.Core.GPU.Compute
         private uint _pendingGeometryVersion;
         private int _pendingFace;
         private const int FacesPerCall = 6;
-        private uint _fbo;
-        private uint _idTexture;
-        private uint _depthRb;
+        private GpuHandle _idRt;
         private uint[] _idReadback;
         private bool _fboReady;
         // PBO + fence (shared hardware, but primary and secondary never run concurrently)
-        private readonly uint[] _pbo = new uint[2];
+        private readonly GpuHandle[] _pbo = new GpuHandle[2];
         private int _pboIndex;
-        private uint _pendingFence;
+        private nint _pendingFence;
         private int _pendingPbo;
         private bool _fencePending;
         private static readonly Vector3[] CubeDirs =
@@ -141,40 +139,42 @@ namespace SiegeEngine.Core.GPU.Compute
         }
         private void CreateIdFbo()
         {
-            ((OpenGLRenderContext)_renderContext).GenFramebuffers(1, out _fbo);
-            ((OpenGLRenderContext)_renderContext).BindFramebuffer(_renderContext.Enums.Framebuffer, _fbo);
-            ((OpenGLRenderContext)_renderContext).GenTextures(1, out _idTexture);
-            ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, _idTexture);
-            ((OpenGLRenderContext)_renderContext).TexImage2D(_renderContext.Enums.Texture2D, 0, _renderContext.Enums.R32UI,
-                IdBufferSize, IdBufferSize, 0, _renderContext.Enums.RedInteger, _renderContext.Enums.UnsignedIntType, null);
-            ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMinFilter, _renderContext.Enums.Nearest);
-            ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMagFilter, _renderContext.Enums.Nearest);
-            ((OpenGLRenderContext)_renderContext).FramebufferTexture2D(_renderContext.Enums.Framebuffer, _renderContext.Enums.ColorAttachment0,
-                _renderContext.Enums.Texture2D, _idTexture, 0);
-            ((OpenGLRenderContext)_renderContext).GenRenderbuffers(1, out _depthRb);
-            ((OpenGLRenderContext)_renderContext).BindRenderbuffer(_renderContext.Enums.Renderbuffer, _depthRb);
-            ((OpenGLRenderContext)_renderContext).RenderbufferStorage(_renderContext.Enums.Renderbuffer, _renderContext.Enums.DepthComponent24,
-                IdBufferSize, IdBufferSize);
-            ((OpenGLRenderContext)_renderContext).FramebufferRenderbuffer(_renderContext.Enums.Framebuffer, _renderContext.Enums.DepthAttachment,
-                _renderContext.Enums.Renderbuffer, _depthRb);
-            int status = ((OpenGLRenderContext)_renderContext).CheckFramebufferStatus(_renderContext.Enums.Framebuffer);
-            _fboReady = (status == _renderContext.Enums.FramebufferComplete);
-            ((OpenGLRenderContext)_renderContext).BindFramebuffer(_renderContext.Enums.Framebuffer, 0);
-            if (!_fboReady)
-                Console.WriteLine($"[AcousticRayTracer] ID FBO incomplete, status={status}");
-            uint pboBytes = (uint)(IdBufferSize * IdBufferSize * sizeof(uint));
+            _idRt = _renderContext.CreateRenderTarget(new RenderTargetDesc
+            {
+                Width = IdBufferSize,
+                Height = IdBufferSize,
+                ColorFormat = _renderContext.Enums.R32UI,
+                DepthFormat = _renderContext.Enums.DepthComponent24,
+                DepthTexture = false
+            });
+            _fboReady = _idRt.IsValid;
+            if (_fboReady)
+            {
+                _renderContext.SetTextureParams(
+                    _idRt,
+                    _renderContext.Enums.Nearest,
+                    _renderContext.Enums.Nearest,
+                    _renderContext.Enums.ClampToEdge,
+                    _renderContext.Enums.ClampToEdge);
+            }
+            else
+                Console.WriteLine("[AcousticRayTracer] ID render target create failed");
+            int pboBytes = IdBufferSize * IdBufferSize * sizeof(uint);
             for (int i = 0; i < 2; i++)
             {
-                _pbo[i] = ((OpenGLRenderContext)_renderContext).GenBuffer();
-                ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.PixelPackBuffer, _pbo[i]);
-                ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.PixelPackBuffer, pboBytes, null, _renderContext.Enums.StreamRead);
+                _pbo[i] = _renderContext.CreateBuffer(new BufferDesc
+                {
+                    Target = _renderContext.Enums.PixelPackBuffer,
+                    Usage = _renderContext.Enums.StreamRead,
+                    ByteSize = pboBytes
+                });
             }
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.PixelPackBuffer, 0);
             _pboIndex = 0;
             _pendingFence = 0;
             _fencePending = false;
             _secondaryFencePending = false;
         }
+
         public void KickContinuousTrace(Vector3 sourcePos, Vector3 listenerPos)
         {
             // Residual multi-bounce path removed entirely for this stage.
@@ -196,6 +196,7 @@ namespace SiegeEngine.Core.GPU.Compute
             _lastPrimarySource = primarySource;
             if (_geometry.TriangleCount <= 0 || !_fboReady)
             {
+                Console.WriteLine($"[AcousticID] kick skipped tris={_geometry.TriangleCount} fboReady={_fboReady} rt={_idRt.Id}");
                 _debugSegments.Clear();
                 return;
             }
@@ -315,7 +316,7 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             if (_disposed || _geometry.TriangleCount <= 0 || !_fboReady)
                 return false;
-            _renderContext.GetInteger(_renderContext.Enums.FramebufferBinding, out int savedFbo);
+            GpuHandle savedRt = _renderContext.GetBoundRenderTarget();
             int* savedVp = stackalloc int[4];
             _renderContext.GetInteger(_renderContext.Enums.Viewport, savedVp);
             int* savedSc = stackalloc int[4];
@@ -328,7 +329,10 @@ namespace SiegeEngine.Core.GPU.Compute
                 if (!TryCompletePendingRaster() && _pendingRaster && !(_fencePending && _pendingFence != 0))
                     break;
             }
-            ((OpenGLRenderContext)_renderContext).BindFramebuffer(_renderContext.Enums.Framebuffer, (uint)savedFbo);
+            if (savedRt.IsValid)
+                _renderContext.BindRenderTarget(savedRt);
+            else
+                _renderContext.BindDefaultRenderTarget();
             _renderContext.Viewport(savedVp[0], savedVp[1], (uint)savedVp[2], (uint)savedVp[3]);
             _renderContext.Scissor(savedSc[0], savedSc[1], (uint)savedSc[2], (uint)savedSc[3]);
             return !_pendingRaster;
@@ -354,20 +358,21 @@ namespace SiegeEngine.Core.GPU.Compute
             }
             while (facesDone < FacesPerCall && _pendingFace < 12)
             {
+                int faceIndex = _pendingFace;
                 if (_pendingFace < 6)
                     IssueRasterFace(_pendingListener, _pendingFace);
                 else
                     IssueRasterFace(_pendingSource, _pendingFace - 6);
+                ExtractIdsInto(_listenerVisible[write], _sourceVisible[write], faceIndex);
                 _pendingFace++;
                 facesDone++;
-                if (_fencePending)
-                    return false;
             }
             if (_pendingFace < 12)
                 return false;
             foreach (int tri in _listenerVisible[write])
                 if (_sourceVisible[write].Contains(tri))
                     _mutual[write].Add(tri);
+            Console.WriteLine($"[AcousticID] cube done Lvis={_listenerVisible[write].Count} Svis={_sourceVisible[write].Count} mutual={_mutual[write].Count} listener={_pendingListener} source={_pendingSource}");
             _fsListenerPos[write] = _pendingListener;
             _fsSourcePos[write] = _pendingSource;
             _fsGeometryVersion[write] = _pendingGeometryVersion;
@@ -377,6 +382,8 @@ namespace SiegeEngine.Core.GPU.Compute
             _visibilityVersion++;
             _pendingRaster = false;
             RebuildJoinedMutual();
+            Console.WriteLine(
+                $"[AcousticId] cube done lisVis={_listenerVisible[_fsRead].Count} srcVis={_sourceVisible[_fsRead].Count} mutual={_mutual[_fsRead].Count} joined={_joinedMutual.Count} geom={_geometry.TriangleCount}");
             _debugSegments.Clear();
             Vector3 toSource = _pendingSource - _pendingListener;
             float dist = toSource.Length();
@@ -454,14 +461,9 @@ namespace SiegeEngine.Core.GPU.Compute
                 int face = slot.PendingFace < 6 ? slot.PendingFace : slot.PendingFace - 6;
                 Vector3 origin = slot.PendingFace < 6 ? slot.PendingListener : slot.PendingSource;
                 IssueRasterFace(origin, face);
-                _secondaryPendingFaceForExtraction = slot.PendingFace;
+                ExtractIdsInto(slot.ListenerVisible[write], slot.SourceVisible[write], slot.PendingFace);
                 slot.PendingFace++;
                 facesDone++;
-                if (_fencePending)
-                {
-                    _secondaryFencePending = true;
-                    return;
-                }
             }
             if (slot.PendingFace < 12)
                 return;
@@ -483,31 +485,42 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             int savedViewportW = _renderContext.ViewportWidth;
             int savedViewportH = _renderContext.ViewportHeight;
-            ((OpenGLRenderContext)_renderContext).BindFramebuffer(_renderContext.Enums.Framebuffer, _fbo);
+            _renderContext.BindRenderTarget(_idRt);
             _renderContext.Viewport(0, 0, IdBufferSize, IdBufferSize);
+            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI * 0.5f, 1.0f, 0.3f, 400.0f);
+            _idProgram.Use();
+            _renderContext.BindUniformBlocks();
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.DepthFunc(_renderContext.Enums.Less);
             _renderContext.Disable(_renderContext.Enums.Blend);
             _renderContext.Disable(_renderContext.Enums.CullFace);
-            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI * 0.5f, 1.0f, 0.3f, 400.0f);
-            _idProgram.Use();
             Vector3 target = origin + CubeDirs[face] * 10.0f;
             Matrix4x4 view = Matrix4x4.CreateLookAt(origin, target, CubeUps[face]);
             _renderContext.BindCamera(view, proj, Matrix4x4.Identity);
+            _renderContext.SetConstants(ConstantSlot.Frame, new FrameCB { View = view, Projection = proj });
             uint clearVal = 0;
             _renderContext.ClearBufferuiv(_renderContext.Enums.Color, 0, &clearVal);
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _geometry.Draw();
-            int pbo = _pboIndex;
-            _pboIndex = 1 - _pboIndex;
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.PixelPackBuffer, _pbo[pbo]);
-            _renderContext.ReadPixels(0, 0, IdBufferSize, IdBufferSize,
-                _renderContext.Enums.RedInteger, _renderContext.Enums.UnsignedIntType, null);
-            _pendingFence = _renderContext.FenceSync(_renderContext.Enums.SyncGpuCommandsComplete, 0);
-            _pendingPbo = pbo;
-            _fencePending = true;
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.PixelPackBuffer, 0);
-            ((OpenGLRenderContext)_renderContext).BindFramebuffer(_renderContext.Enums.Framebuffer, 0);
+            if (_idReadback == null || _idReadback.Length != IdBufferSize * IdBufferSize)
+                _idReadback = new uint[IdBufferSize * IdBufferSize];
+            _renderContext.UnbindBuffer(_renderContext.Enums.PixelPackBuffer);
+            fixed (uint* dest = _idReadback)
+            {
+                _renderContext.ReadPixels(0, 0, IdBufferSize, IdBufferSize,
+                    _renderContext.Enums.RedInteger, _renderContext.Enums.UnsignedIntType, dest);
+            }
+            if (face == 0 || face == 5)
+            {
+                int nz = 0;
+                int n = IdBufferSize * IdBufferSize;
+                for (int i = 0; i < n; i++)
+                    if (_idReadback[i] != 0) nz++;
+                Console.WriteLine($"[AcousticId] face={face} nonzero={nz}/{n} drawIdx={_geometry.DrawIndexCount} rt={_idRt.Id}");
+            }
+            _pendingFence = 0;
+            _fencePending = false;
+            _renderContext.BindDefaultRenderTarget();
             _renderContext.Viewport(0, 0, (uint)savedViewportW, (uint)savedViewportH);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.Blend);
@@ -515,28 +528,30 @@ namespace SiegeEngine.Core.GPU.Compute
         }
         private void ExtractIdsInto(HashSet<int> listenerSet, HashSet<int> sourceSet, int faceIndex)
         {
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.PixelPackBuffer, _pbo[_pendingPbo]);
-            void* mapped = _renderContext.MapBufferRange(
-                _renderContext.Enums.PixelPackBuffer,
-                0,
-                (uint)(IdBufferSize * IdBufferSize * sizeof(uint)),
-                _renderContext.Enums.MapReadBit);
-            if (mapped != null)
+            if (_idReadback == null)
             {
-                uint* ptr = (uint*)mapped;
-                int maxTri = _geometry.TriangleCount;
-                HashSet<int> targetSet = (faceIndex < 6) ? listenerSet : sourceSet;
-                for (int i = 0; i < IdBufferSize * IdBufferSize; i++)
-                {
-                    uint raw = ptr[i];
-                    if (raw == 0) continue;
-                    int tri = (int)raw - 1;
-                    if (tri >= 0 && tri < maxTri)
-                        targetSet.Add(tri);
-                }
-                _renderContext.UnmapBuffer(_renderContext.Enums.PixelPackBuffer);
+                Console.WriteLine($"[AcousticID] extract skipped — _idReadback is null face={faceIndex}");
+                return;
             }
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.PixelPackBuffer, 0);
+            int maxTri = _geometry.TriangleCount;
+            HashSet<int> targetSet = (faceIndex < 6) ? listenerSet : sourceSet;
+            int count = IdBufferSize * IdBufferSize;
+            if (count > _idReadback.Length) count = _idReadback.Length;
+            int before = targetSet.Count;
+            int nonzero = 0;
+            uint sample = 0;
+            for (int i = 0; i < count; i++)
+            {
+                uint raw = _idReadback[i];
+                if (raw == 0) continue;
+                nonzero++;
+                if (sample == 0) sample = raw;
+                int tri = (int)raw - 1;
+                if (tri >= 0 && tri < maxTri)
+                    targetSet.Add(tri);
+            }
+            if (faceIndex < 2 || nonzero == 0 || faceIndex == 5 || faceIndex == 11)
+                Console.WriteLine($"[AcousticID] face={faceIndex} nonzero={nonzero} sampleRaw={sample} set+={targetSet.Count - before} set={targetSet.Count} maxTri={maxTri} drawIdx={_geometry.DrawIndexCount}");
         }
         private void RebuildJoinedMutual()
         {
@@ -685,21 +700,12 @@ namespace SiegeEngine.Core.GPU.Compute
                     _fencePending = false;
                 }
                 _idProgram?.Dispose();
-                if (_fbo != 0)
-                {
-                    uint f = _fbo;
-                    ((OpenGLRenderContext)_renderContext).DeleteFramebuffers(1, &f);
-                }
-                if (_idTexture != 0) ((OpenGLRenderContext)_renderContext).DeleteTexture(_idTexture);
-                if (_depthRb != 0)
-                {
-                    uint r = _depthRb;
-                    ((OpenGLRenderContext)_renderContext).DeleteRenderbuffers(1, &r);
-                }
+                if (_idRt.IsValid)
+                    _renderContext.Destroy(_idRt);
                 for (int i = 0; i < 2; i++)
                 {
-                    if (_pbo[i] != 0)
-                        ((OpenGLRenderContext)_renderContext).DeleteBuffer(_pbo[i]);
+                    if (_pbo[i].IsValid)
+                        _renderContext.Destroy(_pbo[i]);
                 }
                 _secondarySlots.Clear();
                 _secondaryQueue.Clear();

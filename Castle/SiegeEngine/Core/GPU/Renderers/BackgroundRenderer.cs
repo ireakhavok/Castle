@@ -1,10 +1,9 @@
-﻿// Folder: SiegeEngine.Rendering
+// Folder: SiegeEngine.Rendering
 // File: BackgroundRenderer.cs
+using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Shaders;
 using System;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.Numerics;
 
 namespace SiegeEngine.Core.GPU.Renderers
@@ -12,7 +11,8 @@ namespace SiegeEngine.Core.GPU.Renderers
     public unsafe class BackgroundRenderer : IDisposable
     {
         private readonly IRenderContext _renderContext;
-        private uint _bgVao, _bgVbo, _bgTexture;
+        private GpuHandle _bgVbo;
+        private GpuHandle _bgTexture;
         private ShaderProgram _shaderProgram;
         private GpuHandle _pipeline;
         private int _textureWidth;
@@ -25,13 +25,22 @@ namespace SiegeEngine.Core.GPU.Renderers
         {
             _shaderProgram = shaderProgram;
             if (!_pipeline.IsValid)
-                _pipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Ui, _renderContext));
-            // Background VAO/VBO/Texture
-            ((OpenGLRenderContext)_renderContext).GenVertexArrays(1, out _bgVao);
-            ((OpenGLRenderContext)_renderContext).GenBuffers(1, out _bgVbo);
-            ((OpenGLRenderContext)_renderContext).GenTextures(1, out _bgTexture);
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(_bgVao);
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, _bgVbo);
+            {
+                PipelineDesc desc = ShaderCatalog.Describe(ShaderId.Ui, _renderContext);
+                desc.Layout = new VertexLayout(16, new[]
+                {
+                    new VertexAttribute(VertexSemantic.Position, _renderContext.Enums.Float, 2, 0, 0),
+                    new VertexAttribute(VertexSemantic.Color, _renderContext.Enums.Float, 2, 8, 0)
+                });
+                desc.State.Primitive = _renderContext.Enums.TriangleFan;
+                _pipeline = _renderContext.CreatePipeline(desc);
+            }
+            _bgVbo = _renderContext.CreateBuffer(new BufferDesc
+            {
+                Target = _renderContext.Enums.ArrayBuffer,
+                Usage = _renderContext.Enums.DynamicDraw,
+                ByteSize = 16 * sizeof(float)
+            });
             float[] bgVertices = new float[]
             {
                 -1.0f, -1.0f, 0.0f, 1.0f,
@@ -41,69 +50,29 @@ namespace SiegeEngine.Core.GPU.Renderers
             };
             fixed (float* ptr = bgVertices)
             {
-                ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ArrayBuffer, (uint)(bgVertices.Length * sizeof(float)), ptr, _renderContext.Enums.StaticDraw);
+                _renderContext.UpdateBuffer(_bgVbo, new ReadOnlySpan<byte>((byte*)ptr, bgVertices.Length * sizeof(float)));
             }
-            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(0);
-            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)0);
-            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(1);
-            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(1, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, 0);
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
-            // Load background texture
             Console.WriteLine($"Attempting to load background texture from: {backgroundPath}");
             try
             {
-                using (var bitmap = new Bitmap(backgroundPath))
-                {
-                    Console.WriteLine($"Bitmap loaded: {bitmap.Width}x{bitmap.Height}, PixelFormat: {bitmap.PixelFormat}");
-                    _textureWidth = bitmap.Width;
-                    _textureHeight = bitmap.Height;
-                    BitmapData data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
-                    Console.WriteLine($"Bitmap locked, Stride: {data.Stride}");
-                    int bytesPerPixel = 3;
-                    byte[] pixelData = new byte[bitmap.Width * bitmap.Height * bytesPerPixel];
-                    nint ptr = data.Scan0;
-                    for (int y = 0; y < bitmap.Height; y++)
-                    {
-                        nint row = nint.Add(ptr, y * data.Stride);
-                        System.Runtime.InteropServices.Marshal.Copy(row, pixelData, y * bitmap.Width * bytesPerPixel, bitmap.Width * bytesPerPixel);
-                    }
-                    Console.WriteLine("Pixel data copied to managed array");
-                    // Log some pixel data to verify
-                    Console.WriteLine($"Sample pixel data (first 12 bytes): {BitConverter.ToString(pixelData, 0, 12)}");
-                    ((OpenGLRenderContext)_renderContext).PixelStore(_renderContext.Enums.UnpackAlignment, 1);
-                    Console.WriteLine("Unpack alignment set to 1");
-                    ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, _bgTexture);
-                    Console.WriteLine("Texture bound");
-                    fixed (byte* pixelPtr = pixelData)
-                    {
-                        ((OpenGLRenderContext)_renderContext).TexImage2D(_renderContext.Enums.Texture2D, 0, _renderContext.Enums.InternalRgb, (uint)bitmap.Width, (uint)bitmap.Height, 0, _renderContext.Enums.PixelBgr, _renderContext.Enums.UnsignedByte, pixelPtr);
-                        Console.WriteLine("TexImage2D called");
-                    }
-                    int error = _renderContext.GetError();
-                    if (error != _renderContext.Enums.NoError)
-                    {
-                        throw new Exception($"OpenGL error after TexImage2D: {error}");
-                    }
-                    ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMinFilter, _renderContext.Enums.Nearest);
-                    ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMagFilter, _renderContext.Enums.Nearest);
-                    ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapS, _renderContext.Enums.ClampToEdge);
-                    ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapT, _renderContext.Enums.ClampToEdge);
-                    ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, 0);
-                    Console.WriteLine($"JPG texture loaded: {_bgTexture}");
-                    bitmap.UnlockBits(data);
-                }
+                (GpuHandle texId, Vector2 nativeSize) = TextureLoader.LoadTextureWithSize(_renderContext, backgroundPath);
+                if (!texId.IsValid)
+                    throw new Exception("TextureLoader returned 0");
+                _textureWidth = (int)nativeSize.X;
+                _textureHeight = (int)nativeSize.Y;
+                _bgTexture = texId;
+                _renderContext.SetTextureParams(_bgTexture, _renderContext.Enums.Nearest, _renderContext.Enums.Nearest, _renderContext.Enums.ClampToEdge, _renderContext.Enums.ClampToEdge);
+                Console.WriteLine($"JPG texture loaded: {_bgTexture.Id} ({_textureWidth}x{_textureHeight})");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Failed to load JPG: {ex.Message}");
-                _bgTexture = 0;
+                _bgTexture = default;
             }
         }
         public void Render(float posX, float posY, float width, float height, float viewportWidth, float viewportHeight)
         {
-            if (_bgTexture == 0) return;
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(_bgVao);
+            if (!_bgTexture.IsValid) return;
             float drawWidth = _textureWidth;
             float drawHeight = _textureHeight;
             float drawX = posX + (width - drawWidth) / 2f;
@@ -123,13 +92,10 @@ namespace SiegeEngine.Core.GPU.Renderers
                 rightNDC, topNDC, 1.0f, 0.0f,
                 leftNDC, topNDC, 0.0f, 0.0f
             };
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, _bgVbo);
             fixed (float* ptr = bgVertices)
             {
-                ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ArrayBuffer, (uint)(bgVertices.Length * sizeof(float)), ptr, _renderContext.Enums.DynamicDraw);
+                _renderContext.UpdateBuffer(_bgVbo, new ReadOnlySpan<byte>((byte*)ptr, bgVertices.Length * sizeof(float)));
             }
-            ((OpenGLRenderContext)_renderContext).ActiveTexture(_renderContext.Enums.Texture0);
-            ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, _bgTexture);
             _renderContext.BindPipeline(_pipeline);
             _renderContext.SetConstants(ConstantSlot.Ui, new UiCB
             {
@@ -137,17 +103,16 @@ namespace SiegeEngine.Core.GPU.Renderers
                 Color = Vector4.One,
                 UseTexture = 1f
             });
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(_bgVao);
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, _bgVbo);
-            _renderContext.DrawArrays(_renderContext.Enums.TriangleFan, 0, 4);
-            ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, 0);
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
+            _renderContext.BindTextureSlot(0, _bgTexture);
+            _renderContext.BindVertexBuffer(_bgVbo, 0, 16, 0);
+            _renderContext.Draw(4);
         }
         public void Dispose()
         {
-            ((OpenGLRenderContext)_renderContext).DeleteVertexArray(_bgVao);
-            ((OpenGLRenderContext)_renderContext).DeleteBuffer(_bgVbo);
-            ((OpenGLRenderContext)_renderContext).DeleteTexture(_bgTexture);
+            if (_bgVbo.IsValid)
+                _renderContext.Destroy(_bgVbo);
+            if (_bgTexture.IsValid)
+                _renderContext.Destroy(_bgTexture);
             if (_pipeline.IsValid)
                 _renderContext.Destroy(_pipeline);
         }

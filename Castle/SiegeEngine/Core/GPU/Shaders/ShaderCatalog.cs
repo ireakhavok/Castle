@@ -46,7 +46,7 @@ namespace SiegeEngine.Core.GPU.Shaders
                 case ShaderId.AcousticId:
                     return VsFs(AcousticIdShader.VertexSource, AcousticIdShader.FragmentSource);
                 case ShaderId.AcousticResidual:
-                    throw new NotSupportedException("ShaderId.AcousticResidual is a compute body prepended by AcousticRayTracer. Catalog it with that header, not as a standalone source.");
+                    return new ShaderSourceSet { Compute = AcousticCommon.Source + AcousticResidualShader.Source };
                 case ShaderId.AntiAliasing:
                     throw new NotSupportedException("ShaderId.AntiAliasing is multiple programs (Copy/FXAA/SMAA/TAA). Name the pass before cataloging it.");
                 case ShaderId.ColorCompose:
@@ -108,6 +108,17 @@ namespace SiegeEngine.Core.GPU.Shaders
                 {
                     new VertexAttribute(VertexSemantic.Position, enums.Float, 3, 0, 0),
                     new VertexAttribute(VertexSemantic.Color, enums.Float, 4, 12, 0)
+                });
+            }
+            if (id == ShaderId.AcousticId)
+            {
+                // Same 16-byte draw vertex as AcousticGeometry.DrawVertex:
+                // float3 position + int triangle index at location 1.
+                // Early dirx bound this with VertexAttribIPointer on a dedicated VAO.
+                return new VertexLayout(16, new[]
+                {
+                    new VertexAttribute(VertexSemantic.Position, enums.Float, 3, 0, 0),
+                    new VertexAttribute(VertexSemantic.Color, enums.Int, 1, 12, 0)
                 });
             }
             if (id == ShaderId.Skybox || id == ShaderId.SkyboxPreview)
@@ -176,6 +187,8 @@ namespace SiegeEngine.Core.GPU.Shaders
                     return new GpuRenderState { DepthTest = false, DepthWrite = false, Blend = true, CullMode = enums.None, Primitive = enums.Triangles };
                 case ShaderId.Point:
                     return new GpuRenderState { DepthTest = true, DepthWrite = true, Primitive = enums.Points };
+                case ShaderId.AcousticId:
+                    return new GpuRenderState { DepthTest = true, DepthWrite = true, CullMode = enums.None, Primitive = enums.Triangles };
                 case ShaderId.Water:
                     return new GpuRenderState { DepthTest = true, DepthWrite = true, Blend = true, Primitive = enums.TriangleFan };
                 default:

@@ -20,7 +20,7 @@ namespace ToolChest
     /// </summary>
     public unsafe class SkyboxPreviewScene : Scene
     {
-        private uint _cubemapTex;
+        private GpuHandle _cubemapTex;
         private VertexBuffer _previewCube;
         private VertexBuffer _axisBuffer;
         private VertexBuffer _ringBuffer;
@@ -67,13 +67,13 @@ namespace ToolChest
             _selectedFace = face;
             BuildFaceOutline(face);
         }
-        public void SetCubemapTexture(uint tex)
+        public void SetCubemapTexture(GpuHandle tex)
         {
-            if (_cubemapTex != 0 && _cubemapTex != tex)
+            if (_cubemapTex.IsValid && (_cubemapTex.Id != tex.Id || _cubemapTex.Kind != tex.Kind))
                 TextureLoader.DeleteTexture(_renderContext, ref _cubemapTex);
             _cubemapTex = tex;
         }
-        public uint CubemapTexture => _cubemapTex;
+        public GpuHandle CubemapTexture => _cubemapTex;
         protected override void GetViewProjection(out Matrix4x4 view, out Matrix4x4 projection)
         {
             float aspect = AspectRatio;
@@ -88,7 +88,7 @@ namespace ToolChest
         }
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            if (_cubemapTex == 0 || _previewCube == null || !_previewPipeline.IsValid)
+            if (!_cubemapTex.IsValid || _previewCube == null || !_previewPipeline.IsValid)
                 return;
             Matrix4x4 orient = Matrix4x4.CreateFromQuaternion(Quaternion.Inverse(SkyboxRenderer.Sanitize(_orientation)));
             SkyboxRenderer.RenderPreviewCube(_renderContext, _cubemapTex, _previewCube, _previewPipeline, view, projection, orient, true);

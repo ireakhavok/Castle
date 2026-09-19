@@ -465,7 +465,12 @@ namespace CastleBuilder
             else if (hook == "ToggleAcousticDebug")
             {
                 if (_acousticDebug != null)
+                {
                     _acousticDebug.Enabled = !_acousticDebug.Enabled;
+                    Console.WriteLine($"[SceneEditorPanel] ToggleAcousticDebug Enabled={_acousticDebug.Enabled}");
+                }
+                else
+                    Console.WriteLine("[SceneEditorPanel] ToggleAcousticDebug ignored — overlay is null");
             }
             else if (hook == "PlaceSoundSource")
             {
@@ -680,10 +685,18 @@ namespace CastleBuilder
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
         {
             if (e.UserData?.ToString() != "PlaceEntity" || string.IsNullOrEmpty(e.Path)) return;
-            PlaceAssetAtCursor(e.Path);
+            PlaceAssetAtLook(e.Path);
         }
 
+        private void PlaceAssetAtLook(string path)
+        {
+            PlaceAsset(path, useLookDirection: true);
+        }
         private void PlaceAssetAtCursor(string path)
+        {
+            PlaceAsset(path, useLookDirection: false);
+        }
+        private void PlaceAsset(string path, bool useLookDirection)
         {
             if (string.IsNullOrEmpty(path)) return;
             string ext = Path.GetExtension(path).ToLowerInvariant();
@@ -704,9 +717,15 @@ namespace CastleBuilder
             {
                 placeType = "Sprite";
             }
-            if (!_editorScene.TryGetPlacementPosition(_contentNormMouse, _contentW, _contentH, out var hitPoint))
+            Vector3 hitPoint;
+            bool hit = useLookDirection
+                ? _editorScene.TryGetPlacementPosition(out hitPoint)
+                : _editorScene.TryGetPlacementPosition(_contentNormMouse, _contentW, _contentH, out hitPoint);
+            if (!hit)
             {
-                Console.WriteLine("[SceneEditorPanel] Raycast missed terrain and ground plane under the cursor");
+                Console.WriteLine(useLookDirection
+                    ? "[SceneEditorPanel] Look-direction raycast missed terrain and ground plane"
+                    : "[SceneEditorPanel] Raycast missed terrain and ground plane under the cursor");
                 return;
             }
             Vector3 placePos = hitPoint + new Vector3(0, 0, 0.1f);
@@ -971,6 +990,8 @@ namespace CastleBuilder
             var active = _editorScene.GetActiveGameScene();
             if (active != null)
                 active.GetCameraViewProjection(out view, out projection);
+            else
+                Console.WriteLine("[SceneEditorPanel] GetActiveGameScene() is null — overlay view/proj are identity");
             for (int i = 0; i < _worldOverlays.Count; i++)
                 _worldOverlays[i].RenderWorld(view, projection);
         }

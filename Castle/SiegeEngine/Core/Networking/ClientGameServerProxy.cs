@@ -26,6 +26,12 @@ namespace SiegeEngine.Core.Networking
             // makes the world strobe past a side-facing camera.
             _physicsWorld.UseFixedTimestep = false;
         }
+        /// <summary>
+        /// Play simulates dynamics. The Scene Editor must not: authored
+        /// Dynamic bodies (the green balls) would integrate on load and
+        /// detonate through terrain on the first hitch frame.
+        /// </summary>
+        public bool SimulateDynamics { get; set; } = true;
         // Editor / debug surface
         public PhysicsWorld PhysicsWorld => _physicsWorld;
         public IReadOnlyList<ContactManifold> CurrentManifolds => _physicsWorld.CurrentManifolds;
@@ -219,6 +225,8 @@ namespace SiegeEngine.Core.Networking
                     EnsureMeshCollider(entity);
                 if (physics != null) _physicsWorld.RegisterBody(physics);
             }
+            if (!SimulateDynamics)
+                return;
             _physicsWorld.Step(deltaTime);
         }
         public bool ValidateAndUpdateMovement(int entityId, Vector3 requestedPosition, Quaternion requestedRotation, ulong steamId)

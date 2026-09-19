@@ -13,11 +13,13 @@ namespace SiegeEngine.Core.GPU.Renderers
     {
         public static UIQuadRenderer Active;
         private const int MaxBatchQuads = 256;
+        private const int FloatsPerQuad = 16;
         private readonly IRenderContext _renderContext;
-        private uint _vao, _vbo, _ebo;
+        private GpuHandle _vbo;
+        private GpuHandle _ebo;
         private ShaderProgram _shader;
         private GpuHandle _pipeline;
-        private readonly float[] _batchVerts = new float[MaxBatchQuads * 16];
+        private readonly float[] _batchVerts = new float[MaxBatchQuads * FloatsPerQuad];
         private int _batchCount;
         private Vector4 _batchColor;
         private bool _batchOpen;
@@ -31,14 +33,19 @@ namespace SiegeEngine.Core.GPU.Renderers
         private void Initialize()
         {
             _shader = ShaderProgram.FromId(_renderContext, ShaderId.Ui);
-            _pipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Ui, _renderContext));
-            ((OpenGLRenderContext)_renderContext).GenVertexArrays(1, out _vao);
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(_vao);
-            ((OpenGLRenderContext)_renderContext).GenBuffers(1, out _vbo);
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
-            ((OpenGLRenderContext)_renderContext).GenBuffers(1, out _ebo);
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
-
+            PipelineDesc desc = ShaderCatalog.Describe(ShaderId.Ui, _renderContext);
+            desc.Layout = new VertexLayout(16, new[]
+            {
+                new VertexAttribute(VertexSemantic.Position, _renderContext.Enums.Float, 2, 0, 0),
+                new VertexAttribute(VertexSemantic.Color, _renderContext.Enums.Float, 2, 8, 0)
+            });
+            _pipeline = _renderContext.CreatePipeline(desc);
+            _vbo = _renderContext.CreateBuffer(new BufferDesc
+            {
+                Target = _renderContext.Enums.ArrayBuffer,
+                Usage = _renderContext.Enums.DynamicDraw,
+                ByteSize = MaxBatchQuads * FloatsPerQuad * sizeof(float)
+            });
             uint[] indices = new uint[MaxBatchQuads * 6];
             for (int i = 0; i < MaxBatchQuads; i++)
             {
@@ -51,18 +58,36 @@ namespace SiegeEngine.Core.GPU.Renderers
                 indices[o + 4] = v + 2;
                 indices[o + 5] = v + 3;
             }
+            _ebo = _renderContext.CreateBuffer(new BufferDesc
+            {
+                Target = _renderContext.Enums.ElementArrayBuffer,
+                Usage = _renderContext.Enums.StaticDraw,
+                ByteSize = indices.Length * sizeof(uint)
+            });
             fixed (uint* idxPtr = indices)
             {
-                ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(indices.Length * sizeof(uint)), idxPtr, _renderContext.Enums.StaticDraw);
+                _renderContext.UpdateBuffer(_ebo, new ReadOnlySpan<byte>((byte*)idxPtr, indices.Length * sizeof(uint)));
             }
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
         }
 
         void BindUi(in UiCB ui)
         {
             _renderContext.BindPipeline(_pipeline);
             _renderContext.SetConstants(ConstantSlot.Ui, ui);
-            ResetVertexState();
+        }
+
+        void UploadAndDraw(float[] verts, int quadCount)
+        {
+            if (verts == null || quadCount <= 0)
+                return;
+            int bytes = quadCount * FloatsPerQuad * sizeof(float);
+            fixed (float* ptr = verts)
+            {
+                _renderContext.UpdateBuffer(_vbo, new ReadOnlySpan<byte>((byte*)ptr, bytes));
+            }
+            _renderContext.BindVertexBuffer(_vbo, 0, 16, 0);
+            _renderContext.BindIndexBuffer(_ebo);
+            _renderContext.DrawIndexed(quadCount * 6);
         }
 
         public void EnsureUIState()
@@ -83,17 +108,6 @@ namespace SiegeEngine.Core.GPU.Renderers
         public void FinishDraw()
         {
             FlushBatch();
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
-            ((OpenGLRenderContext)_renderContext).DisableVertexAttribArray(0);
-            ((OpenGLRenderContext)_renderContext).DisableVertexAttribArray(1);
-        }
-
-        // FUTURE-PROOF: Explicit VAO bind + disable extra attribs (prevents NDC quad leakage into simple DrawQuad/DrawLine)
-        private void ResetVertexState()
-        {
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(_vao);
-            ((OpenGLRenderContext)_renderContext).DisableVertexAttribArray(1); // critical: NDC draws leave attrib 1 enabled
-            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(0);
         }
 
         public void FlushBatch()
@@ -104,7 +118,6 @@ namespace SiegeEngine.Core.GPU.Renderers
                 return;
             }
             EnsureUIState();
-            ResetVertexState();
             BindUi(new UiCB
             {
                 Transform = Matrix4x4.Identity,
@@ -113,20 +126,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 UseRounded = 0f,
                 BorderWidth = 0f
             });
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
-            int floats = _batchCount * 16;
-            fixed (float* ptr = _batchVerts)
-            {
-                ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ArrayBuffer, (uint)(floats * sizeof(float)), ptr, _renderContext.Enums.DynamicDraw);
-            }
-            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(0);
-            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)0);
-            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(1);
-            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(1, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
-            _renderContext.DrawElements(_renderContext.Enums.Triangles, (uint)(_batchCount * 6), _renderContext.Enums.UnsignedInt, (void*)0);
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ElementArrayBuffer, 0);
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
+            UploadAndDraw(_batchVerts, _batchCount);
             _batchCount = 0;
             _batchOpen = false;
         }
@@ -142,7 +142,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                 _batchOpen = true;
                 _batchCount = 0;
             }
-            int o = _batchCount * 16;
+            int o = _batchCount * FloatsPerQuad;
             _batchVerts[o] = ndc[0]; _batchVerts[o + 1] = ndc[1]; _batchVerts[o + 2] = 0f; _batchVerts[o + 3] = 0f;
             _batchVerts[o + 4] = ndc[2]; _batchVerts[o + 5] = ndc[3]; _batchVerts[o + 6] = 1f; _batchVerts[o + 7] = 0f;
             _batchVerts[o + 8] = ndc[4]; _batchVerts[o + 9] = ndc[5]; _batchVerts[o + 10] = 1f; _batchVerts[o + 11] = 1f;
@@ -154,7 +154,6 @@ namespace SiegeEngine.Core.GPU.Renderers
         {
             FlushBatch();
             EnsureUIState();
-            ResetVertexState();
 
             BindUi(new UiCB
             {
@@ -169,21 +168,14 @@ namespace SiegeEngine.Core.GPU.Renderers
             float top = 1.0f - 2.0f * posY / viewportHeight;
             float bottom = 1.0f - 2.0f * (posY + sizeY) / viewportHeight;
 
-            float[] vertices = new float[] { left, bottom, right, bottom, right, top, left, top };
-
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
-            fixed (float* ptr = vertices)
+            float[] vertices = new float[]
             {
-                ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertices.Length * sizeof(float)), ptr, _renderContext.Enums.DynamicDraw);
-            }
-
-            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 2 * sizeof(float), (void*)0);
-
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
-            _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, (void*)0);
-
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ElementArrayBuffer, 0);
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
+                left, bottom, 0f, 0f,
+                right, bottom, 1f, 0f,
+                right, top, 1f, 1f,
+                left, top, 0f, 1f
+            };
+            UploadAndDraw(vertices, 1);
         }
 
         public void DrawNdcQuad(float[] ndc, Vector4 color)
@@ -201,7 +193,6 @@ namespace SiegeEngine.Core.GPU.Renderers
             }
             FlushBatch();
             EnsureUIState();
-            ResetVertexState();
 
             float useRounded = borderRadius == Vector4.Zero ? 0f : 1f;
             BindUi(new UiCB
@@ -216,29 +207,12 @@ namespace SiegeEngine.Core.GPU.Renderers
                 BorderColor = borderColor
             });
 
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
-
-            float[] vertices = new float[16];
+            float[] vertices = new float[FloatsPerQuad];
             vertices[0] = ndc[0]; vertices[1] = ndc[1]; vertices[2] = 0f; vertices[3] = 0f;
             vertices[4] = ndc[2]; vertices[5] = ndc[3]; vertices[6] = 1f; vertices[7] = 0f;
             vertices[8] = ndc[4]; vertices[9] = ndc[5]; vertices[10] = 1f; vertices[11] = 1f;
             vertices[12] = ndc[6]; vertices[13] = ndc[7]; vertices[14] = 0f; vertices[15] = 1f;
-
-            fixed (float* ptr = vertices)
-            {
-                ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertices.Length * sizeof(float)), ptr, _renderContext.Enums.DynamicDraw);
-            }
-
-            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(0);
-            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)0);
-            ((OpenGLRenderContext)_renderContext).EnableVertexAttribArray(1);
-            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(1, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
-            _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, (void*)0);
-
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ElementArrayBuffer, 0);
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
+            UploadAndDraw(vertices, 1);
         }
 
         public void DrawLine(float x1, float y1, float x2, float y2, float thickness, Vector4 color, float viewportWidth, float viewportHeight)
@@ -260,16 +234,14 @@ namespace SiegeEngine.Core.GPU.Renderers
 
             float[] vertices = new float[]
             {
-                2.0f * lx1 / viewportWidth - 1.0f, 1.0f - 2.0f * ly1 / viewportHeight,
-                2.0f * lx2 / viewportWidth - 1.0f, 1.0f - 2.0f * ly2 / viewportHeight,
-                2.0f * rx2 / viewportWidth - 1.0f, 1.0f - 2.0f * ry2 / viewportHeight,
-                2.0f * rx1 / viewportWidth - 1.0f, 1.0f - 2.0f * ry1 / viewportHeight
+                2.0f * lx1 / viewportWidth - 1.0f, 1.0f - 2.0f * ly1 / viewportHeight, 0f, 0f,
+                2.0f * lx2 / viewportWidth - 1.0f, 1.0f - 2.0f * ly2 / viewportHeight, 1f, 0f,
+                2.0f * rx2 / viewportWidth - 1.0f, 1.0f - 2.0f * ry2 / viewportHeight, 1f, 1f,
+                2.0f * rx1 / viewportWidth - 1.0f, 1.0f - 2.0f * ry1 / viewportHeight, 0f, 1f
             };
 
             FlushBatch();
             EnsureUIState();
-            ResetVertexState();
-
             BindUi(new UiCB
             {
                 Transform = Matrix4x4.Identity,
@@ -277,38 +249,20 @@ namespace SiegeEngine.Core.GPU.Renderers
                 UseTexture = 0f,
                 UseRounded = 0f
             });
-
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
-            fixed (float* ptr = vertices)
-            {
-                ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertices.Length * sizeof(float)), ptr, _renderContext.Enums.DynamicDraw);
-            }
-
-            ((OpenGLRenderContext)_renderContext).VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 2 * sizeof(float), (void*)0);
-
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
-            _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, (void*)0);
-
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ElementArrayBuffer, 0);
-            ((OpenGLRenderContext)_renderContext).BindVertexArray(0);
+            UploadAndDraw(vertices, 1);
         }
 
         public void Dispose()
         {
-            if (_vao != 0)
+            if (_vbo.IsValid)
             {
-                ((OpenGLRenderContext)_renderContext).DeleteVertexArray(_vao);
-                _vao = 0;
+                _renderContext.Destroy(_vbo);
+                _vbo = default;
             }
-            if (_vbo != 0)
+            if (_ebo.IsValid)
             {
-                ((OpenGLRenderContext)_renderContext).DeleteBuffer(_vbo);
-                _vbo = 0;
-            }
-            if (_ebo != 0)
-            {
-                ((OpenGLRenderContext)_renderContext).DeleteBuffer(_ebo);
-                _ebo = 0;
+                _renderContext.Destroy(_ebo);
+                _ebo = default;
             }
             if (_pipeline.IsValid)
                 _renderContext.Destroy(_pipeline);

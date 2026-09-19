@@ -19,7 +19,7 @@ namespace SiegeEngine.Core.GPU
             return wrap != 0 ? wrap : renderContext.Enums.ClampToEdge;
         }
 
-        public static (uint, byte) LoadTexture(IRenderContext renderContext, string path, int proceduralFallbackId = 1, int wrapS = 0, int wrapT = 0)
+        public static (GpuHandle, byte) LoadTexture(IRenderContext renderContext, string path, int proceduralFallbackId = 1, int wrapS = 0, int wrapT = 0)
         {
             Console.WriteLine($"[TextureLoader] LoadTexture START: {path}");
             try
@@ -28,8 +28,8 @@ namespace SiegeEngine.Core.GPU
                 if (extension == ".tga")
                 {
                     Console.WriteLine($"[TextureLoader] Loading as TGA: {path}");
-                    (uint textureId, byte pixelDepth2) = LoadTgaTexture(renderContext, path, wrapS, wrapT);
-                    if (textureId != 0)
+                    (GpuHandle textureId, byte pixelDepth2) = LoadTgaTexture(renderContext, path, wrapS, wrapT);
+                    if (textureId.IsValid)
                     {
                         Console.WriteLine($"[TextureLoader] TGA SUCCESS for {path}: ID={textureId}");
                         return (textureId, pixelDepth2);
@@ -40,7 +40,7 @@ namespace SiegeEngine.Core.GPU
                 using (var bitmap = new Bitmap(path))
                 {
                     Console.WriteLine($"[TextureLoader] Bitmap loaded: {bitmap.Width}x{bitmap.Height} {bitmap.PixelFormat}");
-                    (uint textureId, byte pixelDepth) = LoadTextureFromBitmap(renderContext, bitmap, false, wrapS, wrapT);
+                    (GpuHandle textureId, byte pixelDepth) = LoadTextureFromBitmap(renderContext, bitmap, false, wrapS, wrapT);
                     Console.WriteLine($"[TextureLoader] PNG load result for {path}: ID={textureId}");
                     return (textureId, pixelDepth);
                 }
@@ -48,27 +48,27 @@ namespace SiegeEngine.Core.GPU
             catch (Exception ex)
             {
                 Console.WriteLine($"[TextureLoader] CRITICAL FAIL {path}: {ex.Message}\n{ex.StackTrace}");
-                return (0, 0);
+                return (default, 0);
             }
         }
-        public static (uint texId, Vector2 nativeSize) LoadTextureWithSize(IRenderContext renderContext, string path)
+        public static (GpuHandle texId, Vector2 nativeSize) LoadTextureWithSize(IRenderContext renderContext, string path)
         {
             Console.WriteLine($"[TextureLoader] LoadTextureWithSize: {path}");
             try
             {
                 using (var bitmap = new Bitmap(path))
                 {
-                    (uint texId, byte _) = LoadTextureFromBitmap(renderContext, bitmap);
+                    (GpuHandle texId, byte _) = LoadTextureFromBitmap(renderContext, bitmap);
                     return (texId, new Vector2(bitmap.Width, bitmap.Height));
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[TextureLoader] LoadTextureWithSize FAIL {path}: {ex.Message}");
-                return (0, Vector2.One);
+                return (default, Vector2.One);
             }
         }
-        public static (uint, byte) LoadEmbeddedTexture(IRenderContext renderContext, byte[] textureData, string textureName, int proceduralFallbackId = 1, int wrapS = 0, int wrapT = 0)
+        public static (GpuHandle, byte) LoadEmbeddedTexture(IRenderContext renderContext, byte[] textureData, string textureName, int proceduralFallbackId = 1, int wrapS = 0, int wrapT = 0)
         {
             Console.WriteLine($"[TextureLoader] LoadEmbeddedTexture START: {textureName}");
             try
@@ -84,8 +84,8 @@ namespace SiegeEngine.Core.GPU
                     File.WriteAllBytes(tempPath, textureData);
                     try
                     {
-                        (uint textureId, byte pixelDepth2) = LoadTgaTexture(renderContext, tempPath, wrapS, wrapT);
-                        if (textureId != 0)
+                        (GpuHandle textureId, byte pixelDepth2) = LoadTgaTexture(renderContext, tempPath, wrapS, wrapT);
+                        if (textureId.IsValid)
                         {
                             Console.WriteLine($"[TextureLoader] Embedded TGA SUCCESS for {textureName}: ID={textureId}");
                             return (textureId, pixelDepth);
@@ -99,7 +99,7 @@ namespace SiegeEngine.Core.GPU
                 using (var stream = new MemoryStream(textureData))
                 using (var bitmap = new Bitmap(stream))
                 {
-                    (uint textureId, pixelDepth) = LoadTextureFromBitmap(renderContext, bitmap, false, wrapS, wrapT);
+                    (GpuHandle textureId, pixelDepth) = LoadTextureFromBitmap(renderContext, bitmap, false, wrapS, wrapT);
                     Console.WriteLine($"[TextureLoader] Embedded PNG fallback result for {textureName}: ID={textureId}");
                     return (textureId, pixelDepth);
                 }
@@ -107,10 +107,10 @@ namespace SiegeEngine.Core.GPU
             catch (Exception ex)
             {
                 Console.WriteLine($"[TextureLoader] Embedded CRITICAL FAIL {textureName}: {ex.Message}");
-                return (0, 0);
+                return (default, 0);
             }
         }
-        public static (uint, byte) LoadTgaTexture(IRenderContext renderContext, string path, int wrapS = 0, int wrapT = 0)
+        public static (GpuHandle, byte) LoadTgaTexture(IRenderContext renderContext, string path, int wrapS = 0, int wrapT = 0)
         {
             Console.WriteLine($"[TextureLoader] LoadTgaTexture: {path}");
             try
@@ -132,12 +132,12 @@ namespace SiegeEngine.Core.GPU
                     if (width == 0 || height == 0 || width > 16384 || height > 16384)
                     {
                         Console.WriteLine("[TextureLoader] Invalid TGA dimensions");
-                        return (0, pixelDepth);
+                        return (default, pixelDepth);
                     }
                     if (!ValidTgaTypes.Contains(imageType))
                     {
                         Console.WriteLine($"[TextureLoader] Unsupported TGA type {imageType}");
-                        return (0, pixelDepth);
+                        return (default, pixelDepth);
                     }
                     if (idLength > 0)
                         reader.ReadBytes(idLength);
@@ -192,7 +192,7 @@ namespace SiegeEngine.Core.GPU
                         Width = width,
                         Height = height
                     });
-                    uint texture = allocated.Id;
+                    GpuHandle texture = allocated;
                     Console.WriteLine($"[TextureLoader] Uploading TGA {width}x{height} to texture {texture}");
                     unsafe
                     {
@@ -215,10 +215,10 @@ namespace SiegeEngine.Core.GPU
             catch (Exception ex)
             {
                 Console.WriteLine($"[TextureLoader] TGA CRITICAL FAIL {path}: {ex.Message}");
-                return (0, 0);
+                return (default, 0);
             }
         }
-        public static (uint, byte) LoadTextureFromBitmap(IRenderContext renderContext, Bitmap bitmap, bool crispPaintMode = false, int wrapS = 0, int wrapT = 0)
+        public static (GpuHandle, byte) LoadTextureFromBitmap(IRenderContext renderContext, Bitmap bitmap, bool crispPaintMode = false, int wrapS = 0, int wrapT = 0)
         {
             Console.WriteLine($"[TextureLoader] LoadTextureFromBitmap START: {bitmap.Width}x{bitmap.Height} {bitmap.PixelFormat} crispPaint={crispPaintMode}");
             try
@@ -248,7 +248,7 @@ namespace SiegeEngine.Core.GPU
                         Width = bitmap.Width,
                         Height = bitmap.Height
                     });
-                    uint texture = allocated.Id;
+                    GpuHandle texture = allocated;
                     Console.WriteLine($"[TextureLoader] Generated texture ID {texture}");
                     int error = renderContext.GetError();
                     if (error != renderContext.Enums.NoError)
@@ -288,13 +288,13 @@ namespace SiegeEngine.Core.GPU
             catch (Exception ex)
             {
                 Console.WriteLine($"[TextureLoader] Bitmap CRITICAL FAIL: {ex.Message}\n{ex.StackTrace}");
-                return (0, 0);
+                return (default, 0);
             }
         }
-        public static void UpdateFromBitmap(IRenderContext renderContext, uint textureId, Bitmap bitmap)
+        public static void UpdateFromBitmap(IRenderContext renderContext, GpuHandle texture, Bitmap bitmap)
         {
-            if (renderContext == null || bitmap == null || textureId == 0) return;
-            GpuHandle existing = renderContext.ImportTexture(textureId, renderContext.Enums.Texture2D);
+            if (renderContext == null || bitmap == null || !texture.IsValid) return;
+            GpuHandle existing = texture;
             var data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
             try
             {
@@ -310,20 +310,19 @@ namespace SiegeEngine.Core.GPU
             }
             renderContext.GenerateMipmaps(existing);
         }
-        public static void DeleteTexture(IRenderContext renderContext, ref uint textureId)
+        public static void DeleteTexture(IRenderContext renderContext, ref GpuHandle texture)
         {
-            if (renderContext == null || textureId == 0) return;
-            renderContext.Destroy(renderContext.ImportTexture(textureId, renderContext.Enums.Texture2D));
-            textureId = 0;
+            if (renderContext == null || !texture.IsValid) return;
+            renderContext.Destroy(texture);
+            texture = default;
         }
-        public static uint LoadCubemap(IRenderContext renderContext, string path)
+        public static GpuHandle LoadCubemap(IRenderContext renderContext, string path)
         {
             GpuHandle allocated = renderContext.CreateTexture(new TextureDesc
             {
                 Target = renderContext.Enums.TextureCubeMap,
                 InternalFormat = renderContext.Enums.InternalRgba
             });
-            uint tex = allocated.Id;
             renderContext.SetTextureParams(allocated, renderContext.Enums.Linear, renderContext.Enums.Linear, renderContext.Enums.ClampToEdge, renderContext.Enums.ClampToEdge);
             renderContext.SetTextureParam(allocated, renderContext.Enums.TextureWrapR, renderContext.Enums.ClampToEdge);
             using (var bmp = new Bitmap(path))
@@ -340,16 +339,15 @@ namespace SiegeEngine.Core.GPU
                 }
             }
             renderContext.GenerateMipmaps(allocated);
-            return tex;
+            return allocated;
         }
-        public static uint LoadSixFacesCubemap(IRenderContext renderContext, string[] faces)
+        public static GpuHandle LoadSixFacesCubemap(IRenderContext renderContext, string[] faces)
         {
             GpuHandle allocated = renderContext.CreateTexture(new TextureDesc
             {
                 Target = renderContext.Enums.TextureCubeMap,
                 InternalFormat = renderContext.Enums.InternalRgba
             });
-            uint tex = allocated.Id;
             renderContext.SetTextureParams(allocated, renderContext.Enums.Linear, renderContext.Enums.Linear, renderContext.Enums.ClampToEdge, renderContext.Enums.ClampToEdge);
             renderContext.SetTextureParam(allocated, renderContext.Enums.TextureWrapR, renderContext.Enums.ClampToEdge);
             for (int i = 0; i < 6 && i < faces.Length; i++)
@@ -372,7 +370,7 @@ namespace SiegeEngine.Core.GPU
                 }
             }
             renderContext.GenerateMipmaps(allocated);
-            return tex;
+            return allocated;
         }
     }
 }

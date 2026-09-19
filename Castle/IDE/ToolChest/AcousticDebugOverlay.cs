@@ -45,6 +45,10 @@ namespace ToolChest
         private AcousticGeometry _sharedGeometry;
         private float _lastTransformSig = float.NaN;
         private bool _hadHeightProvider;
+        private bool _loggedEmptyGeom;
+        private uint _lastLoggedVersion = uint.MaxValue;
+        private int _overlayLogCooldown;
+        private int _entryLogCooldown;
         private bool HasSharedProvider => _sharedTracer != null;
         public bool Enabled { get; set; } = false;
         public bool ShowListenerRays { get; set; } = true;
@@ -71,6 +75,8 @@ namespace ToolChest
             _lineRenderer.Initialize();
             _surfaceRenderer = new DebugSurfaceRenderer(_renderContext);
             _surfaceRenderer.Initialize();
+            Console.WriteLine("[AcousticOverlay] constructed (log build 2026-09-19-overlay-diag)");
+            try { System.IO.File.AppendAllText(@"C:\repos\Castle\acoustic-overlay.log", DateTime.Now.ToString("o") + " constructed\n"); } catch { }
         }
         public void SetSharedFreeSurface(AcousticRayTracer tracer, AcousticGeometry geometry)
         {
@@ -86,9 +92,18 @@ namespace ToolChest
         {
             if (!Enabled)
             {
+                if (_wasEnabled)
+                    Console.WriteLine("[AcousticOverlay] RenderWorld skipped — Enabled=false");
                 _wasEnabled = false;
                 return;
             }
+            if (_entryLogCooldown <= 0)
+            {
+                Console.WriteLine($"[AcousticOverlay] RenderWorld ENTER Enabled=true viewM41={view.M41:F1} projM11={projection.M11:F2}");
+                _entryLogCooldown = 30;
+            }
+            else
+                _entryLogCooldown--;
             if (!_wasEnabled)
             {
                 _geometryDirty = true;
@@ -138,16 +153,27 @@ namespace ToolChest
             }
             Vector3 listener = _getListenerPos();
             var sources = _getSourcePositions() ?? Array.Empty<Vector3>();
-            AcousticRayTracer activeTracer = _tracer;
-            AcousticGeometry activeGeom = _geometry;
+            AcousticRayTracer activeTracer = _sharedTracer ?? _tracer;
+            AcousticGeometry activeGeom = _sharedGeometry ?? _geometry;
             if (activeTracer == null || activeGeom == null || activeGeom.TriangleCount <= 0)
+            {
+                if (!_loggedEmptyGeom)
+                {
+                    Console.WriteLine($"[AcousticOverlay] skip draw tracer={(activeTracer != null)} geom={(activeGeom != null)} tris={activeGeom?.TriangleCount ?? -1}");
+                    _loggedEmptyGeom = true;
+                }
                 return;
+            }
+            _loggedEmptyGeom = false;
             // IssueRasterFace binds the 512 ID FBO and Viewport(0,0,512,512),
             // then restores FBO 0 + ViewportWidth/Height (window). That is
             // not the scene-editor panel target. Save the real draw target
             // and put it back before the overlay draws, or the meetings flash
             // to one side for a frame while you drag.
+            // Early dirx: save the REAL GL framebuffer. GetBoundRenderTarget only
+            // tracks BindRenderTarget() and misses the scene-editor panel FBO.
             _renderContext.GetInteger(_renderContext.Enums.FramebufferBinding, out int savedFbo);
+            GpuHandle savedRt = _renderContext.GetBoundRenderTarget();
             int* savedVp = stackalloc int[4];
             _renderContext.GetInteger(_renderContext.Enums.Viewport, savedVp);
             int* savedSc = stackalloc int[4];
@@ -160,7 +186,12 @@ namespace ToolChest
             activeTracer.KickDebugBidirectional(listener, sources);
             activeTracer.FlushPendingRaster();
 
-            Gl.Of(_renderContext).BindFramebuffer(_renderContext.Enums.Framebuffer, (uint)savedFbo);
+            if (_renderContext is OpenGLRenderContext gl)
+                gl.BindFramebuffer(_renderContext.Enums.Framebuffer, (uint)savedFbo);
+            else if (savedRt.IsValid)
+                _renderContext.BindRenderTarget(savedRt);
+            else
+                _renderContext.BindDefaultRenderTarget();
             _renderContext.Viewport(savedVp[0], savedVp[1], (uint)savedVp[2], (uint)savedVp[3]);
             _renderContext.Scissor(savedSc[0], savedSc[1], (uint)savedSc[2], (uint)savedSc[3]);
 
@@ -196,13 +227,24 @@ namespace ToolChest
             }
             RebuildLineMesh(listener, sources);
 
-            bool sampleMatchesListener = !activeTracer.HasPrimarySample
-                || Vector3.DistanceSquared(listener, activeTracer.PrimarySampleListener) <= PerceivedMoveThreshold * PerceivedMoveThreshold;
-            if (sampleMatchesListener && _surfaceBuffer != null && _surfaceVerts.Count > 0)
+            if (_surfaceBuffer != null && _surfaceVerts.Count > 0)
                 _surfaceRenderer.DrawTriangles(_surfaceBuffer, view, projection);
 
             if (_lineBuffer != null && _lineIndices.Count > 0)
                 _lineRenderer.DrawLines(_lineBuffer, view, projection, 1f);
+
+            if (activeTracer.VisibilityVersion != _lastLoggedVersion || _overlayLogCooldown <= 0)
+            {
+                int mutual = 0;
+                try { mutual = activeTracer.GetJoinedMutualFree().Count; } catch { }
+                Vector3 pdir = _cachedPerceived.Count > 0 ? _cachedPerceived[0].perceivedDir : Vector3.Zero;
+                float pint = _cachedPerceived.Count > 0 ? _cachedPerceived[0].intensity : 0f;
+                Console.WriteLine($"[AcousticOverlay] tris={activeGeom.TriangleCount} ver={activeTracer.VisibilityVersion} mutual={mutual} surfaceV={_surfaceVerts.Count} surfaceI={_surfaceIndices.Count} lineI={_lineIndices.Count} sources={sources.Count} perceived=({pdir.X:F2},{pdir.Y:F2},{pdir.Z:F2}) i={pint:F3} drewSurf={_surfaceVerts.Count > 0} drewLines={_lineIndices.Count > 0}");
+                _lastLoggedVersion = activeTracer.VisibilityVersion;
+                _overlayLogCooldown = 45;
+            }
+            else
+                _overlayLogCooldown--;
         }
         private void RebuildSurfaceMesh(AcousticRayTracer tracer, AcousticGeometry geom)
         {

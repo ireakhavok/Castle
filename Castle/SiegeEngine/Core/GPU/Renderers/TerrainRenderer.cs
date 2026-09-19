@@ -16,6 +16,7 @@ namespace SiegeEngine.Core.GPU.Renderers
         private readonly IRenderContext _renderContext;
         private ShaderProgram _terrainShader;
         private ShaderProgram _spriteShader;
+        private GpuHandle _wirePipeline;
 
         public TerrainRenderer(IRenderContext renderContext)
         {
@@ -26,14 +27,23 @@ namespace SiegeEngine.Core.GPU.Renderers
         {
             _terrainShader = ShaderProgram.FromId(_renderContext, ShaderId.Terrain);
             _spriteShader = ShaderProgram.FromId(_renderContext, ShaderId.Sprite);
+            PipelineDesc wire = ShaderCatalog.Describe(ShaderId.Terrain, _renderContext);
+            GpuRenderState state = wire.State;
+            state.Primitive = _renderContext.Enums.Lines;
+            state.DepthWrite = false;
+            state.CullMode = _renderContext.Enums.None;
+            wire.State = state;
+            if (_wirePipeline.IsValid)
+                _renderContext.Destroy(_wirePipeline);
+            _wirePipeline = _renderContext.CreatePipeline(wire);
         }
 
-        public void RenderTerrain(Matrix4x4 view, Matrix4x4 projection, bool hasColorTexture, uint terrainTextureId, VertexBuffer terrainBuffer, float[,] heightmap = null, bool drawWireframe = true)
+        public void RenderTerrain(Matrix4x4 view, Matrix4x4 projection, bool hasColorTexture, GpuHandle terrainTexture, VertexBuffer terrainBuffer, float[,] heightmap = null, bool drawWireframe = true)
         {
-            RenderTerrain(view, projection, hasColorTexture, terrainTextureId, terrainBuffer, null, heightmap, drawWireframe);
+            RenderTerrain(view, projection, hasColorTexture, terrainTexture, terrainBuffer, null, heightmap, drawWireframe);
         }
 
-        public void RenderTerrain(Matrix4x4 view, Matrix4x4 projection, bool hasColorTexture, uint terrainTextureId, VertexBuffer terrainBuffer, VertexBuffer wireframeBuffer, float[,] heightmap, bool drawWireframe)
+        public void RenderTerrain(Matrix4x4 view, Matrix4x4 projection, bool hasColorTexture, GpuHandle terrainTexture, VertexBuffer terrainBuffer, VertexBuffer wireframeBuffer, float[,] heightmap, bool drawWireframe)
         {
             if (terrainBuffer == null && wireframeBuffer == null) return;
 
@@ -56,20 +66,20 @@ namespace SiegeEngine.Core.GPU.Renderers
             LightingFrame.Current?.ApplyTo(_terrainShader, _renderContext);
             WritePost(unlit: 0f, polyFactor: 0f, polyUnits: 0f);
 
-            bool textured = hasColorTexture && terrainTextureId != 0 && terrainBuffer != null;
+            bool textured = hasColorTexture && terrainTexture.IsValid && terrainBuffer != null;
 
             if (terrainBuffer != null)
             {
                 _renderContext.Disable(_renderContext.Enums.CullFace);
                 WriteFrameHasTexture(textured);
                 if (textured)
-                {
-                    _renderContext.BindTextureSlot(TextureSlot.Color, _renderContext.ImportTexture(terrainTextureId, _renderContext.Enums.Texture2D));
-                }
+                    _renderContext.BindTextureSlot(TextureSlot.Color, terrainTexture);
+                else
+                    _renderContext.BindTextureSlot(TextureSlot.Color, default);
 
                 WritePost(unlit: 0f, polyFactor: 1f, polyUnits: 2f);
                 terrainBuffer.Bind();
-                _renderContext.DrawElements(_renderContext.Enums.Triangles, terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                _renderContext.DrawIndexed((int)terrainBuffer.GetIndexCount());
                 _renderContext.Enable(_renderContext.Enums.CullFace);
                 _renderContext.CullFace(_renderContext.Enums.Back);
             }
@@ -89,19 +99,24 @@ namespace SiegeEngine.Core.GPU.Renderers
 
                     WriteFrameHasTexture(false);
                     WritePost(unlit: 1f, polyFactor: 0f, polyUnits: 0f);
+                    if (_wirePipeline.IsValid)
+                        _renderContext.BindPipeline(_wirePipeline);
                     lines.Bind();
-                    _renderContext.DrawElements(_renderContext.Enums.Lines, lines.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                    _renderContext.DrawIndexed((int)lines.GetIndexCount());
 
                     WritePost(unlit: 0f, polyFactor: 0f, polyUnits: 0f);
+                    _terrainShader.Use();
                     _renderContext.Enable(_renderContext.Enums.CullFace);
                     _renderContext.DepthMask(true);
                     _renderContext.Enable(_renderContext.Enums.DepthTest);
                 }
             }
 
+            _renderContext.BindTextureSlot(TextureSlot.Color, default);
+            WriteFrameHasTexture(false);
         }
 
-        public void RenderGhost(ShaderProgram spriteShader, Matrix4x4 view, Matrix4x4 projection, Matrix4x4 ghostModel, uint ghostTextureId, VertexBuffer ghostBuffer, bool isPaintMode)
+        public void RenderGhost(ShaderProgram spriteShader, Matrix4x4 view, Matrix4x4 projection, Matrix4x4 ghostModel, GpuHandle ghostTexture, VertexBuffer ghostBuffer, bool isPaintMode)
         {
             if (ghostBuffer == null) return;
 
@@ -110,26 +125,31 @@ namespace SiegeEngine.Core.GPU.Renderers
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
 
-            if (isPaintMode && ghostTextureId != 0)
+            if (isPaintMode && ghostTexture.IsValid)
             {
                 spriteShader.Use();
                 _renderContext.BindCamera(view, projection, ghostModel);
-                _renderContext.BindTextureSlot(TextureSlot.Color, _renderContext.ImportTexture(ghostTextureId, _renderContext.Enums.Texture2D));
+                _renderContext.BindTextureSlot(TextureSlot.Color, ghostTexture);
                 ghostBuffer.Bind();
-                _renderContext.DrawElements(_renderContext.Enums.Triangles, ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                _renderContext.DrawIndexed((int)ghostBuffer.GetIndexCount());
             }
             else
             {
-                _terrainShader.Use();
+                if (_wirePipeline.IsValid)
+                    _renderContext.BindPipeline(_wirePipeline);
+                else
+                    _terrainShader.Use();
                 _renderContext.BindCamera(view, projection, ghostModel);
                 WriteFrameHasTexture(false);
                 WritePost(unlit: 1f, polyFactor: 0f, polyUnits: 0f);
                 ghostBuffer.Bind();
                 _renderContext.Disable(_renderContext.Enums.LineSmooth);
-                _renderContext.DrawElements(_renderContext.Enums.Lines, ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                _renderContext.DrawIndexed((int)ghostBuffer.GetIndexCount());
                 WritePost(unlit: 0f, polyFactor: 0f, polyUnits: 0f);
+                _terrainShader.Use();
             }
 
+            _renderContext.BindTextureSlot(TextureSlot.Color, default);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.DepthMask(true);
             _renderContext.Disable(_renderContext.Enums.Blend);
@@ -137,6 +157,11 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public void Dispose()
         {
+            if (_wirePipeline.IsValid)
+            {
+                _renderContext.Destroy(_wirePipeline);
+                _wirePipeline = default;
+            }
             _terrainShader?.Dispose();
             _spriteShader?.Dispose();
         }

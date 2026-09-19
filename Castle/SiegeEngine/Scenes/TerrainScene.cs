@@ -86,10 +86,10 @@ namespace SiegeEngine.Scenes
             if (_liveState == null) return;
             var live = _liveState as LiveSceneState;
             if (live?.ColorBitmap == null) return;
-            if (_terrainTextureId == 0)
+            if (!_terrainTextureId.IsValid)
             {
                 _terrainTextureId = TerrainTextureParser.CreateColorTexture(_renderContext, live.ColorBitmap);
-                _hasColorTexture = _terrainTextureId != 0;
+                _hasColorTexture = _terrainTextureId.IsValid;
             }
             else
             {
@@ -106,7 +106,7 @@ namespace SiegeEngine.Scenes
             _terrainGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
             _colorGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
             _hasColorTexture = false;
-            _terrainTextureId = 0;
+            _terrainTextureId = default;
             _useCustomScale = false;
             _heightmap = null;
             if (data?.Terrain != null)
@@ -466,7 +466,7 @@ namespace SiegeEngine.Scenes
         public void SetColorTexture(string path)
         {
             _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, path);
-            if (_terrainTextureId != 0)
+            if (_terrainTextureId.IsValid)
             {
                 _colorGeoRef = GeoTiffParser.ParseGeoReference(path);
                 _hasColorTexture = true;

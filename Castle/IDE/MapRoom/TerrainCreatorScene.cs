@@ -37,7 +37,7 @@ namespace MapRoom
         private bool _disposed;
         private Action<GenericEvent> _skyboxHook;
         private string _activeMaterialPath = null;
-        private uint _ghostMaterialTextureId = 0;
+        private GpuHandle _ghostMaterialTextureId;
         private ShaderProgram _spriteShader;
         private Bitmap _colorBitmapCache = null;
         private const int ColorLayerResolution = 4096;
@@ -212,7 +212,20 @@ namespace MapRoom
         }
         public bool TryPerformPlacementRaycast(out Vector3 hitPoint)
         {
-            return TryPerformPlacementRaycast(_lastNormMouse, out hitPoint);
+            hitPoint = Vector3.Zero;
+            if (_flyCamera == null)
+                return false;
+            Vector3 rayOrigin = GetCameraPosition();
+            Vector3 rayDir = GetLookDirection();
+            if (RayTerrainIntersect(rayOrigin, rayDir, out hitPoint))
+                return true;
+            if (MathF.Abs(rayDir.Z) < 1e-5f)
+                return false;
+            float t = -rayOrigin.Z / rayDir.Z;
+            if (t < 0.05f)
+                return false;
+            hitPoint = rayOrigin + rayDir * t;
+            return true;
         }
         public bool TryPerformPlacementRaycast(Vector2 normalizedMouse, out Vector3 hitPoint)
         {
@@ -812,7 +825,7 @@ namespace MapRoom
                         g.Clear(Color.Transparent);
                     }
                     _terrainTextureId = TerrainTextureParser.CreateColorTexture(_renderContext, _colorBitmapCache);
-                    _hasColorTexture = _terrainTextureId != 0;
+                    _hasColorTexture = _terrainTextureId.IsValid;
                 }
             }
             using var materialBmp = new Bitmap(ResolveFullPath(_activeMaterialPath));
@@ -882,7 +895,7 @@ namespace MapRoom
         }
         private void UpdateGPUColorTexture()
         {
-            if (_colorBitmapCache == null || _terrainTextureId == 0) return;
+            if (_colorBitmapCache == null || !_terrainTextureId.IsValid) return;
             TextureLoader.UpdateFromBitmap(_renderContext, _terrainTextureId, _colorBitmapCache);
         }
         protected override void SyncColorTextureFromLiveState()

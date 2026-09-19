@@ -37,13 +37,12 @@ namespace SiegeEngine.Core.GPU.Renderers
             _batchOpen = true;
         }
 
-        public void Draw(VertexBuffer buffer, uint textureId, Matrix4x4 model)
+        public void Draw(VertexBuffer buffer, GpuHandle texture, Matrix4x4 model)
         {
-            if (!_batchOpen || buffer == null || textureId == 0) return;
+            if (!_batchOpen || buffer == null || !texture.IsValid) return;
             ObjectCB obj = new ObjectCB { Model = model };
             _renderContext.SetConstants(ConstantSlot.Object, obj);
-            ((OpenGLRenderContext)_renderContext).ActiveTexture(_renderContext.Enums.Texture0);
-            ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, textureId);
+            _renderContext.BindTextureSlot(0, texture);
             _renderContext.BindVertexBuffer(buffer.VertexHandle, 0, buffer.Stride, 0);
             uint indexCount = buffer.GetIndexCount();
             if (indexCount == 0) indexCount = 6;
@@ -61,7 +60,6 @@ namespace SiegeEngine.Core.GPU.Renderers
             if (!_batchOpen) return;
             _renderContext.Disable(_renderContext.Enums.Blend);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
-            ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, 0);
             _batchOpen = false;
         }
 
@@ -71,7 +69,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             if (_pipeline.IsValid)
             {
                 _renderContext.Destroy(_pipeline);
-                _pipeline = GpuHandle.Invalid;
+                _pipeline = default;
             }
         }
     }
