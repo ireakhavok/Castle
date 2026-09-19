@@ -147,7 +147,7 @@ namespace ToolChest
             // not the scene-editor panel target. Save the real draw target
             // and put it back before the overlay draws, or the meetings flash
             // to one side for a frame while you drag.
-            _renderContext.GetInteger(_renderContext.Enums.FramebufferBinding, out int savedFbo);
+            GpuHandle savedRt = _renderContext.GetBoundRenderTarget();
             int* savedVp = stackalloc int[4];
             _renderContext.GetInteger(_renderContext.Enums.Viewport, savedVp);
             int* savedSc = stackalloc int[4];
@@ -160,7 +160,10 @@ namespace ToolChest
             activeTracer.KickDebugBidirectional(listener, sources);
             activeTracer.FlushPendingRaster();
 
-            Gl.Of(_renderContext).BindFramebuffer(_renderContext.Enums.Framebuffer, (uint)savedFbo);
+            if (savedRt.IsValid)
+                _renderContext.BindRenderTarget(savedRt);
+            else
+                _renderContext.BindDefaultRenderTarget();
             _renderContext.Viewport(savedVp[0], savedVp[1], (uint)savedVp[2], (uint)savedVp[3]);
             _renderContext.Scissor(savedSc[0], savedSc[1], (uint)savedSc[2], (uint)savedSc[3]);
 

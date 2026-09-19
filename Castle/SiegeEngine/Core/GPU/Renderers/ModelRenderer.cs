@@ -247,7 +247,7 @@ namespace SiegeEngine.Core.GPU.Renderers
 
                 BindOpacityOption(shader, gpuIndex);
 
-                Gl.Of(_renderContext).BindVertexArray(mmr.Vao);
+                _renderContext.BindMesh(mmr.VertexHandle, mmr.IndexHandle, mmr.Stride != 0 ? mmr.Stride : 20 * sizeof(float));
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
             }
 

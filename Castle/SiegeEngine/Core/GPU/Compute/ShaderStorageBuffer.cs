@@ -1,81 +1,84 @@
-﻿// Folder: SiegeEngine/Core/Rendering/Compute
+// Folder: SiegeEngine/Core/Rendering/Compute
 // File: ShaderStorageBuffer.cs
 using System;
 using SiegeEngine.Core.GPU.ContextManagement;
 
 namespace SiegeEngine.Core.GPU.Compute
 {
-    /// <summary>
-    /// Simple SSBO wrapper for compute shaders.
-    /// </summary>
     public unsafe class ShaderStorageBuffer : IDisposable
     {
         private readonly IRenderContext _renderContext;
-        private uint _buffer;
+        private GpuHandle _buffer;
         private uint _sizeInBytes;
         private bool _disposed;
 
-        public uint BufferId => _buffer;
+        public uint BufferId => _buffer.Id;
+        public GpuHandle Handle => _buffer;
         public uint SizeInBytes => _sizeInBytes;
 
         public ShaderStorageBuffer(IRenderContext renderContext)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
-            _buffer = ((OpenGLRenderContext)_renderContext).GenBuffer();
+            _buffer = _renderContext.CreateBuffer(new BufferDesc
+            {
+                Target = _renderContext.Enums.ShaderStorageBuffer,
+                Usage = _renderContext.Enums.DynamicDraw,
+                ByteSize = 0
+            });
         }
 
-        /// <summary>
-        /// Allocate / reallocate the buffer with the given size and usage.
-        /// </summary>
         public void SetData(uint sizeInBytes, void* data, int usage)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderStorageBuffer));
             _sizeInBytes = sizeInBytes;
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ShaderStorageBuffer, _buffer);
-            ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.ShaderStorageBuffer, sizeInBytes, data, usage);
+            if (!_buffer.IsValid)
+            {
+                _buffer = _renderContext.CreateBuffer(new BufferDesc
+                {
+                    Target = _renderContext.Enums.ShaderStorageBuffer,
+                    Usage = usage != 0 ? usage : _renderContext.Enums.DynamicDraw,
+                    ByteSize = (int)sizeInBytes
+                });
+            }
+            if (data == null)
+            {
+                _renderContext.UpdateBuffer(_buffer, ReadOnlySpan<byte>.Empty);
+                return;
+            }
+            _renderContext.UpdateBuffer(_buffer, new ReadOnlySpan<byte>((byte*)data, (int)sizeInBytes));
         }
 
-        /// <summary>
-        /// Update a portion of the buffer.
-        /// </summary>
         public void SetSubData(int offset, uint size, void* data)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderStorageBuffer));
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ShaderStorageBuffer, _buffer);
-            ((OpenGLRenderContext)_renderContext).BufferSubData(_renderContext.Enums.ShaderStorageBuffer, offset, size, data);
+            if (data == null || size == 0) return;
+            _renderContext.UpdateBuffer(_buffer, new ReadOnlySpan<byte>((byte*)data, (int)size), offset);
         }
 
-        /// <summary>
-        /// Bind this SSBO to the given binding point.
-        /// </summary>
         public void BindBase(uint bindingPoint)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderStorageBuffer));
-            _renderContext.BindBufferBase(_renderContext.Enums.ShaderStorageBuffer, bindingPoint, _buffer);
+            _renderContext.BindBufferBase(_renderContext.Enums.ShaderStorageBuffer, bindingPoint, _buffer.Id);
         }
 
-        /// <summary>
-        /// Map the entire buffer for reading or writing.
-        /// Prefer MapRange for SSBO readback after compute.
-        /// </summary>
         public void* Map(int access)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderStorageBuffer));
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ShaderStorageBuffer, _buffer);
+            _renderContext.BindBuffer(_buffer);
             return _renderContext.MapBuffer(_renderContext.Enums.ShaderStorageBuffer, access);
         }
 
         public void* MapRange(int offset, uint length, int access)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderStorageBuffer));
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ShaderStorageBuffer, _buffer);
+            _renderContext.BindBuffer(_buffer);
             return _renderContext.MapBufferRange(_renderContext.Enums.ShaderStorageBuffer, offset, length, access);
         }
 
         public bool Unmap()
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderStorageBuffer));
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.ShaderStorageBuffer, _buffer);
+            _renderContext.BindBuffer(_buffer);
             return _renderContext.UnmapBuffer(_renderContext.Enums.ShaderStorageBuffer);
         }
 
@@ -83,8 +86,9 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             if (!_disposed)
             {
-                try { ((OpenGLRenderContext)_renderContext).DeleteBuffer(_buffer); }
-                catch (Exception ex) { Console.WriteLine($"Error deleting SSBO: {ex.Message}"); }
+                try { if (_buffer.IsValid) _renderContext.Destroy(_buffer); }
+                catch (Exception ex) { Console.WriteLine("Error deleting SSBO: " + ex.Message); }
+                _buffer = default;
                 _disposed = true;
             }
             GC.SuppressFinalize(this);

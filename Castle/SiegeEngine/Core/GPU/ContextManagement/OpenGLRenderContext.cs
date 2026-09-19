@@ -45,6 +45,8 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         private bool _hasUi;
         private bool _hasPost;
         private GpuHandle _boundPipeline;
+        private GpuHandle _boundRenderTarget;
+        private readonly Dictionary<uint, int> _bufferTarget = new Dictionary<uint, int>();
         private static bool _layoutChecked;
 
         public AbstractRenderEnums Enums => _enums;
@@ -365,9 +367,10 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public GpuHandle CreateBuffer(in BufferDesc desc)
         {
             uint buffer = GenBuffer();
+            int target = desc.Target != 0 ? desc.Target : _enums.ArrayBuffer;
+            _bufferTarget[buffer] = target;
             if (desc.ByteSize > 0)
             {
-                int target = desc.Target != 0 ? desc.Target : _enums.ArrayBuffer;
                 int usage = desc.Usage != 0 ? desc.Usage : _enums.StaticDraw;
                 BindBuffer(target, buffer);
                 BufferData(target, (uint)desc.ByteSize, null, usage);
@@ -461,6 +464,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             }
             else if (handle.Kind == GpuResourceKind.Buffer)
             {
+                _bufferTarget.Remove(handle.Id);
                 DeleteBuffer(handle.Id);
             }
             else if (handle.Kind == GpuResourceKind.Texture)
@@ -574,15 +578,20 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         public void UpdateBuffer(GpuHandle buffer, ReadOnlySpan<byte> data, int offset = 0)
         {
-            if (!IsLive(buffer) || buffer.Kind != GpuResourceKind.Buffer || data.Length == 0)
+            if (!IsLive(buffer) || buffer.Kind != GpuResourceKind.Buffer)
                 return;
-            BindBuffer(_enums.ArrayBuffer, buffer.Id);
+            int target = _enums.ArrayBuffer;
+            if (_bufferTarget.TryGetValue(buffer.Id, out int stored) && stored != 0)
+                target = stored;
+            BindBuffer(target, buffer.Id);
+            if (data.Length == 0)
+                return;
             fixed (byte* ptr = data)
             {
                 if (offset == 0)
-                    BufferData(_enums.ArrayBuffer, (uint)data.Length, ptr, _enums.DynamicDraw);
+                    BufferData(target, (uint)data.Length, ptr, _enums.DynamicDraw);
                 else
-                    BufferSubData(_enums.ArrayBuffer, offset, (uint)data.Length, ptr);
+                    BufferSubData(target, offset, (uint)data.Length, ptr);
             }
         }
 
@@ -590,6 +599,26 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         void ApplyStrideAttribs(int stride)
         {
             int useStride = stride > 0 ? stride : 28;
+            if (useStride == 8)
+            {
+                EnableVertexAttribArray(0);
+                VertexAttribPointer(0, 2, _enums.Float, false, 8, (void*)0);
+                return;
+            }
+            if (useStride == 16)
+            {
+                EnableVertexAttribArray(0);
+                VertexAttribPointer(0, 2, _enums.Float, false, 16, (void*)0);
+                EnableVertexAttribArray(1);
+                VertexAttribPointer(1, 2, _enums.Float, false, 16, (void*)(2 * sizeof(float)));
+                return;
+            }
+            if (useStride == 12)
+            {
+                EnableVertexAttribArray(0);
+                VertexAttribPointer(0, 3, _enums.Float, false, 12, (void*)0);
+                return;
+            }
             EnableVertexAttribArray(0);
             VertexAttribPointer(0, 3, _enums.Float, false, (uint)useStride, (void*)0);
             if (useStride == 80)
@@ -632,39 +661,116 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             }
             BindVertexArray(vao);
             BindBuffer(_enums.ArrayBuffer, vertex.Id);
-            int useStride = stride > 0 ? stride : 28;
-            EnableVertexAttribArray(0);
-            VertexAttribPointer(0, 3, _enums.Float, false, (uint)useStride, (void*)0);
-            if (useStride == 80)
+            ApplyStrideAttribs(stride);
+            if (index.IsValid && IsLive(index))
+                BindBuffer(_enums.ElementArrayBuffer, index.Id);
+        }
+
+        public void BindMesh(GpuHandle vertex, GpuHandle index, VertexLayout layout)
+        {
+            if (!IsLive(vertex) || vertex.Kind != GpuResourceKind.Buffer)
+                return;
+            ulong key = ((ulong)vertex.Id << 32) | (index.IsValid ? index.Id : 0u);
+            if (!_meshVao.TryGetValue(key, out uint vao))
             {
-                EnableVertexAttribArray(3);
-                VertexAttribPointer(3, 3, _enums.Float, false, 80, (void*)(3 * sizeof(float)));
-                EnableVertexAttribArray(2);
-                VertexAttribPointer(2, 2, _enums.Float, false, 80, (void*)(6 * sizeof(float)));
-                EnableVertexAttribArray(4);
-                VertexAttribPointer(4, 1, _enums.Float, false, 80, (void*)(8 * sizeof(float)));
-                EnableVertexAttribArray(5);
-                VertexAttribPointer(5, 3, _enums.Float, false, 80, (void*)(9 * sizeof(float)));
-                EnableVertexAttribArray(6);
-                VertexAttribPointer(6, 4, _enums.Float, false, 80, (void*)(12 * sizeof(float)));
-                EnableVertexAttribArray(7);
-                VertexAttribPointer(7, 4, _enums.Float, false, 80, (void*)(16 * sizeof(float)));
+                vao = GenVertexArray();
+                _meshVao[key] = vao;
             }
-            else
+            BindVertexArray(vao);
+            BindBuffer(_enums.ArrayBuffer, vertex.Id);
+            if (layout != null && layout.Attributes != null)
             {
-                if (useStride >= 28)
+                int strideUse = layout.Stride > 0 ? layout.Stride : 12;
+                for (int i = 0; i < layout.Attributes.Length; i++)
                 {
-                    EnableVertexAttribArray(1);
-                    VertexAttribPointer(1, 4, _enums.Float, false, (uint)useStride, (void*)(3 * sizeof(float)));
-                }
-                if (useStride >= 36)
-                {
-                    EnableVertexAttribArray(2);
-                    VertexAttribPointer(2, 2, _enums.Float, false, (uint)useStride, (void*)(7 * sizeof(float)));
+                    VertexAttribute attr = layout.Attributes[i];
+                    int loc = VertexLayout.Location(attr.Semantic);
+                    EnableVertexAttribArray((uint)loc);
+                    int type = attr.Type != 0 ? attr.Type : _enums.Float;
+                    if (type == _enums.Int)
+                        VertexAttribIPointer((uint)loc, attr.Size, type, (uint)strideUse, (void*)attr.Offset);
+                    else
+                        VertexAttribPointer((uint)loc, attr.Size, type, false, (uint)strideUse, (void*)attr.Offset);
                 }
             }
             if (index.IsValid && IsLive(index))
                 BindBuffer(_enums.ElementArrayBuffer, index.Id);
+        }
+
+        public void BindBuffer(GpuHandle buffer)
+        {
+            if (!buffer.IsValid)
+                return;
+            int target = _enums.ArrayBuffer;
+            if (_bufferTarget.TryGetValue(buffer.Id, out int stored) && stored != 0)
+                target = stored;
+            BindBuffer(target, buffer.Id);
+        }
+
+        public void UnbindBuffer(int target)
+        {
+            if (target != 0)
+                BindBuffer(target, 0);
+        }
+
+        public void SetUniform(string name, int value)
+        {
+            if (!_boundPipeline.IsValid || string.IsNullOrEmpty(name))
+                return;
+            int loc = GetUniformLocation(_boundPipeline.Id, name);
+            if (loc >= 0)
+                Uniform1(loc, value);
+        }
+
+        public void SetUniform(string name, float value)
+        {
+            if (!_boundPipeline.IsValid || string.IsNullOrEmpty(name))
+                return;
+            int loc = GetUniformLocation(_boundPipeline.Id, name);
+            if (loc >= 0)
+                Uniform1(loc, value);
+        }
+
+        public void SetUniform(string name, float x, float y)
+        {
+            if (!_boundPipeline.IsValid || string.IsNullOrEmpty(name))
+                return;
+            int loc = GetUniformLocation(_boundPipeline.Id, name);
+            if (loc >= 0)
+                Uniform2(loc, x, y);
+        }
+
+        public void SetUniform(string name, float x, float y, float z)
+        {
+            if (!_boundPipeline.IsValid || string.IsNullOrEmpty(name))
+                return;
+            int loc = GetUniformLocation(_boundPipeline.Id, name);
+            if (loc >= 0)
+                Uniform3(loc, x, y, z);
+        }
+
+        public void SetUniform(string name, float x, float y, float z, float w)
+        {
+            if (!_boundPipeline.IsValid || string.IsNullOrEmpty(name))
+                return;
+            int loc = GetUniformLocation(_boundPipeline.Id, name);
+            if (loc >= 0)
+                Uniform4(loc, x, y, z, w);
+        }
+
+        public unsafe void SetUniformMatrix4(string name, in Matrix4x4 matrix)
+        {
+            if (!_boundPipeline.IsValid || string.IsNullOrEmpty(name))
+                return;
+            int loc = GetUniformLocation(_boundPipeline.Id, name);
+            if (loc < 0)
+                return;
+            float* m = stackalloc float[16];
+            m[0] = matrix.M11; m[1] = matrix.M12; m[2] = matrix.M13; m[3] = matrix.M14;
+            m[4] = matrix.M21; m[5] = matrix.M22; m[6] = matrix.M23; m[7] = matrix.M24;
+            m[8] = matrix.M31; m[9] = matrix.M32; m[10] = matrix.M33; m[11] = matrix.M34;
+            m[12] = matrix.M41; m[13] = matrix.M42; m[14] = matrix.M43; m[15] = matrix.M44;
+            UniformMatrix4(loc, 1, false, m);
         }
 
         public void UpdateTexture(GpuHandle texture, int width, int height, int format, int type, void* pixels)
@@ -805,6 +911,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             GpuHandle depth = GetRenderTargetDepth(target);
             uint tex = depth.IsValid ? depth.Id : target.Id;
             BindFramebuffer(_enums.Framebuffer, fbo);
+            _boundRenderTarget = target;
             FramebufferTexture2D(_enums.Framebuffer, _enums.DepthAttachment, _enums.TextureCubeMapPositiveX + face, tex, 0);
             DrawBuffer(_enums.None);
             ReadBuffer(_enums.None);
@@ -815,8 +922,10 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             if (!target.IsValid)
             {
                 BindFramebuffer(_enums.Framebuffer, 0);
+                _boundRenderTarget = default;
                 return;
             }
+            _boundRenderTarget = target;
             uint fbo = target.Id;
             if (_rtFbo.TryGetValue(target.Id, out uint mapped))
                 fbo = mapped;
@@ -834,6 +943,12 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public void BindDefaultRenderTarget()
         {
             BindFramebuffer(_enums.Framebuffer, 0);
+            _boundRenderTarget = default;
+        }
+
+        public GpuHandle GetBoundRenderTarget()
+        {
+            return _boundRenderTarget;
         }
 
         public void SetConstants<T>(int slot, in T data) where T : unmanaged
@@ -1166,6 +1281,39 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 target = stored;
             BindTexture(target, texture.Id);
             TexParameter(target, pname, param);
+        }
+
+
+        public void BindBuffer(int target, GpuHandle buffer)
+        {
+            if (!buffer.IsValid)
+            {
+                BindBuffer(target, 0);
+                return;
+            }
+            BindBuffer(target, buffer.Id);
+        }
+
+        public unsafe void SetUniformMatrix4(string name, ReadOnlySpan<float> values, int count)
+        {
+            if (!_boundPipeline.IsValid || string.IsNullOrEmpty(name) || values.Length == 0 || count <= 0)
+                return;
+            int loc = GetUniformLocation(_boundPipeline.Id, name);
+            if (loc < 0)
+                return;
+            fixed (float* ptr = values)
+                UniformMatrix4(loc, (uint)count, false, ptr);
+        }
+
+        public unsafe void SetUniformMatrix3(string name, ReadOnlySpan<float> values, int count)
+        {
+            if (!_boundPipeline.IsValid || string.IsNullOrEmpty(name) || values.Length == 0 || count <= 0)
+                return;
+            int loc = GetUniformLocation(_boundPipeline.Id, name);
+            if (loc < 0)
+                return;
+            fixed (float* ptr = values)
+                UniformMatrix3(loc, (uint)count, false, ptr);
         }
 
 

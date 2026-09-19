@@ -11,15 +11,11 @@ namespace SiegeEngine.Core.GPU.Shaders
     public class ShaderProgram : IDisposable
     {
         private readonly IRenderContext _renderContext;
-        private readonly OpenGLRenderContext _gl;
         private readonly GpuHandle _pipeline;
-        private readonly uint _program;
         private bool _disposed;
-        private readonly Dictionary<string, int> _uniformLocations = new Dictionary<string, int>();
-        private float[] _mat4Scratch = new float[16];
-        private float[] _mat3Scratch = new float[9];
 
         public ShaderId ShaderId { get; private set; }
+        public GpuHandle Pipeline => _pipeline;
 
         public ShaderProgram(IRenderContext renderContext, string vertexShaderSource, string fragmentShaderSource)
         {
@@ -29,37 +25,27 @@ namespace SiegeEngine.Core.GPU.Shaders
             if (string.IsNullOrEmpty(fragmentShaderSource))
                 throw new ArgumentNullException(nameof(fragmentShaderSource));
 
-            _gl = _renderContext as OpenGLRenderContext;
             _pipeline = _renderContext.CreatePipeline(new PipelineDesc
             {
                 VertexSource = vertexShaderSource,
                 FragmentSource = fragmentShaderSource,
                 State = new GpuRenderState { DepthTest = true, DepthWrite = true }
             });
-            _program = _pipeline.Id;
-                        BindConstantBlocks();
+            BindConstantBlocks();
         }
 
         void BindConstantBlocks()
         {
-            _renderContext.BindUniformBlocks();
             _renderContext.BindPipeline(_pipeline);
-            BindSampler("uTexture", TextureSlot.Albedo);
-            BindSampler("uAlbedoMap", TextureSlot.Albedo);
-            BindSampler("uColor", TextureSlot.Color);
-            BindSampler("uOpacityMap", TextureSlot.Opacity);
-            BindSampler("uShadowAtlas", TextureSlot.ShadowAtlas);
-            BindSampler("uPointShadowCube", TextureSlot.PointShadow);
-            BindSampler("uSpotShadowMap", TextureSlot.SpotShadow);
-            BindSampler("uSkybox", 0);
-        }
-
-        void BindSampler(string name, int unit)
-        {
-            if (_gl == null) return;
-            int loc = _gl.GetUniformLocation(_program, name);
-            if (loc >= 0)
-                _gl.Uniform1(loc, unit);
+            _renderContext.BindUniformBlocks();
+            _renderContext.SetUniform("uTexture", TextureSlot.Albedo);
+            _renderContext.SetUniform("uAlbedoMap", TextureSlot.Albedo);
+            _renderContext.SetUniform("uColor", TextureSlot.Color);
+            _renderContext.SetUniform("uOpacityMap", TextureSlot.Opacity);
+            _renderContext.SetUniform("uShadowAtlas", TextureSlot.ShadowAtlas);
+            _renderContext.SetUniform("uPointShadowCube", TextureSlot.PointShadow);
+            _renderContext.SetUniform("uSpotShadowMap", TextureSlot.SpotShadow);
+            _renderContext.SetUniform("uSkybox", 0);
         }
 
         public static ShaderProgram FromId(IRenderContext renderContext, ShaderId id)
@@ -74,112 +60,63 @@ namespace SiegeEngine.Core.GPU.Shaders
             return program;
         }
 
-        public int FindUniform(string name) => GetLocation(name);
-
-        private int GetLocation(string name)
-        {
-            if (_uniformLocations.TryGetValue(name, out int loc))
-                return loc;
-            loc = _gl != null ? _gl.GetUniformLocation(_program, name) : -1;
-            _uniformLocations[name] = loc;
-            return loc;
-        }
+        public int FindUniform(string name) => -1;
 
         public void Use()
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ShaderProgram));
-            OpenGLRenderContext gl = _renderContext as OpenGLRenderContext;
-            if (gl != null)
-                gl.UseProgram(_program);
-            else
-                _renderContext.BindPipeline(_pipeline);
+            _renderContext.BindPipeline(_pipeline);
         }
 
         public void SetUniform(string name, float value)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
-            int location = GetLocation(name);
-            if (location == -1) return;
-            _gl.Uniform1(location, value);
+            _renderContext.SetUniform(name, value);
         }
 
         public void SetUniform(string name, int value)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
-            int location = GetLocation(name);
-            if (location == -1) return;
-            _gl.Uniform1(location, value);
+            _renderContext.SetUniform(name, value);
         }
 
         public void SetUniform(string name, float x, float y)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
-            int location = GetLocation(name);
-            if (location == -1) return;
-            _gl.Uniform2(location, x, y);
+            _renderContext.SetUniform(name, x, y);
         }
 
         public void SetUniform(string name, float x, float y, float z)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
-            int location = GetLocation(name);
-            if (location == -1) return;
-            _gl.Uniform3(location, x, y, z);
+            _renderContext.SetUniform(name, x, y, z);
         }
 
         public void SetUniform(string name, float x, float y, float z, float w)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
-            int location = GetLocation(name);
-            if (location == -1) return;
-            _gl.Uniform4(location, x, y, z, w);
+            _renderContext.SetUniform(name, x, y, z, w);
         }
 
         public unsafe void SetMatrix4(string name, Matrix4x4 matrix)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
-            int location = GetLocation(name);
-            if (location == -1)
-            {
-                WriteLegacyMatrix(name, matrix);
-                return;
-            }
-            float[] matrixArray = _mat4Scratch;
-            if (matrixArray.Length < 16)
-            {
-                matrixArray = new float[16];
-                _mat4Scratch = matrixArray;
-            }
-            matrixArray[0] = matrix.M11; matrixArray[1] = matrix.M12; matrixArray[2] = matrix.M13; matrixArray[3] = matrix.M14;
-            matrixArray[4] = matrix.M21; matrixArray[5] = matrix.M22; matrixArray[6] = matrix.M23; matrixArray[7] = matrix.M24;
-            matrixArray[8] = matrix.M31; matrixArray[9] = matrix.M32; matrixArray[10] = matrix.M33; matrixArray[11] = matrix.M34;
-            matrixArray[12] = matrix.M41; matrixArray[13] = matrix.M42; matrixArray[14] = matrix.M43; matrixArray[15] = matrix.M44;
-            fixed (float* matrixPtr = matrixArray)
-            {
-                _gl.UniformMatrix4(location, 1, false, matrixPtr);
-            }
+            WriteLegacyMatrix(name, matrix);
+            _renderContext.SetUniformMatrix4(name, matrix);
         }
 
         public unsafe void SetMatrix4Array(string name, Matrix4x4[] matrices)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
-            if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
-            int location = GetLocation(name);
-            if (location == -1) return;
-            int needed = matrices.Length * 16;
-            float[] data = _mat4Scratch;
-            if (data.Length < needed)
-            {
-                data = new float[needed];
-                _mat4Scratch = data;
-            }
+            if (string.IsNullOrEmpty(name) || matrices == null || matrices.Length == 0) return;
+            float[] data = new float[matrices.Length * 16];
             for (int i = 0; i < matrices.Length; i++)
             {
                 data[i * 16 + 0] = matrices[i].M11;
@@ -199,25 +136,15 @@ namespace SiegeEngine.Core.GPU.Shaders
                 data[i * 16 + 14] = matrices[i].M43;
                 data[i * 16 + 15] = matrices[i].M44;
             }
-            fixed (float* ptr = data)
-            {
-                _gl.UniformMatrix4(location, (uint)matrices.Length, false, ptr);
-            }
+            _renderContext.BindPipeline(_pipeline);
+            _renderContext.SetUniformMatrix4(name, data, matrices.Length);
         }
 
         public unsafe void SetMatrix3Array(string name, Matrix3x3[] matrices)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
-            if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
-            int location = GetLocation(name);
-            if (location == -1) return;
-            int needed = matrices.Length * 9;
-            float[] data = _mat3Scratch;
-            if (data.Length < needed)
-            {
-                data = new float[needed];
-                _mat3Scratch = data;
-            }
+            if (string.IsNullOrEmpty(name) || matrices == null || matrices.Length == 0) return;
+            float[] data = new float[matrices.Length * 9];
             for (int i = 0; i < matrices.Length; i++)
             {
                 data[i * 9 + 0] = matrices[i].M11;
@@ -230,10 +157,8 @@ namespace SiegeEngine.Core.GPU.Shaders
                 data[i * 9 + 7] = matrices[i].M32;
                 data[i * 9 + 8] = matrices[i].M33;
             }
-            fixed (float* ptr = data)
-            {
-                _gl.UniformMatrix3(location, (uint)matrices.Length, false, ptr);
-            }
+            _renderContext.BindPipeline(_pipeline);
+            _renderContext.SetUniformMatrix3(name, data, matrices.Length);
         }
 
         void WriteLegacyMatrix(string name, Matrix4x4 matrix)

@@ -73,13 +73,11 @@ namespace SiegeEngine.Core.GPU.Compute
         private uint _pendingGeometryVersion;
         private int _pendingFace;
         private const int FacesPerCall = 6;
-        private uint _fbo;
-        private uint _idTexture;
-        private uint _depthRb;
+        private GpuHandle _idRt;
         private uint[] _idReadback;
         private bool _fboReady;
         // PBO + fence (shared hardware, but primary and secondary never run concurrently)
-        private readonly uint[] _pbo = new uint[2];
+        private readonly GpuHandle[] _pbo = new GpuHandle[2];
         private int _pboIndex;
         private uint _pendingFence;
         private int _pendingPbo;
@@ -141,35 +139,34 @@ namespace SiegeEngine.Core.GPU.Compute
         }
         private void CreateIdFbo()
         {
-            ((OpenGLRenderContext)_renderContext).GenFramebuffers(1, out _fbo);
-            ((OpenGLRenderContext)_renderContext).BindFramebuffer(_renderContext.Enums.Framebuffer, _fbo);
-            ((OpenGLRenderContext)_renderContext).GenTextures(1, out _idTexture);
-            ((OpenGLRenderContext)_renderContext).BindTexture(_renderContext.Enums.Texture2D, _idTexture);
-            ((OpenGLRenderContext)_renderContext).TexImage2D(_renderContext.Enums.Texture2D, 0, _renderContext.Enums.R32UI,
-                IdBufferSize, IdBufferSize, 0, _renderContext.Enums.RedInteger, _renderContext.Enums.UnsignedIntType, null);
-            ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMinFilter, _renderContext.Enums.Nearest);
-            ((OpenGLRenderContext)_renderContext).TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMagFilter, _renderContext.Enums.Nearest);
-            ((OpenGLRenderContext)_renderContext).FramebufferTexture2D(_renderContext.Enums.Framebuffer, _renderContext.Enums.ColorAttachment0,
-                _renderContext.Enums.Texture2D, _idTexture, 0);
-            ((OpenGLRenderContext)_renderContext).GenRenderbuffers(1, out _depthRb);
-            ((OpenGLRenderContext)_renderContext).BindRenderbuffer(_renderContext.Enums.Renderbuffer, _depthRb);
-            ((OpenGLRenderContext)_renderContext).RenderbufferStorage(_renderContext.Enums.Renderbuffer, _renderContext.Enums.DepthComponent24,
-                IdBufferSize, IdBufferSize);
-            ((OpenGLRenderContext)_renderContext).FramebufferRenderbuffer(_renderContext.Enums.Framebuffer, _renderContext.Enums.DepthAttachment,
-                _renderContext.Enums.Renderbuffer, _depthRb);
-            int status = ((OpenGLRenderContext)_renderContext).CheckFramebufferStatus(_renderContext.Enums.Framebuffer);
-            _fboReady = (status == _renderContext.Enums.FramebufferComplete);
-            ((OpenGLRenderContext)_renderContext).BindFramebuffer(_renderContext.Enums.Framebuffer, 0);
-            if (!_fboReady)
-                Console.WriteLine($"[AcousticRayTracer] ID FBO incomplete, status={status}");
-            uint pboBytes = (uint)(IdBufferSize * IdBufferSize * sizeof(uint));
+            _idRt = _renderContext.CreateRenderTarget(new RenderTargetDesc
+            {
+                Width = IdBufferSize,
+                Height = IdBufferSize,
+                ColorFormat = _renderContext.Enums.R32UI,
+                DepthFormat = _renderContext.Enums.DepthComponent24,
+                DepthTexture = false
+            });
+            _fboReady = _idRt.IsValid;
+            if (_fboReady)
+            {
+                GpuHandle color = _renderContext.GetRenderTargetColor(_idRt);
+                if (color.IsValid)
+                    _renderContext.SetTextureParams(color, _renderContext.Enums.Nearest, _renderContext.Enums.Nearest,
+                        _renderContext.Enums.ClampToEdge, _renderContext.Enums.ClampToEdge);
+            }
+            else
+                Console.WriteLine("[AcousticRayTracer] ID render target create failed");
+            int pboBytes = IdBufferSize * IdBufferSize * sizeof(uint);
             for (int i = 0; i < 2; i++)
             {
-                _pbo[i] = ((OpenGLRenderContext)_renderContext).GenBuffer();
-                ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.PixelPackBuffer, _pbo[i]);
-                ((OpenGLRenderContext)_renderContext).BufferData(_renderContext.Enums.PixelPackBuffer, pboBytes, null, _renderContext.Enums.StreamRead);
+                _pbo[i] = _renderContext.CreateBuffer(new BufferDesc
+                {
+                    Target = _renderContext.Enums.PixelPackBuffer,
+                    Usage = _renderContext.Enums.StreamRead,
+                    ByteSize = pboBytes
+                });
             }
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.PixelPackBuffer, 0);
             _pboIndex = 0;
             _pendingFence = 0;
             _fencePending = false;
@@ -315,7 +312,7 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             if (_disposed || _geometry.TriangleCount <= 0 || !_fboReady)
                 return false;
-            _renderContext.GetInteger(_renderContext.Enums.FramebufferBinding, out int savedFbo);
+            GpuHandle savedRt = _renderContext.GetBoundRenderTarget();
             int* savedVp = stackalloc int[4];
             _renderContext.GetInteger(_renderContext.Enums.Viewport, savedVp);
             int* savedSc = stackalloc int[4];
@@ -328,7 +325,10 @@ namespace SiegeEngine.Core.GPU.Compute
                 if (!TryCompletePendingRaster() && _pendingRaster && !(_fencePending && _pendingFence != 0))
                     break;
             }
-            ((OpenGLRenderContext)_renderContext).BindFramebuffer(_renderContext.Enums.Framebuffer, (uint)savedFbo);
+            if (savedRt.IsValid)
+                _renderContext.BindRenderTarget(savedRt);
+            else
+                _renderContext.BindDefaultRenderTarget();
             _renderContext.Viewport(savedVp[0], savedVp[1], (uint)savedVp[2], (uint)savedVp[3]);
             _renderContext.Scissor(savedSc[0], savedSc[1], (uint)savedSc[2], (uint)savedSc[3]);
             return !_pendingRaster;
@@ -483,7 +483,7 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             int savedViewportW = _renderContext.ViewportWidth;
             int savedViewportH = _renderContext.ViewportHeight;
-            ((OpenGLRenderContext)_renderContext).BindFramebuffer(_renderContext.Enums.Framebuffer, _fbo);
+            _renderContext.BindRenderTarget(_idRt);
             _renderContext.Viewport(0, 0, IdBufferSize, IdBufferSize);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.DepthFunc(_renderContext.Enums.Less);
@@ -500,14 +500,14 @@ namespace SiegeEngine.Core.GPU.Compute
             _geometry.Draw();
             int pbo = _pboIndex;
             _pboIndex = 1 - _pboIndex;
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.PixelPackBuffer, _pbo[pbo]);
+            _renderContext.BindBuffer(_pbo[pbo]);
             _renderContext.ReadPixels(0, 0, IdBufferSize, IdBufferSize,
                 _renderContext.Enums.RedInteger, _renderContext.Enums.UnsignedIntType, null);
             _pendingFence = _renderContext.FenceSync(_renderContext.Enums.SyncGpuCommandsComplete, 0);
             _pendingPbo = pbo;
             _fencePending = true;
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.PixelPackBuffer, 0);
-            ((OpenGLRenderContext)_renderContext).BindFramebuffer(_renderContext.Enums.Framebuffer, 0);
+            _renderContext.UnbindBuffer(_renderContext.Enums.PixelPackBuffer);
+            _renderContext.BindDefaultRenderTarget();
             _renderContext.Viewport(0, 0, (uint)savedViewportW, (uint)savedViewportH);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.Blend);
@@ -515,7 +515,7 @@ namespace SiegeEngine.Core.GPU.Compute
         }
         private void ExtractIdsInto(HashSet<int> listenerSet, HashSet<int> sourceSet, int faceIndex)
         {
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.PixelPackBuffer, _pbo[_pendingPbo]);
+            _renderContext.BindBuffer(_pbo[_pendingPbo]);
             void* mapped = _renderContext.MapBufferRange(
                 _renderContext.Enums.PixelPackBuffer,
                 0,
@@ -536,7 +536,7 @@ namespace SiegeEngine.Core.GPU.Compute
                 }
                 _renderContext.UnmapBuffer(_renderContext.Enums.PixelPackBuffer);
             }
-            ((OpenGLRenderContext)_renderContext).BindBuffer(_renderContext.Enums.PixelPackBuffer, 0);
+            _renderContext.UnbindBuffer(_renderContext.Enums.PixelPackBuffer);
         }
         private void RebuildJoinedMutual()
         {
@@ -685,21 +685,12 @@ namespace SiegeEngine.Core.GPU.Compute
                     _fencePending = false;
                 }
                 _idProgram?.Dispose();
-                if (_fbo != 0)
-                {
-                    uint f = _fbo;
-                    ((OpenGLRenderContext)_renderContext).DeleteFramebuffers(1, &f);
-                }
-                if (_idTexture != 0) ((OpenGLRenderContext)_renderContext).DeleteTexture(_idTexture);
-                if (_depthRb != 0)
-                {
-                    uint r = _depthRb;
-                    ((OpenGLRenderContext)_renderContext).DeleteRenderbuffers(1, &r);
-                }
+                if (_idRt.IsValid)
+                    _renderContext.Destroy(_idRt);
                 for (int i = 0; i < 2; i++)
                 {
-                    if (_pbo[i] != 0)
-                        ((OpenGLRenderContext)_renderContext).DeleteBuffer(_pbo[i]);
+                    if (_pbo[i].IsValid)
+                        _renderContext.Destroy(_pbo[i]);
                 }
                 _secondarySlots.Clear();
                 _secondaryQueue.Clear();

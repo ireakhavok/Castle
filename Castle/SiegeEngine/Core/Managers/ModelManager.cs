@@ -42,9 +42,6 @@ namespace SiegeEngine.Core.Managers
         }
         public class ModelMeshRender
         {
-            public uint Vao { get; set; }
-            public uint Vbo { get; set; }
-            public uint Ebo { get; set; }
             public GpuHandle VertexHandle { get; set; }
             public GpuHandle IndexHandle { get; set; }
             public int Stride { get; set; }
@@ -562,7 +559,6 @@ namespace SiegeEngine.Core.Managers
                     vertexData[offset + 18] = vertex.Weights.Z;
                     vertexData[offset + 19] = vertex.Weights.W;
                 }
-                var gl = Gl.Of(_renderContext);
                 GpuHandle vboH = _renderContext.CreateBuffer(new BufferDesc
                 {
                     Target = _renderContext.Enums.ArrayBuffer,
@@ -575,37 +571,15 @@ namespace SiegeEngine.Core.Managers
                     Usage = _renderContext.Enums.StaticDraw,
                     ByteSize = mesh.Indices.Count * sizeof(uint)
                 });
-                uint vao = gl.GenVertexArray();
-                gl.BindVertexArray(vao);
-                gl.BindBuffer(_renderContext.Enums.ArrayBuffer, vboH.Id);
                 fixed (float* vptr = vertexData)
-                    gl.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertexData.Length * sizeof(float)), vptr, _renderContext.Enums.StaticDraw);
+                    _renderContext.UpdateBuffer(vboH, new ReadOnlySpan<byte>((byte*)vptr, vertexData.Length * sizeof(float)));
                 uint[] meshIndices = mesh.Indices.ToArray();
-                gl.BindBuffer(_renderContext.Enums.ElementArrayBuffer, eboH.Id);
                 fixed (uint* iptr = meshIndices)
-                    gl.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(meshIndices.Length * sizeof(uint)), iptr, _renderContext.Enums.StaticDraw);
-                uint stride = 20 * sizeof(float);
-                gl.EnableVertexAttribArray(0);
-                gl.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
-                gl.EnableVertexAttribArray(3);
-                gl.VertexAttribPointer(3, 3, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
-                gl.EnableVertexAttribArray(2);
-                gl.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(6 * sizeof(float)));
-                gl.EnableVertexAttribArray(4);
-                gl.VertexAttribPointer(4, 1, _renderContext.Enums.Float, false, stride, (void*)(8 * sizeof(float)));
-                gl.EnableVertexAttribArray(5);
-                gl.VertexAttribPointer(5, 3, _renderContext.Enums.Float, false, stride, (void*)(9 * sizeof(float)));
-                gl.EnableVertexAttribArray(6);
-                gl.VertexAttribPointer(6, 4, _renderContext.Enums.Float, false, stride, (void*)(12 * sizeof(float)));
-                gl.EnableVertexAttribArray(7);
-                gl.VertexAttribPointer(7, 4, _renderContext.Enums.Float, false, stride, (void*)(16 * sizeof(float)));
-                gl.BindVertexArray(0);
+                    _renderContext.UpdateBuffer(eboH, new ReadOnlySpan<byte>((byte*)iptr, meshIndices.Length * sizeof(uint)));
+                int stride = 20 * sizeof(float);
                 mmr.VertexHandle = vboH;
                 mmr.IndexHandle = eboH;
-                mmr.Stride = (int)stride;
-                mmr.Vao = vao;
-                mmr.Vbo = vboH.Id;
-                mmr.Ebo = eboH.Id;
+                mmr.Stride = stride;
                 mmr.IndexCount = (uint)mesh.Indices.Count;
                 mmr.AlbedoTextures = albedos.ToArray();
                 mmr.NormalTextures = normals.ToArray();
