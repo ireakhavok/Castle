@@ -4,6 +4,7 @@ using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Physics;
+using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.GPU;
 using SiegeEngine.Core.GPU.ContextManagement;
 using SiegeEngine.Core.GPU.Renderers;
@@ -218,8 +219,7 @@ namespace SiegeEngine.Scenes
                     phys.Velocity = Vector3.Zero;
                     phys.AngularVelocity = Vector3.Zero;
                     phys.IsSleeping = false;
-                    _server.SnapToGround(phys);
-                    Console.WriteLine($"[RuntimeGameplayScene] Dynamic spawn snap id={e.Id} type={e.Type} pos={phys.Position} shape={phys.Shape?.GetType().Name ?? "null"} bones={phys.UseBoneHitboxes}");
+                    Console.WriteLine($"[RuntimeGameplayScene] Dynamic hold id={e.Id} type={e.Type} pos={phys.Position} shape={phys.Shape?.GetType().Name ?? "null"}");
                 }
                 Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Light={(placedLight != null ? placedLight.Type.ToString() : "none")} Position from Level (exact match, no spoof)");
             }
@@ -722,7 +722,81 @@ namespace SiegeEngine.Scenes
             }
         }
 
-        static Vector3 ResolvePreferredSpawn(Level level, SceneSettings settings)
+        static float HorizontalRadius(PhysicsComponent physics)
+        {
+            if (physics == null) return 0.5f;
+            float sx = MathF.Abs(physics.Size.X) * 0.5f;
+            float sy = MathF.Abs(physics.Size.Y) * 0.5f;
+            if (physics.LocalBoundsMaxCm.X >= physics.LocalBoundsMinCm.X)
+            {
+                sx = MathF.Max(sx, MathF.Abs(physics.LocalBoundsMaxCm.X - physics.LocalBoundsMinCm.X) * 0.5f);
+                sy = MathF.Max(sy, MathF.Abs(physics.LocalBoundsMaxCm.Y - physics.LocalBoundsMinCm.Y) * 0.5f);
+            }
+            float r = MathF.Max(sx, sy);
+            if (physics.BodyType == BodyType.Dynamic)
+                r += 1.25f;
+            return MathF.Max(0.5f, r);
+        }
+
+        bool SpawnBlocked(Vector3 pos, float playerRadius, int ignoreId)
+        {
+            var entities = _server != null ? _server.GetEntities() : null;
+            if (entities == null) return false;
+            float need = playerRadius;
+            for (int i = 0; i < entities.Count; i++)
+            {
+                var e = entities[i];
+                if (e == null || e.Id == ignoreId) continue;
+                if (e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                var physics = e.GetComponent<PhysicsComponent>();
+                if (physics == null || !physics.CollisionEnabled) continue;
+                float dx = pos.X - physics.Position.X;
+                float dy = pos.Y - physics.Position.Y;
+                float min = need + HorizontalRadius(physics);
+                if (dx * dx + dy * dy < min * min)
+                    return true;
+            }
+            return false;
+        }
+
+        Vector3 SnapSpawnHeight(Vector3 pos)
+        {
+            IHeightProvider height = null;
+            if (_server is ClientGameServerProxy proxy)
+                height = proxy.PhysicsWorld?.HeightProvider;
+            if (height != null)
+            {
+                float ground = height.GetInterpolatedHeight(pos.X, pos.Y);
+                if (!float.IsNaN(ground) && !float.IsInfinity(ground))
+                    pos.Z = ground;
+            }
+            return pos;
+        }
+
+        Vector3 FindClearSpawn(Vector3 anchor, int ignoreId)
+        {
+            const float playerR = 0.6f;
+            float[] radii = { 3f, 5f, 8f, 12f };
+            for (int r = 0; r < radii.Length; r++)
+            {
+                for (int d = 0; d < 8; d++)
+                {
+                    float ang = d * (MathF.PI * 0.25f);
+                    Vector3 p = new Vector3(
+                        anchor.X + MathF.Cos(ang) * radii[r],
+                        anchor.Y + MathF.Sin(ang) * radii[r],
+                        anchor.Z);
+                    if (!SpawnBlocked(p, playerR, ignoreId))
+                        return SnapSpawnHeight(p);
+                }
+            }
+            Vector3 fallback = new Vector3(anchor.X - 12f, anchor.Y, anchor.Z);
+            Console.WriteLine("[RuntimeGameplayScene] FindClearSpawn fallback " + fallback);
+            return SnapSpawnHeight(fallback);
+        }
+
+        Vector3 ResolvePreferredSpawn(Level level, SceneSettings settings)
         {
             if (settings?.PreferredSpawnPointIds == null || level?.Entities == null)
                 return Vector3.Zero;
@@ -732,9 +806,7 @@ namespace SiegeEngine.Scenes
                 Entity spawnEntity = level.Entities.FirstOrDefault(e => e.Id == id);
                 var spawnPhysics = spawnEntity?.GetComponent<PhysicsComponent>();
                 if (spawnPhysics == null) continue;
-                float side = spawnPhysics.Size.X;
-                if (side < 0.5f) side = 0.5f;
-                return spawnPhysics.Position + new Vector3(side + 0.75f, 0f, 0f);
+                return FindClearSpawn(spawnPhysics.Position, id);
             }
             return Vector3.Zero;
         }
@@ -836,14 +908,13 @@ namespace SiegeEngine.Scenes
                 var spawnPhysics = spawnEntity?.GetComponent<PhysicsComponent>();
                 if (spawnPhysics == null)
                     continue;
-                float side = spawnPhysics.Size.X;
-                if (side < 0.5f) side = 0.5f;
-                Vector3 nextTo = spawnPhysics.Position + new Vector3(side + 0.75f, 0f, 0f);
+                Vector3 nextTo = FindClearSpawn(spawnPhysics.Position, id);
                 _player.Physics.Position = nextTo;
                 _player.Physics.RenderPosition = nextTo;
-                _player.Physics.Rotation = spawnPhysics.Rotation;
-                _server.SnapToGround(_player.Physics);
+                _player.Physics.Velocity = Vector3.Zero;
+                _player.Physics.AngularVelocity = Vector3.Zero;
                 _player.Physics.RenderPosition = _player.Physics.Position;
+                Console.WriteLine("[RuntimeGameplayScene] Clear spawn at " + nextTo + " from marker " + id + " " + spawnPhysics.Position);
                 return;
             }
         }

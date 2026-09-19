@@ -362,5 +362,16 @@ namespace CastleBuilder
                 () => editor.DeleteScene(name),
                 () => editor.RestoreScene(name, snapshot, name)));
         }
+        public static void ToggleSceneEditorPhysics(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            var editor = EditorScene.Current;
+            if (editor == null)
+            {
+                Console.WriteLine("[MenuCommands] Simulate Physics: no Scene Editor is loaded");
+                return;
+            }
+            bool on = editor.ToggleSimulateDynamics();
+            Console.WriteLine("[MenuCommands] Scene Editor physics " + (on ? "ON" : "OFF"));
+        }
     }
 }

@@ -85,6 +85,29 @@ namespace CastleBuilder
             EditorHistory.TransformApplied = ApplyLiveTransform;
             LoadProjectData();
         }
+        public bool ToggleSimulateDynamics()
+        {
+            if (!(_server is ClientGameServerProxy proxy))
+                return false;
+            proxy.SimulateDynamics = !proxy.SimulateDynamics;
+            var live = GetEntities();
+            for (int i = 0; i < live.Count; i++)
+            {
+                var physics = live[i]?.GetComponent<PhysicsComponent>();
+                if (physics == null || physics.BodyType != BodyType.Dynamic)
+                    continue;
+                physics.IsSleeping = false;
+                physics.SleepTimer = 0f;
+                if (!proxy.SimulateDynamics)
+                {
+                    physics.Velocity = Vector3.Zero;
+                    physics.AngularVelocity = Vector3.Zero;
+                    physics.RenderPosition = physics.Position;
+                }
+            }
+            Console.WriteLine("[EditorScene] SimulateDynamics=" + proxy.SimulateDynamics);
+            return proxy.SimulateDynamics;
+        }
         private void ApplyLiveTransform(int entityId, Vector3 pos, System.Numerics.Quaternion rot)
         {
             var entity = GetEntityById(entityId);
