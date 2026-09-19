@@ -212,7 +212,20 @@ namespace MapRoom
         }
         public bool TryPerformPlacementRaycast(out Vector3 hitPoint)
         {
-            return TryPerformPlacementRaycast(_lastNormMouse, out hitPoint);
+            hitPoint = Vector3.Zero;
+            if (_flyCamera == null)
+                return false;
+            Vector3 rayOrigin = GetCameraPosition();
+            Vector3 rayDir = GetLookDirection();
+            if (RayTerrainIntersect(rayOrigin, rayDir, out hitPoint))
+                return true;
+            if (MathF.Abs(rayDir.Z) < 1e-5f)
+                return false;
+            float t = -rayOrigin.Z / rayDir.Z;
+            if (t < 0.05f)
+                return false;
+            hitPoint = rayOrigin + rayDir * t;
+            return true;
         }
         public bool TryPerformPlacementRaycast(Vector2 normalizedMouse, out Vector3 hitPoint)
         {
