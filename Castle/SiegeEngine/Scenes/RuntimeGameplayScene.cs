@@ -213,6 +213,14 @@ namespace SiegeEngine.Scenes
                 }
                 _server.AddEntity(e);
                 var placedLight = e.GetComponent<LightComponent>();
+                if (phys != null && phys.BodyType == BodyType.Dynamic)
+                {
+                    phys.Velocity = Vector3.Zero;
+                    phys.AngularVelocity = Vector3.Zero;
+                    phys.IsSleeping = false;
+                    _server.SnapToGround(phys);
+                    Console.WriteLine($"[RuntimeGameplayScene] Dynamic spawn snap id={e.Id} type={e.Type} pos={phys.Position} shape={phys.Shape?.GetType().Name ?? "null"} bones={phys.UseBoneHitboxes}");
+                }
                 Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Light={(placedLight != null ? placedLight.Type.ToString() : "none")} Position from Level (exact match, no spoof)");
             }
             if (_player != null)

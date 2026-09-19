@@ -69,7 +69,14 @@ namespace CastleBuilder
         }
 
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
-            : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus) { }
+            : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus)
+        {
+            // Scene Editor shows authored poses. Stepping dynamics here is
+            // what launched greenball 4/5 on load (variable first-frame dt
+            // + triangle-mesh vs terrain, no correction cap).
+            if (_server is ClientGameServerProxy editorProxy)
+                editorProxy.SimulateDynamics = false;
+        }
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);

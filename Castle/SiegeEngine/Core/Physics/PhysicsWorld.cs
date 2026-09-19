@@ -100,6 +100,26 @@ namespace SiegeEngine.Core.Physics
         public void Step(float deltaTime)
         {
             if (deltaTime <= 0f) return;
+            const float maxDt = 1f / 30f;
+            if (deltaTime > maxDt)
+            {
+                Console.WriteLine($"[PhysicsWorld.Step] clamped dt {deltaTime:F4} -> {maxDt:F4}");
+                deltaTime = maxDt;
+            }
+            Vector3[] before = null;
+            int dynCount = 0;
+            for (int i = 0; i < _bodies.Count; i++)
+            {
+                var body = _bodies[i];
+                if (body != null && body.BodyType == BodyType.Dynamic)
+                    dynCount++;
+            }
+            if (dynCount > 0)
+            {
+                before = new Vector3[_bodies.Count];
+                for (int i = 0; i < _bodies.Count; i++)
+                    before[i] = _bodies[i] != null ? _bodies[i].Position : Vector3.Zero;
+            }
             if (UseFixedTimestep)
             {
                 _accumulator += deltaTime;
@@ -123,6 +143,12 @@ namespace SiegeEngine.Core.Physics
             {
                 var body = _bodies[i];
                 if (body == null) continue;
+                if (before != null && body.BodyType == BodyType.Dynamic)
+                {
+                    float jumped = Vector3.Distance(before[i], body.Position);
+                    if (jumped > 0.5f)
+                        Console.WriteLine($"[PhysicsWorld.Step] Dynamic jump {jumped:F3}m {before[i]} -> {body.Position} sleep={body.IsSleeping} shape={body.Shape?.GetType().Name}");
+                }
                 body.RenderPosition = body.Position;
             }
         }
