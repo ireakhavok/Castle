@@ -22,7 +22,7 @@ namespace SiegeEngine.Core.Managers
         private readonly Dictionary<string, List<Animation>> _animations = new Dictionary<string, List<Animation>>();
         private readonly Dictionary<string, FBXFileForest> _forests = new Dictionary<string, FBXFileForest>();
         private readonly Dictionary<string, string> _fbxDirs = new Dictionary<string, string>();
-        private readonly Dictionary<string, (uint, byte)> _textureCache = new Dictionary<string, (uint, byte)>();
+        private readonly Dictionary<string, (GpuHandle, byte)> _textureCache = new Dictionary<string, (GpuHandle, byte)>();
         private readonly Dictionary<string, AnimationPack> _animationPacks = new Dictionary<string, AnimationPack>();
         // Source models from animation FBXs (skeleton/rest-pose). Populated once on first AttachAnimation parse.
         private readonly Dictionary<string, FBXModel> _animSourceModels = new Dictionary<string, FBXModel>(StringComparer.OrdinalIgnoreCase);
@@ -45,9 +45,9 @@ namespace SiegeEngine.Core.Managers
             public GpuHandle VertexHandle { get; set; }
             public GpuHandle IndexHandle { get; set; }
             public int Stride { get; set; }
-            public uint[] AlbedoTextures { get; set; }
-            public uint[] NormalTextures { get; set; }
-            public uint[] MetallicTextures { get; set; }
+            public GpuHandle[] AlbedoTextures { get; set; }
+            public GpuHandle[] NormalTextures { get; set; }
+            public GpuHandle[] MetallicTextures { get; set; }
             public uint IndexCount { get; set; }
         }
         public ModelManager(IRenderContext renderContext = null, bool setAsInstance = true)
@@ -457,13 +457,13 @@ namespace SiegeEngine.Core.Managers
             foreach (var mesh in model.Meshes.Where(m => m.Indices.Count > 0))
             {
                 var mmr = new ModelMeshRender();
-                List<uint> albedos = new List<uint>();
-                List<uint> normals = new List<uint>();
-                List<uint> metallics = new List<uint>();
+                List<GpuHandle> albedos = new List<GpuHandle>();
+                List<GpuHandle> normals = new List<GpuHandle>();
+                List<GpuHandle> metallics = new List<GpuHandle>();
                 foreach (var mat in mesh.Materials)
                 {
                     var albedoInfo = mat.Textures.GetValueOrDefault("albedo");
-                    uint albedo = 0;
+                    GpuHandle albedo = default;
                     if (albedoInfo != null)
                     {
                         int glWrapU = albedoInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
@@ -483,7 +483,7 @@ namespace SiegeEngine.Core.Managers
                         }
                     }
                     albedos.Add(albedo);
-                    uint normalTex = 0;
+                    GpuHandle normalTex = default;
                     var normalInfo = mat.Textures.GetValueOrDefault("normal");
                     if (normalInfo != null)
                     {
@@ -504,7 +504,7 @@ namespace SiegeEngine.Core.Managers
                         }
                     }
                     normals.Add(normalTex);
-                    uint metallic = 0;
+                    GpuHandle metallic = default;
                     var metallicInfo = mat.Textures.GetValueOrDefault("metallic");
                     if (metallicInfo != null)
                     {
@@ -589,7 +589,7 @@ namespace SiegeEngine.Core.Managers
             }
             return modelData;
         }
-        private (uint, byte) LoadEmbeddedTexture(byte[] textureData, string textureName, int wrapS, int wrapT)
+        private (GpuHandle, byte) LoadEmbeddedTexture(byte[] textureData, string textureName, int wrapS, int wrapT)
         {
             string cacheKey = "embedded:" + textureName.ToLowerInvariant();
             if (_textureCache.TryGetValue(cacheKey, out var cached))
@@ -597,15 +597,15 @@ namespace SiegeEngine.Core.Managers
                 return cached;
             }
             var res = TextureLoader.LoadEmbeddedTexture(_renderContext, textureData, textureName, 1, wrapS, wrapT);
-            if (res.Item1 != 0)
+            if (res.Item1.IsValid)
             {
                 _textureCache[cacheKey] = res;
             }
             return res;
         }
-        private (uint, byte) LoadExternalTexture(string texturePath, string fbxDir, int wrapS, int wrapT)
+        private (GpuHandle, byte) LoadExternalTexture(string texturePath, string fbxDir, int wrapS, int wrapT)
         {
-            if (string.IsNullOrEmpty(texturePath)) return (0, 0);
+            if (string.IsNullOrEmpty(texturePath)) return (default, 0);
             string fullPath = Path.Combine(fbxDir, texturePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
             string cacheKey = fullPath.ToLowerInvariant() + ":" + wrapS + ":" + wrapT;
             if (_textureCache.TryGetValue(cacheKey, out var cached))
@@ -615,10 +615,10 @@ namespace SiegeEngine.Core.Managers
             if (!File.Exists(fullPath))
             {
                 Console.WriteLine($"ModelManager: Texture file not found at {fullPath}");
-                return (0, 0);
+                return (default, 0);
             }
             var res = TextureLoader.LoadTexture(_renderContext, fullPath, 1, wrapS, wrapT);
-            if (res.Item1 != 0)
+            if (res.Item1.IsValid)
             {
                 _textureCache[cacheKey] = res;
             }

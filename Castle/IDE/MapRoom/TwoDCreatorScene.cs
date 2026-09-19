@@ -26,8 +26,8 @@ namespace MapRoom
         private bool _spriteGhostVisible = false;
         private Vector3 _spriteGhostPosition = Vector3.Zero;
         private VertexBuffer _ghostBuffer;
-        private uint _ghostTextureId = 0;
-        private readonly Dictionary<string, uint> _placedTextureCache = new Dictionary<string, uint>();
+        private GpuHandle _ghostTextureId;
+        private readonly Dictionary<string, GpuHandle> _placedTextureCache = new Dictionary<string, GpuHandle>();
 
         public Vector3 CameraPosition => _orthoCamera?.Position ?? Vector3.Zero;
         public Matrix4x4 ViewMatrix => _orthoCamera?.ViewMatrix ?? Matrix4x4.Identity;
@@ -199,7 +199,7 @@ namespace MapRoom
             if (!_placedTextureCache.ContainsKey(e.TexturePath))
             {
                 var (texId, _) = TextureLoader.LoadTextureWithSize(_renderContext, e.TexturePath);
-                if (texId != 0) _placedTextureCache[e.TexturePath] = texId;
+                if (texId.IsValid) _placedTextureCache[e.TexturePath] = texId;
             }
             var entity = new Entity { Id = e.EntityId, Type = "Sprite" };
             var transform = entity.GetComponent<TransformComponent>();
@@ -273,13 +273,13 @@ namespace MapRoom
                     var transform = entity.GetComponent<TransformComponent>();
                     if (sprite == null || transform == null || string.IsNullOrEmpty(sprite.TexturePath)) continue;
 
-                    if (!_placedTextureCache.TryGetValue(sprite.TexturePath, out uint texId))
+                    if (!_placedTextureCache.TryGetValue(sprite.TexturePath, out GpuHandle texId))
                     {
                         var (newId, _) = TextureLoader.LoadTextureWithSize(_renderContext, sprite.TexturePath);
-                        if (newId != 0) _placedTextureCache[sprite.TexturePath] = newId;
+                        if (newId.IsValid) _placedTextureCache[sprite.TexturePath] = newId;
                         texId = newId;
                     }
-                    if (texId == 0) continue;
+                    if (!texId.IsValid) continue;
 
                     var model = Matrix4x4.CreateScale(transform.Scale) * Matrix4x4.CreateTranslation(transform.Position);
                     _spriteRenderer.Draw(_ghostBuffer, texId, model);
@@ -287,7 +287,7 @@ namespace MapRoom
                 _spriteRenderer.End();
             }
 
-            if (_spriteGhostVisible && _ghostBuffer != null && _ghostTextureId != 0)
+            if (_spriteGhostVisible && _ghostBuffer != null && _ghostTextureId.IsValid)
             {
                 _spriteRenderer.Begin(view, ProjectionMatrix);
                 _spriteRenderer.Draw(
@@ -300,10 +300,10 @@ namespace MapRoom
 
         public override void Dispose()
         {
-            var cached = new List<uint>(_placedTextureCache.Values);
+            var cached = new List<GpuHandle>(_placedTextureCache.Values);
             for (int i = 0; i < cached.Count; i++)
             {
-                uint tex = cached[i];
+                GpuHandle tex = cached[i];
                 TextureLoader.DeleteTexture(_renderContext, ref tex);
             }
             _placedTextureCache.Clear();

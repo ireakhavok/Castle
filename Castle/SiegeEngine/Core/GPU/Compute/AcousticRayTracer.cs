@@ -506,8 +506,7 @@ namespace SiegeEngine.Core.GPU.Compute
             _pendingFence = _renderContext.FenceSync(_renderContext.Enums.SyncGpuCommandsComplete, 0);
             _pendingPbo = pbo;
             _fencePending = true;
-            _renderContext.UnbindBuffer(_renderContext.Enums.PixelPackBuffer);
-            _renderContext.BindDefaultRenderTarget();
+                _renderContext.BindDefaultRenderTarget();
             _renderContext.Viewport(0, 0, (uint)savedViewportW, (uint)savedViewportH);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.Blend);
@@ -516,11 +515,8 @@ namespace SiegeEngine.Core.GPU.Compute
         private void ExtractIdsInto(HashSet<int> listenerSet, HashSet<int> sourceSet, int faceIndex)
         {
             _renderContext.BindBuffer(_pbo[_pendingPbo]);
-            void* mapped = _renderContext.MapBufferRange(
-                _renderContext.Enums.PixelPackBuffer,
-                0,
-                (uint)(IdBufferSize * IdBufferSize * sizeof(uint)),
-                _renderContext.Enums.MapReadBit);
+            void* mapped = _renderContext.Map(_pbo[_pendingPbo], 0,
+                (uint)(IdBufferSize * IdBufferSize * sizeof(uint)), MapAccess.Read);
             if (mapped != null)
             {
                 uint* ptr = (uint*)mapped;
@@ -534,10 +530,9 @@ namespace SiegeEngine.Core.GPU.Compute
                     if (tri >= 0 && tri < maxTri)
                         targetSet.Add(tri);
                 }
-                _renderContext.UnmapBuffer(_renderContext.Enums.PixelPackBuffer);
+                _renderContext.Unmap(_pbo[_pendingPbo]);
             }
-            _renderContext.UnbindBuffer(_renderContext.Enums.PixelPackBuffer);
-        }
+            }
         private void RebuildJoinedMutual()
         {
             _joinedMutual.Clear();

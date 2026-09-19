@@ -32,6 +32,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                     new VertexAttribute(VertexSemantic.Position, _renderContext.Enums.Float, 2, 0, 0),
                     new VertexAttribute(VertexSemantic.Color, _renderContext.Enums.Float, 2, 8, 0)
                 });
+                desc.State.Primitive = _renderContext.Enums.TriangleFan;
                 _pipeline = _renderContext.CreatePipeline(desc);
             }
             _bgVbo = _renderContext.CreateBuffer(new BufferDesc
@@ -54,12 +55,12 @@ namespace SiegeEngine.Core.GPU.Renderers
             Console.WriteLine($"Attempting to load background texture from: {backgroundPath}");
             try
             {
-                (uint texId, Vector2 nativeSize) = TextureLoader.LoadTextureWithSize(_renderContext, backgroundPath);
-                if (texId == 0)
+                (GpuHandle texId, Vector2 nativeSize) = TextureLoader.LoadTextureWithSize(_renderContext, backgroundPath);
+                if (!texId.IsValid)
                     throw new Exception("TextureLoader returned 0");
                 _textureWidth = (int)nativeSize.X;
                 _textureHeight = (int)nativeSize.Y;
-                _bgTexture = _renderContext.ImportTexture(texId, _renderContext.Enums.Texture2D);
+                _bgTexture = texId;
                 _renderContext.SetTextureParams(_bgTexture, _renderContext.Enums.Nearest, _renderContext.Enums.Nearest, _renderContext.Enums.ClampToEdge, _renderContext.Enums.ClampToEdge);
                 Console.WriteLine($"JPG texture loaded: {_bgTexture.Id} ({_textureWidth}x{_textureHeight})");
             }
@@ -102,9 +103,9 @@ namespace SiegeEngine.Core.GPU.Renderers
                 Color = Vector4.One,
                 UseTexture = 1f
             });
-            _renderContext.BindTextureSlot(0, _bgTexture, "uTexture");
+            _renderContext.BindTextureSlot(0, _bgTexture);
             _renderContext.BindVertexBuffer(_bgVbo, 0, 16, 0);
-            _renderContext.DrawArrays(_renderContext.Enums.TriangleFan, 0, 4);
+            _renderContext.Draw(4);
         }
         public void Dispose()
         {

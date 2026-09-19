@@ -46,7 +46,7 @@ namespace SiegeEngine.Core.GPU.Shaders
                 case ShaderId.AcousticId:
                     return VsFs(AcousticIdShader.VertexSource, AcousticIdShader.FragmentSource);
                 case ShaderId.AcousticResidual:
-                    throw new NotSupportedException("ShaderId.AcousticResidual is a compute body prepended by AcousticRayTracer. Catalog it with that header, not as a standalone source.");
+                    return new ShaderSourceSet { Compute = AcousticCommon.Source + AcousticResidualShader.Source };
                 case ShaderId.AntiAliasing:
                     throw new NotSupportedException("ShaderId.AntiAliasing is multiple programs (Copy/FXAA/SMAA/TAA). Name the pass before cataloging it.");
                 case ShaderId.ColorCompose:

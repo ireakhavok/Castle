@@ -1,8 +1,8 @@
 // Folder: SiegeEngine/Core/Rendering/Compute
 // File: ComputeProgram.cs
 using System;
-using System.Numerics;
 using SiegeEngine.Core.GPU.ContextManagement;
+using SiegeEngine.Core.GPU.Shaders;
 
 namespace SiegeEngine.Core.GPU.Compute
 {
@@ -14,13 +14,16 @@ namespace SiegeEngine.Core.GPU.Compute
 
         public uint ProgramId => _pipeline.Id;
         public GpuHandle Pipeline => _pipeline;
+        public ShaderId ShaderId { get; }
 
-        public ComputeProgram(IRenderContext renderContext, string computeShaderSource)
+        public ComputeProgram(IRenderContext renderContext, ShaderId id)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
-            if (string.IsNullOrEmpty(computeShaderSource))
-                throw new ArgumentNullException(nameof(computeShaderSource));
-            _pipeline = _renderContext.CreatePipeline(new PipelineDesc { ComputeSource = computeShaderSource });
+            ShaderId = id;
+            PipelineDesc desc = ShaderCatalog.Describe(id, _renderContext);
+            if (string.IsNullOrEmpty(desc.ComputeSource))
+                throw new InvalidOperationException($"ShaderId '{id}' is not compute.");
+            _pipeline = _renderContext.CreatePipeline(desc);
             if (!_pipeline.IsValid)
                 throw new Exception("Compute pipeline creation failed.");
         }
@@ -31,46 +34,10 @@ namespace SiegeEngine.Core.GPU.Compute
             _renderContext.BindPipeline(_pipeline);
         }
 
-        public void SetUniform(string name, float value)
-        {
-            if (_disposed) throw new ObjectDisposedException(nameof(ComputeProgram));
-            _renderContext.SetUniform(name, value);
-        }
-
-        public void SetUniform(string name, int value)
-        {
-            if (_disposed) throw new ObjectDisposedException(nameof(ComputeProgram));
-            _renderContext.SetUniform(name, value);
-        }
-
-        public void SetUniform(string name, float x, float y)
-        {
-            if (_disposed) throw new ObjectDisposedException(nameof(ComputeProgram));
-            _renderContext.SetUniform(name, x, y);
-        }
-
-        public void SetUniform(string name, float x, float y, float z)
-        {
-            if (_disposed) throw new ObjectDisposedException(nameof(ComputeProgram));
-            _renderContext.SetUniform(name, x, y, z);
-        }
-
-        public void SetUniform(string name, float x, float y, float z, float w)
-        {
-            if (_disposed) throw new ObjectDisposedException(nameof(ComputeProgram));
-            _renderContext.SetUniform(name, x, y, z, w);
-        }
-
-        public unsafe void SetMatrix4(string name, Matrix4x4 matrix)
-        {
-            if (_disposed) throw new ObjectDisposedException(nameof(ComputeProgram));
-            _renderContext.SetUniformMatrix4(name, matrix);
-        }
-
         public void Dispatch(uint groupsX, uint groupsY = 1, uint groupsZ = 1)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ComputeProgram));
-            _renderContext.DispatchCompute(groupsX, groupsY, groupsZ);
+            _renderContext.Dispatch(groupsX, groupsY, groupsZ);
         }
 
         public void Barrier()

@@ -24,12 +24,13 @@ namespace SiegeEngine.Core.GPU.Renderers
         private List<MeshMaterialOption> _materialOptions;
         private FBXModel _opacityModel;
         private string _opacityModelKey;
+        private GpuHandle _skeletonLinePipeline;
         private ShaderProgram _viewLightingShader;
         private int _viewLightingSerial;
         private Matrix4x4 _viewLightingView;
         private Matrix4x4 _viewLightingProjection;
         private Vector3 _viewLightingPos;
-        private static readonly Dictionary<string, uint> _opacityTextures = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, GpuHandle> _opacityTextures = new Dictionary<string, GpuHandle>(StringComparer.OrdinalIgnoreCase);
         public const int OpacityTextureUnit = 15;
         public static string ProjectTexturesDirectory { get; set; }
         public static string LastImportedOpacityAbsolute { get; set; }
@@ -218,39 +219,24 @@ namespace SiegeEngine.Core.GPU.Renderers
                 else if (_hiddenMeshIndices != null && _hiddenMeshIndices.Contains(gpuIndex))
                     continue;
 
-                try
+                GpuHandle[] albedos = mmr.AlbedoTextures;
+                GpuHandle[] normals = mmr.NormalTextures;
+                GpuHandle[] metallics = mmr.MetallicTextures;
+                for (int i = 0; i < 4; i++)
                 {
-                    for (int i = 0; i < Math.Min(mmr.AlbedoTextures.Length, 4); i++)
-                    {
-                        _renderContext.BindTextureSlot(i, _renderContext.ImportTexture(mmr.AlbedoTextures[i], _renderContext.Enums.Texture2D));
-                        shader.SetUniform($"uAlbedoMap[{i}]", i);
-                    }
-                    for (int i = 0; i < Math.Min(mmr.NormalTextures.Length, 4); i++)
-                    {
-                        _renderContext.BindTextureSlot(4 + i, _renderContext.ImportTexture(mmr.NormalTextures[i], _renderContext.Enums.Texture2D));
-                        shader.SetUniform($"uNormalMap[{i}]", 4 + i);
-                    }
-                    for (int i = 0; i < Math.Min(mmr.MetallicTextures.Length, 4); i++)
-                    {
-                        _renderContext.BindTextureSlot(8 + i, _renderContext.ImportTexture(mmr.MetallicTextures[i], _renderContext.Enums.Texture2D));
-                        shader.SetUniform($"uMetallicMap[{i}]", 8 + i);
-                    }
-                }
-                catch
-                {
-                    if (mmr.AlbedoTextures.Length > 0)
-                    {
-                        _renderContext.BindTextureSlot(0, _renderContext.ImportTexture(mmr.AlbedoTextures[0], _renderContext.Enums.Texture2D));
-                        shader.SetUniform("uAlbedoMap[0]", 0);
-                    }
+                    _renderContext.BindTextureSlot(i, albedos != null && i < albedos.Length ? albedos[i] : default);
+                    _renderContext.BindTextureSlot(4 + i, normals != null && i < normals.Length ? normals[i] : default);
+                    _renderContext.BindTextureSlot(8 + i, metallics != null && i < metallics.Length ? metallics[i] : default);
                 }
 
                 BindOpacityOption(shader, gpuIndex);
 
                 _renderContext.BindMesh(mmr.VertexHandle, mmr.IndexHandle, mmr.Stride != 0 ? mmr.Stride : 20 * sizeof(float));
-                _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
+                _renderContext.DrawIndexed((int)mmr.IndexCount);
             }
 
+            for (int i = 0; i < 12; i++)
+                _renderContext.BindTextureSlot(i, default);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _hiddenMeshIndices = prevHidden;
             _materialOptions = prevOpts;
@@ -262,11 +248,18 @@ namespace SiegeEngine.Core.GPU.Renderers
             pointShader.Use();
             _renderContext.SetConstants(ConstantSlot.Frame, new FrameCB { View = view, Projection = projection });
             _renderContext.SetConstants(ConstantSlot.Object, new ObjectCB { Model = Matrix4x4.Identity, NormalMatrix = Matrix4x4.Identity });
+            if (!_skeletonLinePipeline.IsValid)
+            {
+                PipelineDesc lineDesc = ShaderCatalog.Describe(ShaderId.Point, _renderContext);
+                lineDesc.State.Primitive = _renderContext.Enums.Lines;
+                _skeletonLinePipeline = _renderContext.CreatePipeline(lineDesc);
+            }
+            _renderContext.BindPipeline(_skeletonLinePipeline);
             skeletonBuffer.Bind();
-            _renderContext.DrawElements(_renderContext.Enums.Lines, skeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            _renderContext.DrawIndexed((int)skeletonBuffer.GetIndexCount());
         }
 
-        public void RenderTerrain(VertexBuffer buffer, ShaderProgram shader, Matrix4x4 view, Matrix4x4 projection, bool hasTexture, uint textureId)
+        public void RenderTerrain(VertexBuffer buffer, ShaderProgram shader, Matrix4x4 view, Matrix4x4 projection, bool hasTexture, GpuHandle texture)
         {
             if (buffer == null) return;
             shader.Use();
@@ -276,19 +269,21 @@ namespace SiegeEngine.Core.GPU.Renderers
             LightingFrame.Current?.ApplyTo(shader, _renderContext);
             if (!_renderContext.TryGetConstants(ConstantSlot.Frame, out FrameCB frame))
                 frame = default;
-            if (hasTexture && textureId != 0)
+            if (hasTexture && texture.IsValid)
             {
                 frame.HasTexture = 1;
                 _renderContext.SetConstants(ConstantSlot.Frame, frame);
-                _renderContext.BindTextureSlot(Shaders.TextureSlot.Color, _renderContext.ImportTexture(textureId, _renderContext.Enums.Texture2D));
+                _renderContext.BindTextureSlot(Shaders.TextureSlot.Color, texture);
             }
             else
             {
                 frame.HasTexture = 0;
                 _renderContext.SetConstants(ConstantSlot.Frame, frame);
+                _renderContext.BindTextureSlot(Shaders.TextureSlot.Color, default);
             }
             uint idxCount = buffer.GetIndexCount();
-            _renderContext.DrawElements(_renderContext.Enums.Triangles, idxCount, _renderContext.Enums.UnsignedInt, null);
+            _renderContext.DrawIndexed((int)idxCount);
+            _renderContext.BindTextureSlot(Shaders.TextureSlot.Color, default);
         }
 
         public void RenderModelForEntity(ModelComponent modelComp, PhysicsComponent physics, Matrix4x4 view, Matrix4x4 projection)
@@ -341,16 +336,16 @@ namespace SiegeEngine.Core.GPU.Renderers
             if (LightingSettings.ResolveShadowQuality() == ShadowQuality.Off)
                 return;
             LightingFrame frame = LightingFrame.Current;
-            if (frame == null || frame.ShadowAtlas == 0 || !frame.ShadowsReady)
+            if (frame == null || !frame.ShadowAtlas.IsValid || !frame.ShadowsReady)
                 frame = LightingFrame.LastReady;
-            uint atlas = ShadowMapRenderer.WrittenSunAtlas != 0
+            GpuHandle atlas = ShadowMapRenderer.WrittenSunAtlas.IsValid
                 ? ShadowMapRenderer.WrittenSunAtlas
-                : (frame != null ? frame.ShadowAtlas : 0);
-            if (atlas == 0 && (frame == null || frame.PointShadowCube == 0 && frame.SpotShadowMap == 0))
+                : (frame != null ? frame.ShadowAtlas : default);
+            if (!atlas.IsValid && (frame == null || !frame.PointShadowCube.IsValid && !frame.SpotShadowMap.IsValid))
                 return;
             LightingFrame.BindShadowTextures(_renderContext, atlas,
-                frame != null ? frame.PointShadowCube : 0,
-                frame != null ? frame.SpotShadowMap : 0);
+                frame != null ? frame.PointShadowCube : default,
+                frame != null ? frame.SpotShadowMap : default);
         }
 
         private void BindOpacityOption(ShaderProgram shader, int meshIndex)
@@ -394,44 +389,44 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         public static void BindOpacityToShader(IRenderContext rc, ShaderProgram shader, int meshIndex, IList<MeshMaterialOption> options, string modelKey, int unit = OpacityTextureUnit)
         {
-            shader.SetUniform("uHasOpacity", 0);
-            shader.SetUniform("uOpacitySlots", 0);
+            
+            
             if (rc == null || shader == null) return;
             if (!CollectOpacitySlots(meshIndex, options, out string path, out int slots))
                 return;
-            uint tex = LoadOpacityTexture(rc, path, modelKey);
-            if (tex == 0)
+            GpuHandle tex = LoadOpacityTexture(rc, path, modelKey);
+            if (!tex.IsValid)
                 return;
-            rc.BindTextureSlot(unit, rc.ImportTexture(tex, rc.Enums.Texture2D));
-            shader.SetUniform("uOpacityMap", unit);
-            shader.SetUniform("uOpacitySlots", slots);
-            shader.SetUniform("uHasOpacity", 1);
+            rc.BindTextureSlot(unit, tex);
+            
+            
+            
         }
 
-        private uint GetOrLoadOpacityTexture(string stored, string modelKey = null)
+        private GpuHandle GetOrLoadOpacityTexture(string stored, string modelKey = null)
         {
             return LoadOpacityTexture(_renderContext, stored, modelKey);
         }
 
-        public static uint LoadOpacityTexture(IRenderContext rc, string stored, string modelKey = null)
+        public static GpuHandle LoadOpacityTexture(IRenderContext rc, string stored, string modelKey = null)
         {
-            if (rc == null) return 0;
+            if (rc == null) return default;
             string resolved = ResolveStoredOpacityPath(stored, modelKey);
             if (string.IsNullOrEmpty(resolved) || !System.IO.File.Exists(resolved))
-                return 0;
-            if (_opacityTextures.TryGetValue(resolved, out uint existing) && existing != 0)
+                return default;
+            if (_opacityTextures.TryGetValue(resolved, out GpuHandle existing) && existing.IsValid)
                 return existing;
             try
             {
                 var loaded = TextureLoader.LoadTexture(rc, resolved);
-                if (loaded.Item1 == 0)
-                    return 0;
+                if (!loaded.Item1.IsValid)
+                    return default;
                 _opacityTextures[resolved] = loaded.Item1;
                 return loaded.Item1;
             }
             catch
             {
-                return 0;
+                return default;
             }
         }
 

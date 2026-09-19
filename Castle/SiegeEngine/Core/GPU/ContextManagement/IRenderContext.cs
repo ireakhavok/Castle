@@ -12,8 +12,6 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         int ViewportHeight { get; }
         RenderBackend Backend { get; }
 
-        void DrawArrays(int mode, int first, uint count);
-        void DrawElements(int mode, uint count, int type, void* indices);
         void Clear(int mask);
         void ClearColor(float red, float green, float blue, float alpha);
         void Viewport(int x, int y, uint width, uint height);
@@ -35,13 +33,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         void ReadPixels(int x, int y, uint width, uint height, int format, int type, void* data);
         void ClearBufferuiv(int buffer, int drawbuffer, uint* value);
-        void DispatchCompute(uint numGroupsX, uint numGroupsY, uint numGroupsZ);
         void MemoryBarrier(int barriers);
-        void BindBufferBase(int target, uint index, uint buffer);
-        void BindBufferRange(int target, uint index, uint buffer, int offset, uint size);
-        void* MapBuffer(int target, int access);
-        void* MapBufferRange(int target, int offset, uint length, int access);
-        bool UnmapBuffer(int target);
         uint FenceSync(int condition, uint flags);
         int ClientWaitSync(uint sync, uint flags, ulong timeout);
         void DeleteSync(uint sync);
@@ -49,7 +41,6 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         GpuHandle CreatePipeline(in PipelineDesc desc);
         GpuHandle CreateBuffer(in BufferDesc desc);
         GpuHandle CreateTexture(in TextureDesc desc);
-        GpuHandle ImportTexture(uint id, int target);
         GpuHandle CreateRenderTarget(in RenderTargetDesc desc);
         GpuHandle GetRenderTargetColor(GpuHandle target);
         GpuHandle GetRenderTargetDepth(GpuHandle target);
@@ -62,22 +53,16 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         void BindIndexBuffer(GpuHandle buffer);
         void BindMesh(GpuHandle vertex, GpuHandle index, int stride);
         void BindMesh(GpuHandle vertex, GpuHandle index, VertexLayout layout);
-        void BindBuffer(int target, GpuHandle buffer);
         void BindBuffer(GpuHandle buffer);
-        void UnbindBuffer(int target);
         GpuHandle GetBoundRenderTarget();
-        void SetUniform(string name, int value);
-        void SetUniform(string name, float value);
-        void SetUniform(string name, float x, float y);
-        void SetUniform(string name, float x, float y, float z);
-        void SetUniform(string name, float x, float y, float z, float w);
-        void SetUniformMatrix4(string name, in Matrix4x4 matrix);
-        void SetUniformMatrix4(string name, ReadOnlySpan<float> values, int count);
-        void SetUniformMatrix3(string name, ReadOnlySpan<float> values, int count);
         void BindTextureSlot(int slot, GpuHandle texture);
-        void BindTextureSlot(int slot, GpuHandle texture, string samplerName);
         void BindRenderTarget(GpuHandle target);
         void BindDefaultRenderTarget();
+        void BindStorageBuffer(GpuHandle buffer, int slot);
+        void BindUniformBuffer(GpuHandle buffer, int slot);
+        void* Map(GpuHandle buffer, MapAccess access);
+        void* Map(GpuHandle buffer, int offset, uint length, MapAccess access);
+        void Unmap(GpuHandle buffer);
         void UpdateBuffer(GpuHandle buffer, ReadOnlySpan<byte> data, int offset = 0);
         void UpdateTexture(GpuHandle texture, int width, int height, int format, int type, void* pixels);
         void UpdateCubeFace(GpuHandle texture, int face, int width, int height, int format, int type, void* pixels);

@@ -65,7 +65,7 @@ namespace SiegeEngine.Core.GPU.Lighting
         private bool _hasStickyFocus;
 
         private static ShadowMapRenderer _shared;
-        public static uint WrittenSunAtlas { get; private set; }
+        public static GpuHandle WrittenSunAtlas { get; private set; }
         public GpuHandle AtlasHandle { get; private set; }
         public GpuHandle PointHandle { get; private set; }
         public GpuHandle SpotHandle { get; private set; }
@@ -96,7 +96,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             return _shared;
         }
 
-        public uint AtlasId => _atlasDepth;
+        public GpuHandle AtlasId => AtlasHandle;
 
         public ShadowMapRenderer(IRenderContext renderContext)
         {
@@ -139,7 +139,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             {
                 int cascadeCount = CascadeCount(frame.ShadowQuality);
                 EnsureAtlas(atlasSize);
-                frame.ShadowAtlas = _atlasDepth;
+                frame.ShadowAtlas = _rc.GetRenderTargetDepth(AtlasHandle);
 
                 bool drawSun = casters != null && casters.Count > 0;
                 if (!drawSun)
@@ -147,7 +147,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                     // First view this frame already filled the shared atlas,
                     // or this view has nothing to write. Second views sample
                     // WrittenSunAtlas instead of redrawing 4 tiles.
-                    if (WrittenSunAtlas != 0)
+                    if (WrittenSunAtlas.IsValid)
                     {
                         frame.ShadowAtlas = WrittenSunAtlas;
                         frame.CascadeCount = WrittenCascadeCount;
@@ -195,20 +195,20 @@ namespace SiegeEngine.Core.GPU.Lighting
                         DrawCasters(frame.CascadeVP[i], casters, linearDepth: false, lightPos: default, farPlane: 1f, frame.ShadowQuality, i);
                     }
 
-                    WrittenSunAtlas = _atlasDepth;
+                    WrittenSunAtlas = _rc.GetRenderTargetDepth(AtlasHandle);
                     WrittenAtlasSize = atlasSize;
                     WrittenCascadeCount = frame.CascadeCount;
                     WrittenCascadeSplits = frame.CascadeSplits;
                     WrittenCascadeZRange = frame.CascadeZRange;
                     for (int i = 0; i < LightingFrame.MaxCascades; i++)
                         WrittenCascadeVP[i] = frame.CascadeVP[i];
-                    frame.ShadowAtlas = _atlasDepth;
+                    frame.ShadowAtlas = _rc.GetRenderTargetDepth(AtlasHandle);
                 }
             }
             else
             {
                 frame.CascadeCount = 0;
-                frame.ShadowAtlas = 0;
+                frame.ShadowAtlas = default;
             }
 
             // Point / spot keep two-sided writes. Sun used back-face cull above.
@@ -218,7 +218,7 @@ namespace SiegeEngine.Core.GPU.Lighting
             {
                 int size = Math.Max(atlasSize / 2, 512);
                 EnsureSpot(size);
-                frame.SpotShadowMap = _spotDepth;
+                frame.SpotShadowMap = _rc.GetRenderTargetDepth(SpotHandle);
                 frame.SpotVP = BuildSpotVP(frame.Spots[0]);
                 _rc.BindRenderTarget(SpotHandle);
                 _rc.Viewport(0, 0, (uint)size, (uint)size);
@@ -238,15 +238,15 @@ namespace SiegeEngine.Core.GPU.Lighting
                     _ => 2048
                 };
                 EnsurePoint(size);
-                frame.PointShadowCube = _pointDepth;
+                frame.PointShadowCube = _rc.GetRenderTargetDepth(PointHandle);
                 RenderPointFaces(frame.Points[0], casters, frame.ShadowQuality, size);
             }
 
             _rc.CullFace(_e.Back);
             _rc.ColorMask(true, true, true, true);
             Restore();
-            frame.ShadowsReady = frame.ShadowAtlas != 0;
-            if (frame.ShadowAtlas != 0 && frame.ShadowAtlas == WrittenSunAtlas)
+            frame.ShadowsReady = frame.ShadowAtlas.IsValid;
+            if (frame.ShadowAtlas.IsValid && frame.ShadowAtlas == WrittenSunAtlas)
                 LightingFrame.LastReady = frame;
         }
 
@@ -426,7 +426,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                     _rc.SetConstants(ConstantSlot.Object, new ObjectCB { Model = caster.ModelMatrix, HasBones = 0 });
                     _rc.SetConstants(ConstantSlot.Material, new MaterialCB { HasOpacity = 0, OpacitySlots = 0 });
                     caster.TerrainMesh.Bind();
-                    _rc.DrawElements(_e.Triangles, caster.TerrainMesh.GetIndexCount(), _e.UnsignedInt, null);
+                    _rc.DrawIndexed((int)caster.TerrainMesh.GetIndexCount());
                     _rc.Disable(_e.CullFace);
                     continue;
                 }
@@ -466,7 +466,7 @@ namespace SiegeEngine.Core.GPU.Lighting
                         continue;
                     ModelRenderer.BindOpacityToShader(_rc, _depthShader, meshIndex, caster.MaterialOptions, caster.ModelKey, 0);
                     _rc.BindMesh(mmr.VertexHandle, mmr.IndexHandle, 20 * sizeof(float));
-                    _rc.DrawElements(_e.Triangles, mmr.IndexCount, _e.UnsignedInt, null);
+                    _rc.DrawIndexed((int)mmr.IndexCount);
                 }
             }
             

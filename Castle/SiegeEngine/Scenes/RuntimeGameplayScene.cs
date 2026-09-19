@@ -178,7 +178,7 @@ namespace SiegeEngine.Scenes
                     ? Path.Combine(projectPath, "Assets", "Terrain", levelName + ".png")
                     : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain", levelName + ".png");
                 _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, colorPath);
-                _hasColorTexture = _terrainTextureId != 0;
+                _hasColorTexture = _terrainTextureId.IsValid;
                 BuildTexturedMesh();
             }
             else
@@ -440,7 +440,7 @@ namespace SiegeEngine.Scenes
                 _heightmap = CustomTerrainParser.Load(terrainPath, out _terrainWidth, out _terrainHeight, out minH, out maxH, out sx, out sz);
                 Console.WriteLine($"[RuntimeGameplayScene] ✅ SUCCESS: Loaded real heightmap ({_terrainWidth}x{_terrainHeight})");
                 _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, colorPath);
-                _hasColorTexture = _terrainTextureId != 0;
+                _hasColorTexture = _terrainTextureId.IsValid;
                 if (_hasColorTexture) Console.WriteLine($"[RuntimeGameplayScene] ✅ SUCCESS: Loaded PNG texture");
                 BuildTexturedMesh();
                 return;
@@ -456,7 +456,7 @@ namespace SiegeEngine.Scenes
                         _heightmap[x, y] = (float)(Math.Sin(x / 8f) * 4 + Math.Cos(y / 8f) * 4 + 5);
             }
             _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, colorPath);
-            _hasColorTexture = _terrainTextureId != 0;
+            _hasColorTexture = _terrainTextureId.IsValid;
             BuildTexturedMesh();
         }
         protected override void SetupPureRuntimeWorld()

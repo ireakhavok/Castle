@@ -58,28 +58,26 @@ namespace SiegeEngine.Core.GPU.Compute
         public void BindBase(uint bindingPoint)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderStorageBuffer));
-            _renderContext.BindBufferBase(_renderContext.Enums.ShaderStorageBuffer, bindingPoint, _buffer.Id);
+            _renderContext.BindStorageBuffer(_buffer, (int)bindingPoint);
         }
 
-        public void* Map(int access)
+        public void* Map(MapAccess access)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderStorageBuffer));
-            _renderContext.BindBuffer(_buffer);
-            return _renderContext.MapBuffer(_renderContext.Enums.ShaderStorageBuffer, access);
+            return _renderContext.Map(_buffer, access);
         }
 
-        public void* MapRange(int offset, uint length, int access)
+        public void* MapRange(int offset, uint length, MapAccess access)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderStorageBuffer));
-            _renderContext.BindBuffer(_buffer);
-            return _renderContext.MapBufferRange(_renderContext.Enums.ShaderStorageBuffer, offset, length, access);
+            return _renderContext.Map(_buffer, offset, length, access);
         }
 
         public bool Unmap()
         {
             if (_disposed) throw new ObjectDisposedException(nameof(ShaderStorageBuffer));
-            _renderContext.BindBuffer(_buffer);
-            return _renderContext.UnmapBuffer(_renderContext.Enums.ShaderStorageBuffer);
+            _renderContext.Unmap(_buffer);
+            return true;
         }
 
         public void Dispose()

@@ -25,7 +25,7 @@ namespace SiegeEngine.Scenes
         protected float[,] _heightmap;
         protected int _terrainWidth = 200;
         protected int _terrainHeight = 200;
-        protected uint _terrainTextureId;
+        protected GpuHandle _terrainTextureId;
         protected bool _hasColorTexture;
         protected bool _terrainWireframe;
         private readonly List<ShadowCaster> _gameShadowCasters = new List<ShadowCaster>();

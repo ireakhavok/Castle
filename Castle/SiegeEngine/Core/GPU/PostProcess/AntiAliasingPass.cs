@@ -70,16 +70,16 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _hasHistory = false;
         }
 
-        public uint WorldColor => _world.Id;
-        public uint WorldDepth => _rc.GetRenderTargetDepth(_world).Id;
+        public GpuHandle WorldColor => _rc.GetRenderTargetColor(_world);
+        public GpuHandle WorldDepth => _rc.GetRenderTargetDepth(_world);
         public bool WorldDepthIsTexture => _rc.GetRenderTargetDepth(_world).IsValid;
         public int TargetWidth => _width;
         public int TargetHeight => _height;
         public bool IsWrappingWorld => _insideWorld;
 
-        public void ReplaceWorldColor(uint sourceColor)
+        public void ReplaceWorldColor(GpuHandle sourceColor)
         {
-            if (_disposed || !_world.IsValid || sourceColor == 0 || _width <= 0 || _height <= 0)
+            if (_disposed || !_world.IsValid || !sourceColor.IsValid || _width <= 0 || _height <= 0)
                 return;
             _rc.BindRenderTarget(_world);
             _rc.Viewport(0, 0, (uint)_width, (uint)_height);
@@ -147,27 +147,27 @@ namespace SiegeEngine.Core.GPU.PostProcess
             {
                 case AntiAliasingMode.FXAA:
                     BindPresent();
-                    DrawFxaa(_world.Id);
+                    DrawFxaa(_rc.GetRenderTargetColor(_world));
                     break;
                 case AntiAliasingMode.SMAA:
                     DrawSmaa();
                     BindPresent();
-                    DrawCopy(_resolve.Id);
+                    DrawCopy(_rc.GetRenderTargetColor(_resolve));
                     break;
                 case AntiAliasingMode.TAA:
                     DrawTaa(view, projection);
                     _rc.BindRenderTarget(_history);
                     _rc.Viewport(0, 0, (uint)_width, (uint)_height);
-                    DrawCopy(_resolve.Id);
+                    DrawCopy(_rc.GetRenderTargetColor(_resolve));
                     BindPresent();
-                    DrawCopy(_resolve.Id);
+                    DrawCopy(_rc.GetRenderTargetColor(_resolve));
                     _prevView = view;
                     _prevProjection = projection;
                     _hasHistory = true;
                     break;
                 default:
                     BindPresent();
-                    DrawCopy(_world.Id);
+                    DrawCopy(_rc.GetRenderTargetColor(_world));
                     break;
             }
 
@@ -319,7 +319,7 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _rc.Clear(_e.ColorBufferBit);
             _rc.BindPipeline(_smaaEdgePipe);
             BindPost();
-            _rc.BindTextureSlot(0, _world, "uColor");
+            _rc.BindTextureSlot(0, _world);
             _rc.DrawFullscreen();
 
             _rc.BindRenderTarget(_weight);
@@ -327,14 +327,14 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _rc.Clear(_e.ColorBufferBit);
             _rc.BindPipeline(_smaaWeightPipe);
             BindPost();
-            _rc.BindTextureSlot(0, _edge, "uEdges");
+            _rc.BindTextureSlot(0, _edge);
             _rc.DrawFullscreen();
 
             _rc.BindRenderTarget(_resolve);
             _rc.BindPipeline(_smaaBlendPipe);
             BindPost();
-            _rc.BindTextureSlot(0, _world, "uColor");
-            _rc.BindTextureSlot(1, _weight, "uWeights");
+            _rc.BindTextureSlot(0, _world);
+            _rc.BindTextureSlot(1, _weight);
             _rc.DrawFullscreen();
             _rc.BindTextureSlot(1, default);
         }
@@ -345,10 +345,10 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _rc.Viewport(0, 0, (uint)_width, (uint)_height);
             _rc.BindPipeline(_taaPipe);
             BindPost(_hasHistory ? 1 : 0, 1);
-            _rc.BindTextureSlot(0, _world, "uColor");
-            _rc.BindTextureSlot(1, _history, "uHistory");
+            _rc.BindTextureSlot(0, _world);
+            _rc.BindTextureSlot(1, _history);
             GpuHandle depth = _rc.GetRenderTargetDepth(_world);
-            _rc.BindTextureSlot(2, depth, "uDepth");
+            _rc.BindTextureSlot(2, depth);
             _rc.BindCamera(view, projection, Matrix4x4.Identity);
             if (!_rc.TryGetConstants(ConstantSlot.Post, out PostCB taaPost))
                 taaPost = default;
@@ -363,18 +363,18 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _rc.BindTextureSlot(1, default);
         }
 
-        private void DrawFxaa(uint color)
+        private void DrawFxaa(GpuHandle color)
         {
             _rc.BindPipeline(_fxaaPipe);
             BindPost();
-            _rc.BindTextureSlot(0, _rc.ImportTexture(color, _e.Texture2D), "uColor");
+            _rc.BindTextureSlot(0, color);
             _rc.DrawFullscreen();
         }
 
-        private void DrawCopy(uint color)
+        private void DrawCopy(GpuHandle color)
         {
             _rc.BindPipeline(_copyPipe);
-            _rc.BindTextureSlot(0, _rc.ImportTexture(color, _e.Texture2D), "uColor");
+            _rc.BindTextureSlot(0, color);
             _rc.DrawFullscreen();
         }
 

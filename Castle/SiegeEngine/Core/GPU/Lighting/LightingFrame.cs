@@ -100,9 +100,9 @@ namespace SiegeEngine.Core.GPU.Lighting
         public Matrix4x4[] CascadeVP = new Matrix4x4[MaxCascades];
         public Vector4 CascadeSplits;
         public Vector4 CascadeZRange;
-        public uint ShadowAtlas;
-        public uint PointShadowCube;
-        public uint SpotShadowMap;
+        public GpuHandle ShadowAtlas;
+        public GpuHandle PointShadowCube;
+        public GpuHandle SpotShadowMap;
         public Matrix4x4 SpotVP = Matrix4x4.Identity;
         public bool ShadowsReady;
         public float ShadowDistance = 2048f;
@@ -169,9 +169,9 @@ namespace SiegeEngine.Core.GPU.Lighting
             var frame = dest ?? new LightingFrame();
             UploadSerial++;
             frame.ShadowsReady = false;
-            frame.ShadowAtlas = 0;
-            frame.PointShadowCube = 0;
-            frame.SpotShadowMap = 0;
+            frame.ShadowAtlas = default;
+            frame.PointShadowCube = default;
+            frame.SpotShadowMap = default;
             frame.CascadeCount = 0;
             ApplyResolvedSettings(frame, environment);
 
@@ -524,33 +524,26 @@ namespace SiegeEngine.Core.GPU.Lighting
             if (renderContext == null) return;
             UploadConstants(renderContext);
             bool shadows;
-            uint atlas;
-            LightingFrame ready = (ShadowsReady && ShadowAtlas != 0) ? this : LastReady;
-            if (ShadowMapRenderer.WrittenSunAtlas != 0)
+            LightingFrame ready = (ShadowsReady && ShadowAtlas.IsValid) ? this : LastReady;
+            GpuHandle atlas;
+            if (ShadowMapRenderer.WrittenSunAtlas.IsValid)
                 atlas = ShadowMapRenderer.WrittenSunAtlas;
             else
-                atlas = ready != null ? ready.ShadowAtlas : 0;
-            shadows = atlas != 0 && ShadowQuality != ShadowQuality.Off && Sun.CastShadows && Sun.Technique == ShadowTechnique.ShadowMap;
-            BindShadowTextures(renderContext, shadows ? atlas : 0, PointShadowCube, SpotShadowMap);
+                atlas = ready != null ? ready.ShadowAtlas : default;
+            shadows = atlas.IsValid && ShadowQuality != ShadowQuality.Off && Sun.CastShadows && Sun.Technique == ShadowTechnique.ShadowMap;
+            BindShadowTextures(renderContext, shadows ? atlas : default, PointShadowCube, SpotShadowMap);
         }
 
-        public static void BindShadowTextures(IRenderContext renderContext, uint atlas, uint pointCube, uint spotMap)
+        public static void BindShadowTextures(IRenderContext renderContext, GpuHandle atlas, GpuHandle pointCube, GpuHandle spotMap)
         {
-            int t2d = renderContext.Enums.Texture2D;
-            int cube = renderContext.Enums.TextureCubeMap;
-            BindSlot(renderContext, ShadowAtlasUnit, atlas, t2d);
-            BindSlot(renderContext, PointShadowUnit, pointCube, cube);
-            BindSlot(renderContext, SpotShadowUnit, spotMap, t2d);
+            BindSlot(renderContext, ShadowAtlasUnit, atlas);
+            BindSlot(renderContext, PointShadowUnit, pointCube);
+            BindSlot(renderContext, SpotShadowUnit, spotMap);
         }
 
-        static void BindSlot(IRenderContext rc, int slot, uint id, int target)
+        static void BindSlot(IRenderContext rc, int slot, GpuHandle texture)
         {
-            if (id == 0)
-            {
-                rc.BindTextureSlot(slot, default);
-                return;
-            }
-            rc.BindTextureSlot(slot, rc.ImportTexture(id, target));
+            rc.BindTextureSlot(slot, texture);
         }
 
         void UploadConstants(IRenderContext renderContext)
@@ -601,12 +594,12 @@ namespace SiegeEngine.Core.GPU.Lighting
             light.SpotIntensityRange1 = new Vector4(s1.Intensity, s1.Range > 0f ? s1.Range : 1f, 0f, 0f);
             light.SpotCone0 = new Vector4(s0.InnerConeCos, s0.OuterConeCos, 0f, 0f);
             light.SpotCone1 = new Vector4(s1.InnerConeCos, s1.OuterConeCos, 0f, 0f);
-            LightingFrame ready = (ShadowsReady && ShadowAtlas != 0) ? this : LastReady;
-            uint atlas;
+            LightingFrame ready = (ShadowsReady && ShadowAtlas.IsValid) ? this : LastReady;
+            GpuHandle atlas;
             int cascadeCount;
             Vector4 splits;
             Matrix4x4[] cascades;
-            if (ShadowMapRenderer.WrittenSunAtlas != 0)
+            if (ShadowMapRenderer.WrittenSunAtlas.IsValid)
             {
                 atlas = ShadowMapRenderer.WrittenSunAtlas;
                 cascadeCount = ShadowMapRenderer.WrittenCascadeCount;
@@ -615,16 +608,16 @@ namespace SiegeEngine.Core.GPU.Lighting
             }
             else
             {
-                atlas = ready != null ? ready.ShadowAtlas : 0;
+                atlas = ready != null ? ready.ShadowAtlas : default;
                 cascadeCount = ready != null ? ready.CascadeCount : 0;
                 splits = ready != null ? ready.CascadeSplits : default;
                 cascades = ready != null ? ready.CascadeVP : CascadeVP;
             }
-            bool shadows = atlas != 0 && ShadowQuality != ShadowQuality.Off && Sun.CastShadows && Sun.Technique == ShadowTechnique.ShadowMap;
+            bool shadows = atlas.IsValid && ShadowQuality != ShadowQuality.Off && Sun.CastShadows && Sun.Technique == ShadowTechnique.ShadowMap;
             Vector4 zRange = ShadowMapRenderer.WrittenCascadeZRange;
             if (zRange == default && ready != null)
                 zRange = ready.CascadeZRange;
-            bool pointShadows = ShadowQuality != ShadowQuality.Off && PointShadowCube != 0 && PointCount > 0 && Points[0].CastShadows;
+            bool pointShadows = ShadowQuality != ShadowQuality.Off && PointShadowCube.IsValid && PointCount > 0 && Points[0].CastShadows;
             ShadowCB shadow = default;
             shadow.CascadeVP0 = cascades != null && cascades.Length > 0 ? cascades[0] : Matrix4x4.Identity;
             shadow.CascadeVP1 = cascades != null && cascades.Length > 1 ? cascades[1] : Matrix4x4.Identity;
@@ -682,9 +675,9 @@ namespace SiegeEngine.Core.GPU.Lighting
                 Fog = new GpuFogState { Mode = FogMode.Off, Quality = FogQuality.Off },
                 ShadowQuality = ShadowQuality.Off,
                 ShadowsReady = false,
-                ShadowAtlas = 0,
-                PointShadowCube = 0,
-                SpotShadowMap = 0,
+                ShadowAtlas = default,
+                PointShadowCube = default,
+                SpotShadowMap = default,
                 PointCount = 1,
                 SpotCount = 0,
                 CascadeCount = 0,

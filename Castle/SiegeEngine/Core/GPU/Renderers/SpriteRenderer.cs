@@ -37,12 +37,12 @@ namespace SiegeEngine.Core.GPU.Renderers
             _batchOpen = true;
         }
 
-        public void Draw(VertexBuffer buffer, uint textureId, Matrix4x4 model)
+        public void Draw(VertexBuffer buffer, GpuHandle texture, Matrix4x4 model)
         {
-            if (!_batchOpen || buffer == null || textureId == 0) return;
+            if (!_batchOpen || buffer == null || !texture.IsValid) return;
             ObjectCB obj = new ObjectCB { Model = model };
             _renderContext.SetConstants(ConstantSlot.Object, obj);
-            _renderContext.BindTextureSlot(0, _renderContext.ImportTexture(textureId, _renderContext.Enums.Texture2D), "uTexture");
+            _renderContext.BindTextureSlot(0, texture);
             _renderContext.BindVertexBuffer(buffer.VertexHandle, 0, buffer.Stride, 0);
             uint indexCount = buffer.GetIndexCount();
             if (indexCount == 0) indexCount = 6;

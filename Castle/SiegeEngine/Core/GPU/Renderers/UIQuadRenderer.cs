@@ -87,7 +87,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             }
             _renderContext.BindVertexBuffer(_vbo, 0, 16, 0);
             _renderContext.BindIndexBuffer(_ebo);
-            _renderContext.DrawElements(_renderContext.Enums.Triangles, (uint)(quadCount * 6), _renderContext.Enums.UnsignedInt, (void*)0);
+            _renderContext.DrawIndexed(quadCount * 6);
         }
 
         public void EnsureUIState()

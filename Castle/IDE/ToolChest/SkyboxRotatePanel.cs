@@ -146,7 +146,7 @@ namespace ToolChest
         {
             if (_workingSkybox == null || !_workingSkybox.Enabled)
             {
-                _previewScene.SetCubemapTexture(0);
+                _previewScene.SetCubemapTexture(default);
                 return;
             }
             GpuHandle allocated = _renderContext.CreateTexture(new TextureDesc
@@ -160,7 +160,7 @@ namespace ToolChest
                 _renderContext.Enums.ClampToEdge,
                 _renderContext.Enums.ClampToEdge);
             _renderContext.SetTextureParam(allocated, _renderContext.Enums.TextureWrapR, _renderContext.Enums.ClampToEdge);
-            uint tex = allocated.Id;
+            GpuHandle tex = allocated;
             for (int i = 0; i < 6; i++)
                 UploadFace(tex, i);
             _renderContext.GenerateMipmaps(allocated);
@@ -182,7 +182,7 @@ namespace ToolChest
             if (flipV)
                 bmp.RotateFlip(RotateFlipType.RotateNoneFlipY);
         }
-        private void UploadFace(uint tex, int faceIndex)
+        private void UploadFace(GpuHandle tex, int faceIndex)
         {
             string path = _resolvedFaces[faceIndex];
             if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
@@ -196,7 +196,7 @@ namespace ToolChest
                 bmp.UnlockBits(data);
                 fixed (byte* ptr = pixelData)
                 {
-                    GpuHandle handle = _renderContext.ImportTexture(tex, _renderContext.Enums.TextureCubeMap);
+                    GpuHandle handle = tex;
                     _renderContext.UpdateCubemapFace(handle,
                         _renderContext.Enums.TextureCubeMapPositiveX + faceIndex,
                         bmp.Width, bmp.Height,
@@ -212,10 +212,10 @@ namespace ToolChest
             int step = _faceSteps[_selectedFace] + deltaSteps;
             while (step < 0) step += 4;
             _faceSteps[_selectedFace] = step % 4;
-            uint tex = _previewScene.CubemapTexture;
-            if (tex == 0) return;
+            GpuHandle tex = _previewScene.CubemapTexture;
+            if (!tex.IsValid) return;
             UploadFace(tex, _selectedFace);
-            _renderContext.GenerateMipmaps(_renderContext.ImportTexture(tex, _renderContext.Enums.TextureCubeMap));
+            _renderContext.GenerateMipmaps(tex);
         }
         private void MirrorSelectedFace(bool horizontal)
         {
@@ -224,10 +224,10 @@ namespace ToolChest
                 _faceFlipH[_selectedFace] = !_faceFlipH[_selectedFace];
             else
                 _faceFlipV[_selectedFace] = !_faceFlipV[_selectedFace];
-            uint tex = _previewScene.CubemapTexture;
-            if (tex == 0) return;
+            GpuHandle tex = _previewScene.CubemapTexture;
+            if (!tex.IsValid) return;
             UploadFace(tex, _selectedFace);
-            _renderContext.GenerateMipmaps(_renderContext.ImportTexture(tex, _renderContext.Enums.TextureCubeMap));
+            _renderContext.GenerateMipmaps(tex);
             UpdateSelectionUI();
         }
         private void SwapFaces(int a, int b)
@@ -249,12 +249,12 @@ namespace ToolChest
             bool tmpV = _faceFlipV[a];
             _faceFlipV[a] = _faceFlipV[b];
             _faceFlipV[b] = tmpV;
-            uint tex = _previewScene.CubemapTexture;
-            if (tex != 0)
+            GpuHandle tex = _previewScene.CubemapTexture;
+            if (tex.IsValid)
             {
                 UploadFace(tex, a);
                 UploadFace(tex, b);
-                _renderContext.GenerateMipmaps(_renderContext.ImportTexture(tex, _renderContext.Enums.TextureCubeMap));
+                _renderContext.GenerateMipmaps(tex);
             }
         }
         private static void AtomicWriteBitmap(string targetPath, Bitmap bmp)

@@ -293,6 +293,66 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public bool UnmapBuffer(int target) =>
             _gl.UnmapBuffer((BufferTargetARB)target);
 
+        public void BindStorageBuffer(GpuHandle buffer, int slot)
+        {
+            if (!buffer.IsValid)
+            {
+                BindBufferBase(_enums.ShaderStorageBuffer, (uint)slot, 0);
+                return;
+            }
+            BindBufferBase(_enums.ShaderStorageBuffer, (uint)slot, buffer.Id);
+        }
+
+        public void BindUniformBuffer(GpuHandle buffer, int slot)
+        {
+            if (!buffer.IsValid)
+            {
+                BindBufferBase(_enums.UniformBuffer, (uint)slot, 0);
+                return;
+            }
+            BindBufferBase(_enums.UniformBuffer, (uint)slot, buffer.Id);
+        }
+
+        public void* Map(GpuHandle buffer, MapAccess access)
+        {
+            BindBuffer(buffer);
+            return MapBuffer(TargetOf(buffer), ToGlAccess(access));
+        }
+
+        public void* Map(GpuHandle buffer, int offset, uint length, MapAccess access)
+        {
+            BindBuffer(buffer);
+            return MapBufferRange(TargetOf(buffer), offset, length, ToGlMapMask(access));
+        }
+
+        public void Unmap(GpuHandle buffer)
+        {
+            BindBuffer(buffer);
+            UnmapBuffer(TargetOf(buffer));
+        }
+
+        int TargetOf(GpuHandle buffer)
+        {
+            if (buffer.IsValid && _bufferTarget.TryGetValue(buffer.Id, out int target) && target != 0)
+                return target;
+            return _enums.ShaderStorageBuffer;
+        }
+
+        static int ToGlAccess(MapAccess access)
+        {
+            if (access == MapAccess.Read) return (int)BufferAccessARB.ReadOnly;
+            if (access == MapAccess.Write) return (int)BufferAccessARB.WriteOnly;
+            return (int)BufferAccessARB.ReadWrite;
+        }
+
+        int ToGlMapMask(MapAccess access)
+        {
+            if (access == MapAccess.Read) return _enums.MapReadBit;
+            if (access == MapAccess.Write) return _enums.MapWriteBit;
+            return _enums.MapReadBit | _enums.MapWriteBit;
+        }
+
+
         public void GetInteger(int pname, out int data) =>
             _gl.GetInteger((GetPName)pname, out data);
 
@@ -555,6 +615,12 @@ namespace SiegeEngine.Core.GPU.ContextManagement
 
         public void BindTextureSlot(int slot, GpuHandle texture, string samplerName)
         {
+            if (texture.Kind == GpuResourceKind.RenderTarget && texture.IsValid)
+            {
+                GpuHandle color = GetRenderTargetColor(texture);
+                if (color.IsValid && color.Kind == GpuResourceKind.Texture)
+                    texture = color;
+            }
             if (!texture.IsValid || !IsLive(texture) || texture.Kind != GpuResourceKind.Texture)
             {
                 ActiveTexture(_enums.Texture0 + slot);
@@ -1176,6 +1242,12 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             BindSampler(program, "uAlbedoMap", TextureSlot.Albedo);
             BindSampler(program, "uColor", TextureSlot.Albedo);
             BindSampler(program, "Color", TextureSlot.Albedo);
+            for (int i = 0; i < 4; i++)
+            {
+                BindSampler(program, "uAlbedoMap[" + i + "]", i);
+                BindSampler(program, "uNormalMap[" + i + "]", 4 + i);
+                BindSampler(program, "uMetallicMap[" + i + "]", 8 + i);
+            }
             BindSampler(program, "uDepth", TextureSlot.Depth);
             BindSampler(program, "uHistory", TextureSlot.History);
             BindSampler(program, "uEdges", 0);

@@ -8,12 +8,6 @@ using System.Numerics;
 
 namespace SiegeEngine.Core.GPU.Lighting
 {
-    /// <summary>
-    /// Volumetric fog / light-shaft composite. Standard exponential and
-    /// height fog are applied in the forward shaders. This pass only runs
-    /// when FogMode.Volumetric is selected and a world color+depth pair is
-    /// available (typically the AA world target).
-    /// </summary>
     public unsafe class FogPass : IDisposable
     {
         private readonly IRenderContext _rc;
@@ -31,13 +25,13 @@ namespace SiegeEngine.Core.GPU.Lighting
             _pipeline = _rc.CreatePipeline(ShaderCatalog.Describe(ShaderId.Fog, _rc));
         }
 
-        public void Apply(LightingFrame frame, Matrix4x4 view, Matrix4x4 projection, uint colorTex, uint depthTex, bool depthIsTexture, int width, int height)
+        public void Apply(LightingFrame frame, Matrix4x4 view, Matrix4x4 projection, GpuHandle colorTex, GpuHandle depthTex, bool depthIsTexture, int width, int height)
         {
             if (_disposed || frame == null)
                 return;
             if (frame.Fog.Mode != FogMode.Volumetric || frame.Fog.Quality == FogQuality.Off)
                 return;
-            if (colorTex == 0 || width <= 0 || height <= 0)
+            if (!colorTex.IsValid || width <= 0 || height <= 0)
                 return;
 
             EnsureTarget(width, height);
@@ -72,17 +66,19 @@ namespace SiegeEngine.Core.GPU.Lighting
             _rc.SetConstants(ConstantSlot.Post, post);
 
             _rc.BindPipeline(_pipeline);
-            _rc.BindTextureSlot(0, _rc.ImportTexture(colorTex, _e.Texture2D), "Color");
-            _rc.BindTextureSlot(1, depthIsTexture ? _rc.ImportTexture(depthTex, _e.Texture2D) : default, "uDepth");
-            _rc.BindTextureSlot(2, frame.ShadowAtlas != 0 ? _rc.ImportTexture(frame.ShadowAtlas, _e.Texture2D) : default, "uShadowAtlas");
+            _rc.BindTextureSlot(TextureSlot.Color, colorTex);
+            _rc.BindTextureSlot(TextureSlot.Depth, depthIsTexture ? depthTex : default);
+            _rc.BindTextureSlot(TextureSlot.ShadowAtlas, frame.ShadowAtlas);
             _rc.Disable(_e.DepthTest);
             _rc.DepthMask(false);
             _rc.Disable(_e.CullFace);
             _rc.ColorMask(true, true, true, true);
             _rc.DrawFullscreen();
+            _rc.BindTextureSlot(TextureSlot.Color, default);
+            _rc.BindTextureSlot(TextureSlot.Depth, default);
         }
 
-        public uint ResolveColor => _resolve.Id;
+        public GpuHandle ResolveColor => _rc.GetRenderTargetColor(_resolve);
 
         public void Dispose()
         {

@@ -81,11 +81,11 @@ namespace SiegeEngine.Core.GPU.PostProcess
             });
         }
 
-        public uint ResolveColor => _compose.Id;
+        public GpuHandle ResolveColor => _rc.GetRenderTargetColor(_compose);
 
-        public void Apply(uint sourceColor, int width, int height, ColorComposeState state)
+        public void Apply(GpuHandle sourceColor, int width, int height, ColorComposeState state)
         {
-            if (_disposed || sourceColor == 0 || width <= 0 || height <= 0)
+            if (_disposed || !sourceColor.IsValid || width <= 0 || height <= 0)
                 return;
             if (!state.NeedsPass)
                 return;
@@ -98,17 +98,17 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _rc.Disable(_e.ScissorTest);
             _rc.ColorMask(true, true, true, true);
 
-            uint bloomTex = 0;
+            GpuHandle bloomTex = default;
             if (state.BloomEnabled && state.BloomIntensity > 0.001f)
             {
                 _rc.BindRenderTarget(_extract);
                 _rc.Viewport(0, 0, (uint)_width, (uint)_height);
                 _rc.BindPipeline(_extractPipe);
                 BindPost(state, 1f / Math.Max(_width, 1), 1f / Math.Max(_height, 1));
-                _rc.BindTextureSlot(0, _rc.ImportTexture(sourceColor, _e.Texture2D), "uColor");
+                _rc.BindTextureSlot(0, sourceColor);
                 DrawFullscreen();
 
-                uint src = _extract.Id;
+                GpuHandle src = _rc.GetRenderTargetColor(_extract);
                 int srcW = _width;
                 int srcH = _height;
                 for (int i = 0; i < MipCount; i++)
@@ -117,9 +117,9 @@ namespace SiegeEngine.Core.GPU.PostProcess
                     _rc.Viewport(0, 0, (uint)_mipW[i], (uint)_mipH[i]);
                     _rc.BindPipeline(_downPipe);
                     BindPost(state, 1f / Math.Max(srcW, 1), 1f / Math.Max(srcH, 1));
-                    _rc.BindTextureSlot(0, _rc.ImportTexture(src, _e.Texture2D), "uColor");
+                    _rc.BindTextureSlot(0, src);
                     DrawFullscreen();
-                    src = _mip[i].Id;
+                    src = _rc.GetRenderTargetColor(_mip[i]);
                     srcW = _mipW[i];
                     srcH = _mipH[i];
                 }
@@ -129,27 +129,27 @@ namespace SiegeEngine.Core.GPU.PostProcess
                     _rc.BindRenderTarget(_mip[i]);
                     _rc.Viewport(0, 0, (uint)_mipW[i], (uint)_mipH[i]);
                     _rc.BindPipeline(_upPipe);
-                    _rc.BindTextureSlot(0, _mip[i + 1], "uLow");
-                    _rc.BindTextureSlot(1, _mip[i], "uHigh");
+                    _rc.BindTextureSlot(0, _mip[i + 1]);
+                    _rc.BindTextureSlot(1, _mip[i]);
                     BindPost(state, 1f / Math.Max(_mipW[i + 1], 1), 1f / Math.Max(_mipH[i + 1], 1), 1f);
                     DrawFullscreen();
                     _rc.BindTextureSlot(1, default);
                 }
 
-                bloomTex = _mip[0].Id;
+                bloomTex = _rc.GetRenderTargetColor(_mip[0]);
             }
 
-            uint adaptedTex = 0;
+            GpuHandle adaptedTex = default;
             if (state.AutoExposure)
                 adaptedTex = MeterView(sourceColor, state);
 
             _rc.BindRenderTarget(_compose);
             _rc.Viewport(0, 0, (uint)_width, (uint)_height);
             _rc.BindPipeline(_composePipe);
-            BindPost(state, 1f / Math.Max(_width, 1), 1f / Math.Max(_height, 1), hasBloom: bloomTex != 0 ? 1 : 0);
-            _rc.BindTextureSlot(0, _rc.ImportTexture(sourceColor, _e.Texture2D), "uColor");
-            _rc.BindTextureSlot(1, bloomTex != 0 ? _rc.ImportTexture(bloomTex, _e.Texture2D) : default, "uBloom");
-            _rc.BindTextureSlot(2, adaptedTex != 0 ? _rc.ImportTexture(adaptedTex, _e.Texture2D) : default, "uAdaptedLuma");
+            BindPost(state, 1f / Math.Max(_width, 1), 1f / Math.Max(_height, 1), hasBloom: bloomTex.IsValid ? 1 : 0);
+            _rc.BindTextureSlot(0, sourceColor);
+            _rc.BindTextureSlot(1, bloomTex);
+            _rc.BindTextureSlot(2, adaptedTex);
             DrawFullscreen();
             _rc.BindTextureSlot(2, default);
             _rc.BindTextureSlot(1, default);
@@ -176,7 +176,7 @@ namespace SiegeEngine.Core.GPU.PostProcess
             pipe = default;
         }
 
-        private uint MeterView(uint sourceColor, ColorComposeState state)
+        private GpuHandle MeterView(GpuHandle sourceColor, ColorComposeState state)
         {
             int lumaW = Math.Max(_width / 8, 8);
             int lumaH = Math.Max(_height / 8, 8);
@@ -184,13 +184,13 @@ namespace SiegeEngine.Core.GPU.PostProcess
             _rc.BindRenderTarget(_luma);
             _rc.Viewport(0, 0, (uint)lumaW, (uint)lumaH);
             _rc.BindPipeline(_lumaPipe);
-            _rc.BindTextureSlot(0, _rc.ImportTexture(sourceColor, _e.Texture2D), "uColor");
+            _rc.BindTextureSlot(0, sourceColor);
             DrawFullscreen();
 
             _rc.BindRenderTarget(_lumaDown);
             _rc.Viewport(0, 0, 8, 8);
             _rc.BindPipeline(_lumaDownPipe);
-            _rc.BindTextureSlot(0, _luma, "uColor");
+            _rc.BindTextureSlot(0, _luma);
             DrawFullscreen();
 
             long now = Stopwatch.GetTimestamp();
@@ -211,14 +211,14 @@ namespace SiegeEngine.Core.GPU.PostProcess
                 Adapt = k,
                 HasPrev = _hasAdapted ? 1 : 0
             });
-            _rc.BindTextureSlot(0, _lumaDown, "uCurrent");
-            _rc.BindTextureSlot(1, _hasAdapted ? prev : dest, "uPrevious");
+            _rc.BindTextureSlot(0, _lumaDown);
+            _rc.BindTextureSlot(1, _hasAdapted ? prev : dest);
             DrawFullscreen();
             _rc.BindTextureSlot(1, default);
 
             _adaptPing = !_adaptPing;
             _hasAdapted = true;
-            return dest.Id;
+            return dest;
         }
 
         private void EnsureTargets(int width, int height)

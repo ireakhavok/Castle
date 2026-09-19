@@ -1,5 +1,7 @@
 // Folder: SiegeEngine/Core/GPU/ContextManagement
 // File: GpuHandle.cs
+using System;
+
 namespace SiegeEngine.Core.GPU.ContextManagement
 {
     public enum GpuResourceKind : byte
@@ -11,7 +13,14 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         RenderTarget = 4
     }
 
-    public readonly struct GpuHandle
+    public enum MapAccess : byte
+    {
+        Read = 1,
+        Write = 2,
+        ReadWrite = 3
+    }
+
+    public readonly struct GpuHandle : IEquatable<GpuHandle>
     {
         public readonly uint Id;
         public readonly uint Generation;
@@ -27,5 +36,29 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public bool IsValid => Kind != GpuResourceKind.None && Id != 0;
 
         public static GpuHandle Invalid => default;
+
+        public bool Equals(GpuHandle other)
+        {
+            return Id == other.Id && Generation == other.Generation && Kind == other.Kind;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is GpuHandle other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = (int)Id;
+                hash = (hash * 397) ^ (int)Generation;
+                hash = (hash * 397) ^ (byte)Kind;
+                return hash;
+            }
+        }
+
+        public static bool operator ==(GpuHandle left, GpuHandle right) => left.Equals(right);
+        public static bool operator !=(GpuHandle left, GpuHandle right) => !left.Equals(right);
     }
 }

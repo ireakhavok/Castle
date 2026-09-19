@@ -361,8 +361,7 @@ namespace SiegeEngine.Core.GPU.Compute
         {
             if (_drawIndexCount == 0) return;
             _renderContext.BindMesh(_drawVbo, _drawIbo, _drawLayout);
-            _renderContext.DrawElements(_renderContext.Enums.Triangles, (uint)_drawIndexCount,
-                _renderContext.Enums.UnsignedInt, null);
+            _renderContext.DrawIndexed(_drawIndexCount);
         }
 
         public bool TryClosestHit(Vector3 origin, Vector3 dir, out float tHit, out Vector3 nHit, out float dens)

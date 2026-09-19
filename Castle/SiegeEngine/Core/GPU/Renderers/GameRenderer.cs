@@ -150,58 +150,25 @@ namespace SiegeEngine.Core.GPU.Renderers
                         _modelShader.Use();
                         _renderContext.BindCamera(view, projection, modelMatrix);
                         bool hasBones = modelComp.Model.Skeleton != null && modelComp.Model.Skeleton.Bones.Count > 0;
-                        _modelShader.SetUniform("uHasBones", hasBones ? 1 : 0);
-                        if (hasBones)
+                        // HasBones written via ObjectCB
+                        if (_renderContext.TryGetConstants(ConstantSlot.Object, out ObjectCB objCb))
                         {
-                            var transforms = modelComp.Model.Skeleton.ComputeGlobalTransforms();
-                            var normalTransforms = new Matrix3x3[transforms.Length];
-                            for (int i = 0; i < transforms.Length; i++)
-                            {
-                                if (Matrix4x4.Invert(transforms[i], out var inv))
-                                {
-                                    var trans = Matrix4x4.Transpose(inv);
-                                    normalTransforms[i] = new Matrix3x3(
-                                        trans.M11, trans.M12, trans.M13,
-                                        trans.M21, trans.M22, trans.M23,
-                                        trans.M31, trans.M32, trans.M33);
-                                }
-                                else
-                                {
-                                    normalTransforms[i] = Matrix3x3.Identity;
-                                }
-                            }
-                            _modelShader.SetMatrix4Array("uBoneTransforms", transforms);
-                            _modelShader.SetMatrix3Array("uNormalBoneTransforms", normalTransforms);
+                            objCb.HasBones = hasBones ? 1 : 0;
+                            _renderContext.SetConstants(ConstantSlot.Object, objCb);
                         }
                         foreach (var mmr in modelData.MeshRenders)
                         {
-                            try
+                            GpuHandle[] albedos = mmr.AlbedoTextures;
+                            GpuHandle[] normals = mmr.NormalTextures;
+                            GpuHandle[] metallics = mmr.MetallicTextures;
+                            for (int i = 0; i < 4; i++)
                             {
-                                for (int i = 0; i < mmr.AlbedoTextures.Length; i++)
-                                {
-                                    _renderContext.BindTextureSlot(i, _renderContext.ImportTexture(mmr.AlbedoTextures[i], _renderContext.Enums.Texture2D), $"uAlbedoMap[{i}]");
-                                }
-                                for (int i = 0; i < mmr.NormalTextures.Length; i++)
-                                {
-                                    _renderContext.BindTextureSlot(4 + i, _renderContext.ImportTexture(mmr.NormalTextures[i], _renderContext.Enums.Texture2D), $"uNormalMap[{i}]");
-                                }
-                                for (int i = 0; i < mmr.MetallicTextures.Length; i++)
-                                {
-                                    _renderContext.BindTextureSlot(8 + i, _renderContext.ImportTexture(mmr.MetallicTextures[i], _renderContext.Enums.Texture2D), $"uMetallicMap[{i}]");
-                                }
+                                _renderContext.BindTextureSlot(i, albedos != null && i < albedos.Length ? albedos[i] : default);
+                                _renderContext.BindTextureSlot(4 + i, normals != null && i < normals.Length ? normals[i] : default);
+                                _renderContext.BindTextureSlot(8 + i, metallics != null && i < metallics.Length ? metallics[i] : default);
                             }
-                            catch (ArgumentException ex)
-                            {
-                                Console.WriteLine($"GameRenderer: Shader uniform error: {ex.Message}. Falling back to single texture.");
-                                uint fallback = mmr.AlbedoTextures.FirstOrDefault();
-                                _renderContext.BindTextureSlot(0, _renderContext.ImportTexture(fallback, _renderContext.Enums.Texture2D), "uAlbedoMap[0]");
-                            }
-                            _modelShader.SetUniform("uDebugTextureOnly", 1);
                             _renderContext.BindMesh(mmr.VertexHandle, mmr.IndexHandle, mmr.Stride != 0 ? mmr.Stride : 20 * sizeof(float));
-                            _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
-                            _modelShader.SetUniform("uDebugTextureOnly", 0);
-                            _renderContext.BindMesh(mmr.VertexHandle, mmr.IndexHandle, mmr.Stride != 0 ? mmr.Stride : 20 * sizeof(float));
-                            _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
+                            _renderContext.DrawIndexed((int)mmr.IndexCount);
                         }
                     }
                     else

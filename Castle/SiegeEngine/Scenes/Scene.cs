@@ -205,21 +205,21 @@ namespace SiegeEngine.Scenes
 
             RenderContent(entities, view, projection);
 
-            if (wrapped && frame.Fog.Mode == FogMode.Volumetric && frame.Fog.Quality != FogQuality.Off && _aaPass.WorldColor != 0)
+            if (wrapped && frame.Fog.Mode == FogMode.Volumetric && frame.Fog.Quality != FogQuality.Off && _aaPass.WorldColor.IsValid)
             {
                 if (_fogPass == null)
                     _fogPass = new FogPass(_renderContext);
                 _fogPass.Apply(frame, view, projection, _aaPass.WorldColor, _aaPass.WorldDepth, _aaPass.WorldDepthIsTexture, _aaPass.TargetWidth, _aaPass.TargetHeight);
-                if (_fogPass.ResolveColor != 0)
+                if (_fogPass.ResolveColor.IsValid)
                     _aaPass.ReplaceWorldColor(_fogPass.ResolveColor);
             }
 
-            if (wrapped && compose.NeedsPass && _aaPass.WorldColor != 0)
+            if (wrapped && compose.NeedsPass && _aaPass.WorldColor.IsValid)
             {
                 if (_composePass == null)
                     _composePass = new ColorComposePass(_renderContext);
                 _composePass.Apply(_aaPass.WorldColor, _aaPass.TargetWidth, _aaPass.TargetHeight, compose);
-                if (_composePass.ResolveColor != 0)
+                if (_composePass.ResolveColor.IsValid)
                     _aaPass.ReplaceWorldColor(_composePass.ResolveColor);
             }
 
@@ -266,9 +266,9 @@ namespace SiegeEngine.Scenes
         private static void InheritReadyShadows(LightingFrame frame)
         {
             if (frame == null) return;
-            if (frame.ShadowsReady && frame.ShadowAtlas != 0) return;
+            if (frame.ShadowsReady && frame.ShadowAtlas.IsValid) return;
             LightingFrame ready = LightingFrame.LastReady;
-            if (ready == null || ready.ShadowAtlas == 0 || !ready.ShadowsReady) return;
+            if (ready == null || !ready.ShadowAtlas.IsValid || !ready.ShadowsReady) return;
             frame.ShadowAtlas = ready.ShadowAtlas;
             frame.CascadeCount = ready.CascadeCount;
             frame.CascadeSplits = ready.CascadeSplits;

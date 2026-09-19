@@ -27,7 +27,6 @@ namespace SiegeEngine.Core.GPU.Renderers
 
         private class AtlasPage
         {
-            public uint TextureId;
             public GpuHandle Texture;
             public int CursorX;
             public int CursorY;
@@ -95,7 +94,6 @@ namespace SiegeEngine.Core.GPU.Renderers
                 Width = AtlasSize,
                 Height = AtlasSize
             });
-            page.TextureId = page.Texture.Id;
             _renderContext.SetTextureParams(page.Texture,
                 _renderContext.Enums.Linear, _renderContext.Enums.Linear,
                 _renderContext.Enums.ClampToEdge, _renderContext.Enums.ClampToEdge);
@@ -365,7 +363,7 @@ namespace SiegeEngine.Core.GPU.Renderers
 
                 // 6 vertices per quad (two triangles)
                 int quadCount = _batchVertCount / 24; // 6 verts * 4 floats
-                _renderContext.DrawArrays(_renderContext.Enums.Triangles, 0, (uint)(quadCount * 6));
+                _renderContext.Draw(quadCount * 6);
 
                 _batchVertCount = 0;
             }
@@ -450,7 +448,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             ClearCache();
             foreach (var page in _atlasPages)
             {
-                if (page.TextureId != 0)
+                if (page.Texture.IsValid)
                     _renderContext.Destroy(page.Texture);
             }
             _atlasPages.Clear();

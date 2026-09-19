@@ -37,7 +37,7 @@ namespace MapRoom
         private bool _disposed;
         private Action<GenericEvent> _skyboxHook;
         private string _activeMaterialPath = null;
-        private uint _ghostMaterialTextureId = 0;
+        private GpuHandle _ghostMaterialTextureId;
         private ShaderProgram _spriteShader;
         private Bitmap _colorBitmapCache = null;
         private const int ColorLayerResolution = 4096;
@@ -825,7 +825,7 @@ namespace MapRoom
                         g.Clear(Color.Transparent);
                     }
                     _terrainTextureId = TerrainTextureParser.CreateColorTexture(_renderContext, _colorBitmapCache);
-                    _hasColorTexture = _terrainTextureId != 0;
+                    _hasColorTexture = _terrainTextureId.IsValid;
                 }
             }
             using var materialBmp = new Bitmap(ResolveFullPath(_activeMaterialPath));
@@ -895,7 +895,7 @@ namespace MapRoom
         }
         private void UpdateGPUColorTexture()
         {
-            if (_colorBitmapCache == null || _terrainTextureId == 0) return;
+            if (_colorBitmapCache == null || !_terrainTextureId.IsValid) return;
             TextureLoader.UpdateFromBitmap(_renderContext, _terrainTextureId, _colorBitmapCache);
         }
         protected override void SyncColorTextureFromLiveState()

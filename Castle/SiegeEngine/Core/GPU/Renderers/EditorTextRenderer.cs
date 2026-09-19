@@ -14,28 +14,21 @@ namespace SiegeEngine.Core.GPU.Renderers
         private GpuHandle _textVbo;
         private GpuHandle _pipeline;
         private ShaderProgram _shaderProgram;
-        private Dictionary<char, uint> _charTextures;
+        private Dictionary<char, GpuHandle> _charTextures;
         private SystemFontRenderer _fontRenderer;
         public EditorTextRenderer(IRenderContext renderContext, nint window)
         {
             _renderContext = renderContext;
             _window = window;
-            _charTextures = new Dictionary<char, uint>();
+            _charTextures = new Dictionary<char, GpuHandle>();
             _fontRenderer = new SystemFontRenderer(_renderContext, "Arial");
         }
         public void Initialize(ShaderProgram shaderProgram)
         {
-            //Console.WriteLine("EditorTextRenderer: Initializing with font 'Arial', size 12.0f");
             _shaderProgram = shaderProgram;
             if (!_pipeline.IsValid)
                 _pipeline = _renderContext.CreatePipeline(ShaderCatalog.Describe(ShaderId.Text, _renderContext));
-            float[] textVertices = new float[]
-            {
-                0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-                1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-                1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-                0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f
-            };
+            float[] textVertices = new float[6 * 8];
             _textVbo = _renderContext.CreateBuffer(new BufferDesc
             {
                 Target = _renderContext.Enums.ArrayBuffer,
@@ -53,10 +46,7 @@ namespace SiegeEngine.Core.GPU.Renderers
             {
                 var charData = _fontRenderer.GetCharacterData(c);
                 if (charData == null || charData.PixelData == null || charData.PixelData.Length == 0)
-                {
-                    //Console.WriteLine($"EditorTextRenderer: Failed to load character '{c}' - charData is null or PixelData empty.");
                     continue;
-                }
                 GpuHandle allocated = _renderContext.CreateTexture(new TextureDesc
                 {
                     Target = _renderContext.Enums.Texture2D,
@@ -64,7 +54,6 @@ namespace SiegeEngine.Core.GPU.Renderers
                     Width = charData.Width,
                     Height = charData.Height
                 });
-                uint texture = allocated.Id;
                 fixed (byte* pixelPtr = charData.PixelData)
                 {
                     _renderContext.UpdateTexture(allocated, charData.Width, charData.Height,
@@ -73,14 +62,8 @@ namespace SiegeEngine.Core.GPU.Renderers
                 _renderContext.SetTextureParams(allocated,
                     _renderContext.Enums.Linear, _renderContext.Enums.Linear,
                     _renderContext.Enums.ClampToEdge, _renderContext.Enums.ClampToEdge);
-                _charTextures[c] = texture;
-                //Console.WriteLine($"EditorTextRenderer: Loaded texture for character '{c}': {texture}, Width: {charData.Width}, Height: {charData.Height}, PixelData Length: {charData.PixelData.Length}");
-                if (charData.PixelData.Length >= 4)
-                {
-                    //Console.WriteLine($"EditorTextRenderer: Sample pixels for '{c}' (BGRA): {charData.PixelData[0]:X2}-{charData.PixelData[1]:X2}-{charData.PixelData[2]:X2}-{charData.PixelData[3]:X2}...");
-                }
+                _charTextures[c] = allocated;
             }
-            //Console.WriteLine($"EditorTextRenderer: Initialization complete. Loaded {_charTextures.Count} characters.");
         }
         public void RenderText(string text, float startX, float startY, int width, int height, float fontSize = 16.0f, Vector4? textColor = null)
         {
@@ -136,6 +119,8 @@ namespace SiegeEngine.Core.GPU.Renderers
                     charLeft, charBottom, color.X, color.Y, color.Z, color.W, 0.0f, 1.0f,
                     charRight, charBottom, color.X, color.Y, color.Z, color.W, 1.0f, 1.0f,
                     charRight, charTop, color.X, color.Y, color.Z, color.W, 1.0f, 0.0f,
+                    charLeft, charBottom, color.X, color.Y, color.Z, color.W, 0.0f, 1.0f,
+                    charRight, charTop, color.X, color.Y, color.Z, color.W, 1.0f, 0.0f,
                     charLeft, charTop, color.X, color.Y, color.Z, color.W, 0.0f, 0.0f
                 };
                 fixed (float* ptr = textVertices)
@@ -145,13 +130,13 @@ namespace SiegeEngine.Core.GPU.Renderers
                 _renderContext.BindVertexBuffer(_textVbo, 0, 8 * sizeof(float), 0);
                 if (useTexture)
                 {
-                    uint textureId = _charTextures[c];
-                    _renderContext.BindTextureSlot(TextureSlot.Color, textureId != 0 ? _renderContext.ImportTexture(textureId, _renderContext.Enums.Texture2D) : default);
+                    GpuHandle texture = _charTextures[c];
+                    _renderContext.BindTextureSlot(TextureSlot.Color, texture);
                     _renderContext.SetConstants(ConstantSlot.Ui, new UiCB
                     {
                         Transform = transform,
                         Color = color,
-                        UseTexture = 1f
+                        UseTexture = texture.IsValid ? 1f : 0f
                     });
                 }
                 else
@@ -164,7 +149,7 @@ namespace SiegeEngine.Core.GPU.Renderers
                         UseTexture = 0f
                     });
                 }
-                _renderContext.DrawArrays(_renderContext.Enums.TriangleFan, 0, 4);
+                _renderContext.Draw(6);
                 currentX += charWidth + spacing;
             }
         }
@@ -176,9 +161,10 @@ namespace SiegeEngine.Core.GPU.Renderers
                 _renderContext.Destroy(_pipeline);
             foreach (var texture in _charTextures.Values)
             {
-                if (texture != 0)
-                    _renderContext.Destroy(_renderContext.ImportTexture(texture, _renderContext.Enums.Texture2D));
+                if (texture.IsValid)
+                    _renderContext.Destroy(texture);
             }
+            _charTextures.Clear();
         }
     }
 }
