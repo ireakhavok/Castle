@@ -42,6 +42,7 @@ namespace SiegeEngine.Core.GPU.Compute
 
         private GpuHandle _drawVbo;
         private GpuHandle _drawIbo;
+        private uint _drawVao;
         private readonly VertexLayout _drawLayout;
         private int _drawIndexCount;
         private bool _disposed;

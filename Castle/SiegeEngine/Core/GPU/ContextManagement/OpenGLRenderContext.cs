@@ -266,8 +266,12 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         public void FramebufferRenderbuffer(int target, int attachment, int renderbuffertarget, uint renderbuffer) =>
             _gl.FramebufferRenderbuffer((FramebufferTarget)target, (FramebufferAttachment)attachment, (RenderbufferTarget)renderbuffertarget, renderbuffer);
 
-        public void ReadPixels(int x, int y, uint width, uint height, int format, int type, void* data) =>
+        public void ReadPixels(int x, int y, uint width, uint height, int format, int type, void* data)
+        {
+            if (data != null)
+                BindBuffer(_enums.PixelPackBuffer, 0);
             _gl.ReadPixels(x, y, width, height, (PixelFormat)format, (PixelType)type, data);
+        }
 
         public void ClearBufferuiv(int buffer, int drawbuffer, uint* value) =>
             _gl.ClearBuffer((GLEnum)buffer, drawbuffer, value);
@@ -369,19 +373,23 @@ namespace SiegeEngine.Core.GPU.ContextManagement
             return _gl.GetProgramResourceLocation(program, (ProgramInterface)programInterface, name);
         }
 
-        public uint FenceSync(int condition, uint flags)
+        public nint FenceSync(int condition, uint flags)
         {
-            return (uint)_gl.FenceSync((SyncCondition)condition, (SyncBehaviorFlags)flags);
+            return _gl.FenceSync((SyncCondition)condition, (SyncBehaviorFlags)flags);
         }
 
-        public int ClientWaitSync(uint sync, uint flags, ulong timeout)
+        public int ClientWaitSync(nint sync, uint flags, ulong timeout)
         {
-            return (int)_gl.ClientWaitSync((nint)sync, flags, timeout);
+            if (sync == 0)
+                return _enums.AlreadySignaled;
+            return (int)_gl.ClientWaitSync(sync, flags, timeout);
         }
 
-        public void DeleteSync(uint sync)
+        public void DeleteSync(nint sync)
         {
-            _gl.DeleteSync((nint)sync);
+            if (sync == 0)
+                return;
+            _gl.DeleteSync(sync);
         }
 
         public GpuHandle CreatePipeline(in PipelineDesc desc)
@@ -461,6 +469,11 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 {
                     BindTexture(target, texture);
                     TexImage2D(target, 0, internalFormat, (uint)desc.Width, (uint)desc.Height, 0, uploadFormat, uploadType, null);
+                    if (isInteger)
+                    {
+                        TexParameter(target, _enums.TextureMinFilter, _enums.Nearest);
+                        TexParameter(target, _enums.TextureMagFilter, _enums.Nearest);
+                    }
                 }
             }
             GpuHandle handle = Track(GpuResourceKind.Texture, texture);
@@ -1003,7 +1016,10 @@ namespace SiegeEngine.Core.GPU.ContextManagement
                 ReadBuffer(_enums.None);
             }
             else if (_rtFbo.ContainsKey(target.Id))
+            {
                 DrawBuffer(_enums.ColorAttachment0);
+                ReadBuffer(_enums.ColorAttachment0);
+            }
         }
 
         public void BindDefaultRenderTarget()

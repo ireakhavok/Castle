@@ -79,7 +79,7 @@ namespace SiegeEngine.Core.GPU.Compute
         // PBO + fence (shared hardware, but primary and secondary never run concurrently)
         private readonly GpuHandle[] _pbo = new GpuHandle[2];
         private int _pboIndex;
-        private uint _pendingFence;
+        private nint _pendingFence;
         private int _pendingPbo;
         private bool _fencePending;
         private static readonly Vector3[] CubeDirs =
@@ -150,10 +150,12 @@ namespace SiegeEngine.Core.GPU.Compute
             _fboReady = _idRt.IsValid;
             if (_fboReady)
             {
-                GpuHandle color = _renderContext.GetRenderTargetColor(_idRt);
-                if (color.IsValid)
-                    _renderContext.SetTextureParams(color, _renderContext.Enums.Nearest, _renderContext.Enums.Nearest,
-                        _renderContext.Enums.ClampToEdge, _renderContext.Enums.ClampToEdge);
+                _renderContext.SetTextureParams(
+                    _idRt,
+                    _renderContext.Enums.Nearest,
+                    _renderContext.Enums.Nearest,
+                    _renderContext.Enums.ClampToEdge,
+                    _renderContext.Enums.ClampToEdge);
             }
             else
                 Console.WriteLine("[AcousticRayTracer] ID render target create failed");
@@ -172,6 +174,7 @@ namespace SiegeEngine.Core.GPU.Compute
             _fencePending = false;
             _secondaryFencePending = false;
         }
+
         public void KickContinuousTrace(Vector3 sourcePos, Vector3 listenerPos)
         {
             // Residual multi-bounce path removed entirely for this stage.
@@ -193,6 +196,7 @@ namespace SiegeEngine.Core.GPU.Compute
             _lastPrimarySource = primarySource;
             if (_geometry.TriangleCount <= 0 || !_fboReady)
             {
+                Console.WriteLine($"[AcousticID] kick skipped tris={_geometry.TriangleCount} fboReady={_fboReady} rt={_idRt.Id}");
                 _debugSegments.Clear();
                 return;
             }
@@ -354,20 +358,21 @@ namespace SiegeEngine.Core.GPU.Compute
             }
             while (facesDone < FacesPerCall && _pendingFace < 12)
             {
+                int faceIndex = _pendingFace;
                 if (_pendingFace < 6)
                     IssueRasterFace(_pendingListener, _pendingFace);
                 else
                     IssueRasterFace(_pendingSource, _pendingFace - 6);
+                ExtractIdsInto(_listenerVisible[write], _sourceVisible[write], faceIndex);
                 _pendingFace++;
                 facesDone++;
-                if (_fencePending)
-                    return false;
             }
             if (_pendingFace < 12)
                 return false;
             foreach (int tri in _listenerVisible[write])
                 if (_sourceVisible[write].Contains(tri))
                     _mutual[write].Add(tri);
+            Console.WriteLine($"[AcousticID] cube done Lvis={_listenerVisible[write].Count} Svis={_sourceVisible[write].Count} mutual={_mutual[write].Count} listener={_pendingListener} source={_pendingSource}");
             _fsListenerPos[write] = _pendingListener;
             _fsSourcePos[write] = _pendingSource;
             _fsGeometryVersion[write] = _pendingGeometryVersion;
@@ -377,6 +382,8 @@ namespace SiegeEngine.Core.GPU.Compute
             _visibilityVersion++;
             _pendingRaster = false;
             RebuildJoinedMutual();
+            Console.WriteLine(
+                $"[AcousticId] cube done lisVis={_listenerVisible[_fsRead].Count} srcVis={_sourceVisible[_fsRead].Count} mutual={_mutual[_fsRead].Count} joined={_joinedMutual.Count} geom={_geometry.TriangleCount}");
             _debugSegments.Clear();
             Vector3 toSource = _pendingSource - _pendingListener;
             float dist = toSource.Length();
@@ -454,14 +461,9 @@ namespace SiegeEngine.Core.GPU.Compute
                 int face = slot.PendingFace < 6 ? slot.PendingFace : slot.PendingFace - 6;
                 Vector3 origin = slot.PendingFace < 6 ? slot.PendingListener : slot.PendingSource;
                 IssueRasterFace(origin, face);
-                _secondaryPendingFaceForExtraction = slot.PendingFace;
+                ExtractIdsInto(slot.ListenerVisible[write], slot.SourceVisible[write], slot.PendingFace);
                 slot.PendingFace++;
                 facesDone++;
-                if (_fencePending)
-                {
-                    _secondaryFencePending = true;
-                    return;
-                }
             }
             if (slot.PendingFace < 12)
                 return;
@@ -485,28 +487,40 @@ namespace SiegeEngine.Core.GPU.Compute
             int savedViewportH = _renderContext.ViewportHeight;
             _renderContext.BindRenderTarget(_idRt);
             _renderContext.Viewport(0, 0, IdBufferSize, IdBufferSize);
+            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI * 0.5f, 1.0f, 0.3f, 400.0f);
+            _idProgram.Use();
+            _renderContext.BindUniformBlocks();
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.DepthFunc(_renderContext.Enums.Less);
             _renderContext.Disable(_renderContext.Enums.Blend);
             _renderContext.Disable(_renderContext.Enums.CullFace);
-            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI * 0.5f, 1.0f, 0.3f, 400.0f);
-            _idProgram.Use();
             Vector3 target = origin + CubeDirs[face] * 10.0f;
             Matrix4x4 view = Matrix4x4.CreateLookAt(origin, target, CubeUps[face]);
             _renderContext.BindCamera(view, proj, Matrix4x4.Identity);
+            _renderContext.SetConstants(ConstantSlot.Frame, new FrameCB { View = view, Projection = proj });
             uint clearVal = 0;
             _renderContext.ClearBufferuiv(_renderContext.Enums.Color, 0, &clearVal);
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _geometry.Draw();
-            int pbo = _pboIndex;
-            _pboIndex = 1 - _pboIndex;
-            _renderContext.BindBuffer(_pbo[pbo]);
-            _renderContext.ReadPixels(0, 0, IdBufferSize, IdBufferSize,
-                _renderContext.Enums.RedInteger, _renderContext.Enums.UnsignedIntType, null);
-            _pendingFence = _renderContext.FenceSync(_renderContext.Enums.SyncGpuCommandsComplete, 0);
-            _pendingPbo = pbo;
-            _fencePending = true;
-                _renderContext.BindDefaultRenderTarget();
+            if (_idReadback == null || _idReadback.Length != IdBufferSize * IdBufferSize)
+                _idReadback = new uint[IdBufferSize * IdBufferSize];
+            _renderContext.UnbindBuffer(_renderContext.Enums.PixelPackBuffer);
+            fixed (uint* dest = _idReadback)
+            {
+                _renderContext.ReadPixels(0, 0, IdBufferSize, IdBufferSize,
+                    _renderContext.Enums.RedInteger, _renderContext.Enums.UnsignedIntType, dest);
+            }
+            if (face == 0 || face == 5)
+            {
+                int nz = 0;
+                int n = IdBufferSize * IdBufferSize;
+                for (int i = 0; i < n; i++)
+                    if (_idReadback[i] != 0) nz++;
+                Console.WriteLine($"[AcousticId] face={face} nonzero={nz}/{n} drawIdx={_geometry.DrawIndexCount} rt={_idRt.Id}");
+            }
+            _pendingFence = 0;
+            _fencePending = false;
+            _renderContext.BindDefaultRenderTarget();
             _renderContext.Viewport(0, 0, (uint)savedViewportW, (uint)savedViewportH);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.Blend);
@@ -514,25 +528,31 @@ namespace SiegeEngine.Core.GPU.Compute
         }
         private void ExtractIdsInto(HashSet<int> listenerSet, HashSet<int> sourceSet, int faceIndex)
         {
-            _renderContext.BindBuffer(_pbo[_pendingPbo]);
-            void* mapped = _renderContext.Map(_pbo[_pendingPbo], 0,
-                (uint)(IdBufferSize * IdBufferSize * sizeof(uint)), MapAccess.Read);
-            if (mapped != null)
+            if (_idReadback == null)
             {
-                uint* ptr = (uint*)mapped;
-                int maxTri = _geometry.TriangleCount;
-                HashSet<int> targetSet = (faceIndex < 6) ? listenerSet : sourceSet;
-                for (int i = 0; i < IdBufferSize * IdBufferSize; i++)
-                {
-                    uint raw = ptr[i];
-                    if (raw == 0) continue;
-                    int tri = (int)raw - 1;
-                    if (tri >= 0 && tri < maxTri)
-                        targetSet.Add(tri);
-                }
-                _renderContext.Unmap(_pbo[_pendingPbo]);
+                Console.WriteLine($"[AcousticID] extract skipped — _idReadback is null face={faceIndex}");
+                return;
             }
+            int maxTri = _geometry.TriangleCount;
+            HashSet<int> targetSet = (faceIndex < 6) ? listenerSet : sourceSet;
+            int count = IdBufferSize * IdBufferSize;
+            if (count > _idReadback.Length) count = _idReadback.Length;
+            int before = targetSet.Count;
+            int nonzero = 0;
+            uint sample = 0;
+            for (int i = 0; i < count; i++)
+            {
+                uint raw = _idReadback[i];
+                if (raw == 0) continue;
+                nonzero++;
+                if (sample == 0) sample = raw;
+                int tri = (int)raw - 1;
+                if (tri >= 0 && tri < maxTri)
+                    targetSet.Add(tri);
             }
+            if (faceIndex < 2 || nonzero == 0 || faceIndex == 5 || faceIndex == 11)
+                Console.WriteLine($"[AcousticID] face={faceIndex} nonzero={nonzero} sampleRaw={sample} set+={targetSet.Count - before} set={targetSet.Count} maxTri={maxTri} drawIdx={_geometry.DrawIndexCount}");
+        }
         private void RebuildJoinedMutual()
         {
             _joinedMutual.Clear();

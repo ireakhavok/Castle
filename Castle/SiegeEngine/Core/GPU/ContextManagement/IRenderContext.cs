@@ -34,9 +34,9 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         void ReadPixels(int x, int y, uint width, uint height, int format, int type, void* data);
         void ClearBufferuiv(int buffer, int drawbuffer, uint* value);
         void MemoryBarrier(int barriers);
-        uint FenceSync(int condition, uint flags);
-        int ClientWaitSync(uint sync, uint flags, ulong timeout);
-        void DeleteSync(uint sync);
+        nint FenceSync(int condition, uint flags);
+        int ClientWaitSync(nint sync, uint flags, ulong timeout);
+        void DeleteSync(nint sync);
 
         GpuHandle CreatePipeline(in PipelineDesc desc);
         GpuHandle CreateBuffer(in BufferDesc desc);
@@ -54,6 +54,7 @@ namespace SiegeEngine.Core.GPU.ContextManagement
         void BindMesh(GpuHandle vertex, GpuHandle index, int stride);
         void BindMesh(GpuHandle vertex, GpuHandle index, VertexLayout layout);
         void BindBuffer(GpuHandle buffer);
+        void UnbindBuffer(int target);
         GpuHandle GetBoundRenderTarget();
         void BindTextureSlot(int slot, GpuHandle texture);
         void BindRenderTarget(GpuHandle target);

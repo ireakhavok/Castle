@@ -110,6 +110,17 @@ namespace SiegeEngine.Core.GPU.Shaders
                     new VertexAttribute(VertexSemantic.Color, enums.Float, 4, 12, 0)
                 });
             }
+            if (id == ShaderId.AcousticId)
+            {
+                // Same 16-byte draw vertex as AcousticGeometry.DrawVertex:
+                // float3 position + int triangle index at location 1.
+                // Early dirx bound this with VertexAttribIPointer on a dedicated VAO.
+                return new VertexLayout(16, new[]
+                {
+                    new VertexAttribute(VertexSemantic.Position, enums.Float, 3, 0, 0),
+                    new VertexAttribute(VertexSemantic.Color, enums.Int, 1, 12, 0)
+                });
+            }
             if (id == ShaderId.Skybox || id == ShaderId.SkyboxPreview)
             {
                 return new VertexLayout(36, new[]
@@ -176,6 +187,8 @@ namespace SiegeEngine.Core.GPU.Shaders
                     return new GpuRenderState { DepthTest = false, DepthWrite = false, Blend = true, CullMode = enums.None, Primitive = enums.Triangles };
                 case ShaderId.Point:
                     return new GpuRenderState { DepthTest = true, DepthWrite = true, Primitive = enums.Points };
+                case ShaderId.AcousticId:
+                    return new GpuRenderState { DepthTest = true, DepthWrite = true, CullMode = enums.None, Primitive = enums.Triangles };
                 case ShaderId.Water:
                     return new GpuRenderState { DepthTest = true, DepthWrite = true, Blend = true, Primitive = enums.TriangleFan };
                 default:

@@ -465,7 +465,12 @@ namespace CastleBuilder
             else if (hook == "ToggleAcousticDebug")
             {
                 if (_acousticDebug != null)
+                {
                     _acousticDebug.Enabled = !_acousticDebug.Enabled;
+                    Console.WriteLine($"[SceneEditorPanel] ToggleAcousticDebug Enabled={_acousticDebug.Enabled}");
+                }
+                else
+                    Console.WriteLine("[SceneEditorPanel] ToggleAcousticDebug ignored — overlay is null");
             }
             else if (hook == "PlaceSoundSource")
             {
@@ -985,6 +990,8 @@ namespace CastleBuilder
             var active = _editorScene.GetActiveGameScene();
             if (active != null)
                 active.GetCameraViewProjection(out view, out projection);
+            else
+                Console.WriteLine("[SceneEditorPanel] GetActiveGameScene() is null — overlay view/proj are identity");
             for (int i = 0; i < _worldOverlays.Count; i++)
                 _worldOverlays[i].RenderWorld(view, projection);
         }
